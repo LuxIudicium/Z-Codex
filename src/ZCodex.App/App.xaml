@@ -1,0 +1,44 @@
+﻿<Application x:Class="ZCodex.App.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:ZCodex.App"
+             xmlns:conv="clr-namespace:ZCodex.App.Converters">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- Index 0 = palette, remplacée à chaud par ThemeManager.Apply.
+                     Index 1 = styles des contrôles natifs, jamais échangé.
+                     Index 2 = chaînes UI FR/EN, remplacé à chaud par LanguageManager.Apply
+                     (repéré par son Source "Resources/Strings.", pas par son index). -->
+                <ResourceDictionary Source="Themes/Theme.Light.xaml"/>
+                <ResourceDictionary Source="Themes/Controls.xaml"/>
+                <ResourceDictionary Source="Resources/Strings.fr.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+        <!-- Converters partagés par toutes les vues (MainWindow, BrowserView, etc.).
+             Doivent être ici (portée application) : un StaticResource dans les templates
+             d'un UserControl ne remonte pas jusqu'aux ressources de la fenêtre hôte. -->
+        <conv:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <conv:NullToVisibilityConverter x:Key="NullToVis"/>
+        <conv:UrlToImageConverter x:Key="UrlToImage"/>
+        <conv:ProfessionToIconConverter x:Key="ProfToIcon"/>
+        <conv:CharacterAttributesConverter x:Key="CharAttrs"/>
+        <conv:CharacterProfessionsConverter x:Key="CharProfs"/>
+        <conv:AnyTrueToVisibilityConverter x:Key="AnyTrueToVis"/>
+        <conv:AllTrueToVisibilityConverter x:Key="AllTrueToVis"/>
+        <!-- Infobulle de compétence (SkillTooltipControl) -->
+        <conv:StatIconConverter x:Key="StatIcon"/>
+        <conv:SkillTypeLineConverter x:Key="SkillTypeLine"/>
+        <conv:SkillDescriptionConverter x:Key="SkillDesc"/>
+        <conv:PositiveIntToVisibilityConverter x:Key="PosInt"/>
+        <conv:PositiveFloatToVisibilityConverter x:Key="PosFloat"/>
+        <conv:ZeroIntToEmptyStringConverter x:Key="ZeroBlank"/>
+        <conv:DepthToThicknessConverter x:Key="DepthToIndent"/>
+        <conv:AttributeDisplayConverter x:Key="AttrDisplay"/>
+        <conv:BuildNamePlaceholderConverter x:Key="BuildNamePlaceholder"/>
+        <!-- Calculateur d'armure (chantier 14) -->
+        <conv:BoolToBoldConverter x:Key="BoolToBold"/>
+        <conv:SubtractConverter x:Key="Subtract"/>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

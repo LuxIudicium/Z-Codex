@@ -1,0 +1,50 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\ZCodex.Core\ZCodex.Core.csproj" />
+    <ProjectReference Include="..\ZCodex.Data\ZCodex.Data.csproj" />
+    <ProjectReference Include="..\ZCodex.Scraper\ZCodex.Scraper.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- L'icône de flux n'est PAS ici : c'est une ressource du jeu, donc téléchargée depuis le
+         wiki au démarrage comme les icônes de professions et de conditions (FluxIconService).
+         Ne rien remettre d'ArenaNet/NCSOFT dans ce dossier — cf. README, « Licence et marques ». -->
+    <!-- Le codex relié : illustration de la fenêtre « À propos » (et du bandeau d'installateur).
+         Marge noire déjà rognée pour ne pas faire un pavé noir sur un thème clair. -->
+    <Resource Include="Assets\Z-Codex-Book.png" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+
+  <!-- Métadonnées de l'exécutable : ce que Windows affiche dans les propriétés du fichier,
+       le gestionnaire des tâches et la liste « Applications installées ». Sans elles, l'exe
+       s'annonce « ZCodex.App » sans éditeur — et un installateur les reprend telles quelles. -->
+  <PropertyGroup>
+    <AssemblyName>Z-Codex</AssemblyName>
+    <AssemblyTitle>Z-Codex</AssemblyTitle>
+    <Product>Z-Codex</Product>
+    <Company>P. Vincent</Company>
+    <Authors>P. Vincent</Authors>
+    <Description>Gestionnaire de builds d'équipe pour Guild Wars 1. Outil non officiel ; Guild Wars est une marque d'ArenaNet / NCSOFT.</Description>
+    <Copyright>© 2026 P. Vincent — licence MIT. Guild Wars © ArenaNet/NCSOFT.</Copyright>
+    <NeutralLanguage>fr</NeutralLanguage>
+    <!-- Icône de l'exe, des raccourcis et de la fenêtre (WPF retombe sur l'icône du processus
+         quand aucun Window.Icon n'est posé). 7 tailles : 256/128/64 gardent le cadre complet,
+         48 et en dessous prennent un recadrage serré sur le blason — sous cette taille le
+         filigrane n'est plus que du bruit. -->
+    <ApplicationIcon>Assets\Z-Codex.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <!-- Les réglages de PUBLICATION (autonome win-x64) sont dans
+       Properties\PublishProfiles\win-x64-selfcontained.pubxml : les mettre ici forcerait
+       chaque `dotnet build` de développement à produire un runtime complet. -->
+
+</Project>

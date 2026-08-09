@@ -1,0 +1,20 @@
+﻿<Window x:Class="ZCodex.App.Views.ImportTemplateWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{DynamicResource S.Win.ImportTplTitle}" Width="460" Height="160"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Background="{DynamicResource DialogBackgroundBrush}"
+        Foreground="{DynamicResource TextPrimaryBrush}">
+    <StackPanel Margin="18">
+        <TextBlock Text="{DynamicResource S.Win.PasteCode}" Margin="0,0,0,8" FontSize="13"/>
+        <TextBox x:Name="CodeBox" FontFamily="Consolas" FontSize="13"
+                 Padding="6,4" Margin="0,0,0,12"
+                 KeyDown="CodeBox_KeyDown"/>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="{DynamicResource S.Common.Import}" Width="90" Padding="8,4" Margin="0,0,8,0"
+                    IsDefault="True" Click="Import_Click"/>
+            <Button Content="{DynamicResource S.Common.Cancel}" Width="90" Padding="8,4" IsCancel="True"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

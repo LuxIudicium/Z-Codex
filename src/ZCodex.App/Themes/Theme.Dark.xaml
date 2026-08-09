@@ -1,0 +1,69 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         Palette SOMBRE — mêmes clés que Theme.Light.xaml, valeurs adaptées.
+         Chaque clé doit exister À L'IDENTIQUE dans Theme.Light.xaml : les deux
+         dictionnaires sont interchangeables à chaud (ThemeManager.Apply).
+         ═══════════════════════════════════════════════════════════════════════ -->
+
+    <!-- Fonds -->
+    <SolidColorBrush x:Key="WindowBackgroundBrush"   Color="#2D2D30"/>
+    <SolidColorBrush x:Key="DialogBackgroundBrush"   Color="#2D2D30"/>
+    <SolidColorBrush x:Key="ContentBackgroundBrush"  Color="#1E1E1E"/>
+    <SolidColorBrush x:Key="PanelBackgroundBrush"    Color="#252526"/>
+    <SolidColorBrush x:Key="PanelAltBackgroundBrush" Color="#2A2A2E"/>
+    <SolidColorBrush x:Key="HeaderBackgroundBrush"   Color="#333337"/>
+    <SolidColorBrush x:Key="TabStripBackgroundBrush" Color="#252528"/>
+    <SolidColorBrush x:Key="InsetBackgroundBrush"    Color="#242428"/>
+    <SolidColorBrush x:Key="ControlBackgroundBrush"  Color="#3E3E42"/>
+    <SolidColorBrush x:Key="SlotBackgroundBrush"     Color="#3A3A3E"/>
+
+    <!-- Bordures -->
+    <SolidColorBrush x:Key="BorderStrongBrush" Color="#3F3F46"/>
+    <SolidColorBrush x:Key="BorderLightBrush"  Color="#37373C"/>
+    <SolidColorBrush x:Key="SlotBorderBrush"   Color="#55555B"/>
+
+    <!-- Textes -->
+    <SolidColorBrush x:Key="TextPrimaryBrush"   Color="#E0E0E0"/>
+    <SolidColorBrush x:Key="TextHeadingBrush"   Color="#D8D8D8"/>
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#B0B0B0"/>
+    <SolidColorBrush x:Key="TextMutedBrush"     Color="#8A8A8A"/>
+    <SolidColorBrush x:Key="TextFaintBrush"     Color="#6E6E74"/>
+    <SolidColorBrush x:Key="IconMutedBrush"     Color="#8E8E94"/>
+    <SolidColorBrush x:Key="TextOnAccentBrush"  Color="#FFFFFF"/>
+
+    <!-- Accent / survol -->
+    <SolidColorBrush x:Key="AccentBrush"          Color="#3399FF"/>
+    <SolidColorBrush x:Key="AccentDarkBrush"      Color="#2277DD"/>
+    <SolidColorBrush x:Key="HoverBackgroundBrush" Color="#3A4450"/>
+    <SolidColorBrush x:Key="HoverBorderBrush"     Color="#56708A"/>
+
+    <!-- États -->
+    <SolidColorBrush x:Key="WarningBackgroundBrush" Color="#453D1E"/>
+    <SolidColorBrush x:Key="WarningBorderBrush"     Color="#99801F"/>
+    <SolidColorBrush x:Key="ErrorTextBrush"         Color="#FF6B6B"/>
+    <SolidColorBrush x:Key="StatHpBrush"            Color="#FF7575"/>
+    <SolidColorBrush x:Key="StatEnergyBrush"        Color="#7FAFFF"/>
+    <SolidColorBrush x:Key="StatPipsBrush"          Color="#74C494"/>
+    <SolidColorBrush x:Key="SkillVariableBrush"     Color="#53C273"/>
+    <SolidColorBrush x:Key="FluxVariableBrush"      Color="#5865F2"/>
+    <SolidColorBrush x:Key="SummonVariableBrush"    Color="#5FC8F0"/>
+    <SolidColorBrush x:Key="RitualVariableBrush"    Color="#E0A64D"/>
+    <SolidColorBrush x:Key="SkillBoostVariableBrush" Color="#C084FC"/>
+
+    <!-- Chrome des contrôles natifs (Themes/Controls.xaml) -->
+    <SolidColorBrush x:Key="ButtonBackgroundBrush"        Color="#3A3A3E"/>
+    <SolidColorBrush x:Key="ButtonBorderBrush"            Color="#55555B"/>
+    <SolidColorBrush x:Key="ButtonHoverBackgroundBrush"   Color="#46464C"/>
+    <SolidColorBrush x:Key="ButtonHoverBorderBrush"       Color="#3399FF"/>
+    <SolidColorBrush x:Key="ButtonPressedBackgroundBrush" Color="#2F4A66"/>
+    <SolidColorBrush x:Key="ScrollTrackBrush"             Color="#2D2D30"/>
+    <SolidColorBrush x:Key="ScrollThumbBrush"             Color="#55555A"/>
+    <SolidColorBrush x:Key="ScrollThumbHoverBrush"        Color="#6E6E74"/>
+    <SolidColorBrush x:Key="MenuPopupBackgroundBrush"     Color="#2B2B30"/>
+    <SolidColorBrush x:Key="MenuHighlightBrush"           Color="#3E3E44"/>
+    <SolidColorBrush x:Key="TooltipBackgroundBrush"       Color="#2A2A2E"/>
+    <SolidColorBrush x:Key="TooltipBorderBrush"           Color="#4A4A50"/>
+
+</ResourceDictionary>

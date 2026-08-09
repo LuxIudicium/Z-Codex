@@ -1,0 +1,43 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  Z-Codex — ce qui ne part pas dans le dépôt
+#
+#  Règle de fond : le dépôt ne distribue AUCUNE donnée ni image de Guild Wars.
+#  Tout ce qui vient du jeu est récupéré à l'exécution par le scraper, depuis le
+#  Guild Wars Wiki, sur la machine de l'utilisateur (cf. README ▸ Premier lancement).
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Compilation .NET ─────────────────────────────────────────────────────────
+[Bb]in/
+[Oo]bj/
+
+# ── Sorties de l'installateur ────────────────────────────────────────────────
+# Le setup.exe est publié en GitHub Release, pas versionné.
+# installer/obj/LICENSE.txt est regénéré par installer/build.ps1.
+installer/output/
+
+# ── Contenus ArenaNet — droits d'auteur ──────────────────────────────────────
+# docs/ contient des textes de compétences recopiés du wiki, les icônes HD et
+# les scans de cartes. Tout est regénérable depuis la base scrapée.
+docs/
+all_items.txt
+
+# ── Matériel de travail local ────────────────────────────────────────────────
+_backup_*/
+
+# Outillage de session Claude Code : chemins absolus du poste, permissions
+# locales, garde-fous de collaboration. Personnel, sans rapport avec l'app.
+.claude/
+
+# ── Outillage / IDE ──────────────────────────────────────────────────────────
+.vs/
+.idea/
+*.user
+*.suo
+*.userprefs
+*.DotSettings.user
+
+# ── Divers ───────────────────────────────────────────────────────────────────
+Thumbs.db
+desktop.ini
+*.log
+crash.log

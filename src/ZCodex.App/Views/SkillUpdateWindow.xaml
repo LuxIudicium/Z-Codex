@@ -1,0 +1,20 @@
+﻿<Window x:Class="ZCodex.App.Views.SkillUpdateWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{DynamicResource S.Win.SkillUpdateTitle}" Width="420"
+        SizeToContent="Height" MinHeight="200"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Background="{DynamicResource DialogBackgroundBrush}"
+        Foreground="{DynamicResource TextPrimaryBrush}">
+    <StackPanel Margin="20">
+        <TextBlock x:Name="StatusText" Text="{DynamicResource S.Win.Preparing}" FontSize="13" Margin="0,0,0,10"/>
+        <ProgressBar x:Name="ProgressBar" Height="22" Minimum="0" Maximum="10"
+                     Value="0" Margin="0,0,0,12"/>
+        <!-- Compteur pendant le téléchargement, message de rattrapage en cas d'échec → Wrap. -->
+        <TextBlock x:Name="DetailText" Text="" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"
+                   TextWrapping="Wrap" Margin="0,0,0,12"/>
+        <Button x:Name="CancelButton" Content="{DynamicResource S.Common.Cancel}" Width="90"
+                HorizontalAlignment="Right" Padding="8,4" Click="Cancel_Click"/>
+    </StackPanel>
+</Window>

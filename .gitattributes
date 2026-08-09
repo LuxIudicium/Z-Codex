@@ -1,0 +1,9 @@
+# Normalise les fins de ligne : LF dans le dépôt, CRLF à la sortie sous Windows.
+# Sans ça, un contributeur sur un autre poste réécrirait des fichiers entiers.
+* text=auto
+
+# Binaires — jamais de conversion.
+*.png binary
+*.ico binary
+*.bmp binary
+*.jpg binary

@@ -1,0 +1,59 @@
+﻿<Window x:Class="ZCodex.App.Views.CharacterPropertiesWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{DynamicResource S.Win.CharPropsTitle}" Width="460" Height="420"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Background="{DynamicResource DialogBackgroundBrush}"
+        Foreground="{DynamicResource TextPrimaryBrush}">
+    <StackPanel Margin="16">
+
+        <!-- Nom -->
+        <DockPanel Margin="0,0,0,8">
+            <TextBlock Text="{DynamicResource S.Char.Name}" Width="80" VerticalAlignment="Center" FontSize="13"/>
+            <TextBox x:Name="NameBox" FontSize="13" Padding="4,3"/>
+        </DockPanel>
+
+        <!-- Notes -->
+        <DockPanel Margin="0,0,0,8">
+            <TextBlock Text="{DynamicResource S.Char.Notes}" Width="80" VerticalAlignment="Top" Margin="0,4,0,0" FontSize="13"/>
+            <TextBox x:Name="NotesBox" FontSize="12" Padding="4,3" Height="68"
+                     TextWrapping="Wrap" AcceptsReturn="True"
+                     VerticalScrollBarVisibility="Auto"/>
+        </DockPanel>
+
+        <!-- Assigné à -->
+        <DockPanel Margin="0,0,0,14">
+            <TextBlock Text="{DynamicResource S.Char.AssignedTo}" Width="80" VerticalAlignment="Center" FontSize="13"/>
+            <TextBox x:Name="AssignmentBox" FontSize="13" Padding="4,3"/>
+        </DockPanel>
+
+        <Separator Margin="0,0,0,10"/>
+
+        <!-- Équipement -->
+        <TextBlock Text="{DynamicResource S.Char.Equipment}" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,6"/>
+
+        <!-- Codes P (un par set d'armes, armure partagée) -->
+        <DockPanel Margin="0,0,0,14">
+            <TextBlock Text="{DynamicResource S.Char.Codes}" Width="50" VerticalAlignment="Top" Margin="0,4,0,0" FontSize="12"/>
+            <StackPanel DockPanel.Dock="Right" Margin="6,0,0,0" VerticalAlignment="Top">
+                <Button Content="{DynamicResource S.Common.ImportDots}" Width="80" Padding="4,3" Margin="0,0,0,4"
+                        Click="ImportEquip_Click"/>
+                <Button x:Name="CopyEquipBtn" Content="{DynamicResource S.Common.Copy}" Width="80" Padding="4,3"
+                        Click="CopyEquip_Click"/>
+            </StackPanel>
+            <TextBox x:Name="EquipCodeBox" FontSize="11" Padding="4,3"
+                     IsReadOnly="True" Foreground="{DynamicResource TextSecondaryBrush}" Background="{DynamicResource InsetBackgroundBrush}"
+                     FontFamily="Consolas" Margin="6,0,0,0"
+                     MinLines="2" MaxLines="4" VerticalScrollBarVisibility="Auto"/>
+        </DockPanel>
+
+        <!-- Boutons OK / Annuler -->
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="OK" Width="80" Padding="8,4" Margin="0,0,8,0"
+                    IsDefault="True" Click="Ok_Click"/>
+            <Button Content="{DynamicResource S.Common.Cancel}" Width="80" Padding="8,4" IsCancel="True"/>
+        </StackPanel>
+
+    </StackPanel>
+</Window>

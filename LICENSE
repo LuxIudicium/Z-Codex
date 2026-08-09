@@ -1,0 +1,68 @@
+MIT License
+
+Copyright (c) 2026 P. Vincent
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+-------------------------------------------------------------------------------
+THIRD-PARTY NOTICES
+-------------------------------------------------------------------------------
+The MIT license above covers ONLY the source code of this project. It grants no
+rights over any third-party material referenced below.
+
+Guild Wars
+    Guild Wars, Guild Wars Factions, Guild Wars Nightfall, Guild Wars: Eye of
+    the North, and all associated names, characters, professions, skills, icons
+    and imagery are trademarks and/or copyright of ArenaNet, LLC and NCSOFT
+    Corporation. This project is an unofficial, non-commercial fan tool. It is
+    not affiliated with, endorsed by, or sponsored by ArenaNet or NCSOFT.
+
+    No game asset is redistributed with this software. Skill icons and related
+    material are downloaded at runtime, on the user's machine, from the public
+    Guild Wars Wiki, and are subject to that wiki's own terms of reuse.
+
+paw*ned²
+    This project is an independent work, inspired by paw*ned² but sharing none
+    of its source code. Interoperability with the .pwnd file format is provided
+    by reading the format only. paw*ned² and its name belong to their
+    respective authors, who are in no way associated with this project.
+
+PvXwiki
+    PvXwiki (gwpvx.fandom.com) is an independent community wiki of Guild Wars
+    character builds, run by its contributors and hosted by Fandom, Inc. It is
+    not affiliated with, endorsed by, or sponsored by this project, nor this
+    project by it.
+
+    Z-Codex links to PvXwiki and downloads the build packs it publishes. Those
+    builds are user-contributed content, licensed by their authors under the
+    Creative Commons Attribution-NonCommercial-ShareAlike 3.0 license
+    (CC BY-NC-SA 3.0). They are downloaded at runtime, on the user's machine,
+    and remain under that license once imported: credit PvXwiki and its
+    contributors if you redistribute them, and do not put them to commercial
+    use. No PvXwiki content is redistributed with this software.
+
+Bundled dependencies
+    This software is distributed with third-party components, each under its
+    own license:
+      - AngleSharp                        MIT License
+      - Microsoft.EntityFrameworkCore     MIT License
+      - Microsoft.Data.Sqlite             MIT License
+      - Microsoft.Extensions.Logging      MIT License
+      - .NET Runtime and WPF              MIT License

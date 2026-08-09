@@ -1,0 +1,387 @@
+﻿<UserControl x:Class="ZCodex.App.Views.BrowserView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ctrl="clr-namespace:ZCodex.App.Controls"
+             Loaded="BrowserView_Loaded">
+
+    <UserControl.Resources>
+        <!-- Tooltip PARESSEUX du slot de preview : le SkillTooltipControl lourd n'est bâti
+             qu'à l'ouverture de la ToolTip (Popup), pas à chaque slot matérialisé.
+             DataContext du template = le Skill lui-même. -->
+        <DataTemplate x:Key="PreviewSkillTooltipTemplate">
+            <ctrl:SkillTooltipControl Skill="{Binding}"/>
+        </DataTemplate>
+
+        <!-- Vue team build : colonnes par fichier (.pn3 / .pwnd) -->
+        <GridView x:Key="TeamBuildGridView" x:Shared="False">
+            <GridViewColumn Width="200">
+                <GridViewColumnHeader Content="{DynamicResource S.Browser.ColName}" Tag="Name" Click="ColumnHeader_Click"/>
+                <GridViewColumn.CellTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Name}" FontSize="12"
+                                   TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                    </DataTemplate>
+                </GridViewColumn.CellTemplate>
+            </GridViewColumn>
+            <GridViewColumn Width="150">
+                <GridViewColumnHeader Content="{DynamicResource S.Browser.ColFormat}" Tag="Format" Click="ColumnHeader_Click"/>
+                <GridViewColumn.CellTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Format}" FontSize="12" VerticalAlignment="Center"/>
+                    </DataTemplate>
+                </GridViewColumn.CellTemplate>
+            </GridViewColumn>
+            <GridViewColumn Width="160">
+                <GridViewColumnHeader Content="{DynamicResource S.Browser.ColPlayers}" Tag="Players" Click="ColumnHeader_Click"/>
+                <GridViewColumn.CellTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Players}" FontSize="12" VerticalAlignment="Center"/>
+                    </DataTemplate>
+                </GridViewColumn.CellTemplate>
+            </GridViewColumn>
+            <GridViewColumn Width="110">
+                <GridViewColumnHeader Content="{DynamicResource S.Browser.ColCampaigns}" Tag="Campaigns" Click="ColumnHeader_Click"/>
+                <GridViewColumn.CellTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Campaigns}" FontSize="12" VerticalAlignment="Center"/>
+                    </DataTemplate>
+                </GridViewColumn.CellTemplate>
+            </GridViewColumn>
+            <GridViewColumn Width="140">
+                <GridViewColumnHeader Content="{DynamicResource S.Browser.ColModified}" Tag="Modified" Click="ColumnHeader_Click"/>
+                <GridViewColumn.CellTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Modified, StringFormat='{}{0:dd/MM/yyyy HH:mm}'}"
+                                   FontSize="12" VerticalAlignment="Center"/>
+                    </DataTemplate>
+                </GridViewColumn.CellTemplate>
+            </GridViewColumn>
+        </GridView>
+
+        <!-- Vue skill template : colonnes façon paw·ned² (.txt mono-personnage) -->
+        <GridView x:Key="SkillTemplateGridView" x:Shared="False">
+            <GridViewColumn Width="230">
+                <GridViewColumnHeader Content="{DynamicResource S.Browser.ColName}" Tag="Name" Click="ColumnHeader_Click"/>
+                <GridViewColumn.CellTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal">
+                            <Image Source="{Binding PrimaryProfession, Converter={StaticResource ProfToIcon}}"
+                                   Width="16" Height="16" Margin="0,0,1,0" VerticalAlignment="Center"
+                                   RenderOptions.BitmapScalingMode="HighQuality"/>
+                            <Image Source="{Binding SecondaryProfession, Converter={StaticResource ProfToIcon}}"
+                                   Width="16" Height="16" Margin="0,0,4,0" VerticalAlignment="Center"
+                                   RenderOptions.BitmapScalingMode="HighQuality"/>
+                            <TextBlock Text="{Binding Name, Converter={StaticResource BuildNamePlaceholder}}" FontSize="12" VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </GridViewColumn.CellTemplate>
+            </GridViewColumn>
+            <GridViewColumn Width="110">
+                <GridViewColumnHeader Content="{DynamicResource S.Browser.ColProfession}" Tag="Profession" Click="ColumnHeader_Click"/>
+                <GridViewColumn.CellTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding PrimaryProfessionName}" FontSize="12" VerticalAlignment="Center"/>
+                    </DataTemplate>
+                </GridViewColumn.CellTemplate>
+            </GridViewColumn>
+            <GridViewColumn Width="130">
+                <GridViewColumnHeader Content="{DynamicResource S.Browser.ColSecondary}" Tag="Secondary" Click="ColumnHeader_Click"/>
+                <GridViewColumn.CellTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding SecondaryProfessionName}" FontSize="12" VerticalAlignment="Center"/>
+                    </DataTemplate>
+                </GridViewColumn.CellTemplate>
+            </GridViewColumn>
+            <GridViewColumn Width="150">
+                <GridViewColumnHeader Content="{DynamicResource S.Browser.ColAttribute}" Tag="Attribute" Click="ColumnHeader_Click"/>
+                <GridViewColumn.CellTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding HighestSecondaryAttributeDisplay}" FontSize="12" VerticalAlignment="Center"/>
+                    </DataTemplate>
+                </GridViewColumn.CellTemplate>
+            </GridViewColumn>
+            <GridViewColumn Width="150">
+                <GridViewColumnHeader Content="{DynamicResource S.Browser.ColElite}" Tag="Elite" Click="ColumnHeader_Click"/>
+                <GridViewColumn.CellTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding EliteSkillDisplay}" FontSize="12" VerticalAlignment="Center"/>
+                    </DataTemplate>
+                </GridViewColumn.CellTemplate>
+            </GridViewColumn>
+            <GridViewColumn Width="140">
+                <GridViewColumnHeader Content="{DynamicResource S.Browser.ColModified}" Tag="Modified" Click="ColumnHeader_Click"/>
+                <GridViewColumn.CellTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Modified, StringFormat='{}{0:dd/MM/yyyy HH:mm}'}"
+                                   FontSize="12" VerticalAlignment="Center"/>
+                    </DataTemplate>
+                </GridViewColumn.CellTemplate>
+            </GridViewColumn>
+        </GridView>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Bandeau racine : chemin courant + bouton Browse -->
+        <DockPanel x:Name="BrowseBar" Grid.Row="0" LastChildFill="True"
+                   Background="{DynamicResource PanelBackgroundBrush}" >
+            <Border DockPanel.Dock="Bottom" Height="1" Background="{DynamicResource BorderStrongBrush}"/>
+            <Button DockPanel.Dock="Right" Content="{DynamicResource S.Common.Browse}" Padding="10,2" Margin="6,4,6,4"
+                    Click="Browse_Click"/>
+            <TextBlock VerticalAlignment="Center" Margin="8,4" FontSize="12"
+                       Foreground="{DynamicResource TextHeadingBrush}" TextTrimming="CharacterEllipsis"
+                       Text="{Binding RootPathDisplay}"
+                       ToolTip="{Binding RootPath}"/>
+        </DockPanel>
+
+        <Grid Grid.Row="1">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition x:Name="LeftColumn" Width="220" MinWidth="100"/>
+            <ColumnDefinition x:Name="SplitterCol" Width="4"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Left: Folder tree -->
+        <TreeView x:Name="FolderTree" Grid.Column="0"
+                  ItemsSource="{Binding RootItems}"
+                  SelectedItemChanged="FolderTree_SelectedItemChanged"
+                  BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="0,0,1,0"
+                  Background="{DynamicResource ContentBackgroundBrush}">
+            <TreeView.ItemContainerStyle>
+                <Style TargetType="TreeViewItem">
+                    <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
+                    <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}"/>
+                    <Setter Property="Padding" Value="2,1"/>
+                    <Setter Property="FontSize" Value="12"/>
+                    <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+                </Style>
+            </TreeView.ItemContainerStyle>
+            <TreeView.ItemTemplate>
+                <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                    <TextBlock Text="{Binding DisplayName}" Padding="2,1"/>
+                </HierarchicalDataTemplate>
+            </TreeView.ItemTemplate>
+        </TreeView>
+
+        <GridSplitter x:Name="LeftSplitter" Grid.Column="1" Width="4" HorizontalAlignment="Stretch" Background="{DynamicResource ControlBackgroundBrush}"/>
+
+        <!-- Right: File list + Preview -->
+        <Grid Grid.Column="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- File list -->
+            <ListView Grid.Row="0"
+                      x:Name="FileList"
+                      ItemsSource="{Binding Files}"
+                      SelectedItem="{Binding SelectedFile}"
+                      MouseDoubleClick="FileList_MouseDoubleClick"
+                      KeyDown="FileList_KeyDown"
+                      BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="0"
+                      ScrollViewer.HorizontalScrollBarVisibility="Auto">
+                <ListView.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="{DynamicResource S.File.RenameDots}" Click="RenameFile_Click"/>
+                        <MenuItem Header="{DynamicResource S.Common.Copy}" Click="CopyFile_Click"/>
+                        <MenuItem Header="{DynamicResource S.File.ExportDots}" Click="ExportFile_Click"/>
+                        <Separator/>
+                        <MenuItem Header="{DynamicResource S.File.ImportHere}" Click="ImportFile_Click"/>
+                        <Separator/>
+                        <MenuItem Header="{DynamicResource S.File.Delete}" Click="DeleteFile_Click"/>
+                    </ContextMenu>
+                </ListView.ContextMenu>
+                <ListView.Style>
+                    <Style TargetType="ListView" BasedOn="{StaticResource {x:Type ListView}}">
+                        <Setter Property="View" Value="{StaticResource TeamBuildGridView}"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsSkillTemplateView}" Value="True">
+                                <Setter Property="View" Value="{StaticResource SkillTemplateGridView}"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ListView.Style>
+                <ListView.ItemContainerStyle>
+                    <Style TargetType="ListViewItem">
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                        <Setter Property="MinHeight" Value="22"/>
+                        <EventSetter Event="PreviewMouseRightButtonDown" Handler="FileItem_PreviewRightClick"/>
+                        <Style.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="{DynamicResource HoverBackgroundBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource TextOnAccentBrush}"/>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </ListView.ItemContainerStyle>
+            </ListView>
+
+            <!-- Preview panel: n groups of 4 chars × 8 slots, horizontal.
+                 Hauteur auto = fonction du nombre de lignes de builds. -->
+            <Border Grid.Row="1" Background="{DynamicResource PanelBackgroundBrush}" BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="0,1,0,0">
+                <ScrollViewer x:Name="PreviewScroll" HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Auto" Padding="4">
+                    <!-- Grid étiré à la largeur du viewport : la preview se centre quand elle tient,
+                         et le ScrollViewer scrolle horizontalement quand elle déborde. -->
+                    <Grid MinWidth="{Binding ViewportWidth, ElementName=PreviewScroll}">
+                    <!-- Aperçu d'un template d'ÉQUIPEMENT : profession en tête (comme l'écran
+                         « Charger un modèle d'équipement » du jeu) puis le récapitulatif, un
+                         emplacement par ligne. Exclusif de l'aperçu de barres ci-dessous : les
+                         deux se superposent dans la même cellule, un seul est jamais non nul. -->
+                    <StackPanel HorizontalAlignment="Center" Margin="4,2,4,4"
+                                Grid.IsSharedSizeScope="True"
+                                Visibility="{Binding EquipmentPreview, Converter={StaticResource NullToVis}}">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,6"
+                                    Visibility="{Binding EquipmentPreview.HasProfession, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <Image Source="{Binding EquipmentPreview.Profession, Converter={StaticResource ProfToIcon}}"
+                                   Width="20" Height="20" Margin="0,0,6,0" VerticalAlignment="Center"
+                                   RenderOptions.BitmapScalingMode="HighQuality"/>
+                            <TextBlock Text="{Binding EquipmentPreview.ProfessionName}"
+                                       FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource TextHeadingBrush}"/>
+                        </StackPanel>
+                        <ItemsControl ItemsSource="{Binding EquipmentPreview.Lines}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,0,0,2">
+                                        <Grid.ColumnDefinitions>
+                                            <!-- Colonne d'emplacements alignée sur le plus long
+                                                 (« F1 Main gauche »), sans largeur en dur. -->
+                                            <ColumnDefinition Width="Auto" SharedSizeGroup="EquipSlot"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{Binding Slot}" FontSize="11"
+                                                   Margin="0,0,10,0"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Label}" FontSize="11"
+                                                   TextWrapping="Wrap" MaxWidth="520"
+                                                   Foreground="{DynamicResource TextHeadingBrush}"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+
+                    <ItemsControl ItemsSource="{Binding PreviewGroups}" HorizontalAlignment="Center">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <!-- One group = up to 4 character rows -->
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,0,6,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <ItemsControl Grid.Column="0" Margin="0,0,6,0" ItemsSource="{Binding}">
+                                        <!-- One character row: profession header + Skills + Attributes -->
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal" Margin="0,2,0,5">
+                                                    <!-- Colonne gauche : professions PR/SEC + bouton copier (chat code) -->
+                                                    <StackPanel Width="54" VerticalAlignment="Center" Margin="2,0,6,0">
+                                                        <TextBlock Text="{Binding Converter={StaticResource CharProfs}}"
+                                                                   FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondaryBrush}"
+                                                                   HorizontalAlignment="Center"/>
+                                                        <Button Click="CopyBar_Click"
+                                                                ToolTip="{DynamicResource S.Browser.CopyBarTip}"
+                                                                Width="24" Height="24" Margin="0,3,0,0"
+                                                                Cursor="Hand" Background="Transparent"
+                                                                BorderThickness="0" HorizontalAlignment="Center">
+                                                            <TextBlock Text="&#xE8C8;" FontFamily="Segoe MDL2 Assets"
+                                                                       FontSize="15" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                        </Button>
+                                                    </StackPanel>
+                                                    <!-- Colonne droite : barre de compétences + attributs -->
+                                                    <StackPanel VerticalAlignment="Center">
+                                                    <ItemsControl ItemsSource="{Binding Skills}">
+                                                        <ItemsControl.ItemsPanel>
+                                                            <ItemsPanelTemplate>
+                                                                <StackPanel Orientation="Horizontal"/>
+                                                            </ItemsPanelTemplate>
+                                                        </ItemsControl.ItemsPanel>
+                                                        <!-- One skill slot -->
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <Border Width="48" Height="48" Margin="1"
+                                                                        Background="{DynamicResource SlotBackgroundBrush}" CornerRadius="2"
+                                                                        ToolTipService.InitialShowDelay="700">
+                                                                    <Border.ToolTip>
+                                                                        <ToolTip Content="{Binding}"
+                                                                                 ContentTemplate="{StaticResource PreviewSkillTooltipTemplate}"/>
+                                                                    </Border.ToolTip>
+                                                                    <Border.Style>
+                                                                        <Style TargetType="Border">
+                                                                            <Setter Property="BorderBrush" Value="Transparent"/>
+                                                                            <Setter Property="BorderThickness" Value="1"/>
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding IsElite}" Value="True">
+                                                                                    <Setter Property="BorderBrush" Value="#FFD700"/>
+                                                                                    <Setter Property="BorderThickness" Value="2"/>
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </Border.Style>
+                                                                    <Grid>
+                                                                        <TextBlock Text="?" FontSize="13" FontWeight="Bold"
+                                                                                   Foreground="{DynamicResource IconMutedBrush}"
+                                                                                   HorizontalAlignment="Center"
+                                                                                   VerticalAlignment="Center"
+                                                                                   Visibility="{Binding Converter={StaticResource NullToVis}, ConverterParameter=Invert}"/>
+                                                                        <Image Source="{Binding IconPath, Converter={StaticResource UrlToImage}, ConverterParameter=44}"
+                                                                               Width="44" Height="44" Stretch="Uniform"
+                                                                               RenderOptions.BitmapScalingMode="HighQuality"
+                                                                               Visibility="{Binding Converter={StaticResource NullToVis}}"/>
+                                                                    </Grid>
+                                                                </Border>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                    <!-- Attributes section : toujours visible pour les skill
+                                                         templates ; masquée par défaut pour les team builds
+                                                         (toggle View → ShowPreviewAttributes). -->
+                                                    <StackPanel>
+                                                        <StackPanel.Visibility>
+                                                            <MultiBinding Converter="{StaticResource AnyTrueToVis}">
+                                                                <Binding Path="DataContext.IsSkillTemplateView"
+                                                                         RelativeSource="{RelativeSource AncestorType=UserControl}"/>
+                                                                <Binding Path="DataContext.ShowPreviewAttributes"
+                                                                         RelativeSource="{RelativeSource AncestorType=UserControl}"/>
+                                                            </MultiBinding>
+                                                        </StackPanel.Visibility>
+                                                        <TextBlock Text="{DynamicResource S.Ed.Attributes}" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" Margin="2,3,0,0"/>
+                                                        <TextBlock Text="{Binding Converter={StaticResource CharAttrs}}"
+                                                                   FontSize="11" Foreground="{DynamicResource TextHeadingBrush}"
+                                                                   TextWrapping="Wrap" MaxWidth="320" Margin="2,0,0,0"/>
+                                                    </StackPanel>
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <!-- Séparateur vertical : s'arrête avant le bas (marge basse) pour l'esthétique -->
+                                    <Rectangle Grid.Column="1" Width="1" Fill="{DynamicResource BorderStrongBrush}"
+                                               VerticalAlignment="Stretch" Margin="0,4,0,10"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    </Grid>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+        </Grid>
+    </Grid>
+</UserControl>

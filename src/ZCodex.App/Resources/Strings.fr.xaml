@@ -1,0 +1,632 @@
+﻿<!-- Chaînes UI françaises. Swappé à chaud avec Strings.en.xaml par LanguageManager.Apply
+     (même patron que Theme.Light/Dark). Toute chaîne référencée en DynamicResource dans le
+     XAML, ou via LanguageManager.T(key) en C#. Les DEUX fichiers doivent porter les mêmes
+     clés. Les libellés identiques dans les deux langues (Flux, PvE only, ⚡ Spike, noms
+     propres…) restent en dur dans le XAML — pas de clé. -->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+
+    <!-- ── Barre de menus ─────────────────────────────────────────────── -->
+    <!-- Pas de mnémonique « _X » dans les libellés de menu : Alt est réservé à Alt+molette
+         (breakpoints de caractéristique), cf. MainWindow.PreviewKeyDown. -->
+    <sys:String x:Key="S.Menu.File">Fichier</sys:String>
+    <sys:String x:Key="S.Menu.FileNewTeam">Nouveau teambuild</sys:String>
+    <sys:String x:Key="S.Menu.FileNewBuild">Nouveau template de build</sys:String>
+    <sys:String x:Key="S.Menu.FileNewEquip">Nouveau template d'équipement</sys:String>
+    <sys:String x:Key="S.Menu.FileOpen">Ouvrir...</sys:String>
+    <sys:String x:Key="S.Menu.FileSave">Enregistrer</sys:String>
+    <sys:String x:Key="S.Menu.FileSaveAs">Enregistrer sous...</sys:String>
+    <!-- Export paw·ned² : 3 portées, le sous-menu des cadenas est construit en code. -->
+    <sys:String x:Key="S.Menu.FileExportPwnd">Exporter en paw·ned² (.pwnd)</sys:String>
+    <sys:String x:Key="S.Menu.ExportPwndAll">Tout le teambuild (variantes comprises)</sys:String>
+    <sys:String x:Key="S.Menu.ExportPwndFirst8">Les 8 premiers personnages</sys:String>
+    <sys:String x:Key="S.Menu.ExportPwndLock">Un cadenas</sys:String>
+    <sys:String x:Key="S.Menu.ExportPwndNoLock">(aucun cadenas)</sys:String>
+    <sys:String x:Key="S.Menu.FileExit">Quitter</sys:String>
+    <sys:String x:Key="S.Menu.Edit">Édition</sys:String>
+    <sys:String x:Key="S.Menu.EditUndo">Annuler</sys:String>
+    <sys:String x:Key="S.Menu.EditRedo">Rétablir</sys:String>
+    <sys:String x:Key="S.Menu.View">Affichage</sys:String>
+    <sys:String x:Key="S.Menu.ViewShowAttrs">Afficher les attributs</sys:String>
+    <sys:String x:Key="S.Menu.ViewPreviewAttrs">Afficher les caractéristiques dans la preview</sys:String>
+    <sys:String x:Key="S.Menu.ViewConditions">Afficher les conditions</sys:String>
+    <sys:String x:Key="S.Menu.ViewArmorDamage">Afficher les dégâts selon l'armure</sys:String>
+    <sys:String x:Key="S.Menu.ViewArmorDamageConfig">Dégâts selon l'armure...</sys:String>
+    <sys:String x:Key="S.Menu.ViewRitualBand">Afficher la barre des Rituels de la Nature</sys:String>
+    <sys:String x:Key="S.Menu.ViewAllRituals">Afficher tous les Rituels de la Nature</sys:String>
+    <sys:String x:Key="S.Menu.ViewIconSize">Taille des icônes</sys:String>
+    <sys:String x:Key="S.Menu.IconLarge">Grande</sys:String>
+    <sys:String x:Key="S.Menu.IconMedium">Moyenne</sys:String>
+    <sys:String x:Key="S.Menu.IconSmall">Petite</sys:String>
+    <sys:String x:Key="S.Menu.ViewDarkTheme">Thème sombre</sys:String>
+    <sys:String x:Key="S.Menu.Language">Langue</sys:String>
+    <sys:String x:Key="S.Menu.ViewScreenshot">Prendre un screenshot...</sys:String>
+    <sys:String x:Key="S.Menu.Selection">Sélection</sys:String>
+    <sys:String x:Key="S.Menu.SelOpenBuild">Ouvrir le build sélectionné</sys:String>
+    <sys:String x:Key="S.Menu.SelRituals">Rituels de la Nature (énergie/recharge)</sys:String>
+    <sys:String x:Key="S.Menu.ExtrasUpdateSkills">Mettre à jour les compétences (wiki)</sys:String>
+    <sys:String x:Key="S.Menu.ExtrasArmorCalc">Calculateur d'armure</sys:String>
+    <sys:String x:Key="S.Menu.ExtrasPvx">Télécharger les builds PvX...</sys:String>
+    <sys:String x:Key="S.Menu.Window">Fenêtre</sys:String>
+    <sys:String x:Key="S.Menu.Help">Aide</sys:String>
+    <sys:String x:Key="S.Menu.HelpHelp">Aide et raccourcis...</sys:String>
+    <sys:String x:Key="S.Menu.HelpAbout">À propos de Z-Codex...</sys:String>
+
+    <!-- ── Toolbar ────────────────────────────────────────────────────── -->
+    <sys:String x:Key="S.Tb.NewTeam">Nouveau teambuild</sys:String>
+    <sys:String x:Key="S.Tb.NewBuild">Nouveau template de build</sys:String>
+    <sys:String x:Key="S.Tb.NewEquip">Nouveau template d'équipement</sys:String>
+    <sys:String x:Key="S.Tb.Open">Ouvrir</sys:String>
+    <sys:String x:Key="S.Tb.Save">Enregistrer</sys:String>
+    <sys:String x:Key="S.Tb.Search">Chercher des compétences dans les templates</sys:String>
+    <sys:String x:Key="S.Tb.Share">Partager le build</sys:String>
+
+    <!-- ── Menu contextuel personnage ─────────────────────────────────── -->
+    <sys:String x:Key="S.Ctx.AddChar">Ajouter un personnage</sys:String>
+    <sys:String x:Key="S.Ctx.SaveAssign">Enregistrer les assignations</sys:String>
+    <sys:String x:Key="S.Ctx.CharProps">Propriétés du personnage...</sys:String>
+    <sys:String x:Key="S.Ctx.CharEquip">Équipement...</sys:String>
+    <sys:String x:Key="S.Ctx.ImportClipboard">Importer un template depuis le presse-papier</sys:String>
+    <sys:String x:Key="S.Ctx.ImportFile">Importer un template depuis un fichier...</sys:String>
+    <sys:String x:Key="S.Ctx.CopyO">Copier le template de compétences (O)</sys:String>
+    <sys:String x:Key="S.Ctx.CopyChat">Copier le template au format chat</sys:String>
+    <sys:String x:Key="S.Ctx.CopyP">Copier le code d'équipement (P)</sys:String>
+    <sys:String x:Key="S.Ctx.AssignPlayer">Assigner joueur</sys:String>
+    <sys:String x:Key="S.Ctx.Loading">(chargement...)</sys:String>
+    <sys:String x:Key="S.Ctx.SwapWith">Échanger avec</sys:String>
+    <sys:String x:Key="S.Ctx.MoveTo">Déplacer vers</sys:String>
+    <sys:String x:Key="S.Ctx.CopyTo">Copier vers</sys:String>
+    <sys:String x:Key="S.Ctx.CreateVariant">Créer une variante</sys:String>
+    <sys:String x:Key="S.Ctx.LockVariants">Verrouiller des variantes entre elles…</sys:String>
+    <sys:String x:Key="S.Ctx.RemoveChar">Supprimer le personnage</sys:String>
+
+    <!-- ── Menu contextuel d'un slot de compétence ────────────────────── -->
+    <sys:String x:Key="S.Ctx.SkillArticle">Article de la compétence</sys:String>
+    <sys:String x:Key="S.Ctx.SkillTalk">Page de discussion</sys:String>
+    <sys:String x:Key="S.Ctx.SkillParse">Chercher dans les templates</sys:String>
+    <sys:String x:Key="S.Ctx.SkillRemove">Supprimer la compétence</sys:String>
+
+    <!-- ── Onglets ────────────────────────────────────────────────────── -->
+    <sys:String x:Key="S.Tab.Rename">Renommer</sys:String>
+    <sys:String x:Key="S.Tab.DefaultName">Nouveau Teambuild {0}</sys:String>
+    <sys:String x:Key="S.Tab.BuildName">Nouveau build {0}</sys:String>
+    <sys:String x:Key="S.Tab.ResultsName">Résultats {0}</sys:String>
+    <sys:String x:Key="S.Tab.Close">Fermer</sys:String>
+    <sys:String x:Key="S.Tab.CloseKeep">Fermer (l'état est conservé)</sys:String>
+    <sys:String x:Key="S.Tab.Armor">Armure</sys:String>
+
+    <!-- ── Ligne de personnage (icônes/boutons) ───────────────────────── -->
+    <sys:String x:Key="S.Row.CharProps">Propriétés du personnage</sys:String>
+    <sys:String x:Key="S.Row.SaveBuildTxt">Enregistrer le template de build (.txt)</sys:String>
+    <sys:String x:Key="S.Row.FoldVariants">Replier/déployer les variantes</sys:String>
+    <sys:String x:Key="S.Row.VarUp">Monter parmi les variantes sœurs</sys:String>
+    <sys:String x:Key="S.Row.VarDown">Descendre parmi les variantes sœurs</sys:String>
+    <sys:String x:Key="S.Row.VarSwap">Échanger avec le parent</sys:String>
+    <sys:String x:Key="S.Row.NoEquip">Aucun équipement — cliquer pour éditer</sys:String>
+    <sys:String x:Key="S.Row.CopyTpl">Copier le template...</sys:String>
+    <sys:String x:Key="S.Row.ImportTpl">Importer un template (presse-papier ou fichier)</sys:String>
+    <sys:String x:Key="S.Row.LockPending">Sera regroupé dans un cadenas à la validation</sys:String>
+    <sys:String x:Key="S.Row.BoostersOnTip">Prolongateurs de durée d'enchantement ACTIFS (Blessed Aura / Extend Enchantments) — cliquer pour désactiver</sys:String>
+    <sys:String x:Key="S.Row.BoostersOffTip">Prolongateurs de durée d'enchantement inactifs — cliquer pour activer (Blessed Aura / Extend Enchantments)</sys:String>
+    <sys:String x:Key="S.Row.Boosters">Prolongateurs de durée d'enchantement</sys:String>
+
+    <!-- ── Éditeur (build simple + teambuild) ─────────────────────────── -->
+    <sys:String x:Key="S.Ed.DragHint">Glisse des compétences depuis le catalogue — clic droit sur un slot pour retirer, sans ordre imposé.</sys:String>
+    <sys:String x:Key="S.Ed.AttrThresholds">Seuils d'attributs</sys:String>
+    <sys:String x:Key="S.Ed.AttrThresholdsHint">Le build doit satisfaire chaque seuil (clique ≥ / ≤ pour basculer « au moins » / « au plus »). Points investis dans le template, hors bonus runes / coiffe / consommables.</sys:String>
+    <sys:String x:Key="S.Ed.PickProfThresholds">Choisis une profession pour définir des seuils d'attributs.</sys:String>
+    <sys:String x:Key="S.Ed.ThresholdToggle">Basculer ≥ / ≤ (au moins / au plus)</sys:String>
+    <sys:String x:Key="S.Ed.Attributes">Attributs</sys:String>
+    <sys:String x:Key="S.Ed.TitleRanks">Rangs de titre</sys:String>
+    <sys:String x:Key="S.Ed.PickProfAttrs">Choisis une profession pour investir des points d'attribut.</sys:String>
+    <sys:String x:Key="S.Ed.ProfPrimary">Profession primaire (facultatif)</sys:String>
+    <sys:String x:Key="S.Ed.ProfPrimaryReq">Profession primaire (obligatoire)</sys:String>
+    <sys:String x:Key="S.Ed.ProfSecondary">Profession secondaire (facultatif)</sys:String>
+    <sys:String x:Key="S.Ed.SwapProfs">Échanger primaire / secondaire</sys:String>
+    <sys:String x:Key="S.Ed.SearchSkills">Rechercher :</sys:String>
+    <sys:String x:Key="S.Ed.GameModeTip">Filtrer le catalogue : tous les skills, PvE uniquement, ou PvP uniquement</sys:String>
+    <sys:String x:Key="S.Ed.CopyCode">Copier le code</sys:String>
+    <sys:String x:Key="S.Ed.CopyCodeTip">Copier le code de template (code O) dans le presse-papier</sys:String>
+    <sys:String x:Key="S.Ed.CopyChat">Copier le code de chat</sys:String>
+    <sys:String x:Key="S.Ed.CopyChatTip">Copier le code de chat (format paw·ned²) dans le presse-papier</sys:String>
+    <sys:String x:Key="S.Ed.SaveTpl">Enregistrer le modèle</sys:String>
+    <sys:String x:Key="S.Ed.SaveTplTip">Enregistrer le build dans un fichier .txt (code de template GW1)</sys:String>
+    <sys:String x:Key="S.Ed.SaveAsTxt">Enregistrer ce build comme template de compétences (.txt)</sys:String>
+    <sys:String x:Key="S.Ed.RitualsLabel">Rituels de la Nature :</sys:String>
+    <sys:String x:Key="S.Ed.ConditionsLabel">Conditions :</sys:String>
+
+    <!-- ── Barre du teambuild (bas) ───────────────────────────────────── -->
+    <sys:String x:Key="S.Tb2.SpikeTip">Spike damage calculus : dégâts cumulés des skills sélectionnées (cadre vert) contre une cible paramétrable</sys:String>
+    <sys:String x:Key="S.Tb2.Barred">Compétences héritées</sys:String>
+    <sys:String x:Key="S.Tb2.BarredTip">Afficher les slots de variante identiques au parent en diagonale (sinon l'icône réelle)</sys:String>
+    <sys:String x:Key="S.Tb2.ShowAttrs">Afficher les attributs</sys:String>
+    <sys:String x:Key="S.Tb2.LocksLabel">Cadenas :</sys:String>
+    <sys:String x:Key="S.Tb2.FullView">Vue complète</sys:String>
+    <sys:String x:Key="S.Tb2.LockConfirm">Valider</sys:String>
+    <sys:String x:Key="S.Tb2.LockCancel">Annuler</sys:String>
+    <sys:String x:Key="S.Tb2.SpikePickRows">Cochez les lignes du spike (8 max), puis Valider.</sys:String>
+    <sys:String x:Key="S.Tb2.SpikeTooMany" xml:space="preserve"> — {0} cochées, décochez-en {1}.</sys:String>
+    <sys:String x:Key="S.Tb2.LockEditRows">Édition du cadenas {0} : cochez/décochez les lignes, puis Valider.</sys:String>
+    <sys:String x:Key="S.Tb2.LockPickRows">Cochez les lignes à verrouiller ensemble (≥ 2), puis Valider.</sys:String>
+    <sys:String x:Key="S.Tb2.CopySuffix" xml:space="preserve"> (copie)</sys:String>
+
+    <!-- ── Verrouillages de variantes (menu contextuel, construit en code) ── -->
+    <sys:String x:Key="S.Lock.MembersTooltip" xml:space="preserve">Cadenas {0} : </sys:String>
+    <sys:String x:Key="S.Lock.Edit">Éditer ce verrouillage ({0})</sys:String>
+    <sys:String x:Key="S.Lock.Remove">Supprimer ce cadenas ({0})</sys:String>
+    <sys:String x:Key="S.Lock.Export">Exporter le verrouillage ({0})</sys:String>
+    <sys:String x:Key="S.Lock.ExportAs">Exporter le verrouillage ({0}) sous…</sys:String>
+    <!-- Nom par défaut du fichier exporté ET du teambuild écrit dans un .pn3 de cadenas. -->
+    <sys:String x:Key="S.Lock.ExportName">{0} - Cadenas {1}</sys:String>
+
+    <!-- ── Indicateur de boost d'attribut ─────────────────────────────── -->
+    <sys:String x:Key="S.Boost.ClickTo">Cliquer pour {0}</sys:String>
+    <sys:String x:Key="S.Boost.Receive">recevoir</sys:String>
+    <sys:String x:Key="S.Boost.StopReceiving">arrêter de recevoir</sys:String>
+    <sys:String x:Key="S.Boost.Activate">activer</sys:String>
+    <sys:String x:Key="S.Boost.Deactivate">désactiver</sys:String>
+
+    <!-- ── Recherche de templates ─────────────────────────────────────── -->
+    <sys:String x:Key="S.Search.Title">Rechercher des templates de compétences</sys:String>
+    <sys:String x:Key="S.Search.InclTxtTip">Inclure les templates de compétences (.txt) dans la recherche</sys:String>
+    <sys:String x:Key="S.Search.InclPn3Tip">Inclure les teambuilds (.zcx / .pn3 / .pwnd) dans la recherche</sys:String>
+    <sys:String x:Key="S.Search.Run">🔍 Lancer la recherche</sys:String>
+    <sys:String x:Key="S.Search.FixProfConflict">Résolvez les incompatibilités de profession (cadres rouges) avant de lancer la recherche.</sys:String>
+    <sys:String x:Key="S.Search.PickScope">Cochez au moins un périmètre (Templates ou Teambuilds).</sys:String>
+
+    <!-- ── Catalogue ──────────────────────────────────────────────────── -->
+    <sys:String x:Key="S.Cat.Professions">Professions</sys:String>
+    <sys:String x:Key="S.Cat.Attributes">Caractéristiques</sys:String>
+    <sys:String x:Key="S.Cat.Name">Nom</sys:String>
+
+    <!-- ── Infobulle de compétence ────────────────────────────────────── -->
+    <sys:String x:Key="S.Tooltip.Elite">élite</sys:String>
+
+    <!-- ── Messages (MessageBox / dialogues, via LanguageManager.T) ───── -->
+    <sys:String x:Key="S.Msg.RootNotFound" xml:space="preserve">Le dossier Templates de Guild Wars est introuvable.&#10;&#10;Voulez-vous sélectionner un dossier ?</sys:String>
+    <sys:String x:Key="S.Msg.RootNotFoundTitle">Dossier racine non trouvé</sys:String>
+    <sys:String x:Key="S.Msg.PickRootFolder">Sélectionner le dossier racine des builds</sys:String>
+    <sys:String x:Key="S.Msg.CatalogNotLoaded" xml:space="preserve">Le catalogue de compétences n'est pas encore chargé.&#10;Veuillez patienter quelques secondes.</sys:String>
+    <sys:String x:Key="S.Msg.CatalogNotLoadedTitle">Chargement en cours</sys:String>
+    <sys:String x:Key="S.Msg.LoadTitle">Chargement</sys:String>
+    <sys:String x:Key="S.Msg.ErrorTitle">Erreur</sys:String>
+    <sys:String x:Key="S.Msg.CantReadTemplate" xml:space="preserve">Impossible de lire le template de compétences :&#10;{0}</sys:String>
+    <sys:String x:Key="S.Msg.CantReadFile" xml:space="preserve">Impossible de lire le fichier :&#10;{0}</sys:String>
+    <sys:String x:Key="S.Msg.SearchTitle">Recherche</sys:String>
+    <sys:String x:Key="S.Msg.SearchNeedCriteria">Ajoute au moins un critère : une compétence, une profession (PR/SEC) ou un seuil d'attribut.</sys:String>
+    <sys:String x:Key="S.Msg.NoRootFolder">Aucun dossier racine de builds n'est défini (onglet Team Builds → Browse).</sys:String>
+    <sys:String x:Key="S.Msg.RenameTitle">Renommer</sys:String>
+    <sys:String x:Key="S.Msg.InvalidFileChars">Le nom contient des caractères interdits pour un fichier : \ / : * ? " &lt; &gt; |</sys:String>
+    <sys:String x:Key="S.Msg.FileExists">Un fichier « {0} » existe déjà dans ce dossier.</sys:String>
+    <sys:String x:Key="S.Msg.RenameFailed" xml:space="preserve">Impossible de renommer le fichier :&#10;{0}</sys:String>
+    <sys:String x:Key="S.Msg.StartupFailedTitle">Z-Codex — échec du démarrage</sys:String>
+    <sys:String x:Key="S.Msg.StartupFailed" xml:space="preserve">Z-Codex n'a pas pu démarrer :&#10;{0}&#10;&#10;Les données de l'application se trouvent dans :&#10;{1}&#10;&#10;Vérifiez que ce dossier est accessible en écriture et qu'aucune autre instance de Z-Codex n'est ouverte. Si le problème persiste, renommez le fichier zcodex.db pour repartir d'une base neuve (les compétences seront retéléchargées).&#10;&#10;Détails techniques :&#10;{2}</sys:String>
+    <sys:String x:Key="S.Msg.RenameConflict">Impossible de renommer : un fichier porte déjà ce nom ou le fichier est verrouillé.</sys:String>
+    <sys:String x:Key="S.Msg.ExportTitle">Exporter</sys:String>
+    <sys:String x:Key="S.Msg.ExportFileFailed">Échec de l'export du fichier.</sys:String>
+    <sys:String x:Key="S.Tb.ModeAll">Tout</sys:String>
+    <sys:String x:Key="S.Tb.ModePvE">PvE</sys:String>
+    <sys:String x:Key="S.Tb.ModePvP">PvP</sys:String>
+    <sys:String x:Key="S.Tb.GameMode" xml:space="preserve">Mode de jeu (global à la session)&#10;Cliquer pour changer : Tout → PvE → PvP&#10;&#10;Décide de la variante appliquée aux compétences splittées, et donc des valeurs affichées.</sys:String>
+    <sys:String x:Key="S.Msg.UnknownSkillsTitle">Compétences inconnues</sys:String>
+    <sys:String x:Key="S.Msg.UnknownSkills" xml:space="preserve">{0} compétence(s) de ce fichier sont absentes du catalogue et leur emplacement reste vide (identifiants : {1}).&#10;&#10;Si tu enregistres ce build, elles seront définitivement perdues. Mets d'abord le catalogue à jour si le fichier vient d'un autre joueur.</sys:String>
+    <sys:String x:Key="S.Msg.SaveFailedTitle">Échec de l'enregistrement</sys:String>
+    <sys:String x:Key="S.Msg.SaveFailed" xml:space="preserve">Impossible d'enregistrer :&#10;{0}&#10;&#10;{1}&#10;&#10;Le fichier existant n'a pas été modifié. Essaie un autre emplacement, ou vérifie que le fichier n'est pas en lecture seule ni ouvert ailleurs.</sys:String>
+    <sys:String x:Key="S.Msg.CrashTitle">Erreur inattendue</sys:String>
+    <sys:String x:Key="S.Msg.Crash" xml:space="preserve">Une erreur inattendue s'est produite :&#10;{0}&#10;&#10;L'application reste utilisable, mais enregistre tes builds sans tarder.&#10;Le détail technique a été écrit dans :&#10;{1}</sys:String>
+    <sys:String x:Key="S.Msg.UnsavedTitle">Modifications non sauvegardées</sys:String>
+    <sys:String x:Key="S.Msg.UnsavedBuild" xml:space="preserve">Le build « {0} » a des modifications non sauvegardées.&#10;&#10;Voulez-vous sauvegarder avant de fermer ?</sys:String>
+    <sys:String x:Key="S.Msg.UnsavedBuilds" xml:space="preserve">Les builds suivants ont des modifications non sauvegardées :&#10;{0}&#10;&#10;Voulez-vous sauvegarder avant de quitter ?</sys:String>
+    <sys:String x:Key="S.Msg.GwUpdateDetected" xml:space="preserve">Une mise à jour GW a été détectée ({0}).&#10;Dernier scrapping : {1}.&#10;&#10;Mettre à jour la base de données des compétences ?</sys:String>
+    <sys:String x:Key="S.Msg.GwUpdateTitle">Mise à jour disponible</sys:String>
+    <sys:String x:Key="S.Msg.GwUpdateIgnore">Ne plus demander jusqu'à la prochaine mise à jour</sys:String>
+    <sys:String x:Key="S.Msg.CatalogIncompleteTitle">Catalogue incomplet</sys:String>
+    <sys:String x:Key="S.Msg.CatalogIncomplete" xml:space="preserve">Le téléchargement des compétences a été interrompu.&#10;&#10;Le catalogue est utilisable, mais les tables de progression et les icônes manquent : les plages de valeurs des infobulles resteront non résolues.&#10;&#10;Terminer le téléchargement maintenant ?</sys:String>
+    <sys:String x:Key="S.Msg.EquipProfConfirm" xml:space="preserve">Ce personnage porte un équipement {0}.&#10;Changer la profession principale en {1} videra son équipement.&#10;&#10;Continuer ?</sys:String>
+    <sys:String x:Key="S.Msg.EquipProfTitle">Équipement lié à la profession</sys:String>
+    <sys:String x:Key="S.Msg.ImportErrorTitle">Erreur d'import</sys:String>
+    <sys:String x:Key="S.Msg.TemplateCopied" xml:space="preserve">Template copié :&#10;{0}</sys:String>
+    <sys:String x:Key="S.Msg.TemplateGw1Title">Template GW1</sys:String>
+    <sys:String x:Key="S.Msg.EquipTemplateTitle">Template d'équipement</sys:String>
+    <sys:String x:Key="S.Msg.EquipEmpty">Équipement vide — le fichier n'a pas été modifié.</sys:String>
+    <sys:String x:Key="S.Msg.CantSaveTemplate" xml:space="preserve">Impossible d'enregistrer le template :&#10;{0}</sys:String>
+    <sys:String x:Key="S.Msg.InvalidEquipCode">Code d'équipement invalide (doit commencer par 'P').</sys:String>
+    <sys:String x:Key="S.Msg.NoEquipDefined">Aucun équipement défini pour ce personnage.</sys:String>
+    <sys:String x:Key="S.Msg.EquipExportTitle">Export équipement</sys:String>
+    <sys:String x:Key="S.Msg.EquipCopied" xml:space="preserve">Code(s) d'équipement copié(s) :&#10;{0}</sys:String>
+    <sys:String x:Key="S.Msg.EquipGw1Title">Équipement GW1</sys:String>
+    <sys:String x:Key="S.Msg.ImportTitle">Import</sys:String>
+    <sys:String x:Key="S.Msg.FileNotTemplate">Le fichier ne contient pas un code de template valide.</sys:String>
+    <sys:String x:Key="S.Msg.ClipboardNotTemplate">Le presse-papier ne contient pas de code de template valide (code brut ou code de chat, compétences ou équipement).</sys:String>
+    <sys:String x:Key="S.Msg.ImportNoFreeSlot">Le teambuild est complet (12 personnages) et aucun n'est vide. Fais un clic droit sur le personnage à remplacer pour y importer le template.</sys:String>
+    <sys:String x:Key="S.Msg.RemoveCharTitle">Supprimer le personnage</sys:String>
+    <sys:String x:Key="S.Msg.RemoveCharVariants">Ce personnage a des variantes. Sa 1ʳᵉ variante sera promue à sa place ; les autres deviendront ses enfants. Continuer ?</sys:String>
+    <sys:String x:Key="S.Msg.LockExportTitle">Export du verrouillage</sys:String>
+    <sys:String x:Key="S.Msg.ExportFailed">Échec de l'export : {0}</sys:String>
+    <sys:String x:Key="S.Msg.NothingToRender">Rien à rendre.</sys:String>
+    <sys:String x:Key="S.Msg.LockExported" xml:space="preserve">Verrouillage exporté :&#10;{0}</sys:String>
+    <!-- Export paw·ned². Le nombre d'emplacements est annoncé : au-delà de 8, on sort du gabarit
+         des fichiers paw·ned² d'origine (choix assumé, cf. S.Msg.PwndOver8). -->
+    <sys:String x:Key="S.Msg.PwndExportTitle">Export paw·ned²</sys:String>
+    <sys:String x:Key="S.Msg.PwndExported" xml:space="preserve">Teambuild exporté ({1} emplacements) :&#10;{0}</sys:String>
+    <sys:String x:Key="S.Msg.PwndOver8" xml:space="preserve">Teambuild exporté ({1} emplacements) :&#10;{0}&#10;&#10;paw·ned² n'écrit jamais plus de 8 emplacements : vérifie qu'il ouvre bien ce fichier.</sys:String>
+    <sys:String x:Key="S.Msg.PwndNothing">Aucun personnage à exporter.</sys:String>
+    <sys:String x:Key="S.Dlg.ImportEquip">Importer un template d'équipement</sys:String>
+    <sys:String x:Key="S.Dlg.AssignPlayer">Assigner un joueur</sys:String>
+    <sys:String x:Key="S.Dlg.OpenTeamBuild">Ouvrir un Team Build</sys:String>
+    <sys:String x:Key="S.Dlg.SaveTeamBuild">Enregistrer le Team Build</sys:String>
+    <sys:String x:Key="S.Dlg.SaveScreenshot">Enregistrer le screenshot du team build</sys:String>
+    <sys:String x:Key="S.Dlg.SaveBuildTpl">Enregistrer le template de build</sys:String>
+    <sys:String x:Key="S.Dlg.SaveEquipTpl">Enregistrer le template d'équipement</sys:String>
+    <sys:String x:Key="S.Dlg.ImportAnyTpl">Importer un template (skill ou équipement)</sys:String>
+    <sys:String x:Key="S.Dlg.ExportLockAs">Exporter le verrouillage sous…</sys:String>
+    <sys:String x:Key="S.Dlg.NewEquipTpl">Équipement — nouveau template</sys:String>
+    <sys:String x:Key="S.Dlg.ImportBuilds">Importer des builds dans ce dossier</sys:String>
+    <sys:String x:Key="S.Dlg.ExportToFolder">Exporter vers le dossier…</sys:String>
+    <sys:String x:Key="S.Dlg.SelectBuildsRoot">Sélectionner le dossier racine des builds</sys:String>
+    <sys:String x:Key="S.Misc.NoEquipment">(aucun équipement)</sys:String>
+    <sys:String x:Key="S.Misc.UnnamedChar">Personnage sans nom</sys:String>
+
+    <!-- ── Mise à jour des compétences (scrapping) ────────────────────── -->
+    <sys:String x:Key="S.Upd.Fetching">Récupération : {0}…</sys:String>
+    <sys:String x:Key="S.Upd.Done">Terminé — {0} compétences mises à jour.</sys:String>
+    <sys:String x:Key="S.Upd.Cancelled">Mise à jour annulée.</sys:String>
+    <sys:String x:Key="S.Upd.Error">Erreur lors de la mise à jour.</sys:String>
+    <sys:String x:Key="S.Upd.Retry">Vous pouvez relancer le téléchargement par le menu Extras ▸ Mettre à jour les compétences (wiki).</sys:String>
+    <sys:String x:Key="S.Misc.BuildNamePlaceholder">(Libellé build)</sys:String>
+
+    <!-- ── Menus construits en code ───────────────────────────────────── -->
+    <sys:String x:Key="S.Flux.None">Aucun (désactivé)</sys:String>
+    <sys:String x:Key="S.Flux.CurrentMonthSuffix" xml:space="preserve">  (mois courant)</sys:String>
+    <sys:String x:Key="S.Flux.ActiveLabel" xml:space="preserve">Flux actif : </sys:String>
+    <sys:String x:Key="S.Flux.MonthLabel" xml:space="preserve">Flux du mois : </sys:String>
+    <sys:String x:Key="S.Flux.ClickDeactivate">(Cliquer pour désactiver)</sys:String>
+    <sys:String x:Key="S.Flux.ClickActivate">(Cliquer pour activer)</sys:String>
+    <!-- Ligne de pied d'infobulle de compétence : le flux « attributs » actif et son effet ici. -->
+    <sys:String x:Key="S.Flux.FootHiddenTalent">(Flux Hidden Talent : +2 aux caractéristiques secondaires)</sys:String>
+    <sys:String x:Key="S.Flux.FootMeek">(Flux Meek Shall Inherit : +2 à toutes les caractéristiques)</sys:String>
+    <sys:String x:Key="S.Flux.FootMeekInactive">(Flux Meek Shall Inherit : inactif — compétence élite équipée)</sys:String>
+    <sys:String x:Key="S.Flux.FootJack">(Flux Jack of All Trades : +15 % dégâts, activation 25 % plus rapide, −20 % d'énergie)</sys:String>
+    <sys:String x:Key="S.Flux.FootAllIn">(Flux All In : −25 % d'énergie)</sys:String>
+    <sys:String x:Key="S.WinMenu.NoBuilds">(aucun build ouvert)</sys:String>
+    <sys:String x:Key="S.WinMenu.CloseActive">Fermer l'onglet actif</sys:String>
+    <sys:String x:Key="S.Assign.Unassigned">(non assigné)</sys:String>
+    <sys:String x:Key="S.Assign.Custom">Personnaliser...</sys:String>
+    <sys:String x:Key="S.Ctx2.CopyAfterSelf">Après ce slot (position {0})</sys:String>
+    <sys:String x:Key="S.Ctx2.CopyAfter">Après slot {0} – {1}</sys:String>
+    <sys:String x:Key="S.Prof.None">Aucune</sys:String>
+    <sys:String x:Key="S.Prof.Swap">Échanger</sys:String>
+    <sys:String x:Key="S.Menu.DmgPartChar">perso {0}</sys:String>
+    <sys:String x:Key="S.Menu.DmgPartTarget">cible {0}</sys:String>
+
+    <!-- ── Boutons communs ────────────────────────────────────────────── -->
+    <sys:String x:Key="S.Common.Yes">Oui</sys:String>
+    <sys:String x:Key="S.Common.No">Non</sys:String>
+    <sys:String x:Key="S.Common.Cancel">Annuler</sys:String>
+    <sys:String x:Key="S.Common.Close">Fermer</sys:String>
+    <sys:String x:Key="S.Common.Copy">Copier</sys:String>
+    <sys:String x:Key="S.Common.Browse">Parcourir...</sys:String>
+    <sys:String x:Key="S.Common.Import">Importer</sys:String>
+    <sys:String x:Key="S.Common.ImportDots">Importer...</sys:String>
+
+    <!-- ── Petites fenêtres ───────────────────────────────────────────── -->
+    <sys:String x:Key="S.Win.NewName">Nouveau nom :</sys:String>
+    <sys:String x:Key="S.Win.CopyTplTitle">Copier le template</sys:String>
+    <sys:String x:Key="S.Win.GwCode">Code GW1 :</sys:String>
+    <sys:String x:Key="S.Win.ChatFormat">Format chat :</sys:String>
+    <sys:String x:Key="S.Win.ImportTplTitle">Importer un template GW1</sys:String>
+    <sys:String x:Key="S.Win.PasteCode">Colle le code de template GW1 :</sys:String>
+    <sys:String x:Key="S.Win.LoadEquipTitle">Charger un template d'équipement</sys:String>
+    <sys:String x:Key="S.Win.SkillUpdateTitle">Mise à jour des compétences</sys:String>
+    <sys:String x:Key="S.Win.PvxTitle">Télécharger les builds PvX</sys:String>
+    <sys:String x:Key="S.Pvx.Intro">Récupère les « build packs » publiés par PvXwiki : les builds vetés de la communauté, en codes template lisibles aussi bien par Z-Codex que par Guild Wars lui-même.</sys:String>
+    <sys:String x:Key="S.Pvx.Credit">Builds écrits par les contributeurs de</sys:String>
+    <sys:String x:Key="S.Pvx.License">Ils restent soumis à cette licence : créditez PvXwiki si vous les repartagez, et pas d'usage commercial.</sys:String>
+    <sys:String x:Key="S.Pvx.PackPve">Builds PvE (environ 2 170 fichiers)</sys:String>
+    <sys:String x:Key="S.Pvx.PackPvp">Builds PvP (environ 1 090 fichiers)</sys:String>
+    <sys:String x:Key="S.Pvx.Destination">Dossier de destination :</sys:String>
+    <sys:String x:Key="S.Pvx.Warning">Chaque archive crée son propre sous-dossier, qu'il suffit de supprimer pour tout retirer. Les fichiers déjà présents sont remplacés.</sys:String>
+    <sys:String x:Key="S.Pvx.Start">Télécharger</sys:String>
+    <sys:String x:Key="S.Pvx.Restart">Recommencer</sys:String>
+    <sys:String x:Key="S.Pvx.Downloading">Téléchargement de {0}...</sys:String>
+    <sys:String x:Key="S.Pvx.Extracting">Extraction de {0} : {1} / {2} fichiers</sys:String>
+    <sys:String x:Key="S.Pvx.Converting">Assemblage des équipes : {0} / {1}</sys:String>
+    <sys:String x:Key="S.Pvx.Done">Terminé : {0} fichiers écrits, {1} équipes assemblées en .zcx. {2} dossiers d'équipe dépassent 8 barres et sont restés en .txt.</sys:String>
+    <sys:String x:Key="S.Pvx.Failed">Aucun fichier n'a pu être récupéré. Les archives sont hébergées par un contributeur de PvXwiki et le lien a peut-être changé ; la liste à jour est sur {0}</sys:String>
+    <sys:String x:Key="S.Pvx.Cancelled">Import annulé. Les fichiers déjà écrits ont été conservés.</sys:String>
+    <sys:String x:Key="S.Pvx.Error">L'import a échoué :</sys:String>
+    <sys:String x:Key="S.Pvx.NoPack">Sélectionnez au moins un des deux lots de builds.</sys:String>
+    <sys:String x:Key="S.Pvx.NoDestination">Choisissez un dossier de destination existant.</sys:String>
+    <sys:String x:Key="S.Dlg.SelectPvxDestination">Où déposer les builds PvX</sys:String>
+    <sys:String x:Key="S.Win.Preparing">Préparation...</sys:String>
+    <sys:String x:Key="S.Win.AboutTitle">À propos de Z-Codex</sys:String>
+    <sys:String x:Key="S.About.Sub">Gestionnaire de builds d'équipe pour Guild Wars 1.</sys:String>
+    <sys:String x:Key="S.About.Successor">Inspiré de paw·ned², avec une architecture moderne et les identifiants de template officiels du jeu.</sys:String>
+    <sys:String x:Key="S.About.DataCredit">Données de compétences et icônes :</sys:String>
+    <sys:String x:Key="S.About.BuildCredit">Builds de la communauté :</sys:String>
+    <sys:String x:Key="S.About.Disclaimer">Guild Wars est une marque d'ArenaNet / NCSOFT. Z-Codex est un outil non officiel.</sys:String>
+    <sys:String x:Key="S.Win.ArmorDmgTitle">Dégâts selon l'armure</sys:String>
+    <sys:String x:Key="S.Armor.CustomALs">Niveaux d'armure personnalisés (0–200), champ vide = colonne retirée :</sys:String>
+    <sys:String x:Key="S.Armor.AddCol">Ajouter une colonne d'AL (max 8)</sys:String>
+    <sys:String x:Key="S.Armor.CharLevel">Niveau du personnage (1–20) :</sys:String>
+    <sys:String x:Key="S.Armor.TargetLevel">Niveau de la cible (1–40) — taux de critique :</sys:String>
+    <sys:String x:Key="S.Win.CharPropsTitle">Propriétés du personnage</sys:String>
+    <sys:String x:Key="S.Char.Name">Nom :</sys:String>
+    <sys:String x:Key="S.Char.Notes">Notes :</sys:String>
+    <sys:String x:Key="S.Char.AssignedTo">Assigné à :</sys:String>
+    <sys:String x:Key="S.Char.Equipment">Équipement</sys:String>
+    <sys:String x:Key="S.Char.Codes">Codes :</sys:String>
+
+    <!-- ── Browser (onglet Team Builds) ───────────────────────────────── -->
+    <sys:String x:Key="S.Browser.ColName">Nom</sys:String>
+    <sys:String x:Key="S.Browser.ColFormat">Format</sys:String>
+    <sys:String x:Key="S.Browser.ColPlayers">Joueurs/Professions</sys:String>
+    <sys:String x:Key="S.Browser.ColCampaigns">Campagnes</sys:String>
+    <sys:String x:Key="S.Browser.ColModified">Modifié le</sys:String>
+    <sys:String x:Key="S.Browser.ColProfession">Profession principale</sys:String>
+    <sys:String x:Key="S.Browser.ColSecondary">Profession secondaire</sys:String>
+    <sys:String x:Key="S.Browser.ColAttribute">Meilleure caractéristique secondaire</sys:String>
+    <sys:String x:Key="S.Browser.ColElite">Compétence élite</sys:String>
+    <sys:String x:Key="S.Browser.CopyBarTip">Copier la barre (chat code)</sys:String>
+    <sys:String x:Key="S.Browser.FormatPn3">Team build Z-Codex</sys:String>
+    <sys:String x:Key="S.Browser.FormatLegacyPn3">Team build Z-Codex (ancien .pn3)</sys:String>
+    <sys:String x:Key="S.Browser.FormatPwnd">Team build paw·ned²</sys:String>
+    <sys:String x:Key="S.Browser.FormatTxt">Modèle de compétences GW</sys:String>
+    <sys:String x:Key="S.Browser.FormatEquip">Modèle d'équipement GW</sys:String>
+    <sys:String x:Key="S.Browser.NoFolder">(aucun dossier sélectionné)</sys:String>
+    <sys:String x:Key="S.File.RenameDots">Renommer...</sys:String>
+    <sys:String x:Key="S.File.ExportDots">Exporter...</sys:String>
+    <sys:String x:Key="S.File.ImportHere">Importer ici...</sys:String>
+    <sys:String x:Key="S.File.Delete">Supprimer</sys:String>
+
+    <!-- ── Communs (profils, types de dégâts) ─────────────────────────── -->
+    <sys:String x:Key="S.Common.Profile">Profil :</sys:String>
+    <sys:String x:Key="S.Common.Save">Enregistrer</sys:String>
+    <sys:String x:Key="S.Common.Delete">Supprimer</sys:String>
+    <sys:String x:Key="S.Common.Add">+ Ajouter</sys:String>
+    <sys:String x:Key="S.Dmg.Elemental">élémentaire</sys:String>
+    <sys:String x:Key="S.Dmg.Fire">feu</sys:String>
+    <sys:String x:Key="S.Dmg.Cold">froid</sys:String>
+    <sys:String x:Key="S.Dmg.Earth">terre</sys:String>
+    <sys:String x:Key="S.Dmg.Lightning">foudre</sys:String>
+    <sys:String x:Key="S.Dmg.Physical">physique</sys:String>
+    <sys:String x:Key="S.Dmg.Slashing">tranchant</sys:String>
+    <sys:String x:Key="S.Dmg.Piercing">perforant</sys:String>
+    <sys:String x:Key="S.Dmg.Blunt">contondant</sys:String>
+
+    <!-- ── Fenêtre Spike ──────────────────────────────────────────────── -->
+    <sys:String x:Key="S.Spike.Teambuild">Teambuild</sys:String>
+    <sys:String x:Key="S.Spike.TeambuildTip">Ramène la fenêtre du teambuild au premier plan pour choisir les lignes du roster spike (8 max, racines ou variantes)</sys:String>
+    <sys:String x:Key="S.Spike.ClickHint">Cliquez une compétence pour la compter dans le spike (cadre vert) ; recliquez pour la retirer.</sys:String>
+    <sys:String x:Key="S.Spike.Buffs">Buffs :</sys:String>
+    <sys:String x:Key="S.Spike.Target">Cible</sys:String>
+    <sys:String x:Key="S.Spike.DeleteProfileTip">Supprimer le profil sélectionné</sys:String>
+    <sys:String x:Key="S.Spike.SaveProfileTip">Enregistrer la cible courante sous ce nom</sys:String>
+    <sys:String x:Key="S.Spike.ProfileNameTip">Nom du profil</sys:String>
+    <sys:String x:Key="S.Spike.TargetPrimaryProf">Profession principale de la cible :</sys:String>
+    <sys:String x:Key="S.Spike.TargetPrimaryProfTip">Utilisée par les flux Amateur Hour et There Can Be Only One.</sys:String>
+    <sys:String x:Key="S.Spike.TargetPrimaryProfCombo">Profession principale de la cible (Amateur Hour / There Can Be Only One).</sys:String>
+    <sys:String x:Key="S.Spike.TargetAL">Niveau d'armure de la cible (AL) :</sys:String>
+    <sys:String x:Key="S.Spike.TargetLevel">Niveau de la cible :</sys:String>
+    <sys:String x:Key="S.Spike.TargetLevelTip">Sert à calculer les chances d'infliger un coup critique à la cible.</sys:String>
+    <sys:String x:Key="S.Spike.TargetMaxHp">PV max de la cible :</sys:String>
+    <sys:String x:Key="S.Spike.TargetMaxHpTip">Sert à calculer la réduction de 20% des PV max de blessure profonde.</sys:String>
+    <sys:String x:Key="S.Spike.TargetCurHp">PV courants de la cible :</sys:String>
+    <sys:String x:Key="S.Spike.TargetCurHpTip">PV de la cible au moment du spike (Grenth's Balance). Suit les PV max tant qu'on ne l'édite pas.</sys:String>
+    <sys:String x:Key="S.Spike.ALBonusVs">Bonus d'AL contre :</sys:String>
+    <sys:String x:Key="S.Spike.ALBonusHint">Les bonus se cumulent : base + groupe + type (physique couvre tranchant/perforant/contondant, élémentaire couvre feu/froid/terre/foudre). Sacré, ombre et dégâts sans type ignorent l'armure ; ténèbres et chaos n'ont pas de bonus (AL de base seule).</sys:String>
+    <sys:String x:Key="S.Spike.CaptureImage">📷 Copier l'image</sys:String>
+    <sys:String x:Key="S.Spike.CaptureTip">Copie une capture de la fenêtre entière dans le presse-papiers</sys:String>
+    <sys:String x:Key="S.Spike.CaptureOk">✔ copiée</sys:String>
+    <sys:String x:Key="S.Spike.CaptureFailed">✖ presse-papiers indisponible</sys:String>
+    <sys:String x:Key="S.Spike.DeepWound">Blessure profonde</sys:String>
+    <sys:String x:Key="S.Spike.DeepWoundTip">Ajoute min(20 % des PV max, 100) au total (wiki : dégâts effectifs sur un spike)</sys:String>
+    <sys:String x:Key="S.Spike.CrackedArmor">Armure brisée</sys:String>
+    <sys:String x:Key="S.Spike.CrackedArmorTip">−20 AL sur tous les types, plancher 60 (description officielle)</sys:String>
+    <sys:String x:Key="S.Spike.AllCrits">Tout en critique</sys:String>
+    <sys:String x:Key="S.Spike.AllCritsTip">Toutes les attaques d'arme au dégât critique (« Visez les yeux ! »)</sys:String>
+    <sys:String x:Key="S.Spike.NoSkillSelected">Aucune compétence sélectionnée — cliquez des compétences (cadre vert) dans le panneau de gauche.</sys:String>
+    <sys:String x:Key="S.Spike.ColSkill">Compétence</sys:String>
+    <sys:String x:Key="S.Spike.ColCombat">Combat</sys:String>
+    <sys:String x:Key="S.Spike.ColDamage">Dégâts</sys:String>
+    <sys:String x:Key="S.Spike.ColFluxBonus">Bonus Flux</sys:String>
+    <sys:String x:Key="S.Spike.Procs">Procs :</sys:String>
+    <sys:String x:Key="S.Spike.ProcsTip">Nombre de procs comptés (occurrences de l'attaque / déclenchements du rider) ; 0 = non déclenché</sys:String>
+    <sys:String x:Key="S.Spike.Threshold">Seuil :</sys:String>
+    <sys:String x:Key="S.Spike.Ticks">Ticks :</sys:String>
+    <sys:String x:Key="S.Spike.TicksTip">Nombre de ticks comptés dans le spike</sys:String>
+    <sys:String x:Key="S.Spike.WeaponDmgType">Type de dégâts de l'arme :</sys:String>
+    <sys:String x:Key="S.Spike.WeaponDmgTypeTip">Choix du type de dégâts</sys:String>
+    <sys:String x:Key="S.Spike.Weapon">Arme :</sys:String>
+    <sys:String x:Key="S.Spike.WeaponTip">Attaque d'arme libre : choisir l'arme utilisée</sys:String>
+    <sys:String x:Key="S.Spike.WeaponMod">Mod d'arme :</sys:String>
+    <sys:String x:Key="S.Spike.WeaponModTip">Mod de préfixe de l'arme pour cette attaque. Il occupe le même emplacement qu'un mod élémentaire : choisir un type de dégâts élémentaire le remet à « Aucun ».</sys:String>
+    <sys:String x:Key="S.Spike.SunderingProc">Proc du fractionnement</sys:String>
+    <sys:String x:Key="S.Spike.SunderingProcTip">Le mod se déclenche (20 % du temps) : +20 % de pénétration d'armure sur toute la ligne, toutes frappes comprises. Se cumule avec Judge's Insight et les pénétrations de base.</sys:String>
+    <sys:String x:Key="S.Spike.Hornbow">Arc corne</sys:String>
+    <sys:String x:Key="S.Spike.HornbowTip">Arc corne : +10 % de pénétration d'armure en permanence (pas un proc). Plage de dégâts et maîtrise identiques aux autres arcs.</sys:String>
+    <sys:String x:Key="S.Spike.ConditionMet">Condition remplie</sys:String>
+    <sys:String x:Key="S.Spike.CasterHp">PV lanceur :</sys:String>
+    <sys:String x:Key="S.Spike.CasterHpTip">PV courants du lanceur au moment du cast (validé en quittant le champ)</sys:String>
+    <sys:String x:Key="S.Spike.CasterMaxHpTip">PV max du lanceur (plafonne le vol à sa capacité restante ; validé en quittant le champ)</sys:String>
+
+    <!-- ── Éditeur d'équipement ───────────────────────────────────────── -->
+    <sys:String x:Key="S.Equip.Title">Équipement</sys:String>
+    <sys:String x:Key="S.Equip.Attributes">Attributs : </sys:String>
+    <sys:String x:Key="S.Equip.Health">PV : </sys:String>
+    <sys:String x:Key="S.Equip.Energy">Énergie : </sys:String>
+    <sys:String x:Key="S.Equip.Pips">Pips : </sys:String>
+    <sys:String x:Key="S.Equip.Armor">Armure : </sys:String>
+    <sys:String x:Key="S.Equip.Profession">Profession :</sys:String>
+    <sys:String x:Key="S.Equip.Gender">Genre :</sys:String>
+    <sys:String x:Key="S.Equip.Male">Homme</sys:String>
+    <sys:String x:Key="S.Equip.Female">Femme</sys:String>
+    <sys:String x:Key="S.Equip.PickSlot">Sélectionnez un emplacement dans la liste à gauche.</sys:String>
+    <sys:String x:Key="S.Equip.SaveSkin">Sauvegarder le skin dans le template</sys:String>
+    <sys:String x:Key="S.Equip.Item">Objet :</sys:String>
+    <sys:String x:Key="S.Equip.ApplyStyleTip">Appliquer ce style d'armure à toutes les pièces (la coiffe, choix d'attribut, n'est pas touchée)</sys:String>
+    <sys:String x:Key="S.Equip.Dye">Teinture :</sys:String>
+    <sys:String x:Key="S.Equip.Insignia">Insigne :</sys:String>
+    <sys:String x:Key="S.Equip.WikiPage">Page wiki</sys:String>
+    <sys:String x:Key="S.Equip.ApplyInsigniaTip">Appliquer cette insigne à toutes les pièces d'armure</sys:String>
+    <sys:String x:Key="S.Equip.Rune">Rune :</sys:String>
+    <sys:String x:Key="S.Equip.Inscription">Inscription :</sys:String>
+    <sys:String x:Key="S.Equip.LoadTpl">Charger un template...</sys:String>
+    <sys:String x:Key="S.Equip.LoadTplTip">Charger un template d'équipement enregistré (remplace le contenu)</sys:String>
+    <sys:String x:Key="S.Equip.SaveTpl">Sauvegarder comme template...</sys:String>
+    <sys:String x:Key="S.Equip.SaveTplTip">Enregistrer l'équipement courant comme template réutilisable</sys:String>
+    <sys:String x:Key="S.Equip.SlotLocked">Emplacement désactivé : une arme à deux mains occupe les deux slots.</sys:String>
+    <sys:String x:Key="S.Equip.TitleFor">Équipement — {0}</sys:String>
+    <sys:String x:Key="S.Equip.Prefix">Préfixe :</sys:String>
+    <sys:String x:Key="S.Equip.Suffix">Suffixe :</sys:String>
+    <sys:String x:Key="S.Equip.None">Aucun</sys:String>
+    <sys:String x:Key="S.Equip.ShieldReqTip">Entre parenthèses : armure si le requis du bouclier n'est pas atteint (le bouclier ne confère alors que la moitié, +8 au lieu de +16).</sys:String>
+    <sys:String x:Key="S.Equip.ShieldReqBug" xml:space="preserve">&#10;Bug du jeu : le bouclier de Force donne +9 au lieu de +8 quand le requis n'est pas atteint, d'où {0} ici.</sys:String>
+    <sys:String x:Key="S.Equip.Empty">(vide)</sys:String>
+    <sys:String x:Key="S.Equip.NoMod">(aucun)</sys:String>
+    <sys:String x:Key="S.Equip.NoProf">(aucune)</sys:String>
+    <sys:String x:Key="S.Equip.TwoHanded">(arme à deux mains)</sys:String>
+    <sys:String x:Key="S.Equip.SetEmptyTip">Set d'armes {0} (vide)</sys:String>
+    <!-- Cohérence de profession : l'armure est liée à la profession primaire (une pièce, un
+         insigne ou une rune d'une autre profession ne peut pas être portée en jeu). -->
+    <sys:String x:Key="S.Equip.ConflictOnly">• {0} ({1} uniquement)</sys:String>
+    <sys:String x:Key="S.Equip.ConflictHeader" xml:space="preserve">Impossible en jeu sur une armure {0} :&#10;{1}</sys:String>
+    <sys:String x:Key="S.Equip.ProfChangeTitle">Changement de profession</sys:String>
+    <sys:String x:Key="S.Equip.ProfChangeAsk" xml:space="preserve">Passer en {0} retirera de l'armure :&#10;&#10;{1}&#10;&#10;Continuer ?</sys:String>
+    <sys:String x:Key="S.EquipPick.HeaderAll">Templates d'équipement enregistrés :</sys:String>
+    <sys:String x:Key="S.EquipPick.HeaderProf">Templates d'équipement compatibles {0} (ou neutres) :</sys:String>
+    <sys:String x:Key="S.EquipPick.Neutral">(neutre)</sys:String>
+    <sys:String x:Key="S.Msg.FileNoEquipCode">Le fichier ne contient pas de code d'équipement valide (codes 'P').</sys:String>
+    <sys:String x:Key="S.Msg.NothingToSave">Aucun équipement à sauvegarder.</sys:String>
+    <sys:String x:Key="S.Msg.SaveTitle">Sauvegarde</sys:String>
+    <sys:String x:Key="S.Filter.EquipTpl">Templates d'équipement (*.txt)|*.txt|Tous les fichiers (*.*)|*.*</sys:String>
+    <sys:String x:Key="S.Filter.EquipTplSave">Template d'équipement (*.txt)|*.txt</sys:String>
+    <sys:String x:Key="S.Filter.NativeBuild">Team build Z-Codex</sys:String>
+    <sys:String x:Key="S.Filter.AllBuilds">Tous les builds</sys:String>
+    <sys:String x:Key="S.Filter.Png">Image PNG (*.png)|*.png</sys:String>
+    <sys:String x:Key="S.Filter.SkillTplSave">Template GW1 (*.txt)|*.txt</sys:String>
+    <sys:String x:Key="S.Filter.AnyTpl">Templates GW1 (*.txt)|*.txt|Tous les fichiers (*.*)|*.*</sys:String>
+    <sys:String x:Key="S.Filter.LockExport">Z-Codex (*.zcx)|*.zcx|Image PNG (*.png)|*.png|Chat codes (*.txt)|*.txt|paw·ned² (*.pwnd)|*.pwnd</sys:String>
+    <sys:String x:Key="S.Filter.Pwnd">paw·ned² (*.pwnd)|*.pwnd</sys:String>
+    <sys:String x:Key="S.Filter.Builds">Builds GW (*.zcx;*.pn3;*.pwnd;*.txt)|*.zcx;*.pn3;*.pwnd;*.txt|Tous les fichiers (*.*)|*.*</sys:String>
+    <sys:String x:Key="S.Filter.AllProfessions">Toutes les professions</sys:String>
+    <sys:String x:Key="S.Filter.AllSkills">Toutes les compétences</sys:String>
+    <sys:String x:Key="S.Filter.PvEOnly">PvE only</sys:String>
+    <sys:String x:Key="S.Filter.PvPOnly">PvP only</sys:String>
+
+    <!-- ── Calculateur d'armure ───────────────────────────────────────── -->
+    <sys:String x:Key="S.Armor.SaveProfileTip">Nom du profil à enregistrer</sys:String>
+    <sys:String x:Key="S.Armor.CharAndEquip">Personnage &amp; équipement</sys:String>
+    <sys:String x:Key="S.Armor.Profession">Profession</sys:String>
+    <sys:String x:Key="S.Armor.BaseAL">AL de base</sys:String>
+    <sys:String x:Key="S.Armor.InsigniaPerPiece">Insignes (par pièce)</sys:String>
+    <sys:String x:Key="S.Armor.Shield">Bouclier</sys:String>
+    <sys:String x:Key="S.Armor.Equipped">Équipé</sys:String>
+    <sys:String x:Key="S.Armor.ALBase">AL base</sys:String>
+    <sys:String x:Key="S.Armor.ReqMet">Requis rempli</sys:String>
+    <sys:String x:Key="S.Armor.ShieldStrength">Bouclier en Force (bug +9)</sys:String>
+    <sys:String x:Key="S.Armor.ShieldStrengthTip">Requis non rempli : donne 9 au lieu de 8 (bug du bouclier de Force)</sys:String>
+    <sys:String x:Key="S.Armor.EquipMods">Mods d'équipement (runes, mods d'armes, inscriptions)</sys:String>
+    <sys:String x:Key="S.Armor.EquipModsTip">Limites réalistes : 5 runes max (une par pièce), 1 inscription + 1 mod d'arme par main — le bouclier occupe la main secondaire (pas de 2e mod d'arme)</sys:String>
+    <sys:String x:Key="S.Armor.AddModTip">Sélectionner un mod du jeu (armure et/ou réduction de durée d'altération)</sys:String>
+    <sys:String x:Key="S.Armor.CharState">État du personnage</sys:String>
+    <sys:String x:Key="S.Armor.HealthPct">PV %</sys:String>
+    <sys:String x:Key="S.Armor.Enchanted">Enchanté</sys:String>
+    <sys:String x:Key="S.Armor.EnchantedTip">Blessed/Forsaken, « Sheltered by Faith »… (un compte d'enchantements &gt; 0 vaut aussi enchanté)</sys:String>
+    <sys:String x:Key="S.Armor.Hexed">Maléfice</sys:String>
+    <sys:String x:Key="S.Armor.HexedTip">Blighter's, « Nothing to Fear »…</sys:String>
+    <sys:String x:Key="S.Armor.InStance">Pose de combat</sys:String>
+    <sys:String x:Key="S.Armor.InStanceTip">Sentry's, « Run For Your Life! »…</sys:String>
+    <sys:String x:Key="S.Armor.Attacking">En train d'attaquer</sys:String>
+    <sys:String x:Key="S.Armor.HoldingItem">Objet tenu</sys:String>
+    <sys:String x:Key="S.Armor.UsingPrep">Préparation</sys:String>
+    <sys:String x:Key="S.Armor.PetAlive">Familier en vie</sys:String>
+    <sys:String x:Key="S.Armor.HasCondition">Sous condition</sys:String>
+    <sys:String x:Key="S.Armor.Activating">En activation</sys:String>
+    <sys:String x:Key="S.Armor.WeaponSpell">Sort d'altération d'arme</sys:String>
+    <sys:String x:Key="S.Armor.ShoutChant">Cri/écho/chant</sys:String>
+    <sys:String x:Key="S.Armor.UndertakerTip">Seuils Undertaker's : +5 sous 80/60/40/20 % de PV</sys:String>
+    <sys:String x:Key="S.Armor.Enchant">Enchant.</sys:String>
+    <sys:String x:Key="S.Armor.WindwalkerTip">Windwalker : +5 par palier 1/2/3/4 enchantements (&gt; 0 vaut aussi « enchanté »)</sys:String>
+    <sys:String x:Key="S.Armor.Recharge">Recharge</sys:String>
+    <sys:String x:Key="S.Armor.RechargeTip">Anchorite's/Prodigy's : +5 par palier 1/3/5 compétences en recharge</sys:String>
+    <sys:String x:Key="S.Armor.Minions">Serviteurs</sys:String>
+    <sys:String x:Key="S.Armor.MinionsTip">Minion Master's : +5 par palier 1/3/5 serviteurs contrôlés</sys:String>
+    <sys:String x:Key="S.Armor.Spirits">Esprits</sys:String>
+    <sys:String x:Key="S.Armor.SpiritsTip">Shaman's : +5 par palier 1/2/3 esprits contrôlés</sys:String>
+    <sys:String x:Key="S.Armor.Signets">Sceaux</sys:String>
+    <sys:String x:Key="S.Armor.SignetsTip">Artificer's et Mantra of Signets : +3 par sceau équipé</sys:String>
+    <sys:String x:Key="S.Armor.IllusionSkills">Comp. Illusion</sys:String>
+    <sys:String x:Key="S.Armor.IllusionSkillsTip">Illusionary Weaponry : +5 par compétence Illusion équipée (IW comprise)</sys:String>
+    <sys:String x:Key="S.Armor.ManualAdd">Ajout manuel</sys:String>
+    <sys:String x:Key="S.Armor.AddManualContrib">+ Ajouter une contribution manuelle</sys:String>
+    <sys:String x:Key="S.Armor.ImportEquipCodeTip">Coller un code d'équipement (code P)</sys:String>
+    <sys:String x:Key="S.Armor.ExternalSources">Sources externes (compétences, malus, consommables)</sys:String>
+    <sys:String x:Key="S.Armor.ArmorPenetration">Pénétration d'armure %</sys:String>
+    <sys:String x:Key="S.Armor.CasterAttrRankTip">Rang de l'attribut du lanceur (0–21)</sys:String>
+    <sys:String x:Key="S.Armor.EffectiveALTitle">AL effective par pièce et type de dégâts</sys:String>
+    <sys:String x:Key="S.Armor.ProfFilterTip">Profession (cross-profession toujours incluse)</sys:String>
+    <sys:String x:Key="S.Armor.AttrFilterTip">Caractéristique</sys:String>
+    <sys:String x:Key="S.Armor.GameModeTip">Tous les skills, PvE uniquement ou PvP uniquement</sys:String>
+    <sys:String x:Key="S.Armor.DamageOnly">Dégâts seulement</sys:String>
+    <sys:String x:Key="S.Armor.DamageOnlyTip">Ne montre que les compétences avec au moins un paquet chiffrable (dégâts, vol ou perte de vie)</sys:String>
+    <sys:String x:Key="S.Armor.SearchCatalogTip">Recherche par nom dans tout le catalogue (Entrée ou double-clic pour ajouter)</sys:String>
+    <sys:String x:Key="S.Armor.ColAttack">Attaque</sys:String>
+    <sys:String x:Key="S.Armor.ColConditions">Altérations infligées</sys:String>
+    <sys:String x:Key="S.Armor.ColRank">Rang</sys:String>
+    <sys:String x:Key="S.Armor.ColAtAL60">@ AL 60</sys:String>
+    <sys:String x:Key="S.Armor.ColAtALBuild">@ AL build</sys:String>
+    <sys:String x:Key="S.Armor.AttackerAttrRankTip">Rang de l'attribut de l'attaquant (0–21)</sys:String>
+    <sys:String x:Key="S.Armor.DurationReductions">Réductions de durée d'altération (cumul)</sys:String>
+
+    <!-- ── Calculateur d'armure — messages/labels calculés (VM) ───────── -->
+    <sys:String x:Key="S.ArmorVM.ModLimitShield">Bouclier équipé : mod(s) d'arme de la main secondaire retiré(s).</sys:String>
+    <sys:String x:Key="S.ArmorVM.SelectCell">Sélectionnez une cellule pour voir le détail.</sys:String>
+    <sys:String x:Key="S.ArmorVM.ExpectancyHeader">Espérance — {0} : AL équivalente {1} (pondération torse 3/8, jambes 2/8, tête/bras/pieds 1/8).</sys:String>
+    <sys:String x:Key="S.ArmorVM.Steps">Étapes</sys:String>
+    <sys:String x:Key="S.ArmorVM.BonusNet">Bonus net</sys:String>
+    <sys:String x:Key="S.ArmorVM.BonusApplied">Bonus appliqué</sys:String>
+    <sys:String x:Key="S.ArmorVM.BeforePen">Avant pénétration</sys:String>
+    <sys:String x:Key="S.ArmorVM.AfterPen">Après pénétration ({0}%)</sys:String>
+    <sys:String x:Key="S.ArmorVM.EffectiveAL">AL effective</sys:String>
+    <sys:String x:Key="S.ArmorVM.BaseArmor">Armure de base</sys:String>
+    <sys:String x:Key="S.ArmorVM.WarriorInherent">Inhérent Guerrier (vs physique)</sys:String>
+    <sys:String x:Key="S.ArmorVM.RangerInherent">Inhérent Rôdeur (vs élémentaire)</sys:String>
+    <sys:String x:Key="S.ArmorVM.ProjectilesIncluded">sources « projectiles » incluses (Shields Up!…)</sys:String>
+    <sys:String x:Key="S.ArmorVM.CodeUnreadable">Code d'équipement illisible.</sys:String>
+    <sys:String x:Key="S.ArmorVM.Imported">Importé : {0} insigne(s){1}.</sys:String>
+    <sys:String x:Key="S.ArmorVM.PlusShield"> + bouclier</sys:String>
+    <sys:String x:Key="S.ArmorVM.NoInsigniaRecognized">Aucun insigne/bouclier reconnu dans ce code.</sys:String>
+    <sys:String x:Key="S.ArmorVM.LimitRunes">Limite : 5 runes max (une par pièce d'armure).</sys:String>
+    <sys:String x:Key="S.ArmorVM.LimitInscriptions">Limite : 2 inscriptions max (main principale + main secondaire/bouclier).</sys:String>
+    <sys:String x:Key="S.ArmorVM.LimitWeaponModShield">Limite : 1 seul mod d'arme (main principale) avec un bouclier équipé.</sys:String>
+    <sys:String x:Key="S.ArmorVM.LimitWeaponMods">Limite : 2 mods d'arme max (un par main).</sys:String>
+    <sys:String x:Key="S.ArmorVM.NewMod">Nouveau mod</sys:String>
+    <sys:String x:Key="S.ArmorVM.SettingsUnavailable">Settings indisponibles.</sys:String>
+    <sys:String x:Key="S.ArmorVM.EmptyProfileName">Nom de profil vide.</sys:String>
+    <sys:String x:Key="S.ArmorVM.ProfileSaved">Profil « {0} » enregistré.</sys:String>
+    <sys:String x:Key="S.ArmorVM.NoProfileSelected">Aucun profil sélectionné.</sys:String>
+    <sys:String x:Key="S.ArmorVM.ProfileNotFound">Profil introuvable.</sys:String>
+    <sys:String x:Key="S.ArmorVM.ProfileDeleted">Profil « {0} » supprimé.</sys:String>
+
+    <!-- ── Clin d'œil W/Mo à Rénovation (cf. WaMoEasterEgg) ───────────────
+         Wamo* = le W/Mo parle (team build) ; Player* = on s'adresse au joueur (build simple).
+         L'indice est le nombre de soins EN PLUS de Rénovation, de 1 à 7. -->
+    <sys:String x:Key="S.Egg.Title">W/Mo</sys:String>
+    <sys:String x:Key="S.Egg.Wamo1">Ok, et si on s'équipait d'un truc plus utile ? J'ai déjà Rénovation !</sys:String>
+    <sys:String x:Key="S.Egg.Wamo2">On a déjà Rénovation, je te rappelle. On risque pas de mourir !</sys:String>
+    <sys:String x:Key="S.Egg.Wamo3">Et si on prenait une compétence offensive, plutôt ?</sys:String>
+    <sys:String x:Key="S.Egg.Wamo4">Quatre soins avec Rénovation. Le Moine du groupe peut aller boire un coup.</sys:String>
+    <sys:String x:Key="S.Egg.Wamo5">Cinq soins. Je te promets que Rénovation suffisait.</sys:String>
+    <sys:String x:Key="S.Egg.Wamo6">Six soins. Je ne peux littéralement plus mourir. Ni tuer, mais bon.</sys:String>
+    <sys:String x:Key="S.Egg.Wamo7">Sept soins et Rénovation. Voilà. Je suis un mur. Un mur très gentil.</sys:String>
+    <sys:String x:Key="S.Egg.Player1">Vous avez déjà Rénovation, vous ne risquez pas de mourir !</sys:String>
+    <sys:String x:Key="S.Egg.Player2">Un deuxième soin ? Rénovation tient déjà la barre, voyons.</sys:String>
+    <sys:String x:Key="S.Egg.Player3">Trois soins. À ce rythme personne ne mourra — surtout pas l'adversaire.</sys:String>
+    <sys:String x:Key="S.Egg.Player4">Quatre soins sur un Guerrier. Quelque part, un Moine pleure.</sys:String>
+    <sys:String x:Key="S.Egg.Player5">Cinq soins plus Rénovation. Il reste deux slots pour, au hasard, frapper quelqu'un.</sys:String>
+    <sys:String x:Key="S.Egg.Player6">Six soins et Rénovation. Ce Guerrier est officiellement inoffensif.</sys:String>
+    <sys:String x:Key="S.Egg.Player7">Huit slots, huit soins. Félicitations : vous avez inventé le Guerrier/Moine ultime.</sys:String>
+
+</ResourceDictionary>

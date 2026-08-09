@@ -1,0 +1,311 @@
+﻿<Window x:Class="ZCodex.App.Views.EquipmentEditorWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{DynamicResource S.Equip.Title}" Width="720" Height="620"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Background="{DynamicResource DialogBackgroundBrush}"
+        Foreground="{DynamicResource TextPrimaryBrush}">
+    <Window.Resources>
+        <!-- Onglet de set d'armes (F1-F4) : RadioButton stylée en onglet -->
+        <Style x:Key="SetTabStyle" TargetType="RadioButton">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Bd" Background="{DynamicResource PanelBackgroundBrush}"
+                                BorderBrush="{DynamicResource BorderLightBrush}" BorderThickness="1"
+                                CornerRadius="2" Margin="1,0" Padding="0,4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ContentBackgroundBrush}"/>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+    <Grid Margin="12,10,12,10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="10"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="10"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Barre de stats -->
+        <Border Grid.Row="0" Background="{DynamicResource PanelBackgroundBrush}" BorderBrush="{DynamicResource BorderLightBrush}" BorderThickness="1"
+                Padding="10,6" CornerRadius="3">
+            <WrapPanel Orientation="Horizontal">
+                <TextBlock Text="{DynamicResource S.Equip.Attributes}" FontSize="11" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                <TextBlock x:Name="AttrBonusesText" FontSize="11" VerticalAlignment="Center"
+                           Margin="0,0,16,0" FontStyle="Italic"/>
+                <TextBlock Text="{DynamicResource S.Equip.Health}" FontSize="11" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                <TextBlock x:Name="HpText" FontSize="11" FontWeight="Bold" VerticalAlignment="Center"
+                           Margin="0,0,16,0" Foreground="{DynamicResource StatHpBrush}"/>
+                <TextBlock Text="{DynamicResource S.Equip.Energy}" FontSize="11" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                <TextBlock x:Name="EnergyText" FontSize="11" FontWeight="Bold" VerticalAlignment="Center"
+                           Margin="0,0,16,0" Foreground="{DynamicResource StatEnergyBrush}"/>
+                <TextBlock Text="{DynamicResource S.Equip.Pips}" FontSize="11" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                <TextBlock x:Name="PipsText" FontSize="11" FontWeight="Bold" VerticalAlignment="Center"
+                           Margin="0,0,16,0" Foreground="{DynamicResource StatPipsBrush}"/>
+                <TextBlock Text="{DynamicResource S.Equip.Armor}" FontSize="11" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                <TextBlock x:Name="ArmorText" FontSize="11" FontWeight="Bold" VerticalAlignment="Center"
+                           Foreground="{DynamicResource TextHeadingBrush}"/>
+            </WrapPanel>
+        </Border>
+
+        <!-- Deux panneaux -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="210"/>
+                <ColumnDefinition Width="8"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Panneau gauche : sets d'armes F1-F4 (armure partagée) + liste des emplacements -->
+            <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="6"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <UniformGrid Grid.Row="0" Rows="1" Columns="4">
+                    <RadioButton x:Name="SetTab0" Content="F1" Tag="0" Style="{StaticResource SetTabStyle}"
+                                 GroupName="WeaponSet" Checked="SetTab_Checked"/>
+                    <RadioButton x:Name="SetTab1" Content="F2" Tag="1" Style="{StaticResource SetTabStyle}"
+                                 GroupName="WeaponSet" Checked="SetTab_Checked"/>
+                    <RadioButton x:Name="SetTab2" Content="F3" Tag="2" Style="{StaticResource SetTabStyle}"
+                                 GroupName="WeaponSet" Checked="SetTab_Checked"/>
+                    <RadioButton x:Name="SetTab3" Content="F4" Tag="3" Style="{StaticResource SetTabStyle}"
+                                 GroupName="WeaponSet" Checked="SetTab_Checked"/>
+                </UniformGrid>
+
+                <Border Grid.Row="2" BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="1" CornerRadius="2">
+                    <ListBox x:Name="SlotListBox" BorderThickness="0" Background="{DynamicResource ContentBackgroundBrush}"
+                             SelectionChanged="SlotListBox_SelectionChanged">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                <Setter Property="Padding" Value="0"/>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <!-- Violation = combinaison impossible en jeu (pièce/insigne/rune
+                                     d'une autre profession) : ⚠ + libellé rouge + infobulle
+                                     détaillée. ToolTip nul quand l'emplacement est sain. -->
+                                <StackPanel Margin="8,5" ToolTip="{Binding Violation}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="⚠ " FontSize="12" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource ErrorTextBrush}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding HasViolation}" Value="True">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                        <TextBlock Text="{Binding SlotName}" FontWeight="SemiBold" FontSize="12"/>
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding ItemDisplayName}" FontSize="11">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="{DynamicResource TextHeadingBrush}"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding HasContent}" Value="False">
+                                                        <Setter Property="Foreground" Value="{DynamicResource TextFaintBrush}"/>
+                                                    </DataTrigger>
+                                                    <!-- Après HasContent : un emplacement en conflit a toujours du contenu. -->
+                                                    <DataTrigger Binding="{Binding HasViolation}" Value="True">
+                                                        <Setter Property="Foreground" Value="{DynamicResource ErrorTextBrush}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Border>
+            </Grid>
+
+            <!-- Séparateur visuel -->
+            <Border Grid.Column="1" Width="1" Background="{DynamicResource BorderLightBrush}" HorizontalAlignment="Center"/>
+
+            <!-- Panneau droit : détail de l'emplacement -->
+            <Border Grid.Column="2" BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="1" CornerRadius="2" Padding="14,12">
+                <DockPanel>
+                    <!-- Mode template autonome : choix de la profession (filtre d'armure + stats) -->
+                    <StackPanel x:Name="ProfessionRow" DockPanel.Dock="Top" Visibility="Collapsed">
+                        <DockPanel Margin="0,0,0,8">
+                            <TextBlock Text="{DynamicResource S.Equip.Profession}" Width="82" VerticalAlignment="Center"
+                                       FontSize="12" Foreground="{DynamicResource TextHeadingBrush}"/>
+                            <ComboBox x:Name="ProfCombo" FontSize="12" Padding="3,2"
+                                      SelectionChanged="ProfCombo_SelectionChanged"/>
+                        </DockPanel>
+                        <Separator Margin="0,0,0,10"/>
+                    </StackPanel>
+
+                    <!-- Genre : pilote la variante de skin d'armure H/F affichée (toujours visible). -->
+                    <StackPanel x:Name="GenderRow" DockPanel.Dock="Top">
+                        <DockPanel Margin="0,0,0,8">
+                            <TextBlock Text="{DynamicResource S.Equip.Gender}" Width="82" VerticalAlignment="Center"
+                                       FontSize="12" Foreground="{DynamicResource TextHeadingBrush}"/>
+                            <RadioButton x:Name="MaleRadio" Content="{DynamicResource S.Equip.Male}" GroupName="Gender"
+                                         FontSize="12" VerticalAlignment="Center"
+                                         Margin="0,0,14,0" Foreground="{DynamicResource TextPrimaryBrush}"
+                                         Checked="GenderRadio_Changed"/>
+                            <RadioButton x:Name="FemaleRadio" Content="{DynamicResource S.Equip.Female}" GroupName="Gender"
+                                         FontSize="12" VerticalAlignment="Center"
+                                         Foreground="{DynamicResource TextPrimaryBrush}"
+                                         Checked="GenderRadio_Changed"/>
+                        </DockPanel>
+                        <Separator Margin="0,0,0,10"/>
+                    </StackPanel>
+                <Grid>
+                    <TextBlock x:Name="NoSelectionText"
+                               Text="{DynamicResource S.Equip.PickSlot}"
+                               Foreground="{DynamicResource TextFaintBrush}" FontSize="12"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+                    <!-- Le détail peut dépasser la hauteur utile (skin 128px + 3 rangées de mods
+                         sur une arme) : ScrollViewer pour qu'aucun combo ne sorte du cadre. -->
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel x:Name="DetailFields" Visibility="Collapsed" Margin="0,0,4,0">
+                        <StackPanel.Resources>
+                            <!-- Choix de mod : nom + description grisée à droite (façon paw·ned²) -->
+                            <DataTemplate x:Key="ModChoiceTemplate">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding Name}"/>
+                                    <TextBlock Text="{Binding Desc}" Margin="10,0,0,0"
+                                               Foreground="{DynamicResource TextFaintBrush}"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </StackPanel.Resources>
+
+                        <CheckBox x:Name="IncludeCheck" Content="{DynamicResource S.Equip.SaveSkin}"
+                                  FontSize="12" Margin="0,0,0,8"
+                                  Foreground="{DynamicResource TextPrimaryBrush}"
+                                  Checked="IncludeCheck_Changed" Unchecked="IncludeCheck_Changed"/>
+
+                        <Separator Margin="0,0,0,10"/>
+
+                        <!-- Skin visuel de la pièce (centré, juste au-dessus de l'objet). Taille
+                             native (armure 64px net 1:1) ; réduit seulement si la source dépasse. -->
+                        <Image x:Name="SkinImage" HorizontalAlignment="Center" Margin="0,0,0,10"
+                               Stretch="Uniform" StretchDirection="DownOnly" MaxWidth="128" MaxHeight="128"
+                               RenderOptions.BitmapScalingMode="HighQuality" Visibility="Collapsed"/>
+
+                        <!-- Objet -->
+                        <DockPanel Margin="0,0,0,7">
+                            <TextBlock Text="{DynamicResource S.Equip.Item}" Width="82" VerticalAlignment="Center"
+                                       FontSize="12" Foreground="{DynamicResource TextHeadingBrush}"/>
+                            <Button x:Name="WikiBtn" Content="🔗 Wiki" DockPanel.Dock="Right"
+                                    Width="72" Padding="4,2" FontSize="11" Margin="6,0,0,0"
+                                    Click="WikiBtn_Click"/>
+                            <Button x:Name="ApplySkinBtn" Content="×5" DockPanel.Dock="Right"
+                                    Width="28" Padding="2" FontSize="11" Margin="6,0,0,0"
+                                    ToolTip="{DynamicResource S.Equip.ApplyStyleTip}"
+                                    Visibility="Collapsed" Click="ApplySkin_Click"/>
+                            <ComboBox x:Name="ItemCombo" FontSize="12" Padding="3,2"
+                                      MaxDropDownHeight="280"
+                                      ItemTemplate="{StaticResource ModChoiceTemplate}"
+                                      SelectionChanged="ItemCombo_SelectionChanged"/>
+                        </DockPanel>
+
+                        <!-- Teinture -->
+                        <DockPanel Margin="0,0,0,7">
+                            <TextBlock Text="{DynamicResource S.Equip.Dye}" Width="82" VerticalAlignment="Center"
+                                       FontSize="12" Foreground="{DynamicResource TextHeadingBrush}"/>
+                            <ComboBox x:Name="DyeCombo" FontSize="12" Padding="3,2"
+                                      SelectionChanged="DyeCombo_SelectionChanged"/>
+                        </DockPanel>
+
+                        <Separator Margin="0,4,0,10"/>
+
+                        <!-- Upgrade 1 : insigne (armure) / préfixe (arme) -->
+                        <DockPanel x:Name="Mod1Row" Margin="0,0,0,7">
+                            <TextBlock x:Name="Mod1Label" Text="{DynamicResource S.Equip.Insignia}" Width="82" VerticalAlignment="Center"
+                                       FontSize="12" Foreground="{DynamicResource TextHeadingBrush}"/>
+                            <Button x:Name="Mod1WikiBtn" Content="🔗" DockPanel.Dock="Right"
+                                    Width="28" Padding="2" FontSize="11" Margin="6,0,0,0"
+                                    ToolTip="{DynamicResource S.Equip.WikiPage}" Click="ModWikiBtn_Click"/>
+                            <Button x:Name="ApplyInsigniaBtn" Content="×5" DockPanel.Dock="Right"
+                                    Width="28" Padding="2" FontSize="11" Margin="6,0,0,0"
+                                    ToolTip="{DynamicResource S.Equip.ApplyInsigniaTip}"
+                                    Visibility="Collapsed" Click="ApplyInsignia_Click"/>
+                            <ComboBox x:Name="Mod1Combo" FontSize="12" Padding="3,2"
+                                      MaxDropDownHeight="280"
+                                      ItemTemplate="{StaticResource ModChoiceTemplate}"
+                                      SelectionChanged="ModCombo_SelectionChanged"/>
+                        </DockPanel>
+
+                        <!-- Upgrade 2 : rune (armure) / suffixe (arme) -->
+                        <DockPanel x:Name="Mod2Row" Margin="0,0,0,7">
+                            <TextBlock x:Name="Mod2Label" Text="{DynamicResource S.Equip.Rune}" Width="82" VerticalAlignment="Center"
+                                       FontSize="12" Foreground="{DynamicResource TextHeadingBrush}"/>
+                            <Button x:Name="Mod2WikiBtn" Content="🔗" DockPanel.Dock="Right"
+                                    Width="28" Padding="2" FontSize="11" Margin="6,0,0,0"
+                                    ToolTip="{DynamicResource S.Equip.WikiPage}" Click="ModWikiBtn_Click"/>
+                            <ComboBox x:Name="Mod2Combo" FontSize="12" Padding="3,2"
+                                      MaxDropDownHeight="280"
+                                      ItemTemplate="{StaticResource ModChoiceTemplate}"
+                                      SelectionChanged="ModCombo_SelectionChanged"/>
+                        </DockPanel>
+
+                        <!-- Upgrade 3 : inscription (armes uniquement) -->
+                        <DockPanel x:Name="Mod3Row">
+                            <TextBlock x:Name="Mod3Label" Text="{DynamicResource S.Equip.Inscription}" Width="82" VerticalAlignment="Center"
+                                       FontSize="12" Foreground="{DynamicResource TextHeadingBrush}"/>
+                            <Button x:Name="Mod3WikiBtn" Content="🔗" DockPanel.Dock="Right"
+                                    Width="28" Padding="2" FontSize="11" Margin="6,0,0,0"
+                                    ToolTip="{DynamicResource S.Equip.WikiPage}" Click="ModWikiBtn_Click"/>
+                            <ComboBox x:Name="Mod3Combo" FontSize="12" Padding="3,2"
+                                      MaxDropDownHeight="280"
+                                      ItemTemplate="{StaticResource ModChoiceTemplate}"
+                                      SelectionChanged="ModCombo_SelectionChanged"/>
+                        </DockPanel>
+
+                    </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+                </DockPanel>
+            </Border>
+        </Grid>
+
+        <!-- Boutons -->
+        <Grid Grid.Row="4">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                <Button Content="{DynamicResource S.Equip.LoadTpl}" Padding="8,4" Margin="0,0,8,0"
+                        ToolTip="{DynamicResource S.Equip.LoadTplTip}"
+                        Click="LoadTemplate_Click"/>
+                <Button Content="{DynamicResource S.Equip.SaveTpl}" Padding="8,4"
+                        ToolTip="{DynamicResource S.Equip.SaveTplTip}"
+                        Click="SaveTemplate_Click"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="OK" Width="80" Padding="8,4" Margin="0,0,8,0"
+                        IsDefault="True" Click="Ok_Click"/>
+                <Button Content="{DynamicResource S.Common.Cancel}" Width="80" Padding="8,4" IsCancel="True"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

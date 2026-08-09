@@ -1,0 +1,64 @@
+<Window x:Class="ZCodex.App.Views.PvxImportWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{DynamicResource S.Win.PvxTitle}"
+        Width="560" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Background="{DynamicResource DialogBackgroundBrush}"
+        Foreground="{DynamicResource TextPrimaryBrush}">
+
+    <!-- Import des « build packs » de PvXwiki. L'opération écrit des milliers de fichiers chez
+         l'utilisateur : la destination est donc affichée en clair, modifiable, et rien ne part
+         avant un clic explicite sur le bouton de téléchargement. -->
+    <StackPanel Margin="22,18">
+
+        <TextBlock Text="{DynamicResource S.Pvx.Intro}" TextWrapping="Wrap" FontSize="13"/>
+
+        <!-- Attribution : les builds sont sous CC BY-NC-SA, qui EXIGE de créditer la source.
+             Elle est ici, sous les yeux de l'utilisateur au moment où il les récupère, et pas
+             seulement dans la boîte « À propos ». -->
+        <TextBlock TextWrapping="Wrap" FontSize="12" Margin="0,10,0,0"
+                   Foreground="{DynamicResource TextSecondaryBrush}">
+            <Run Text="{DynamicResource S.Pvx.Credit}"/>
+            <Hyperlink NavigateUri="https://gwpvx.fandom.com" RequestNavigate="Hyperlink_RequestNavigate">
+                PvXwiki
+            </Hyperlink>
+            <Run Text="— CC BY-NC-SA 3.0."/>
+            <Run Text="{DynamicResource S.Pvx.License}"/>
+        </TextBlock>
+
+        <Border BorderBrush="{DynamicResource BorderLightBrush}" BorderThickness="0,1,0,0"
+                Margin="0,14,0,0" Padding="0,12,0,0">
+            <StackPanel>
+                <CheckBox x:Name="PveCheck" Content="{DynamicResource S.Pvx.PackPve}" IsChecked="True"/>
+                <CheckBox x:Name="PvpCheck" Content="{DynamicResource S.Pvx.PackPvp}" IsChecked="True" Margin="0,6,0,0"/>
+
+                <TextBlock Text="{DynamicResource S.Pvx.Destination}" Margin="0,14,0,4" FontSize="12"/>
+                <DockPanel>
+                    <Button x:Name="BrowseButton" DockPanel.Dock="Right" Content="{DynamicResource S.Common.Browse}"
+                            Padding="10,3" Margin="8,0,0,0" Click="Browse_Click"/>
+                    <TextBox x:Name="DestinationBox" IsReadOnly="True" Padding="4,3"
+                             VerticalContentAlignment="Center"
+                             ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
+                </DockPanel>
+
+                <TextBlock Text="{DynamicResource S.Pvx.Warning}" TextWrapping="Wrap" FontSize="11"
+                           Foreground="{DynamicResource TextMutedBrush}" Margin="0,8,0,0"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Progression : masquée tant que rien ne tourne, pour ne pas suggérer un travail en cours. -->
+        <ProgressBar x:Name="ProgressBar" Height="20" Minimum="0" Maximum="100" Value="0"
+                     Margin="0,16,0,0" Visibility="Collapsed"/>
+        <TextBlock x:Name="StatusText" Text="" TextWrapping="Wrap" FontSize="12"
+                   Margin="0,8,0,0" Visibility="Collapsed"/>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+            <Button x:Name="StartButton" Content="{DynamicResource S.Pvx.Start}" Width="150" Padding="8,4"
+                    IsDefault="True" Click="Start_Click"/>
+            <Button x:Name="CloseButton" Content="{DynamicResource S.Common.Close}" Width="90" Padding="8,4"
+                    Margin="8,0,0,0" IsCancel="True" Click="Close_Click"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

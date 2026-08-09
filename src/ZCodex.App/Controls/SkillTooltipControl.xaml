@@ -1,0 +1,139 @@
+﻿<UserControl x:Class="ZCodex.App.Controls.SkillTooltipControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:beh="clr-namespace:ZCodex.App.Behaviors"
+             x:Name="Root">
+    <!-- DataContext interne = le Skill exposé par la DependencyProperty -->
+    <Grid x:Name="LayoutRoot" DataContext="{Binding Skill, ElementName=Root}" MaxWidth="380" Margin="2">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Colonne gauche : icône skill + cadre élite, icône profession, ID en bas -->
+        <DockPanel Grid.Column="0" Margin="0,0,8,0">
+            <TextBlock DockPanel.Dock="Bottom" Text="{Binding Id}"
+                       FontSize="9" Foreground="{DynamicResource TextFaintBrush}"
+                       HorizontalAlignment="Left" Margin="0,4,0,0"/>
+            <StackPanel>
+                <Border BorderThickness="2" CornerRadius="2"
+                        Width="66" Height="66" HorizontalAlignment="Center">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="BorderBrush" Value="Transparent"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsElite}" Value="True">
+                                    <Setter Property="BorderBrush" Value="#FFD700"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <Image Source="{Binding IconPath, Converter={StaticResource UrlToImage}, ConverterParameter=64}"
+                           Stretch="Uniform" Margin="1"
+                           RenderOptions.BitmapScalingMode="HighQuality"/>
+                </Border>
+                <Image Source="{Binding Profession, Converter={StaticResource ProfToIcon}}"
+                       Width="22" Height="22" HorizontalAlignment="Center" Margin="0,4,0,0"
+                       RenderOptions.BitmapScalingMode="HighQuality"/>
+            </StackPanel>
+        </DockPanel>
+
+        <!-- Colonne droite : nom + stats, type, description, footer -->
+        <StackPanel Grid.Column="1">
+            <!-- Bandeau haut : nom (gauche) + stats E/C/R (droite, droite→gauche) -->
+            <DockPanel LastChildFill="True">
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
+                            VerticalAlignment="Top" Margin="8,2,0,0">
+                    <!-- Adrénaline (coût exclusif de l'énergie) -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,6,0"
+                                Visibility="{Binding Adrenaline, Converter={StaticResource PosInt}}">
+                        <Image Source="{Binding Source='adrenaline', Converter={StaticResource StatIcon}}"
+                               Width="14" Height="14" Margin="0,0,2,0"/>
+                        <TextBlock Text="{Binding Adrenaline}" FontSize="12"/>
+                    </StackPanel>
+                    <!-- Énergie (visibilité pilotée par le coût effectif, cf. EnergyVisibility) -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,6,0"
+                                Visibility="{Binding EnergyVisibility, ElementName=Root}">
+                        <Image Source="{Binding Source='energy', Converter={StaticResource StatIcon}}"
+                               Width="14" Height="14" Margin="0,0,2,0"/>
+                        <TextBlock beh:SkillMarkup.Text="{Binding EnergyText, ElementName=Root}" FontSize="12"/>
+                    </StackPanel>
+                    <!-- Sacrifice (% de vie max) -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,6,0"
+                                Visibility="{Binding Sacrifice, Converter={StaticResource PosInt}}">
+                        <Image Source="{Binding Source='mech-sacrifice', Converter={StaticResource StatIcon}}"
+                               Width="14" Height="14" Margin="0,0,2,0"/>
+                        <TextBlock Text="{Binding Sacrifice, StringFormat={}{0}%}" FontSize="12"/>
+                    </StackPanel>
+                    <!-- Overcast (énergie ponctuelle) -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,6,0"
+                                Visibility="{Binding Overcast, Converter={StaticResource PosInt}}">
+                        <Image Source="{Binding Source='mech-overcast', Converter={StaticResource StatIcon}}"
+                               Width="14" Height="14" Margin="0,0,2,0"/>
+                        <TextBlock beh:SkillMarkup.Text="{Binding OvercastText, ElementName=Root}" FontSize="12"/>
+                    </StackPanel>
+                    <!-- Upkeep (magnitude positive, affiché "-1" pip) -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,6,0"
+                                Visibility="{Binding Upkeep, Converter={StaticResource PosInt}}">
+                        <Image Source="{Binding Source='mech-upkeep', Converter={StaticResource StatIcon}}"
+                               Width="14" Height="14" Margin="0,0,2,0"/>
+                        <TextBlock beh:SkillMarkup.Text="{Binding UpkeepText, ElementName=Root}" FontSize="12"/>
+                    </StackPanel>
+                    <!-- Temps de cast -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,6,0"
+                                Visibility="{Binding CastTime, Converter={StaticResource PosFloat}}">
+                        <Image Source="{Binding Source='cast', Converter={StaticResource StatIcon}}"
+                               Width="14" Height="14" Margin="0,0,2,0"/>
+                        <TextBlock beh:SkillMarkup.Text="{Binding CastText, ElementName=Root}" FontSize="12"/>
+                    </StackPanel>
+                    <!-- Recharge -->
+                    <StackPanel Orientation="Horizontal"
+                                Visibility="{Binding Recharge, Converter={StaticResource PosFloat}}">
+                        <Image Source="{Binding Source='recharge', Converter={StaticResource StatIcon}}"
+                               Width="14" Height="14" Margin="0,0,2,0"/>
+                        <TextBlock beh:SkillMarkup.Text="{Binding RechargeText, ElementName=Root}" FontSize="12"/>
+                    </StackPanel>
+                </StackPanel>
+                <TextBlock Text="{Binding HeaderName, ElementName=Root}" FontWeight="Bold" FontSize="15"
+                           TextWrapping="Wrap" VerticalAlignment="Center"/>
+            </DockPanel>
+
+            <!-- Type (+ campagne) : recalculé dans la langue courante par le contrôle (cf. TypeLine). -->
+            <TextBlock Text="{Binding TypeLine, ElementName=Root}"
+                       FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,1,0,0"/>
+
+            <!-- Description : variables résolues (build) ou plages vertes (catalogue) -->
+            <TextBlock beh:SkillMarkup.Text="{Binding DescriptionText, ElementName=Root}"
+                       TextWrapping="Wrap" FontSize="12" Margin="0,5,0,0"/>
+
+            <!-- Durée d'enchantement modifiée (Lot D) : of Enchanting / Blessed Aura / Extend /
+                 Tranquility. Valeur « modifié (base) » en ambre ; visible seulement si un modificateur agit. -->
+            <TextBlock beh:SkillMarkup.Text="{Binding DurationText, ElementName=Root}"
+                       Visibility="{Binding DurationVisibility, ElementName=Root}"
+                       TextWrapping="Wrap" FontSize="11" Margin="0,4,0,0"/>
+
+            <!-- Dégâts selon l'armure (contexte build + toggle du menu Affichage). Rempli en
+                 code-behind : le nombre de colonnes dépend du niveau custom. -->
+            <StackPanel x:Name="DamagePanel" Visibility="Collapsed" Margin="0,6,0,0"/>
+
+            <!-- Invocation : durée relevée (sorts d'arme), PV max / armure / durée de vie des
+                 créatures créées. Rempli en code-behind ; visible seulement si le perso a du rang
+                 de Puissance de l'invocation. -->
+            <StackPanel x:Name="SummonPanel" Visibility="Collapsed" Margin="0,6,0,0"/>
+
+            <!-- Repli FR→EN : pas de page française, ou plages FR douteuses. Sans ce repère,
+                 un utilisateur en mode FR croit à un bug d'affichage. -->
+            <TextBlock Text="{Binding FrWarningText, ElementName=Root}"
+                       Visibility="{Binding FrWarningVisible, ElementName=Root, Converter={StaticResource BoolToVisibilityConverter}}"
+                       FontSize="10" FontStyle="Italic" Foreground="{DynamicResource TextFaintBrush}"
+                       TextWrapping="Wrap" Margin="0,6,0,0"/>
+
+            <!-- Footer : bonus d'attribut primaire (résolu au rang du perso, ou plage 0...12...15) -->
+            <TextBlock beh:SkillMarkup.Text="{Binding FooterText, ElementName=Root}"
+                       Visibility="{Binding FooterVisible, ElementName=Root, Converter={StaticResource BoolToVisibilityConverter}}"
+                       FontSize="10" FontStyle="Italic" Foreground="{DynamicResource TextFaintBrush}"
+                       TextWrapping="Wrap" TextAlignment="Right"
+                       HorizontalAlignment="Right" Margin="0,8,0,0"/>
+        </StackPanel>
+    </Grid>
+</UserControl>
