@@ -60,6 +60,9 @@ Template codes copy and paste straight to and from Guild Wars.
 Windows 10 or 11, 64-bit. No prerequisites: the .NET runtime ships with the
 application.
 
+Download the latest version from the
+[releases page](https://github.com/LuxIudicium/Z-Codex/releases/latest).
+
 Run the `Z-Codex-…-setup.exe` you downloaded and follow the wizard. Z-Codex installs **for your
 account only**, under `%LocalAppData%\Programs\Z-Codex`, so it needs no
 administrator rights.
