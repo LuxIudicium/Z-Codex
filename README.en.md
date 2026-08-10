@@ -110,7 +110,7 @@ the next launch.
 Requires the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0).
 
 ```
-git clone <repository>
+git clone https://github.com/LuxIudicium/Z-Codex.git
 cd Z-Codex
 dotnet build Z-Codex.sln
 dotnet run --project src/ZCodex.App
