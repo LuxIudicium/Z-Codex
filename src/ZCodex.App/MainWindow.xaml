@@ -1018,8 +1018,13 @@
             </MenuItem>
             <MenuItem Header="Extras">
                 <MenuItem Header="{DynamicResource S.Menu.ExtrasUpdateSkills}" Click="UpdateSkills_Click"/>
-                <!-- Voisin de la mise à jour du catalogue : les deux vont chercher de la donnée
-                     sur internet, et ce sont les deux seules entrées du menu à le faire. -->
+                <!-- Sous la mise à jour du catalogue, qui ne répare PAS ces icônes-là : les jeux
+                     à taille fixe (stats, professions, conditions, flux, vol de vie) ne sont
+                     tirés qu'au démarrage, et un premier téléchargement raté n'avait jusqu'ici
+                     aucun recours côté utilisateur. -->
+                <MenuItem Header="{DynamicResource S.Menu.ExtrasCheckIcons}" Click="CheckIcons_Click"/>
+                <!-- Voisines de la mise à jour du catalogue : ces entrées vont chercher de la
+                     donnée sur internet, et ce sont les seules du menu à le faire. -->
                 <MenuItem Header="{DynamicResource S.Menu.ExtrasPvx}" Click="PvxImport_Click"/>
                 <Separator/>
                 <!-- Sites de builds ouverts dans le navigateur (rien n'est téléchargé ici) —

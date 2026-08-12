@@ -19,32 +19,10 @@ public static class ConditionIconService
     public static string GetLocalPath(string conditionName)
         => Path.Combine(IconsDir, $"{conditionName}.jpg");
 
-    public static async Task DownloadAllAsync(HttpClient? http = null)
-    {
-        Directory.CreateDirectory(IconsDir);
-        bool ownHttp = http == null;
-        http ??= new HttpClient();
-        http.DefaultRequestHeaders.UserAgent.TryParseAdd("Z-Codex/1.0");
+    private static IEnumerable<(string Url, string LocalPath)> Entries()
+        => GwConditionData.All.Select(c =>
+            (IconDownloader.WikiUrl($"{c.Name.Replace(' ', '_')}.jpg"), GetLocalPath(c.Name)));
 
-        try
-        {
-            foreach (var condition in GwConditionData.All)
-            {
-                var localPath = GetLocalPath(condition.Name);
-                if (File.Exists(localPath)) continue;
-                try
-                {
-                    var file = $"{condition.Name.Replace(' ', '_')}.jpg";
-                    var url = $"https://wiki.guildwars.com/wiki/Special:FilePath/{file}";
-                    var bytes = await http.GetByteArrayAsync(url);
-                    await File.WriteAllBytesAsync(localPath, bytes);
-                }
-                catch { /* non bloquant */ }
-            }
-        }
-        finally
-        {
-            if (ownHttp) http.Dispose();
-        }
-    }
+    public static Task<IconReport> DownloadAllAsync(HttpClient? http = null)
+        => IconDownloader.EnsureAsync(Entries(), http);
 }

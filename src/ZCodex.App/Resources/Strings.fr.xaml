@@ -48,6 +48,7 @@
     <sys:String x:Key="S.Menu.ExtrasUpdateSkills">Mettre à jour les compétences (wiki)</sys:String>
     <sys:String x:Key="S.Menu.ExtrasArmorCalc">Calculateur d'armure</sys:String>
     <sys:String x:Key="S.Menu.ExtrasPvx">Télécharger les builds PvX...</sys:String>
+    <sys:String x:Key="S.Menu.ExtrasCheckIcons">Vérifier les icônes (wiki)</sys:String>
     <sys:String x:Key="S.Menu.Window">Fenêtre</sys:String>
     <sys:String x:Key="S.Menu.Help">Aide</sys:String>
     <sys:String x:Key="S.Menu.HelpHelp">Aide et raccourcis...</sys:String>
@@ -223,6 +224,11 @@
     <sys:String x:Key="S.Msg.GwUpdateIgnore">Ne plus demander jusqu'à la prochaine mise à jour</sys:String>
     <sys:String x:Key="S.Msg.CatalogIncompleteTitle">Catalogue incomplet</sys:String>
     <sys:String x:Key="S.Msg.CatalogIncomplete" xml:space="preserve">Le téléchargement des compétences a été interrompu.&#10;&#10;Le catalogue est utilisable, mais les tables de progression et les icônes manquent : les plages de valeurs des infobulles resteront non résolues.&#10;&#10;Terminer le téléchargement maintenant ?</sys:String>
+    <sys:String x:Key="S.Msg.IconsTitle">Vérification des icônes</sys:String>
+    <sys:String x:Key="S.Msg.IconsAllGood">Les {0} icônes de l'interface sont présentes et lisibles.</sys:String>
+    <sys:String x:Key="S.Msg.IconsRepaired" xml:space="preserve">{0} icône(s) manquante(s) ou illisible(s) ont été retéléchargée(s).&#10;Redémarrez Z-Codex pour les afficher partout.</sys:String>
+    <sys:String x:Key="S.Msg.IconsFailed" xml:space="preserve">{0} icône(s) n'ont pas pu être téléchargée(s) depuis le wiki.&#10;Vérifiez votre connexion internet, puis réessayez.</sys:String>
+    <sys:String x:Key="S.Msg.IconsSkillsMissing" xml:space="preserve">Par ailleurs, {0} icône(s) de compétence manquent.&#10;Celles-là se récupèrent avec « Mettre à jour les compétences (wiki) ».</sys:String>
     <sys:String x:Key="S.Msg.EquipProfConfirm" xml:space="preserve">Ce personnage porte un équipement {0}.&#10;Changer la profession principale en {1} videra son équipement.&#10;&#10;Continuer ?</sys:String>
     <sys:String x:Key="S.Msg.EquipProfTitle">Équipement lié à la profession</sys:String>
     <sys:String x:Key="S.Msg.ImportErrorTitle">Erreur d'import</sys:String>

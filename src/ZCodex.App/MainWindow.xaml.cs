@@ -1066,6 +1066,46 @@ public partial class MainWindow : Window
             await LoadSkillsFromDbAsync();
     }
 
+    // Extras → Vérifier les icônes. Les cinq jeux à taille fixe (stats, professions, conditions,
+    // flux, vol de vie) ne sont téléchargés qu'au démarrage et AUCUN scraping du catalogue ne les
+    // répare : un utilisateur dont le premier téléchargement a échoué n'avait aucun recours, pas
+    // même la réinstallation — le dossier de données survit à la désinstallation. Les icônes de
+    // COMPÉTENCES, elles, relèvent de la mise à jour du catalogue : on se contente de les compter
+    // et de renvoyer vers l'entrée juste au-dessus.
+    private async void CheckIcons_Click(object sender, RoutedEventArgs e)
+    {
+        IconReport report;
+        Mouse.OverrideCursor = Cursors.Wait;
+        try
+        {
+            // Séquentiel et non en rafale : c'est justement la concurrence des cinq services au
+            // démarrage qui met le wiki en défense et provoque la panne qu'on répare ici.
+            report  = await ProfessionIconService.DownloadAllAsync();
+            report += await SkillStatIconService.DownloadAllAsync();
+            report += await ConditionIconService.DownloadAllAsync();
+            report += await FluxIconService.DownloadAllAsync();
+            report += await LifeStealIconService.DownloadAllAsync();
+        }
+        finally { Mouse.OverrideCursor = null; }
+
+        int missingSkillIcons = _vm.SkillPanel.AllSkills.Count(
+            s => !string.IsNullOrEmpty(s.IconPath) && !File.Exists(AppPaths.IconFile(s.IconPath)));
+
+        var lines = new List<string>();
+        if (report.Repaired > 0)
+            lines.Add(string.Format(T("S.Msg.IconsRepaired"), report.Repaired));
+        if (report.Failed > 0)
+            lines.Add(string.Format(T("S.Msg.IconsFailed"), report.Failed));
+        if (report.Repaired == 0 && report.Failed == 0)
+            lines.Add(string.Format(T("S.Msg.IconsAllGood"), report.Ok));
+        if (missingSkillIcons > 0)
+            lines.Add(string.Format(T("S.Msg.IconsSkillsMissing"), missingSkillIcons));
+
+        MessageBox.Show(this, string.Join("\n\n", lines), T("S.Msg.IconsTitle"),
+                        MessageBoxButton.OK,
+                        report.Failed > 0 ? MessageBoxImage.Warning : MessageBoxImage.Information);
+    }
+
     // Extras → Calculateur d'armure + onglet Armure : ouvre/active l'onglet (pas de fenêtre).
     private void ArmorCalculator_Click(object sender, RoutedEventArgs e)
         => _vm.ActivateArmorCalc();

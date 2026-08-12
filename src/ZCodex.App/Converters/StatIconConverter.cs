@@ -21,26 +21,23 @@ public class StatIconConverter : IValueConverter
     {
         var key = (value as string) ?? (parameter as string);
         if (string.IsNullOrEmpty(key)) return null;
-        return _cache.GetOrAdd(key, Decode);
+
+        // On ne mémorise QUE les succès. Un GetOrAdd figeait le null d'une icône pas encore
+        // téléchargée pour toute la session : elle arrivait sur le disque deux secondes plus
+        // tard, et l'infobulle restait pourtant vide jusqu'au prochain lancement. Ces onze
+        // icônes se comptent sur les doigts — retenter un décodage tant qu'il échoue ne coûte
+        // qu'un File.Exists négatif.
+        if (_cache.TryGetValue(key, out var cached)) return cached;
+
+        var img = Decode(key);
+        if (img != null) _cache[key] = img;
+        return img;
     }
 
+    // Décodage EN MÉMOIRE (cf. ImageLoader) : une icône corrompue ne doit pas rester verrouillée
+    // par l'affichage, sinon le service de téléchargement ne peut plus la remplacer.
     private static ImageSource? Decode(string key)
-    {
-        var path = SkillStatIconService.GetLocalPath(key);
-        if (path == null || !File.Exists(path)) return null;
-        try
-        {
-            var img = new BitmapImage();
-            img.BeginInit();
-            img.UriSource = new Uri(path);
-            img.DecodePixelWidth = 16;
-            img.CacheOption = BitmapCacheOption.OnLoad;
-            img.EndInit();
-            img.Freeze();
-            return img;
-        }
-        catch { return null; }
-    }
+        => ImageLoader.FromFile(SkillStatIconService.GetLocalPath(key));
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
         => throw new NotImplementedException();

@@ -30,30 +30,9 @@ public static class ProfessionIconService
         return Path.Combine(IconsDir, $"{profession}.png");
     }
 
-    public static async Task DownloadAllAsync(HttpClient? http = null)
-    {
-        Directory.CreateDirectory(IconsDir);
-        bool ownHttp = http == null;
-        http ??= new HttpClient();
-        http.DefaultRequestHeaders.UserAgent.TryParseAdd("Z-Codex/1.0");
+    private static IEnumerable<(string Url, string LocalPath)> Entries()
+        => WikiUrls.Select(kv => (kv.Value, GetLocalPath(kv.Key)!));
 
-        try
-        {
-            foreach (var (profession, url) in WikiUrls)
-            {
-                var localPath = GetLocalPath(profession)!;
-                if (File.Exists(localPath)) continue;
-                try
-                {
-                    var bytes = await http.GetByteArrayAsync(url);
-                    await File.WriteAllBytesAsync(localPath, bytes);
-                }
-                catch { /* non bloquant */ }
-            }
-        }
-        finally
-        {
-            if (ownHttp) http.Dispose();
-        }
-    }
+    public static Task<IconReport> DownloadAllAsync(HttpClient? http = null)
+        => IconDownloader.EnsureAsync(Entries(), http);
 }

@@ -45,6 +45,7 @@
     <sys:String x:Key="S.Menu.ExtrasUpdateSkills">Update skill database (wiki)</sys:String>
     <sys:String x:Key="S.Menu.ExtrasArmorCalc">Armor calculator</sys:String>
     <sys:String x:Key="S.Menu.ExtrasPvx">Download PvX builds...</sys:String>
+    <sys:String x:Key="S.Menu.ExtrasCheckIcons">Check icons (wiki)</sys:String>
     <sys:String x:Key="S.Menu.Window">Window</sys:String>
     <sys:String x:Key="S.Menu.Help">Help</sys:String>
     <sys:String x:Key="S.Menu.HelpHelp">Help and shortcuts...</sys:String>
@@ -220,6 +221,11 @@
     <sys:String x:Key="S.Msg.GwUpdateIgnore">Don't ask again until the next update</sys:String>
     <sys:String x:Key="S.Msg.CatalogIncompleteTitle">Incomplete catalogue</sys:String>
     <sys:String x:Key="S.Msg.CatalogIncomplete" xml:space="preserve">The skill download was interrupted.&#10;&#10;The catalogue is usable, but progression tables and icons are missing: the value ranges in tooltips will stay unresolved.&#10;&#10;Finish the download now?</sys:String>
+    <sys:String x:Key="S.Msg.IconsTitle">Icon check</sys:String>
+    <sys:String x:Key="S.Msg.IconsAllGood">All {0} interface icons are present and readable.</sys:String>
+    <sys:String x:Key="S.Msg.IconsRepaired" xml:space="preserve">{0} missing or unreadable icon(s) were downloaded again.&#10;Restart Z-Codex to show them everywhere.</sys:String>
+    <sys:String x:Key="S.Msg.IconsFailed" xml:space="preserve">{0} icon(s) could not be downloaded from the wiki.&#10;Check your internet connection, then try again.</sys:String>
+    <sys:String x:Key="S.Msg.IconsSkillsMissing" xml:space="preserve">In addition, {0} skill icon(s) are missing.&#10;Those are fetched by "Update skill database (wiki)".</sys:String>
     <sys:String x:Key="S.Msg.EquipProfConfirm" xml:space="preserve">This character wears {0} equipment.&#10;Changing the primary profession to {1} will clear their equipment.&#10;&#10;Continue?</sys:String>
     <sys:String x:Key="S.Msg.EquipProfTitle">Profession-bound equipment</sys:String>
     <sys:String x:Key="S.Msg.ImportErrorTitle">Import error</sys:String>

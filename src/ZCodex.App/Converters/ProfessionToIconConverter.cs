@@ -17,26 +17,21 @@ public class ProfessionToIconConverter : IValueConverter
     public object? Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
         if (value is not Profession profession || profession == Profession.None) return null;
-        return _cache.GetOrAdd(profession, Decode);
+
+        // Seuls les succès sont mémorisés : mettre un null en cache condamnerait l'icône pour
+        // toute la session, alors que le téléchargement de démarrage la pose peut-être à
+        // l'instant même (cf. StatIconConverter, même piège).
+        if (_cache.TryGetValue(profession, out var cached)) return cached;
+
+        var img = Decode(profession);
+        if (img != null) _cache[profession] = img;
+        return img;
     }
 
+    // Décodage EN MÉMOIRE (cf. ImageLoader) : même raison que dans StatIconConverter — une icône
+    // illisible verrouillée par l'affichage n'aurait plus jamais pu être réparée.
     private static ImageSource? Decode(Profession profession)
-    {
-        var path = ProfessionIconService.GetLocalPath(profession);
-        if (path == null || !File.Exists(path)) return null;
-        try
-        {
-            var img = new BitmapImage();
-            img.BeginInit();
-            img.UriSource = new Uri(path);
-            img.DecodePixelWidth = 24;
-            img.CacheOption = BitmapCacheOption.OnLoad;
-            img.EndInit();
-            img.Freeze();
-            return img;
-        }
-        catch { return null; }
-    }
+        => ImageLoader.FromFile(ProfessionIconService.GetLocalPath(profession));
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
         => throw new NotImplementedException();

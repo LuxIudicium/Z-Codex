@@ -16,28 +16,11 @@ public static class LifeStealIconService
     // flux.jpg et scrape_info.json.
     private static readonly string IconPath = AppPaths.In("life-draining.jpg");
 
-    /// <summary>Chemin local de l'icône, ou <c>null</c> tant qu'elle n'a pas été téléchargée
-    /// (les lignes de vol de vie s'affichent alors sans icône).</summary>
-    public static string? GetLocalPath() => File.Exists(IconPath) ? IconPath : null;
+    /// <summary>Chemin local de l'icône, ou <c>null</c> tant qu'elle n'a pas été téléchargée —
+    /// ou qu'elle est illisible (les lignes de vol de vie s'affichent alors sans icône).</summary>
+    public static string? GetLocalPath() => IconDownloader.IsUsable(IconPath) ? IconPath : null;
 
-    public static async Task DownloadAllAsync(HttpClient? http = null)
-    {
-        if (File.Exists(IconPath)) return;
-
-        bool ownHttp = http == null;
-        http ??= new HttpClient();
-        http.DefaultRequestHeaders.UserAgent.TryParseAdd("Z-Codex/1.0");
-
-        try
-        {
-            var bytes = await http.GetByteArrayAsync(
-                "https://wiki.guildwars.com/wiki/Special:FilePath/Life_Draining.jpg");
-            await File.WriteAllBytesAsync(IconPath, bytes);
-        }
-        catch { /* non bloquant */ }
-        finally
-        {
-            if (ownHttp) http.Dispose();
-        }
-    }
+    public static Task<IconReport> DownloadAllAsync(HttpClient? http = null)
+        => IconDownloader.EnsureAsync(
+            new[] { (IconDownloader.WikiUrl("Life_Draining.jpg"), IconPath) }, http);
 }

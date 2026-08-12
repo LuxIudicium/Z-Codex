@@ -39,31 +39,9 @@ public static class SkillStatIconService
         return Path.Combine(IconsDir, $"{key}.png");
     }
 
-    public static async Task DownloadAllAsync(HttpClient? http = null)
-    {
-        Directory.CreateDirectory(IconsDir);
-        bool ownHttp = http == null;
-        http ??= new HttpClient();
-        http.DefaultRequestHeaders.UserAgent.TryParseAdd("Z-Codex/1.0");
+    private static IEnumerable<(string Url, string LocalPath)> Entries()
+        => WikiFiles.Select(kv => (IconDownloader.WikiUrl(kv.Value), GetLocalPath(kv.Key)!));
 
-        try
-        {
-            foreach (var (key, file) in WikiFiles)
-            {
-                var localPath = GetLocalPath(key)!;
-                if (File.Exists(localPath)) continue;
-                try
-                {
-                    var url = $"https://wiki.guildwars.com/wiki/Special:FilePath/{file}";
-                    var bytes = await http.GetByteArrayAsync(url);
-                    await File.WriteAllBytesAsync(localPath, bytes);
-                }
-                catch { /* non bloquant */ }
-            }
-        }
-        finally
-        {
-            if (ownHttp) http.Dispose();
-        }
-    }
+    public static Task<IconReport> DownloadAllAsync(HttpClient? http = null)
+        => IconDownloader.EnsureAsync(Entries(), http);
 }

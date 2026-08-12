@@ -19,27 +19,11 @@ public static class FluxIconService
     // scrape_info.json.
     private static readonly string IconPath = AppPaths.In("flux.jpg");
 
-    /// <summary>Chemin local de l'icône, ou <c>null</c> tant qu'elle n'a pas été téléchargée.</summary>
-    public static string? GetLocalPath() => File.Exists(IconPath) ? IconPath : null;
+    /// <summary>Chemin local de l'icône, ou <c>null</c> tant qu'elle n'a pas été téléchargée —
+    /// ou qu'elle est illisible, un fichier tronqué ne valant pas mieux qu'un fichier absent.</summary>
+    public static string? GetLocalPath() => IconDownloader.IsUsable(IconPath) ? IconPath : null;
 
-    public static async Task DownloadAllAsync(HttpClient? http = null)
-    {
-        if (File.Exists(IconPath)) return;
-
-        bool ownHttp = http == null;
-        http ??= new HttpClient();
-        http.DefaultRequestHeaders.UserAgent.TryParseAdd("Z-Codex/1.0");
-
-        try
-        {
-            var bytes = await http.GetByteArrayAsync(
-                "https://wiki.guildwars.com/wiki/Special:FilePath/Flux.jpg");
-            await File.WriteAllBytesAsync(IconPath, bytes);
-        }
-        catch { /* non bloquant */ }
-        finally
-        {
-            if (ownHttp) http.Dispose();
-        }
-    }
+    public static Task<IconReport> DownloadAllAsync(HttpClient? http = null)
+        => IconDownloader.EnsureAsync(
+            new[] { (IconDownloader.WikiUrl("Flux.jpg"), IconPath) }, http);
 }
