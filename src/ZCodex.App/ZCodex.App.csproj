@@ -21,7 +21,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
-    <Version>1.0.0</Version>
+    <Version>1.1.0</Version>
     <!-- Dès que le dossier est un dépôt git, le SDK suffixe la version informationnelle du SHA
          du commit (« 1.0.0+b46e345… »), et c'est elle que Windows expose en ProductVersion.
          L'installateur LIT ce champ dans l'exe publié pour en tirer son numéro de version : il
