@@ -26,6 +26,8 @@
     <sys:String x:Key="S.Menu.EditRedo">Redo</sys:String>
     <sys:String x:Key="S.Menu.View">View</sys:String>
     <sys:String x:Key="S.Menu.ViewShowAttrs">Show attributes</sys:String>
+    <sys:String x:Key="S.Menu.ViewWheelSelect">Wheel: select the character first</sys:String>
+    <sys:String x:Key="S.Menu.ViewWheelSelectTip">Clicking a character activates it (blue edge): the wheel only sets attributes there. Everywhere else it scrolls the view.</sys:String>
     <sys:String x:Key="S.Menu.ViewPreviewAttrs">Show attributes in the preview</sys:String>
     <sys:String x:Key="S.Menu.ViewConditions">Show conditions</sys:String>
     <sys:String x:Key="S.Menu.ViewArmorDamage">Show armor-based damage</sys:String>

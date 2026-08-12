@@ -74,6 +74,16 @@ public class MainViewModel : ViewModelBase
         set => SetField(ref _showConditions, value);
     }
 
+    // Toggle du menu View (persisté settings.json) : dans le teambuild, la molette ne règle les
+    // caractéristiques que sur le personnage cliqué. Bindé aussi par le XAML pour n'allumer le
+    // liseré de « carte armée » que lorsque la sélection compte vraiment.
+    private bool _wheelNeedsSelection;
+    public bool WheelNeedsSelection
+    {
+        get => _wheelNeedsSelection;
+        set => SetField(ref _wheelNeedsSelection, value);
+    }
+
     // Toggle du menu View (persisté settings.json) : afficher/masquer la BARRE des rituels de la
     // nature (teambuild + éditeur). Défaut affiché. Gate la visibilité, indépendant de HasItems.
     private bool _showNatureRituals = true;

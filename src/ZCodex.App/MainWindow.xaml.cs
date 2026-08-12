@@ -62,6 +62,7 @@ public partial class MainWindow : Window
         _vm.ShowAllNatureRituals = _settings.ShowAllNatureRituals;
         _vm.ShowNatureRituals = _settings.ShowNatureRituals;
         _vm.IconSize = _settings.IconSize;
+        _vm.WheelNeedsSelection = _settings.WheelNeedsSelection;
         _vm.ArmorCalc.LoadSettings(_settings);  // profils du calculateur d'armure (chantier 14)
         ArmorDamageDisplay.Enabled = _settings.ShowArmorDamage;
         // Migration de l'ancien AL custom unique vers la liste (max 8, bornée au chargement :
@@ -72,6 +73,12 @@ public partial class MainWindow : Window
         ArmorDamageDisplay.CharacterLevel = Math.Clamp(_settings.CharacterLevel, 1, 20);
         ArmorDamageDisplay.TargetLevel = Math.Clamp(_settings.TargetLevel, 1, 40);
         DataContext = _vm;
+
+        // Un cran de molette absorbé par le défilement natif ne remonte pas jusqu'aux handlers
+        // ordinaires : handledEventsToo est le seul moyen d'apprendre, après coup, qu'il a fait
+        // défiler la grille plutôt que régler une caractéristique.
+        TeamScroll.AddHandler(MouseWheelEvent, new MouseWheelEventHandler(TeamScroll_MouseWheel),
+                              handledEventsToo: true);
 
         _attrWheelTooltipTimer.Tick += (_, _) =>
         {
@@ -1278,6 +1285,7 @@ public partial class MainWindow : Window
         IconsMediumMenuItem.IsChecked    = _vm.IconSize == IconSizeMode.Medium;
         IconsSmallMenuItem.IsChecked     = _vm.IconSize == IconSizeMode.Small;
         ShowConditionsMenuItem.IsChecked = _vm.ShowConditions;
+        WheelNeedsSelectionMenuItem.IsChecked = _vm.WheelNeedsSelection;
         ShowNatureRitualBandMenuItem.IsChecked = _vm.ShowNatureRituals;
         ShowAllNatureRitualsMenuItem.IsChecked = _vm.ShowAllNatureRituals;
         ShowArmorDamageMenuItem.IsChecked = ArmorDamageDisplay.Enabled;
@@ -1475,6 +1483,15 @@ public partial class MainWindow : Window
     {
         _vm.ShowConditions = !_vm.ShowConditions;
         _settings.ShowConditions = _vm.ShowConditions;
+        _settings.Save();
+    }
+
+    // Molette du teambuild : n'autoriser le réglage des caractéristiques que sur le personnage
+    // cliqué. Décoché = geste d'origine (paw·ned²), le verrou de salve restant actif dans les deux cas.
+    private void WheelNeedsSelectionMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        _vm.WheelNeedsSelection = !_vm.WheelNeedsSelection;
+        _settings.WheelNeedsSelection = _vm.WheelNeedsSelection;
         _settings.Save();
     }
 
@@ -3208,16 +3225,90 @@ public partial class MainWindow : Window
             row.ToggleComparison();
     }
 
+    // ── Molette : défiler ou régler ? ─────────────────────────────────────────────────────
+    // Dans la grille du teambuild, le contenu défile SOUS un curseur immobile : après un cran,
+    // une compétence se retrouve souvent sous la souris et le cran suivant réglerait sa
+    // caractéristique sans qu'on l'ait demandé. Le PREMIER cran d'une salve tranche donc pour
+    // toute la salve, tant que les crans s'enchaînent à moins de WheelGestureMs d'intervalle.
+    private const int WheelGestureMs = 400;
+    private int  _wheelStamp = -1;   // horodatage du cran en cours de traversée de la grille
+    private int  _wheelTicks;        // date du dernier cran vu dans la grille (fin de salve)
+    private bool _wheelDecided;      // la salve en cours a-t-elle déjà été tranchée ?
+    private bool _wheelScrolls;      // ... et si oui, en faveur du défilement ?
+    private bool _wheelAdjusted;     // ce cran-ci a effectivement modifié le build
+
+    // Tunnel du ScrollViewer : il précède les slots et les lignes d'attributs, et voit donc AUSSI
+    // les crans qu'aucun d'eux ne recevra (curseur sur une marge, sur le panneau du personnage…).
+    private void TeamScroll_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        _wheelStamp = e.Timestamp;
+        if (Environment.TickCount - _wheelTicks >= WheelGestureMs) _wheelDecided = false;
+        _wheelTicks    = Environment.TickCount;
+        _wheelAdjusted = false;
+    }
+
+    // Remontée sur le même ScrollViewer, posée en handledEventsToo (cf. constructeur) : le
+    // défilement natif marque l'événement traité avant nous. Le premier cran que personne n'a
+    // converti en réglage fixe la salve en défilement — les compétences qui passeront ensuite
+    // sous la souris ne seront plus touchées.
+    private void TeamScroll_MouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (e.Timestamp != _wheelStamp || _wheelDecided) return;
+        _wheelScrolls = !_wheelAdjusted;
+        _wheelDecided = true;
+    }
+
+    // Garde en tête de tout handler de molette qui modifie une caractéristique. Hors grille du
+    // teambuild (éditeur de build, grille de recherche) le tunnel n'a pas horodaté ce cran :
+    // le comportement d'origine y est conservé tel quel.
+    private bool WheelMayAdjust(MouseWheelEventArgs e, object sender)
+    {
+        if (e.Timestamp != _wheelStamp) return true;
+        if (_wheelDecided && _wheelScrolls) return false;
+        return !_vm.WheelNeedsSelection || IsArmedCard(sender);
+    }
+
+    // Carte « armée » = le personnage désigné par le dernier clic (cf. SelectForWheel). Le focus
+    // clavier a été essayé d'abord et ne convient pas : il n'atterrit pas dans la carte selon
+    // l'endroit cliqué, la molette ne réglait alors plus jamais rien.
+    private bool IsArmedCard(object sender) =>
+        FindCharacterVm(sender as DependencyObject) is { } card
+        && ReferenceEquals(card, _vm.ActiveTeamBuild?.WheelSelection);
+
+    // Applique un réglage et dit s'il a changé quelque chose : un cran sans effet (plafond ou
+    // plancher déjà atteint) doit repartir au défilement plutôt que d'être avalé en silence.
+    private static bool Changes(AttributeRowViewModel row, Action<AttributeRowViewModel> adjust)
+    {
+        int points = row.Points, bonus = row.BonusPoints;
+        adjust(row);
+        return row.Points != points || row.BonusPoints != bonus;
+    }
+
+    // Clic n'importe où dans la carte : ce personnage devient celui que la molette peut régler.
+    // En tunnel (Preview) — les boutons et icônes du panneau consomment le clic avant la remontée,
+    // cliquer dessus doit malgré tout sélectionner le personnage.
+    private void CharacterCard_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is CharacterSlotViewModel character)
+            _vm.ActiveTeamBuild?.SelectForWheel(character);
+    }
+
     private void AttrRow_MouseWheel(object sender, MouseWheelEventArgs e)
     {
-        if (((FrameworkElement)sender).Tag is AttributeRowViewModel row)
-        {
-            row.Adjust(e.Delta > 0 ? 1 : -1);
-            e.Handled = true;
-        }
+        if (!WheelMayAdjust(e, sender)) return;
+        if (((FrameworkElement)sender).Tag is AttributeRowViewModel row
+            && Changes(row, r => r.Adjust(e.Delta > 0 ? 1 : -1)))
+            _wheelAdjusted = e.Handled = true;
     }
 
     private void SkillSlot_MouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (!WheelMayAdjust(e, sender)) return;
+        SkillSlotWheelAdjust(sender, e);
+        _wheelAdjusted = e.Handled;
+    }
+
+    private void SkillSlotWheelAdjust(object sender, MouseWheelEventArgs e)
     {
         // La molette ajuste le niveau de caractéristique même quand le panneau d'attributs est replié.
         var character = FindCharacterVm(sender as DependencyObject);
@@ -3236,8 +3327,7 @@ public partial class MainWindow : Window
             // Alt : saute au hard breakpoint suivant/précédent de la caractéristique de la skill
             // survolée. Alt seul = niveau de base (0–12) ; Alt+Shift = niveau effectif (base+bonus).
             // Rang de titre = niveau 0–10, sans mode effectif (pas de bonus).
-            HandleBreakpointWheel(character, slot, delta, shift);
-            e.Handled = true;
+            e.Handled = HandleBreakpointWheel(character, slot, delta, shift);
             return;
         }
 
@@ -3245,26 +3335,26 @@ public partial class MainWindow : Window
         {
             // Ctrl+Shift : bonus du niveau de l'attribut primaire
             var row = character.PrimaryAttributeRows.FirstOrDefault(r => r.IsPrimary);
-            if (row != null) { row.AdjustBonus(delta); e.Handled = true; }
+            if (row != null && Changes(row, r => r.AdjustBonus(delta))) e.Handled = true;
         }
         else if (ctrl)
         {
             // Ctrl : niveau de l'attribut primaire
             var row = character.PrimaryAttributeRows.FirstOrDefault(r => r.IsPrimary);
-            if (row != null) { AdjustLevelWithOverflow(row, delta); e.Handled = true; }
+            if (row != null && Changes(row, r => AdjustLevelWithOverflow(r, delta))) e.Handled = true;
         }
         else if (shift && slot.Skill?.Attribute is string attrNameBonus)
         {
             // Shift : bonus du niveau de la caractéristique associée à la skill survolée
             // (rang de titre = MaxBonus 0 → no-op, cohérent : pas de rune sur un titre).
             var row = character.FindAttributeRow(attrNameBonus);
-            if (row != null) { row.AdjustBonus(delta); e.Handled = true; }
+            if (row != null && Changes(row, r => r.AdjustBonus(delta))) e.Handled = true;
         }
         else if (slot.Skill?.Attribute is string attrName)
         {
             // Sans modificateur : niveau de la caractéristique associée à la skill survolée
             var row = character.FindAttributeRow(attrName);
-            if (row != null) { AdjustLevelWithOverflow(row, delta); e.Handled = true; }
+            if (row != null && Changes(row, r => AdjustLevelWithOverflow(r, delta))) e.Handled = true;
         }
     }
 
@@ -3286,11 +3376,11 @@ public partial class MainWindow : Window
 
     // Alt+molette : aligne le niveau de la caractéristique de la skill sur son hard breakpoint
     // suivant (delta>0) ou précédent (delta<0). Sans breakpoint exploitable → ne fait rien.
-    private static void HandleBreakpointWheel(CharacterSlotViewModel character, SkillSlotViewModel slot, int delta, bool shift)
+    private static bool HandleBreakpointWheel(CharacterSlotViewModel character, SkillSlotViewModel slot, int delta, bool shift)
     {
-        if (slot.Skill is not { } skill || skill.Attribute is not string attr) return;
+        if (slot.Skill is not { } skill || skill.Attribute is not string attr) return false;
         var row = character.FindAttributeRow(attr);
-        if (row is null) return;
+        if (row is null) return false;
 
         bool isTitle = GwAttributeData.IsTitleRank(attr);
         bool effective = shift && !isTitle;              // Alt+Shift = niveau effectif (hors titres)
@@ -3298,13 +3388,16 @@ public partial class MainWindow : Window
         int snapMax = isTitle ? SkillBreakpoints.RankMax(skill.Progression) : (effective ? 20 : 12);
 
         var bps = SkillBreakpoints.Compute(skill.Progression, snapMax, BreakpointOverrides.For(skill.Id));
-        if (bps.Count == 0) return;
+        if (bps.Count == 0) return false;
 
         int current = effective ? row.EffectiveLevel : row.Points;
-        if (SkillBreakpoints.Snap(bps, current, delta) is not int target) return;
+        if (SkillBreakpoints.Snap(bps, current, delta) is not int target) return false;
 
-        if (effective) SetEffectiveLevel(row, target);
-        else           row.Points = target;             // setter borne à [0, MaxPoints]
+        return Changes(row, r =>
+        {
+            if (effective) SetEffectiveLevel(r, target);
+            else           r.Points = target;           // setter borne à [0, MaxPoints]
+        });
     }
 
     // Pose un niveau effectif visé en remplissant d'abord la base puis le bonus (modèle de débordement).

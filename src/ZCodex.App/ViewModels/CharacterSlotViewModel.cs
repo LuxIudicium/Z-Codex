@@ -91,6 +91,13 @@ public class CharacterSlotViewModel : ViewModelBase
     // Coché pendant le mode verrouillage (transient, hors dirty/persistance).
     public bool IsSelectedForLock { get => _isSelectedForLock; set => SetField(ref _isSelectedForLock, value); }
 
+    // Sélection « molette » (Affichage ▸ Molette : sélectionner le personnage d'abord) : seul le
+    // personnage cliqué accepte le réglage de ses caractéristiques à la molette. Exclusive, pilotée
+    // par TeamBuildViewModel.SelectForWheel, et tenue HORS du dirty tracking (cf. OnChildChanged) :
+    // un simple clic ne doit ni salir le build ni entrer dans l'historique d'undo.
+    private bool _isWheelSelected;
+    public bool IsWheelSelected { get => _isWheelSelected; set => SetField(ref _isWheelSelected, value); }
+
     // Une cellule par cadenas du build (rempli par TeamBuildViewModel.RebuildLockCells), pour aligner
     // verticalement les barres de même indice. Membre = barre colorée, non-membre = espace vide.
     public ObservableCollection<LockCellViewModel> LockCells { get; } = new();

@@ -49,6 +49,11 @@ public class AppSettings
     // Section « Dégâts selon l'armure » dans l'infobulle de skill (menu Affichage). Visible par défaut.
     public bool ShowArmorDamage { get; set; } = true;
 
+    // Molette dans la grille du teambuild : exiger un clic sur le personnage avant de régler ses
+    // caractéristiques (menu Affichage). Décoché par défaut → geste d'origine, celui de paw·ned².
+    // Indépendant du verrou de salve, lui toujours actif (cf. WheelMayAdjust dans MainWindow).
+    public bool WheelNeedsSelection { get; set; } = false;
+
     // Niveau d'armure personnalisé unique (héritage pré-multi) : migré dans CustomArmorLevels
     // au chargement, remis à null à la prochaine sauvegarde de la modale.
     public int? CustomArmorLevel { get; set; }

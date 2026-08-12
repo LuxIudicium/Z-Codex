@@ -374,8 +374,35 @@
         </Style>
 
         <DataTemplate x:Key="CharacterSlotTemplate">
-            <Border BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="0,0,0,1" Background="{DynamicResource ContentBackgroundBrush}" Margin="0,0,0,1"
-                    Tag="{Binding}" ContextMenuOpening="CharLeftPanel_ContextMenuOpening">
+            <Border Tag="{Binding}" ContextMenuOpening="CharLeftPanel_ContextMenuOpening"
+                    PreviewMouseLeftButtonDown="CharacterCard_MouseLeftButtonDown">
+                <!-- Fond, liseré et marges passent par le Style : posés en attributs, ils
+                     l'emporteraient sur le déclencheur ci-dessous (valeur locale > style) et le
+                     personnage sélectionné ne se verrait jamais. -->
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Background" Value="{DynamicResource ContentBackgroundBrush}"/>
+                        <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}"/>
+                        <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                        <Setter Property="Margin" Value="0,0,0,1"/>
+                        <Style.Triggers>
+                            <!-- Personnage sélectionné pour la molette : liseré d'accent à gauche, dont
+                                 les 3 px sont repris en marge négative pour que le contenu de la carte
+                                 ne se décale pas. Affiché seulement quand le toggle l'exige, sinon on
+                                 signalerait un état sans le moindre effet. -->
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding DataContext.WheelNeedsSelection, RelativeSource={RelativeSource AncestorType=Window}}" Value="True"/>
+                                    <Condition Binding="{Binding IsWheelSelected}" Value="True"/>
+                                </MultiDataTrigger.Conditions>
+                                <Setter Property="Background" Value="{DynamicResource HoverBackgroundBrush}"/>
+                                <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                <Setter Property="BorderThickness" Value="3,0,0,1"/>
+                                <Setter Property="Margin" Value="-3,0,0,1"/>
+                            </MultiDataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
                 <Border.ContextMenu>
                     <!-- Ordre : tout ce qui concerne LE personnage cliqué d'abord, les deux actions
                          de niveau team build en dernier. -->
@@ -960,6 +987,11 @@
             <MenuItem Header="{DynamicResource S.Menu.View}" SubmenuOpened="ViewMenu_SubmenuOpened">
                 <MenuItem x:Name="ShowAttributesMenuItem" Header="{DynamicResource S.Menu.ViewShowAttrs}"
                           IsCheckable="True" Click="ShowAttributesMenuItem_Click"/>
+                <!-- Molette du teambuild : n'autoriser le réglage des caractéristiques que sur le
+                     personnage cliqué. Décoché par défaut = geste paw·ned². Persisté settings.json. -->
+                <MenuItem x:Name="WheelNeedsSelectionMenuItem" Header="{DynamicResource S.Menu.ViewWheelSelect}"
+                          ToolTip="{DynamicResource S.Menu.ViewWheelSelectTip}"
+                          IsCheckable="True" Click="WheelNeedsSelectionMenuItem_Click"/>
                 <MenuItem x:Name="ShowPreviewAttributesMenuItem"
                           Header="{DynamicResource S.Menu.ViewPreviewAttrs}"
                           IsCheckable="True" Click="ShowPreviewAttributesMenuItem_Click"/>
@@ -2352,7 +2384,11 @@
                     </DockPanel>
                 </Border>
 
-                <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto"
+                <!-- PreviewMouseWheel : premier informé de CHAQUE cran passant dans la grille, avant
+                     les slots et les lignes d'attributs. C'est le point de passage unique sur lequel
+                     repose l'arbitrage « défiler ou régler » (cf. WheelMayAdjust). -->
+                <ScrollViewer x:Name="TeamScroll" Grid.Row="2" VerticalScrollBarVisibility="Auto"
+                              PreviewMouseWheel="TeamScroll_PreviewMouseWheel"
                               HorizontalScrollBarVisibility="Auto" Background="{DynamicResource ContentBackgroundBrush}">
                     <ItemsControl x:Name="CharacterGrid"
                                   ItemsSource="{Binding ActiveTeamBuild.VisibleRows}"

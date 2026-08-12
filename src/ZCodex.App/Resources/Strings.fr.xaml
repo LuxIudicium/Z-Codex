@@ -29,6 +29,8 @@
     <sys:String x:Key="S.Menu.EditRedo">Rétablir</sys:String>
     <sys:String x:Key="S.Menu.View">Affichage</sys:String>
     <sys:String x:Key="S.Menu.ViewShowAttrs">Afficher les attributs</sys:String>
+    <sys:String x:Key="S.Menu.ViewWheelSelect">Molette : sélectionner le personnage d'abord</sys:String>
+    <sys:String x:Key="S.Menu.ViewWheelSelectTip">Un clic sur un personnage l'active (liseré bleu) : la molette n'y règle les caractéristiques que là. Partout ailleurs, elle fait défiler la vue.</sys:String>
     <sys:String x:Key="S.Menu.ViewPreviewAttrs">Afficher les caractéristiques dans la preview</sys:String>
     <sys:String x:Key="S.Menu.ViewConditions">Afficher les conditions</sys:String>
     <sys:String x:Key="S.Menu.ViewArmorDamage">Afficher les dégâts selon l'armure</sys:String>

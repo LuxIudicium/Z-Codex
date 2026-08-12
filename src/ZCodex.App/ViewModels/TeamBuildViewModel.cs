@@ -597,6 +597,22 @@ public class TeamBuildViewModel : ViewModelBase, IRenamableTab
             c.RefreshViolations();
     }
 
+    // ── Sélection « molette » ─────────────────────────────────────────────────
+    // Le personnage sur lequel la molette a le droit de régler les caractéristiques quand le toggle
+    // Affichage ▸ « Molette : sélectionner le personnage d'abord » est coché. Un clic n'importe où
+    // dans la carte le désigne (MainWindow.CharacterCard_MouseLeftButtonDown).
+
+    private CharacterSlotViewModel? _wheelSelection;
+    public CharacterSlotViewModel? WheelSelection => _wheelSelection;
+
+    public void SelectForWheel(CharacterSlotViewModel? character)
+    {
+        if (ReferenceEquals(_wheelSelection, character)) return;
+        if (_wheelSelection != null) _wheelSelection.IsWheelSelected = false;
+        _wheelSelection = character;
+        if (_wheelSelection != null) _wheelSelection.IsWheelSelected = true;
+    }
+
     // ── Dirty tracking ────────────────────────────────────────────────────────
 
     public void BeginTracking()
@@ -787,6 +803,7 @@ public class TeamBuildViewModel : ViewModelBase, IRenamableTab
                            or nameof(CharacterSlotViewModel.HasVariants)
                            or nameof(CharacterSlotViewModel.IsExpanded)
                            or nameof(CharacterSlotViewModel.IsSelectedForLock)
+                           or nameof(CharacterSlotViewModel.IsWheelSelected)
                            // UI-only, levé DEPUIS SpikeViewModel.Recalculate (sync de la rangée
                            // d'icônes buffs) → doit être hors dirty, sinon boucle Mutated/recalcul.
                            or nameof(CharacterSlotViewModel.HasSpikeBuffToggles)
