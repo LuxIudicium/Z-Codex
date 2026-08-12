@@ -83,6 +83,7 @@
                                                             <ctrl:SkillTooltipControl Skill="{Binding Skill}"
                                                                                       FooterOverride="{Binding Footer}"
                                                                                       DescriptionOverride="{Binding Description}"
+                                                                                      AttributeRank="{Binding AttributeRank}"
                                                                                       WeaponMastery="{Binding WeaponMastery}"
                                                                                       WeaponMasteryRank="{Binding WeaponMasteryRank}"
                                                                                       StrengthRank="{Binding StrengthRank}"

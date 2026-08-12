@@ -23,6 +23,7 @@
                                       FooterOverride="{Binding Footer}"
                                       DescriptionOverride="{Binding Description}"
                                       DisplayDescriptionOverride="{Binding DisplayDescription}"
+                                      AttributeRank="{Binding AttributeRank}"
                                       WeaponMastery="{Binding WeaponMastery}"
                                       WeaponMasteryRank="{Binding WeaponMasteryRank}"
                                       StrengthRank="{Binding StrengthRank}"
@@ -96,7 +97,8 @@
                                         <StackPanel>
                                             <ctrl:SkillTooltipControl Skill="{Binding Skill}"
                                                                       DescriptionOverride="{Binding DescriptionOverride}"
-                                                                      DisplayDescriptionOverride="{Binding DisplayDescriptionOverride}"/>
+                                                                      DisplayDescriptionOverride="{Binding DisplayDescriptionOverride}"
+                                                                      AttributeRank="{Binding AttributeRank}"/>
                                             <TextBlock Text="{Binding ClickNote}" FontSize="10" FontStyle="Italic"
                                                        Foreground="{DynamicResource TextSecondaryBrush}"
                                                        TextWrapping="Wrap" Margin="6,2,6,4"/>
@@ -688,6 +690,7 @@
                                                                       FooterOverride="{Binding Footer}"
                                                                       DescriptionOverride="{Binding Description}"
                                                                       DisplayDescriptionOverride="{Binding DisplayDescription}"
+                                                                      AttributeRank="{Binding AttributeRank}"
                                                                       WeaponMastery="{Binding WeaponMastery}"
                                                                       WeaponMasteryRank="{Binding WeaponMasteryRank}"
                                                                       StrengthRank="{Binding StrengthRank}"

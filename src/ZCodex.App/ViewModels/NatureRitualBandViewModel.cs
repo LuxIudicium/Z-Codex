@@ -70,6 +70,11 @@ public class NatureRitualIndicatorViewModel : ViewModelBase
     // Rang affiché (badge) sur l'icône : le rang de simulation courant du rituel concerné.
     public int Rank => IsTranquility ? _env.TranquilityRank : _env.RoaringWindsRank;
 
+    // Rang alimentant la mention de caractéristique du tooltip : suit DescriptionOverride ci-dessus
+    // (rang de simulation pour les 2 rituels à rang, plage pour les 6 autres — dont la description
+    // n'est pas résolue non plus).
+    public int? AttributeRank => HasRank ? Rank : null;
+
     // Le bandeau est reconstruit à chaque changement d'environnement, donc IsActive/Rank/tooltip
     // sont relus à neuf — pas besoin de notifier ici.
     public void Toggle() => _env.Toggle(Ritual);

@@ -128,6 +128,12 @@ public static class GwAttributeData
     // Entrée méta du panneau caractéristiques : aucune restriction d'attribut.
     public const string AllAttributesLabel = "All attributes";
 
+    // Valeur d'attribut des compétences qui n'en ont aucune (78 en base) : une VRAIE valeur stockée,
+    // jamais une chaîne vide — d'où le test par nom. La garde sur le vide couvre un scrape futur.
+    public const string NoAttributeName = "No Attribute";
+    public static bool IsNoAttribute(string? name) =>
+        string.IsNullOrWhiteSpace(name) || name.Equals(NoAttributeName, StringComparison.OrdinalIgnoreCase);
+
     // Regroupements campagne du panneau PvE-only. Le champ Campaign des skills cross-profession
     // (Profession.None) est vide en base, d'où le mapping explicite rang de titre → campagne.
     public const string FactionsPveCategory = "Factions PvE only skills";
@@ -194,7 +200,7 @@ public static class GwAttributeData
         foreach (var a in All) d[a.Name] = a.NameFr;
 
         d[AllAttributesLabel] = "Toutes les caractéristiques";
-        d["No Attribute"]     = "Sans caractéristique";   // confirmé Philippe 25/07/2026
+        d[NoAttributeName]    = "Sans caractéristique";   // confirmé Philippe 25/07/2026
 
         // Rangs de titre (traités comme des caractéristiques dans le panneau PvE-only).
         // Sunspear/Lightbringer/Ebon Vanguard confirmés Philippe 21/07 ; Allégeance/Asura/Deldrimor/Norn à confirmer.

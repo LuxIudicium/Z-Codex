@@ -102,8 +102,10 @@
             <TextBlock Text="{Binding TypeLine, ElementName=Root}"
                        FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,1,0,0"/>
 
-            <!-- Description : variables résolues (build) ou plages vertes (catalogue) -->
+            <!-- Description : variables résolues (build) ou plages vertes (catalogue), suivie de la
+                 mention de caractéristique en gris clair (Suffix : hors surlignage, cf. SkillMarkup). -->
             <TextBlock beh:SkillMarkup.Text="{Binding DescriptionText, ElementName=Root}"
+                       beh:SkillMarkup.Suffix="{Binding AttributeLine, ElementName=Root}"
                        TextWrapping="Wrap" FontSize="12" Margin="0,5,0,0"/>
 
             <!-- Durée d'enchantement modifiée (Lot D) : of Enchanting / Blessed Aura / Extend /

@@ -646,6 +646,7 @@
                                                     <StackPanel.ToolTip>
                                                         <ctrl:SkillTooltipControl Skill="{Binding Skill}"
                                                                                   DescriptionOverride="{Binding ResolvedDescription}"
+                                                                                  AttributeRank="{Binding Rank}"
                                                                                   WeaponMasteryRank="{Binding WeaponMasteryRank}"/>
                                                     </StackPanel.ToolTip>
                                                     <Image Width="20" Height="20" Margin="0,0,5,0"

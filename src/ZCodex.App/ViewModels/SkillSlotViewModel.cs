@@ -241,6 +241,12 @@ public class SkillSlotViewModel : ViewModelBase
     // Variante AFFICHÉE en mode FR (null → l'infobulle retombe sur Description, EN).
     public string? DisplayDescription => Owner is { } o && _skill is { } s ? o.ResolveDisplayDescription(s) : null;
 
+    // Rang du perso dans la caractéristique de CETTE compétence, pour la mention de fin
+    // d'infobulle. C'est le rang qui a servi à résoudre Description (même appel) : les deux restent
+    // donc cohérents, y compris quand il est null (caractéristique hors du build → plage des deux
+    // côtés).
+    public int? AttributeRank => Owner is { } o && _skill is { } s ? o.AttributeLevel(s.Attribute) : null;
+
     // Rang effectif de la maîtrise de l'ARME du type d'attaque (ex : Précision pour un Bow Attack
     // lié à Expertise — c'est la réquisition de l'arme qui scale les dégâts). Null = pas une
     // attaque d'arme, ou perso sans cette maîtrise → pas de table d'arme dans l'infobulle.
@@ -305,6 +311,7 @@ public class SkillSlotViewModel : ViewModelBase
         OnPropertyChanged(nameof(Footer));
         OnPropertyChanged(nameof(Description));
         OnPropertyChanged(nameof(DisplayDescription));
+        OnPropertyChanged(nameof(AttributeRank));
         OnPropertyChanged(nameof(WeaponMasteryRank));
         OnPropertyChanged(nameof(StrengthRank));
         OnPropertyChanged(nameof(CriticalStrikesRank));

@@ -358,6 +358,30 @@ public partial class SkillTooltipControl : UserControl
         private set => SetValue(DescriptionTextProperty, value);
     }
 
+    // ── Mention de caractéristique (collée à la fin de la description) ────────
+    // Rang du perso dans la caractéristique de la compétence. Null = rang inconnu (catalogues,
+    // ou attribut d'une profession absente du build) → la mention affiche la plage. Fournie par
+    // les contextes qui résolvent AUSSI la description, pour que les deux racontent la même chose.
+    public static readonly DependencyProperty AttributeRankProperty =
+        DependencyProperty.Register(nameof(AttributeRank), typeof(int?), typeof(SkillTooltipControl),
+            new PropertyMetadata(null, OnInputsChanged));
+
+    public int? AttributeRank
+    {
+        get => (int?)GetValue(AttributeRankProperty);
+        set => SetValue(AttributeRankProperty, value);
+    }
+
+    public static readonly DependencyProperty AttributeLineProperty =
+        DependencyProperty.Register(nameof(AttributeLine), typeof(string), typeof(SkillTooltipControl),
+            new PropertyMetadata(string.Empty));
+
+    public string AttributeLine
+    {
+        get => (string)GetValue(AttributeLineProperty);
+        private set => SetValue(AttributeLineProperty, value);
+    }
+
     // ── Avertissement de repli FR→EN (cf. UpdateFrWarning) ────────────────────
     public static readonly DependencyProperty FrWarningTextProperty =
         DependencyProperty.Register(nameof(FrWarningText), typeof(string), typeof(SkillTooltipControl),
@@ -630,7 +654,32 @@ public partial class SkillTooltipControl : UserControl
             ?? DescriptionOverride
             ?? (Skill is { } s ? s.DisplayDescriptionBody : string.Empty);
 
+        UpdateAttributeLine();
         UpdateFrWarning();
+    }
+
+    // Mention « (Caract. : 0 Force) » collée à la fin de la description, en gris clair.
+    // Le rang vient du contexte : valeur du perso si fournie (AttributeRank), sinon la PLAGE de
+    // l'échelle — 0...12...15 pour une caractéristique, 0...10 pour un rang de titre (les
+    // compétences PvE progressent sur 11 rangs, pas sur l'échelle d'attribut).
+    // Libellés FR = ceux des filtres du catalogue (GwAttributeData) et NON Skill.AttributeFr,
+    // scrapé du wiki FR : ce dernier est vide sur ~la moitié des compétences et carrément faux sur
+    // d'autres (des « No Attribute » étiquetées « Magie de domination », Mysticisme → « Maîtrise
+    // de la faux »). Décision Philippe 12/08/2026.
+    private void UpdateAttributeLine()
+    {
+        if (Skill is not { } s) { AttributeLine = string.Empty; return; }
+
+        string label = L("Caract. : ", "Attribute: ");
+        if (GwAttributeData.IsNoAttribute(s.Attribute))
+        {
+            AttributeLine = $"({label}{L("Aucune", "None")})";
+            return;
+        }
+
+        string rank = AttributeRank?.ToString()
+            ?? (GwAttributeData.IsTitleRank(s.Attribute) ? "0...10" : "0...12...15");
+        AttributeLine = $"({label}{rank} {GwAttributeData.DisplayName(s.Attribute)})";
     }
 
     // Avertit quand le texte affiché n'est pas le français attendu : sans ce repère, l'utilisateur

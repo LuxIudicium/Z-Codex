@@ -7,8 +7,9 @@ using System.Windows.Documents;
 namespace ZCodex.App.Behaviors;
 
 /// <summary>
-/// Propriété attachée qui remplit les Inlines d'un TextBlock à partir d'un texte de
-/// description GW1, en mettant en gras la valeur : vert (comme le wiki) pour une plage de
+/// Propriétés attachées qui remplissent les Inlines d'un TextBlock à partir d'un texte de
+/// description GW1 (<see cref="TextProperty"/>, surligné) suivi d'un fragment gris clair non
+/// surligné (<see cref="SuffixProperty"/>), en mettant en gras la valeur : vert (comme le wiki) pour une plage de
 /// variables (ex: "5...13...15") ou une valeur résolue (<see cref="SkillProgression.Mark"/>),
 /// couleur de flux pour une valeur résolue à un rang relevé par un flux (<see cref="SkillProgression.MarkFlux"/>).
 /// </summary>
@@ -32,25 +33,52 @@ public static class SkillMarkup
     public static readonly DependencyProperty TextProperty =
         DependencyProperty.RegisterAttached(
             "Text", typeof(string), typeof(SkillMarkup),
-            new PropertyMetadata(string.Empty, OnTextChanged));
+            new PropertyMetadata(string.Empty, OnInputChanged));
 
     public static string GetText(DependencyObject obj) => (string)obj.GetValue(TextProperty);
     public static void SetText(DependencyObject obj, string value) => obj.SetValue(TextProperty, value);
 
-    private static void OnTextChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        if (d is not TextBlock tb) return;
-        tb.Inlines.Clear();
-        var text = e.NewValue as string ?? string.Empty;
-        if (text.Length == 0) return;
+    /// <summary>
+    /// Fragment ajouté À LA SUITE du texte surligné, en gris clair et SANS passer par le
+    /// surlignage (mention de caractéristique de l'infobulle). Le contournement du surlignage est
+    /// le point clé : sa plage « 0...12...15 » matcherait la regex et virerait au vert gras.
+    /// </summary>
+    public static readonly DependencyProperty SuffixProperty =
+        DependencyProperty.RegisterAttached(
+            "Suffix", typeof(string), typeof(SkillMarkup),
+            new PropertyMetadata(string.Empty, OnInputChanged));
 
-        // '\n' = saut de ligne explicite (footer multi-lignes) → LineBreak entre segments.
-        var lines = text.Split('\n');
-        for (int li = 0; li < lines.Length; li++)
+    public static string GetSuffix(DependencyObject obj) => (string)obj.GetValue(SuffixProperty);
+    public static void SetSuffix(DependencyObject obj, string value) => obj.SetValue(SuffixProperty, value);
+
+    // Text et Suffix alimentent les MÊMES Inlines : les deux repassent par une reconstruction
+    // complète, sinon celui posé en second effacerait l'autre (ordre non garanti en XAML).
+    private static void OnInputChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is TextBlock tb) Rebuild(tb);
+    }
+
+    private static void Rebuild(TextBlock tb)
+    {
+        tb.Inlines.Clear();
+        var text = GetText(tb) ?? string.Empty;
+        if (text.Length > 0)
         {
-            if (li > 0) tb.Inlines.Add(new LineBreak());
-            AppendHighlighted(tb, lines[li]);
+            // '\n' = saut de ligne explicite (footer multi-lignes) → LineBreak entre segments.
+            var lines = text.Split('\n');
+            for (int li = 0; li < lines.Length; li++)
+            {
+                if (li > 0) tb.Inlines.Add(new LineBreak());
+                AppendHighlighted(tb, lines[li]);
+            }
         }
+
+        var suffix = GetSuffix(tb) ?? string.Empty;
+        if (suffix.Length == 0) return;
+        // Collé à la phrase (espace insécable exclu : la mention DOIT pouvoir passer à la ligne).
+        var run = new Run(text.Length > 0 ? " " + suffix : suffix);
+        run.SetResourceReference(TextElement.ForegroundProperty, "TextFaintBrush");
+        tb.Inlines.Add(run);
     }
 
     private static void AppendHighlighted(TextBlock tb, string text)
