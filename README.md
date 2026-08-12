@@ -147,6 +147,10 @@ de n'itérer que sur l'habillage.
 Le numéro de version affiché partout est lu dans l'exécutable publié : il suffit de
 changer `<Version>` dans `src/ZCodex.App/ZCodex.App.csproj`.
 
+La marche à suivre pour publier une version — étiquetage, release GitHub et
+vérification de la détection de mise à jour — est décrite dans
+[RELEASING.md](RELEASING.md).
+
 ### Organisation du code
 
 | Projet | Contenu |

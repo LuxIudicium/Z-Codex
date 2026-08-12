@@ -144,6 +144,9 @@ wizard alone.
 The version number shown everywhere is read from the published executable: change
 `<Version>` in `src/ZCodex.App/ZCodex.App.csproj` and nothing else.
 
+The release procedure — tagging, GitHub release and checking that update
+detection works — is documented in [RELEASING.md](RELEASING.md) (French).
+
 ### Code layout
 
 | Project | Contents |
