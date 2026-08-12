@@ -22,6 +22,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <Version>1.0.0</Version>
+    <!-- Dès que le dossier est un dépôt git, le SDK suffixe la version informationnelle du SHA
+         du commit (« 1.0.0+b46e345… »), et c'est elle que Windows expose en ProductVersion.
+         L'installateur LIT ce champ dans l'exe publié pour en tirer son numéro de version : il
+         refusait alors de compiler (VersionInfoVersion n'accepte que des nombres) et aurait
+         baptisé le setup « Z-Codex-1.0.0+b46e345…-setup.exe ». On coupe la décoration ici
+         plutôt que de la rattraper dans le .iss — le SHA reste dans git, à sa place. -->
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
 
   <!-- Métadonnées de l'exécutable : ce que Windows affiche dans les propriétés du fichier,
