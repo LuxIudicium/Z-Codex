@@ -72,6 +72,17 @@ public class AppSettings
     // Profils nommés du calculateur d'armure (chantier 14, onglet Extras → Calculateur d'armure).
     public List<ArmorCalcProfile> ArmorProfiles { get; set; } = new();
 
+    // Date (UTC) de la dernière interrogation des Releases GitHub. Une vérification par jour
+    // suffit largement — Z-Codex ne sort pas trois versions dans la même journée, et c'est le
+    // démarrage de l'application qu'on ne veut pas ralentir. Aide ▸ Rechercher les mises à jour
+    // passe outre : un clic explicite vaut demande.
+    public DateTime? LastUpdateCheckUtc { get; set; }
+
+    // Version écartée par l'utilisateur via la case à cocher de la modale de mise à jour. Une
+    // version PLUS RÉCENTE que celle-ci redonne de la voix — sinon un seul refus rendrait
+    // l'application définitivement muette. Même principe que ScrapeInfo.IgnoredUpdateDate.
+    public string? IgnoredUpdateVersion { get; set; }
+
     private static string FilePath => AppPaths.In("settings.json");
 
     public static AppSettings Load()

@@ -18,6 +18,7 @@ using ZCodex.Data.Repositories;
 using ZCodex.Scraper;
 using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
@@ -652,7 +653,75 @@ public partial class MainWindow : Window
         }
 
         await LoadSkillsFromDbAsync();
+
+        // Nouvelle version de Z-Codex : sans rapport avec l'état du catalogue, donc hors du
+        // if/else ci-dessus. En arrière-plan et sans await — rien ici ne doit retarder l'affichage.
+        _ = CheckForAppUpdateAsync(manual: false);
     }
+
+    // Une version plus récente de Z-Codex est-elle publiée sur GitHub ? On se contente de le
+    // signaler et d'ouvrir la page de téléchargement : ni téléchargement ni installation
+    // automatiques (cf. AppVersionChecker pour le pourquoi).
+    //
+    // En AUTOMATIQUE, tout est silencieux : déjà à jour, pas de réseau, aucune version publiée,
+    // version écartée — rien ne s'affiche. Un démarrage ne doit jamais être interrompu par une
+    // boîte de dialogue qui n'apprend rien. En MANUEL l'utilisateur a cliqué : il attend une
+    // réponse dans tous les cas, y compris « tout va bien ».
+    private async Task CheckForAppUpdateAsync(bool manual)
+    {
+        try
+        {
+            if (!manual)
+            {
+                if (_settings.LastUpdateCheckUtc?.Date == DateTime.UtcNow.Date) return;
+                // Horodaté AVANT l'appel réseau, et non après : sinon un poste hors ligne, dont
+                // l'appel part en exception, réessaierait à chaque démarrage sans jamais rien
+                // enregistrer. Ce champ note la dernière TENTATIVE, pas le dernier succès.
+                _settings.LastUpdateCheckUtc = DateTime.UtcNow;
+                _settings.Save();
+            }
+
+            var current = AppVersionChecker.Normalize(
+                Assembly.GetExecutingAssembly().GetName().Version ?? new Version(1, 0, 0));
+            var latest = await AppVersionChecker.GetLatestAsync();
+
+            if (latest == null || latest.Version <= current)
+            {
+                if (manual)
+                    MessageBox.Show(this, string.Format(T("S.Msg.AppUpToDate"), current),
+                        T("S.Msg.AppUpdateTitle"), MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            // Version écartée d'un clic sur la case à cocher : on se tait jusqu'à ce qu'une version
+            // ENCORE plus récente paraisse. Une vérification manuelle passe outre.
+            if (!manual && Version.TryParse(_settings.IgnoredUpdateVersion, out var ignored)
+                && latest.Version <= AppVersionChecker.Normalize(ignored))
+                return;
+
+            var dlg = new AppUpdateWindow(
+                string.Format(T("S.Msg.AppUpdateDetected"), latest.Version, current)) { Owner = this };
+            dlg.ShowDialog();
+
+            if (dlg.ShouldDownload)
+                Process.Start(new ProcessStartInfo(latest.PageUrl) { UseShellExecute = true });
+            else if (dlg.IgnoreChecked)
+            {
+                _settings.IgnoredUpdateVersion = latest.Version.ToString();
+                _settings.Save();
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"CheckForAppUpdate: {ex.Message}");
+            if (manual)
+                MessageBox.Show(this, T("S.Msg.AppUpdateFailed"), T("S.Msg.AppUpdateTitle"),
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private async void CheckUpdate_Click(object sender, RoutedEventArgs e)
+        => await CheckForAppUpdateAsync(manual: true);
 
     private async Task CheckForGameUpdatesAsync()
     {

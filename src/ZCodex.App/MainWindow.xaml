@@ -1073,6 +1073,7 @@
                 <!-- Command="Help" = ApplicationCommands.Help : geste F1 natif + InputGestureText auto. -->
                 <MenuItem Header="{DynamicResource S.Menu.HelpHelp}" Command="Help"/>
                 <Separator/>
+                <MenuItem Header="{DynamicResource S.Menu.HelpCheckUpdate}" Click="CheckUpdate_Click"/>
                 <MenuItem Header="{DynamicResource S.Menu.HelpAbout}" Click="About_Click"/>
             </MenuItem>
         </Menu>

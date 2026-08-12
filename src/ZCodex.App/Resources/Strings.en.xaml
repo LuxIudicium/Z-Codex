@@ -51,6 +51,7 @@
     <sys:String x:Key="S.Menu.Window">Window</sys:String>
     <sys:String x:Key="S.Menu.Help">Help</sys:String>
     <sys:String x:Key="S.Menu.HelpHelp">Help and shortcuts...</sys:String>
+    <sys:String x:Key="S.Menu.HelpCheckUpdate">Check for updates...</sys:String>
     <sys:String x:Key="S.Menu.HelpAbout">About Z-Codex...</sys:String>
 
     <!-- ── Toolbar ────────────────────────────────────────────────────── -->
@@ -221,6 +222,13 @@
     <sys:String x:Key="S.Msg.GwUpdateDetected" xml:space="preserve">A GW update was detected ({0}).&#10;Last scrape: {1}.&#10;&#10;Update the skill database?</sys:String>
     <sys:String x:Key="S.Msg.GwUpdateTitle">Update available</sys:String>
     <sys:String x:Key="S.Msg.GwUpdateIgnore">Don't ask again until the next update</sys:String>
+    <sys:String x:Key="S.Msg.AppUpdateTitle">Z-Codex update</sys:String>
+    <sys:String x:Key="S.Msg.AppUpdateDetected" xml:space="preserve">Z-Codex {0} is available.&#10;You are running version {1}.&#10;&#10;Open the download page?</sys:String>
+    <sys:String x:Key="S.Msg.AppUpdateIgnore">Don't tell me about this version again</sys:String>
+    <sys:String x:Key="S.Msg.AppUpdateDownload">Download</sys:String>
+    <sys:String x:Key="S.Msg.AppUpdateLater">Later</sys:String>
+    <sys:String x:Key="S.Msg.AppUpToDate" xml:space="preserve">Z-Codex is up to date.&#10;&#10;Installed version: {0}.</sys:String>
+    <sys:String x:Key="S.Msg.AppUpdateFailed" xml:space="preserve">Could not reach GitHub to check for updates.&#10;&#10;Check your internet connection, or visit the releases page directly:&#10;https://github.com/LuxIudicium/Z-Codex/releases</sys:String>
     <sys:String x:Key="S.Msg.CatalogIncompleteTitle">Incomplete catalogue</sys:String>
     <sys:String x:Key="S.Msg.CatalogIncomplete" xml:space="preserve">The skill download was interrupted.&#10;&#10;The catalogue is usable, but progression tables and icons are missing: the value ranges in tooltips will stay unresolved.&#10;&#10;Finish the download now?</sys:String>
     <sys:String x:Key="S.Msg.IconsTitle">Icon check</sys:String>

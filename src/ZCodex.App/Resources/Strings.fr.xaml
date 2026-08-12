@@ -54,6 +54,7 @@
     <sys:String x:Key="S.Menu.Window">Fenêtre</sys:String>
     <sys:String x:Key="S.Menu.Help">Aide</sys:String>
     <sys:String x:Key="S.Menu.HelpHelp">Aide et raccourcis...</sys:String>
+    <sys:String x:Key="S.Menu.HelpCheckUpdate">Rechercher les mises à jour...</sys:String>
     <sys:String x:Key="S.Menu.HelpAbout">À propos de Z-Codex...</sys:String>
 
     <!-- ── Toolbar ────────────────────────────────────────────────────── -->
@@ -224,6 +225,13 @@
     <sys:String x:Key="S.Msg.GwUpdateDetected" xml:space="preserve">Une mise à jour GW a été détectée ({0}).&#10;Dernier scrapping : {1}.&#10;&#10;Mettre à jour la base de données des compétences ?</sys:String>
     <sys:String x:Key="S.Msg.GwUpdateTitle">Mise à jour disponible</sys:String>
     <sys:String x:Key="S.Msg.GwUpdateIgnore">Ne plus demander jusqu'à la prochaine mise à jour</sys:String>
+    <sys:String x:Key="S.Msg.AppUpdateTitle">Mise à jour de Z-Codex</sys:String>
+    <sys:String x:Key="S.Msg.AppUpdateDetected" xml:space="preserve">La version {0} de Z-Codex est disponible.&#10;Vous utilisez la version {1}.&#10;&#10;Ouvrir la page de téléchargement ?</sys:String>
+    <sys:String x:Key="S.Msg.AppUpdateIgnore">Ne plus signaler cette version</sys:String>
+    <sys:String x:Key="S.Msg.AppUpdateDownload">Télécharger</sys:String>
+    <sys:String x:Key="S.Msg.AppUpdateLater">Plus tard</sys:String>
+    <sys:String x:Key="S.Msg.AppUpToDate" xml:space="preserve">Z-Codex est à jour.&#10;&#10;Version installée : {0}.</sys:String>
+    <sys:String x:Key="S.Msg.AppUpdateFailed" xml:space="preserve">Impossible de joindre GitHub pour vérifier les mises à jour.&#10;&#10;Vérifiez votre connexion internet, ou consultez directement la page des versions :&#10;https://github.com/LuxIudicium/Z-Codex/releases</sys:String>
     <sys:String x:Key="S.Msg.CatalogIncompleteTitle">Catalogue incomplet</sys:String>
     <sys:String x:Key="S.Msg.CatalogIncomplete" xml:space="preserve">Le téléchargement des compétences a été interrompu.&#10;&#10;Le catalogue est utilisable, mais les tables de progression et les icônes manquent : les plages de valeurs des infobulles resteront non résolues.&#10;&#10;Terminer le téléchargement maintenant ?</sys:String>
     <sys:String x:Key="S.Msg.IconsTitle">Vérification des icônes</sys:String>

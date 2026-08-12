@@ -1,0 +1,22 @@
+<Window x:Class="ZCodex.App.Views.AppUpdateWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{DynamicResource S.Msg.AppUpdateTitle}" Width="440" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Background="{DynamicResource DialogBackgroundBrush}"
+        Foreground="{DynamicResource TextPrimaryBrush}">
+    <StackPanel Margin="16">
+        <TextBlock x:Name="MessageText" FontSize="13" TextWrapping="Wrap" Margin="0,0,0,14"/>
+        <CheckBox x:Name="IgnoreBox" Content="{DynamicResource S.Msg.AppUpdateIgnore}"
+                  FontSize="12" Margin="0,0,0,16"/>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <!-- Largeur MINIMALE et non fixe : « Télécharger » et « Download » n'ont pas la même
+                 longueur, et le libellé ne doit pas être rogné dans l'une des deux langues. -->
+            <Button Content="{DynamicResource S.Msg.AppUpdateDownload}" MinWidth="110" Padding="10,4"
+                    Margin="0,0,8,0" IsDefault="True" Click="Download_Click"/>
+            <Button Content="{DynamicResource S.Msg.AppUpdateLater}" MinWidth="90" Padding="10,4"
+                    IsCancel="True" Click="Later_Click"/>
+        </StackPanel>
+    </StackPanel>
+</Window>
