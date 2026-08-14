@@ -63,6 +63,7 @@ public class AttributeRowViewModel : ViewModelBase
             {
                 OnPropertyChanged(nameof(PointsDisplay));
                 OnPropertyChanged(nameof(EffectiveLevel));
+                OnPropertyChanged(nameof(EffectiveDisplay));
             }
         }
     }
@@ -78,7 +79,9 @@ public class AttributeRowViewModel : ViewModelBase
             if (SetField(ref _bonusPoints, Math.Clamp(value, 0, EffectiveMaxBonus)))
             {
                 OnPropertyChanged(nameof(PointsDisplay));
+                OnPropertyChanged(nameof(BonusDisplay));
                 OnPropertyChanged(nameof(EffectiveLevel));
+                OnPropertyChanged(nameof(EffectiveDisplay));
             }
         }
     }
@@ -142,6 +145,20 @@ public class AttributeRowViewModel : ViewModelBase
 
     // Affiche "8+3" si bonus, "8" sinon.
     public string PointsDisplay => BonusPoints > 0 ? $"{Points}+{BonusPoints}" : Points.ToString();
+
+    // ── Cadre d'attributs de l'ÉDITEUR DE BUILD uniquement ────────────────────────────────
+    // Là-bas, base et bonus ont chacun leur spinner : il faut les deux valeurs SÉPARÉMENT plus
+    // le total. Ailleurs (carte du teambuild, grille de recherche) la place manque et l'affichage
+    // combiné PointsDisplay reste seul en piste.
+    public string BonusDisplay     => BonusPoints > 0 ? $"+{BonusPoints}" : "0";
+    public string EffectiveDisplay => $"= {EffectiveLevel}";
+
+    // Ligne qui accepte un niveau bonus (faux pour un rang de titre : pas de rune sur un titre)
+    // → le spinner de bonus et le total sont masqués. Fixé à la construction via MaxBonus, donc
+    // sans notification : on ne se sert PAS d'EffectiveMaxBonus ici, qui dépend du filtre PvP
+    // global et changerait sans prévenir la vue. Sous ce filtre les boutons restent affichés mais
+    // le clamp du setter les rend sans effet — comme le Shift+molette des slots aujourd'hui.
+    public bool SupportsBonus => MaxBonus > 0;
 
     public void Adjust(int delta)      => Points      = Math.Clamp(Points      + delta, 0, MaxPoints);
     public void AdjustBonus(int delta) => BonusPoints = Math.Clamp(BonusPoints + delta, 0, EffectiveMaxBonus);

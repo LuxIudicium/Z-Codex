@@ -123,6 +123,8 @@
     <sys:String x:Key="S.Ed.ThresholdToggle">Basculer ≥ / ≤ (au moins / au plus)</sys:String>
     <sys:String x:Key="S.Ed.Attributes">Attributs</sys:String>
     <sys:String x:Key="S.Ed.TitleRanks">Rangs de titre</sys:String>
+    <sys:String x:Key="S.Ed.AttrBonus">bonus</sys:String>
+    <sys:String x:Key="S.Ed.AttrBonusTip">Bonus de niveau (runes, coiffe, consommables) — hors budget de 200 points. Shift + molette sur la ligne fait la même chose.</sys:String>
     <sys:String x:Key="S.Ed.PickProfAttrs">Choisis une profession pour investir des points d'attribut.</sys:String>
     <sys:String x:Key="S.Ed.ProfPrimary">Profession primaire (facultatif)</sys:String>
     <sys:String x:Key="S.Ed.ProfPrimaryReq">Profession primaire (obligatoire)</sys:String>

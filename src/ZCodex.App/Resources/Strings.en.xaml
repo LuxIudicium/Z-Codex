@@ -120,6 +120,8 @@
     <sys:String x:Key="S.Ed.ThresholdToggle">Toggle ≥ / ≤ (at least / at most)</sys:String>
     <sys:String x:Key="S.Ed.Attributes">Attributes</sys:String>
     <sys:String x:Key="S.Ed.TitleRanks">Title ranks</sys:String>
+    <sys:String x:Key="S.Ed.AttrBonus">bonus</sys:String>
+    <sys:String x:Key="S.Ed.AttrBonusTip">Rank bonus (runes, headgear, consumables) — outside the 200-point budget. Shift + wheel on the row does the same.</sys:String>
     <sys:String x:Key="S.Ed.PickProfAttrs">Pick a profession to invest attribute points.</sys:String>
     <sys:String x:Key="S.Ed.ProfPrimary">Primary profession (optional)</sys:String>
     <sys:String x:Key="S.Ed.ProfPrimaryReq">Primary profession (required)</sys:String>

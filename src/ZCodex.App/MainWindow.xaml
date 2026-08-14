@@ -351,6 +351,89 @@
             </Grid>
         </DataTemplate>
 
+        <!-- Boutons −/+ des lignes d'attribut de l'éditeur de build (4 par ligne : base + bonus).
+             BasedOn OBLIGATOIRE : un Style à x:Key REMPLACE le style implicite du type au lieu de
+             s'y ajouter. Sans lui, ces boutons perdaient le Foreground du thème (glyphe noir donc
+             illisible en mode sombre) et le template natif du thème. -->
+        <Style x:Key="AttrSpinnerStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Width" Value="16"/>
+            <Setter Property="Height" Value="16"/>
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource SlotBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+
+        <!-- Variante « éditeur de build » : la colonne d'attributs y est large, on dédouble donc le
+             spinner — niveau de base (0–12) à gauche, niveau bonus rune/casque/conso (0–20) à droite,
+             puis le niveau effectif. Ne PAS généraliser aux deux autres templates : la carte du
+             teambuild et la grille de seuils n'ont pas la place et gardent l'affichage combiné.
+             Rang de titre (SupportsBonus faux) : ni bonus ni total, la base fait tout. -->
+        <DataTemplate x:Key="EditorAttributeRowTemplate">
+            <Grid Margin="0,1" Tag="{Binding}" PreviewMouseWheel="EditorAttrRow_MouseWheel">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="18"/>
+                    <ColumnDefinition Width="24"/>   <!-- niveau de base -->
+                    <ColumnDefinition Width="18"/>
+                    <ColumnDefinition Width="Auto"/> <!-- libellé « bonus » -->
+                    <ColumnDefinition Width="18"/>
+                    <ColumnDefinition Width="26"/>   <!-- niveau bonus -->
+                    <ColumnDefinition Width="18"/>
+                    <ColumnDefinition Width="58"/>   <!-- « = 15 » + flux + boost de compétence -->
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="{Binding DisplayName}" FontSize="11" Margin="0,0,4,0"
+                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="FontWeight" Value="Normal"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsPrimary}" Value="True">
+                                    <Setter Property="FontWeight" Value="Bold"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+                <!-- Niveau de base : mêmes handlers que les autres templates -->
+                <Button Grid.Column="1" Content="−" Tag="{Binding}" Click="AttrDecrement_Click"
+                        Style="{StaticResource AttrSpinnerStyle}"/>
+                <TextBlock Grid.Column="2" Text="{Binding Points}" FontSize="11"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <Button Grid.Column="3" Content="+" Tag="{Binding}" Click="AttrIncrement_Click"
+                        Style="{StaticResource AttrSpinnerStyle}"/>
+                <!-- Niveau bonus, hors budget -->
+                <TextBlock Grid.Column="4" Text="{DynamicResource S.Ed.AttrBonus}" FontSize="9" Margin="10,0,4,0"
+                           Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center"
+                           Visibility="{Binding SupportsBonus, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                <Button Grid.Column="5" Content="−" Tag="{Binding}" Click="AttrBonusDecrement_Click"
+                        Style="{StaticResource AttrSpinnerStyle}"
+                        ToolTip="{DynamicResource S.Ed.AttrBonusTip}"
+                        Visibility="{Binding SupportsBonus, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                <TextBlock Grid.Column="6" Text="{Binding BonusDisplay}" FontSize="11"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                           Visibility="{Binding SupportsBonus, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                <Button Grid.Column="7" Content="+" Tag="{Binding}" Click="AttrBonusIncrement_Click"
+                        Style="{StaticResource AttrSpinnerStyle}"
+                        ToolTip="{DynamicResource S.Ed.AttrBonusTip}"
+                        Visibility="{Binding SupportsBonus, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                <!-- Niveau effectif, puis le +2 de flux et celui d'un boost de compétence, chacun
+                     dans sa couleur (mêmes canaux que l'affichage combiné des autres templates). -->
+                <StackPanel Grid.Column="8" Orientation="Horizontal" Margin="8,0,0,0"
+                            VerticalAlignment="Center"
+                            Visibility="{Binding SupportsBonus, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <TextBlock Text="{Binding EffectiveDisplay}" FontSize="11" FontWeight="SemiBold"/>
+                    <TextBlock Text="{Binding FluxBonusDisplay}" FontSize="11" FontWeight="Bold"
+                               Foreground="{DynamicResource FluxVariableBrush}"
+                               Visibility="{Binding HasFluxBonus, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                    <TextBlock Text="{Binding SkillBoostDisplay}" FontSize="11" FontWeight="Bold"
+                               Foreground="{DynamicResource SkillBoostVariableBrush}"
+                               Visibility="{Binding HasSkillBoost, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                </StackPanel>
+            </Grid>
+        </DataTemplate>
+
         <!-- Onglet du catalogue de recherche (façon PawNed²). Groupe (HasChildren) = gras ;
              sélectionné = bleu. Sert aux deux rangées (groupes + sous-onglets). -->
         <Style x:Key="CatalogTabStyle" TargetType="Border">
@@ -2083,11 +2166,11 @@
                                                 <!-- Attributs profession primaire -->
                                                 <Border Grid.Column="1" BorderBrush="{DynamicResource BorderLightBrush}" BorderThickness="0,0,1,0" Margin="2,0">
                                                     <ItemsControl ItemsSource="{Binding PrimaryAttributeRows}"
-                                                                  ItemTemplate="{StaticResource AttributeRowTemplate}" Margin="4,2"/>
+                                                                  ItemTemplate="{StaticResource EditorAttributeRowTemplate}" Margin="4,2"/>
                                                 </Border>
                                                 <!-- Attributs profession secondaire -->
                                                 <ItemsControl Grid.Column="2" ItemsSource="{Binding SecondaryAttributeRows}"
-                                                              ItemTemplate="{StaticResource AttributeRowTemplate}" Margin="6,2,2,2"/>
+                                                              ItemTemplate="{StaticResource EditorAttributeRowTemplate}" Margin="6,2,2,2"/>
                                             </Grid>
                                             <!-- Mod « of the profession » : force la carac primaire de la profession choisie à 5 -->
                                             <StackPanel Orientation="Horizontal" Margin="72,0,4,4">
@@ -2105,7 +2188,7 @@
                                                         Visibility="{Binding HasTitleRanks, Converter={StaticResource BoolToVisibilityConverter}}">
                                                 <TextBlock Text="{DynamicResource S.Ed.TitleRanks}" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" Margin="0,2,0,1"/>
                                                 <ItemsControl ItemsSource="{Binding TitleRankRows}"
-                                                              ItemTemplate="{StaticResource AttributeRowTemplate}"/>
+                                                              ItemTemplate="{StaticResource EditorAttributeRowTemplate}"/>
                                             </StackPanel>
                                             <TextBlock Text="{DynamicResource S.Ed.PickProfAttrs}"
                                                        FontSize="10" Foreground="{DynamicResource TextFaintBrush}" Margin="0,2,0,0"

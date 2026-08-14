@@ -287,7 +287,10 @@ public static class HelpContent
               "Same, but on the effective rank (base + bonus, up to 20)."),
             R("Boutons − / + (ligne d'attribut)", "− / + buttons (attribute row)",
               "Diminuent / augmentent le niveau de la caractéristique d'un cran.",
-              "Decrease / increase the attribute rank by one step.")),
+              "Decrease / increase the attribute rank by one step."),
+            R("Second spinner « bonus » (onglet Build)", "Second “bonus” spinner (Build tab)",
+              "Dans le cadre d'attributs de l'onglet Build, chaque ligne a un second couple − / + qui règle le seul niveau bonus (runes, coiffe, consommables), hors budget ; Shift + molette sur la ligne fait la même chose. Le total « = » à droite donne le niveau effectif. Les rangs de titre n'en ont pas.",
+              "In the Build tab's attribute box, each row has a second − / + pair that sets the rank bonus alone (runes, headgear, consumables), outside the budget; Shift + wheel on the row does the same. The “=” total on the right shows the effective rank. Title ranks have none.")),
 
         S("Attributs — lecture du panneau", "Attributes — reading the panel", "", "",
             R("Compteur « x/200 »", "“x/200” counter",

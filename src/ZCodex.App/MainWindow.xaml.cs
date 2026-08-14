@@ -3287,6 +3287,21 @@ public partial class MainWindow : Window
             row.Increment();
     }
 
+    // Spinner de niveau bonus — cadre d'attributs de l'éditeur de build uniquement (rune, coiffe,
+    // consommables : hors budget). AdjustBonus borne à EffectiveMaxBonus, donc sans effet là où le
+    // bonus est interdit (rang de titre, carac SEC sous filtre PvP) : pas de garde à ajouter ici.
+    private void AttrBonusDecrement_Click(object sender, RoutedEventArgs e)
+    {
+        if (((FrameworkElement)sender).Tag is AttributeRowViewModel row)
+            row.AdjustBonus(-1);
+    }
+
+    private void AttrBonusIncrement_Click(object sender, RoutedEventArgs e)
+    {
+        if (((FrameworkElement)sender).Tag is AttributeRowViewModel row)
+            row.AdjustBonus(1);
+    }
+
     // Bascule ≥ / ≤ d'un seuil de recherche (grille de seuils uniquement).
     private void AttrToggleComparison_Click(object sender, RoutedEventArgs e)
     {
@@ -3367,6 +3382,21 @@ public partial class MainWindow : Window
         if (!WheelMayAdjust(e, sender)) return;
         if (((FrameworkElement)sender).Tag is AttributeRowViewModel row
             && Changes(row, r => r.Adjust(e.Delta > 0 ? 1 : -1)))
+            _wheelAdjusted = e.Handled = true;
+    }
+
+    // Idem, cadre d'attributs de l'éditeur de build : molette nue = niveau de base, Shift+molette =
+    // niveau bonus (même convention que sur les slots de compétence). Handler distinct
+    // d'AttrRow_MouseWheel : ailleurs la molette ne règle que la base, Shift compris — comportement
+    // du teambuild et de la grille de seuils inchangé (demande Philippe : « dans build uniquement »).
+    private void EditorAttrRow_MouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (!WheelMayAdjust(e, sender)) return;
+        if (((FrameworkElement)sender).Tag is not AttributeRowViewModel row) return;
+
+        int  delta = e.Delta > 0 ? 1 : -1;
+        bool shift = Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift);
+        if (Changes(row, r => { if (shift) r.AdjustBonus(delta); else r.Adjust(delta); }))
             _wheelAdjusted = e.Handled = true;
     }
 
