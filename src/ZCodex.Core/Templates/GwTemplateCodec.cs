@@ -74,7 +74,7 @@ public static class GwTemplateCodec
             {
                 int attrId     = bits.Read(attrBits);
                 int attrPoints = bits.Read(4);
-                attributes[$"attr_{attrId}"] = attrPoints;
+                attributes[AttributeKey(attrId)] = attrPoints;
             }
 
             int skillCode = bits.Read(4);
@@ -177,7 +177,11 @@ public static class GwTemplateCodec
             .ToList() };
 
     public static Dictionary<string, int> ToAttributeDict(AttributesBuild? attrs) =>
-        attrs?.Allocations.ToDictionary(a => $"attr_{a.AttributeId}", a => a.Points) ?? new();
+        attrs?.Allocations.ToDictionary(a => AttributeKey(a.AttributeId), a => a.Points) ?? new();
+
+    /// <summary>Clé d'un attribut dans CharacterBuild.Attributes : l'ID de template, JAMAIS le nom EN.
+    /// Point de passage unique — tout code qui lit ce dictionnaire doit passer par ici.</summary>
+    public static string AttributeKey(int attributeId) => $"attr_{attributeId}";
 
     // bits nécessaires pour représenter maxValue, moins baseBits (min 0)
     private static int MinCode(int maxValue, int baseBits)

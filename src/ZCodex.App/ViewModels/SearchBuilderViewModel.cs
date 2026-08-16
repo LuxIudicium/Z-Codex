@@ -330,7 +330,7 @@ public class SearchBuilderViewModel : ViewModelBase
         foreach (var row in QueryCharacter.PrimaryAttributeRows.Concat(QueryCharacter.SecondaryAttributeRows))
             if (row.Points > 0)
                 q.AttributeThresholds.Add(new AttributeThreshold(
-                    row.Name, row.Points,
+                    row.AttributeId, row.Points,
                     row.AtMost ? AttributeComparison.AtMost : AttributeComparison.AtLeast));
 
         return q;

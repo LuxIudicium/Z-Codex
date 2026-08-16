@@ -1,4 +1,5 @@
 ﻿using ZCodex.Core.Models;
+using ZCodex.Core.Templates;
 
 namespace ZCodex.Core.Search;
 
@@ -12,7 +13,7 @@ public sealed class BuildSearchQuery
     // Ordre des slots ignoré (les slots = bindings de touches, aucune hiérarchie).
     public List<HashSet<int>> RequiredSkillGroups { get; } = new();
 
-    // Seuils de caractéristiques, un par attribut contraint : build.Attributes[nom] ≥ ou ≤ valeur
+    // Seuils de caractéristiques, un par attribut contraint : le niveau du build ≥ ou ≤ valeur
     // selon l'opérateur choisi (au moins / au plus). Basé sur les points investis dans le template —
     // hors bonus runtime (mod of-the-profession, coiffe, consommables), qui ne sont pas persistés.
     public List<AttributeThreshold> AttributeThresholds { get; } = new();
@@ -34,7 +35,10 @@ public sealed class BuildSearchQuery
         foreach (var t in AttributeThresholds)
         {
             // Attribut absent du build ⇒ 0 investi (les caracs non investies ne sont pas persistées).
-            int have = c.Attributes.GetValueOrDefault(t.Attribute);
+            // ⚠ CharacterBuild.Attributes est clé par ID de template ("attr_17"), jamais par nom EN :
+            // chercher "Strength" y renvoyait toujours 0 → « ≥ » sans jamais un résultat et « ≤ »
+            // toujours vrai. Passer par GwTemplateCodec.AttributeKey, l'unique fabricant de la clé.
+            int have = c.Attributes.GetValueOrDefault(GwTemplateCodec.AttributeKey(t.AttributeId));
             bool ok = t.Comparison == AttributeComparison.AtMost ? have <= t.Value : have >= t.Value;
             if (!ok) return false;
         }
@@ -53,5 +57,6 @@ public sealed class BuildSearchQuery
 // Sens de comparaison d'un seuil de caractéristique.
 public enum AttributeComparison { AtLeast, AtMost }
 
-// Seuil sur une caractéristique : « nom » comparé à « valeur » selon « comparison ».
-public sealed record AttributeThreshold(string Attribute, int Value, AttributeComparison Comparison);
+// Seuil sur une caractéristique, identifiée par son ID de template (la clé réelle des builds,
+// cf. GwTemplateCodec.AttributeKey) : niveau investi comparé à « value » selon « comparison ».
+public sealed record AttributeThreshold(int AttributeId, int Value, AttributeComparison Comparison);
