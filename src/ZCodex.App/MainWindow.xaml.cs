@@ -3314,32 +3314,37 @@ public partial class MainWindow : Window
     // une compétence se retrouve souvent sous la souris et le cran suivant réglerait sa
     // caractéristique sans qu'on l'ait demandé. Le PREMIER cran d'une salve tranche donc pour
     // toute la salve, tant que les crans s'enchaînent à moins de WheelGestureMs d'intervalle.
+    // Symétriquement, régler un niveau jusqu'à 0 puis dépasser d'UN cran ne doit pas faire
+    // décrocher la grille : un réglage effectif ferme la molette au défilement pour
+    // WheelGestureMs (cf. SettleWheel).
+    //
+    // ⚠ Les deux verrous ne peuvent PAS partager le même état. WPF ne promeut PreviewMouseWheel en
+    // MouseWheel que si le tunnel n'a pas traité le cran (MouseDevice.PostProcessInput) : un cran
+    // converti en réglage n'atteint donc JAMAIS la remontée ci-dessous. La salve ne s'y acquiert
+    // qu'au défilement ; le verrou inverse doit vivre sur son propre horodatage.
     private const int WheelGestureMs = 400;
     private int  _wheelStamp = -1;   // horodatage du cran en cours de traversée de la grille
     private int  _wheelTicks;        // date du dernier cran vu dans la grille (fin de salve)
-    private bool _wheelDecided;      // la salve en cours a-t-elle déjà été tranchée ?
-    private bool _wheelScrolls;      // ... et si oui, en faveur du défilement ?
-    private bool _wheelAdjusted;     // ce cran-ci a effectivement modifié le build
+    private bool _wheelScrolls;      // la salve en cours est acquise au défilement
+    private long _wheelAdjustTicks = long.MinValue / 2;  // date du dernier cran qui a VRAIMENT réglé
 
     // Tunnel du ScrollViewer : il précède les slots et les lignes d'attributs, et voit donc AUSSI
     // les crans qu'aucun d'eux ne recevra (curseur sur une marge, sur le panneau du personnage…).
     private void TeamScroll_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
     {
         _wheelStamp = e.Timestamp;
-        if (Environment.TickCount - _wheelTicks >= WheelGestureMs) _wheelDecided = false;
-        _wheelTicks    = Environment.TickCount;
-        _wheelAdjusted = false;
+        if (Environment.TickCount - _wheelTicks >= WheelGestureMs) _wheelScrolls = false;
+        _wheelTicks = Environment.TickCount;
     }
 
     // Remontée sur le même ScrollViewer, posée en handledEventsToo (cf. constructeur) : le
-    // défilement natif marque l'événement traité avant nous. Le premier cran que personne n'a
-    // converti en réglage fixe la salve en défilement — les compétences qui passeront ensuite
-    // sous la souris ne seront plus touchées.
+    // défilement natif marque l'événement traité avant nous. Seuls les crans que personne n'a
+    // convertis en réglage arrivent ici (cf. la promotion conditionnelle plus haut) : celui-là
+    // fixe la salve en défilement, et les compétences qui passeront ensuite sous la souris ne
+    // seront plus touchées.
     private void TeamScroll_MouseWheel(object sender, MouseWheelEventArgs e)
     {
-        if (e.Timestamp != _wheelStamp || _wheelDecided) return;
-        _wheelScrolls = !_wheelAdjusted;
-        _wheelDecided = true;
+        if (e.Timestamp == _wheelStamp) _wheelScrolls = true;
     }
 
     // Garde en tête de tout handler de molette qui modifie une caractéristique. Hors grille du
@@ -3348,7 +3353,7 @@ public partial class MainWindow : Window
     private bool WheelMayAdjust(MouseWheelEventArgs e, object sender)
     {
         if (e.Timestamp != _wheelStamp) return true;
-        if (_wheelDecided && _wheelScrolls) return false;
+        if (_wheelScrolls) return false;
         return !_vm.WheelNeedsSelection || IsArmedCard(sender);
     }
 
@@ -3368,6 +3373,30 @@ public partial class MainWindow : Window
         return row.Points != points || row.BonusPoints != bonus;
     }
 
+    // Verdict d'un cran arrivé sur un slot ou une ligne d'attribut, une fois le réglage tenté.
+    //
+    // Cran effectif → il consomme la molette et (r)ouvre une fenêtre de WheelGestureMs.
+    // Cran sans effet (0 atteint, plafond, skill sans caractéristique) → il dépend de cette fenêtre :
+    //   • encore ouverte : on vient de régler et la main est toujours sur la grille — l'avaler.
+    //     C'est le cran de trop après être descendu à 0, qui sinon fait décrocher la grille.
+    //   • fermée : la main insiste sur un cran qui ne fait rien, elle veut défiler. Le laisser
+    //     passer ET acquérir la salve au défilement, sans quoi le contenu glisserait sous le
+    //     curseur et la compétence amenée là se ferait régler au cran suivant.
+    // Hors grille du teambuild (éditeur de build, grille de seuils), rien à arbitrer.
+    private void SettleWheel(MouseWheelEventArgs e, bool changed)
+    {
+        if (changed)
+        {
+            e.Handled = true;
+            _wheelAdjustTicks = Environment.TickCount64;
+            return;
+        }
+        if (e.Timestamp != _wheelStamp) return;
+
+        if (Environment.TickCount64 - _wheelAdjustTicks < WheelGestureMs) e.Handled = true;
+        else _wheelScrolls = true;
+    }
+
     // Clic n'importe où dans la carte : ce personnage devient celui que la molette peut régler.
     // En tunnel (Preview) — les boutons et icônes du panneau consomment le clic avant la remontée,
     // cliquer dessus doit malgré tout sélectionner le personnage.
@@ -3380,9 +3409,8 @@ public partial class MainWindow : Window
     private void AttrRow_MouseWheel(object sender, MouseWheelEventArgs e)
     {
         if (!WheelMayAdjust(e, sender)) return;
-        if (((FrameworkElement)sender).Tag is AttributeRowViewModel row
-            && Changes(row, r => r.Adjust(e.Delta > 0 ? 1 : -1)))
-            _wheelAdjusted = e.Handled = true;
+        SettleWheel(e, ((FrameworkElement)sender).Tag is AttributeRowViewModel row
+                       && Changes(row, r => r.Adjust(e.Delta > 0 ? 1 : -1)));
     }
 
     // Idem, cadre d'attributs de l'éditeur de build : molette nue = niveau de base, Shift+molette =
@@ -3396,15 +3424,14 @@ public partial class MainWindow : Window
 
         int  delta = e.Delta > 0 ? 1 : -1;
         bool shift = Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift);
-        if (Changes(row, r => { if (shift) r.AdjustBonus(delta); else r.Adjust(delta); }))
-            _wheelAdjusted = e.Handled = true;
+        SettleWheel(e, Changes(row, r => { if (shift) r.AdjustBonus(delta); else r.Adjust(delta); }));
     }
 
     private void SkillSlot_MouseWheel(object sender, MouseWheelEventArgs e)
     {
         if (!WheelMayAdjust(e, sender)) return;
         SkillSlotWheelAdjust(sender, e);
-        _wheelAdjusted = e.Handled;
+        SettleWheel(e, e.Handled);
     }
 
     private void SkillSlotWheelAdjust(object sender, MouseWheelEventArgs e)
