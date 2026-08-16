@@ -30,6 +30,8 @@ public class CharacterSlotViewModel : ViewModelBase
                 if (e.PropertyName == nameof(SkillSlotViewModel.Skill))
                 {
                     OnPropertyChanged(nameof(IsEmptyBuild));
+                    OnPropertyChanged(nameof(HasAnySkill));
+                    OnPropertyChanged(nameof(HasBuildContent));
                     // L'icône de toggle « prolongateurs de durée » apparaît/disparaît selon la
                     // présence de Blessed Aura / Extend Enchantments dans la barre.
                     OnPropertyChanged(nameof(HasDurationBooster));
@@ -660,6 +662,44 @@ public class CharacterSlotViewModel : ViewModelBase
         PrimaryAttributeRows.All(r => r.Points == 0 && r.BonusPoints == 0) &&
         SecondaryAttributeRows.All(r => r.Points == 0 && r.BonusPoints == 0);
 
+    // ── Vidage du build (menus contextuels) ───────────────────────────────────
+    // « Vider » n'est PAS « supprimer le personnage » : la ligne, son nom, ses professions, ses
+    // notes, son équipement et son joueur assigné restent en place — seul le contenu du template
+    // s'en va. Les trois entrées se grisent quand il n'y a déjà plus rien à retirer.
+
+    public bool HasAnySkill => SkillSlots.Any(s => s.Skill != null);
+
+    // Points POSÉS À LA MAIN : la base (budget de 200) et le niveau bonus hors budget
+    // (rune/coiffe/conso, réglé à la molette ou au spinner). Les rangs de titre n'en font pas
+    // partie : ce ne sont pas des points de caractéristique (décision Philippe 14/08/2026).
+    public bool HasInvestedAttributes =>
+        PrimaryAttributeRows.Concat(SecondaryAttributeRows).Any(r => r.Points > 0 || r.BonusPoints > 0);
+
+    public bool HasBuildContent => HasAnySkill || HasInvestedAttributes;
+
+    public void ClearSkills()
+    {
+        foreach (var s in SkillSlots) s.Skill = null;
+    }
+
+    // Ce qui est DÉRIVÉ n'a rien à faire ici et se recalcule tout seul : mod « of the profession »
+    // de l'équipement, bonus de flux, boost d'une compétence équipée. Rien de tout cela n'est
+    // stocké dans les lignes.
+    public void ClearAttributePoints()
+    {
+        foreach (var r in PrimaryAttributeRows.Concat(SecondaryAttributeRows))
+        {
+            r.Points      = 0;
+            r.BonusPoints = 0;
+        }
+    }
+
+    public void ClearBuild()
+    {
+        ClearSkills();
+        ClearAttributePoints();
+    }
+
     public string Notes
     {
         get => _notes;
@@ -1094,6 +1134,8 @@ public class CharacterSlotViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsOverAttributeBudget));
         RaiseAttributeDisplayChanged();
         OnPropertyChanged(nameof(IsEmptyBuild));
+        OnPropertyChanged(nameof(HasInvestedAttributes));
+        OnPropertyChanged(nameof(HasBuildContent));
         NotifyTooltipsChanged();
     }
 
@@ -1123,6 +1165,8 @@ public class CharacterSlotViewModel : ViewModelBase
         {
             RaiseAttributeDisplayChanged();
             OnPropertyChanged(nameof(IsEmptyBuild));
+            OnPropertyChanged(nameof(HasInvestedAttributes));
+            OnPropertyChanged(nameof(HasBuildContent));
             // Tout changement d'attribut peut modifier une description (variables résolues au
             // rang de l'attribut de la skill) → on rafraîchit les infobulles de tous les slots.
             NotifyTooltipsChanged();

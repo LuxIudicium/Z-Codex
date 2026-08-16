@@ -530,6 +530,22 @@
                         <MenuItem Header="{DynamicResource S.Ctx.CreateVariant}" Click="CreateVariant_Click"/>
                         <MenuItem Header="{DynamicResource S.Ctx.LockVariants}" Click="LockVariants_Click"/>
                         <Separator/>
+                        <!-- Vider le build de CETTE ligne : le personnage reste (nom, professions,
+                             notes, équipement, joueur assigné), seul le contenu du template part.
+                             Grisées quand il n'y a plus rien à retirer. -->
+                        <MenuItem Header="{DynamicResource S.Ctx.ClearSkills}"
+                                  Tag="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                  IsEnabled="{Binding PlacementTarget.Tag.HasAnySkill, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                  Click="ClearCharSkills_Click"/>
+                        <MenuItem Header="{DynamicResource S.Ctx.ClearAttrs}"
+                                  Tag="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                  IsEnabled="{Binding PlacementTarget.Tag.HasInvestedAttributes, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                  Click="ClearCharAttributes_Click"/>
+                        <MenuItem Header="{DynamicResource S.Ctx.ClearBuild}"
+                                  Tag="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                  IsEnabled="{Binding PlacementTarget.Tag.HasBuildContent, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                  Click="ClearCharBuild_Click"/>
+                        <Separator/>
                         <MenuItem Header="{DynamicResource S.Ctx.RemoveChar}" Click="RemoveCharacterSlot_Click"/>
                         <Separator/>
                         <MenuItem Header="{DynamicResource S.Ctx.AddChar}" Click="AddCharacterSlot_Click"/>
@@ -1958,6 +1974,18 @@
                                               Click="ImportClipboardAny_Click"/>
                                     <MenuItem Header="{DynamicResource S.Ctx.ImportFile}"
                                               Click="ImportFileAny_Click"/>
+                                    <Separator/>
+                                    <!-- Mêmes vidages qu'au clic droit sur une ligne de teambuild.
+                                         Le DataContext du menu EST déjà le perso édité. -->
+                                    <MenuItem Header="{DynamicResource S.Ctx.ClearSkills}"
+                                              IsEnabled="{Binding HasAnySkill}"
+                                              Click="ClearCharSkills_Click"/>
+                                    <MenuItem Header="{DynamicResource S.Ctx.ClearAttrs}"
+                                              IsEnabled="{Binding HasInvestedAttributes}"
+                                              Click="ClearCharAttributes_Click"/>
+                                    <MenuItem Header="{DynamicResource S.Ctx.ClearBuild}"
+                                              IsEnabled="{Binding HasBuildContent}"
+                                              Click="ClearCharBuild_Click"/>
                                 </ContextMenu>
                             </Grid.ContextMenu>
                             <Grid.RowDefinitions>

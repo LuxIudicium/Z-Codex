@@ -2837,6 +2837,24 @@ public partial class MainWindow : Window
         _vm.ActiveTeamBuild.DeleteRow(charVm);
     }
 
+    // ── Vidage du build ───────────────────────────────────────────────────────
+    // Ligne de teambuild ET page d'un onglet Build (ResolveMenuCharacter couvre les deux).
+    // Pas de confirmation : le vidage passe par les propriétés suivies, donc Ctrl+Z le défait
+    // en UN SEUL pas (la rafale est coalescée par UndoManager).
+    // ⚠ Le niveau BONUS (rune/coiffe/conso) est hors snapshot d'undo dans les deux onglets
+    // (.pn3 comme ContentSignature ne le portent pas) : l'annulation rend les compétences et les
+    // points de base, jamais le « +3 ». Philippe le sait — décision du 14/08/2026 de le vider
+    // quand même, un bonus se repose d'un coup de molette.
+
+    private void ClearCharSkills_Click(object sender, RoutedEventArgs e)
+        => ResolveMenuCharacter(sender)?.ClearSkills();
+
+    private void ClearCharAttributes_Click(object sender, RoutedEventArgs e)
+        => ResolveMenuCharacter(sender)?.ClearAttributePoints();
+
+    private void ClearCharBuild_Click(object sender, RoutedEventArgs e)
+        => ResolveMenuCharacter(sender)?.ClearBuild();
+
     // ── Variantes ─────────────────────────────────────────────────────────────
 
     private void CreateVariant_Click(object sender, RoutedEventArgs e)

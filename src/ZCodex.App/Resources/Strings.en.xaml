@@ -80,6 +80,9 @@
     <sys:String x:Key="S.Ctx.CopyTo">Copy to</sys:String>
     <sys:String x:Key="S.Ctx.CreateVariant">Create variant</sys:String>
     <sys:String x:Key="S.Ctx.LockVariants">Lock variants together…</sys:String>
+    <sys:String x:Key="S.Ctx.ClearSkills">Clear skills</sys:String>
+    <sys:String x:Key="S.Ctx.ClearAttrs">Clear attribute points</sys:String>
+    <sys:String x:Key="S.Ctx.ClearBuild">Clear build</sys:String>
     <sys:String x:Key="S.Ctx.RemoveChar">Remove character</sys:String>
 
     <!-- ── Skill slot context menu ────────────────────────────────────── -->

@@ -83,6 +83,9 @@
     <sys:String x:Key="S.Ctx.CopyTo">Copier vers</sys:String>
     <sys:String x:Key="S.Ctx.CreateVariant">Créer une variante</sys:String>
     <sys:String x:Key="S.Ctx.LockVariants">Verrouiller des variantes entre elles…</sys:String>
+    <sys:String x:Key="S.Ctx.ClearSkills">Supprimer les compétences</sys:String>
+    <sys:String x:Key="S.Ctx.ClearAttrs">Supprimer les points de caractéristique</sys:String>
+    <sys:String x:Key="S.Ctx.ClearBuild">Supprimer le build</sys:String>
     <sys:String x:Key="S.Ctx.RemoveChar">Supprimer le personnage</sys:String>
 
     <!-- ── Menu contextuel d'un slot de compétence ────────────────────── -->

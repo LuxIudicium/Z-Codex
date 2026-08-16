@@ -331,8 +331,11 @@ public static class HelpContent
             R("Clic sur le nom du joueur assigné", "Click the assigned player name",
               "Ouvre le menu du personnage (assignation, etc.).", "Opens the character menu (assignment, etc.)."),
             R("Clic droit sur la ligne du personnage", "Right-click the character row",
-              "Menu complet : ajouter un personnage, propriétés, équipement, importer/copier les templates (O : compétences, P : équipement), assigner un joueur, échanger / déplacer / copier vers un autre personnage, créer une variante, verrouiller des variantes, supprimer.",
-              "Full menu: add character, properties, equipment, import/copy templates (O: skills, P: equipment), assign a player, swap / move / copy to another character, create a variant, lock variants, remove.")),
+              "Menu complet : ajouter un personnage, propriétés, équipement, importer/copier les templates (O : compétences, P : équipement), assigner un joueur, échanger / déplacer / copier vers un autre personnage, créer une variante, verrouiller des variantes, vider le build, supprimer.",
+              "Full menu: add character, properties, equipment, import/copy templates (O: skills, P: equipment), assign a player, swap / move / copy to another character, create a variant, lock variants, clear the build, remove."),
+            R("Supprimer les compétences / les points / le build", "Clear skills / points / build",
+              "Vident le contenu du build SANS toucher au personnage : le nom, les professions, les notes, l'équipement et le joueur assigné restent. « Supprimer le build » fait les deux à la fois. Les points bonus posés à la main (rune, coiffe, consommable) partent avec les points de base ; les rangs de titre restent. Ctrl+Z rend les compétences et les points de base en un seul pas — mais pas les points bonus, qui n'entrent dans aucun historique. Aussi au clic droit dans la page d'un onglet Build.",
+              "Empty the build's contents WITHOUT touching the character: name, professions, notes, equipment and assigned player stay. “Clear build” does both at once. Hand-set bonus points (rune, headgear, consumable) go along with the base points; title ranks stay. Ctrl+Z brings back the skills and base points in one step — but not the bonus points, which are part of no history. Also on right-click in the page of a Build tab.")),
 
         // ═══════════════ FLUX, RITUELS, BOOSTS ═══════════════
         S("Flux, rituels et bonus temporaires", "Flux, rituals and temporary bonuses",
