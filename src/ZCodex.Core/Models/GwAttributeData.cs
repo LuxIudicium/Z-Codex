@@ -63,7 +63,7 @@ public static class GwAttributeData
         // Ritualist (primary)
         new(36, "Spawning Power",      "Puissance de l'invocation", Profession.Ritualist,  true),
         // Paragon
-        new(37, "Spear Mastery",       "Maîtrise de la lance",   Profession.Paragon,       false),
+        new(37, "Spear Mastery",       "Maîtrise du javelot",    Profession.Paragon,       false),
         new(38, "Command",             "Commandement",           Profession.Paragon,       false),
         new(39, "Motivation",          "Motivation",             Profession.Paragon,       false),
         new(40, "Leadership",          "Charisme",               Profession.Paragon,       true),

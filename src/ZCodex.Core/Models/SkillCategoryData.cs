@@ -1793,7 +1793,7 @@ public static class SkillCategoryData
             [AttributeBoostLabel] = "Hausse de caractéristique",
             [SnareLabel] = "Snares",
             [SpeedBoostLabel] = "Accélérations",
-            ["On Pet"] = "Sur l'animal",
+            ["On Pet"] = "Sur le familier",
             [AtkSpeedUpLabel]   = "Vitesse d'attaque accrue",
             [AtkSpeedDownLabel] = "Vitesse d'attaque réduite",
             ["On Spirits"] = "Sur les esprits",
