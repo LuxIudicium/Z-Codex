@@ -12,6 +12,23 @@
         <DataTemplate x:Key="ArmorCatalogSkillTooltipTemplate">
             <ctrl:SkillTooltipControl Skill="{Binding}"/>
         </DataTemplate>
+
+        <!-- Listes Skill Types/Mechanics : cet écran filtre par listes déroulantes (pas d'onglets).
+             Toutes les entrées sont sélectionnables — les familles sont devenues des mécaniques. -->
+        <DataTemplate x:Key="CategoryComboItemTemplate">
+            <TextBlock Text="{Binding DisplayLabel}" Margin="{Binding Margin}">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Style.Triggers>
+                            <!-- Entrée qui ne rendrait rien avec les filtres actifs : grisée. -->
+                            <DataTrigger Binding="{Binding IsEmpty}" Value="True">
+                                <Setter Property="Opacity" Value="0.45"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+        </DataTemplate>
     </UserControl.Resources>
     <DockPanel>
         <!-- Barre profils (haut) -->
@@ -552,15 +569,39 @@
                                 <CheckBox Content="{DynamicResource S.Armor.DamageOnly}" FontSize="11" VerticalAlignment="Center"
                                           IsChecked="{Binding DamageOnlyFilter}"
                                           ToolTip="{DynamicResource S.Armor.DamageOnlyTip}"/>
+                                <!-- Skill Types/Mechanics : cet écran n'a pas d'onglets, ce sont donc
+                                     deux listes de plus, dans la même barre que les autres filtres.
+                                     Le booléen vit sur MainViewModel → RelativeSource jusqu'à la fenêtre. -->
+                                <CheckBox FontSize="11" VerticalAlignment="Center" Margin="10,0,0,0"
+                                          IsChecked="{Binding DataContext.ShowCategoryColumns, RelativeSource={RelativeSource AncestorType=Window}}"
+                                          Content="{DynamicResource S.Cat.ToggleLabel}"
+                                          ToolTip="{DynamicResource S.Cat.ToggleTip}"/>
+                                <ComboBox Width="150" FontSize="11" Margin="8,1,6,1" VerticalContentAlignment="Center"
+                                          ItemsSource="{Binding AttackCatalog.TypeCategories}"
+                                          SelectedItem="{Binding AttackCatalog.SelectedTypeItem}"
+                                          ItemTemplate="{StaticResource CategoryComboItemTemplate}"
+                                          Visibility="{Binding DataContext.ShowCategoryColumns, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                <ComboBox Width="170" FontSize="11" Margin="0,1,6,1" VerticalContentAlignment="Center"
+                                          ItemsSource="{Binding AttackCatalog.MechanicCategories}"
+                                          SelectedItem="{Binding AttackCatalog.SelectedMechanicItem}"
+                                          ItemTemplate="{StaticResource CategoryComboItemTemplate}"
+                                          Visibility="{Binding DataContext.ShowCategoryColumns, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibilityConverter}}"/>
                             </WrapPanel>
-                            <DockPanel Grid.Row="1" Margin="0,0,0,2">
-                                <Button DockPanel.Dock="Right" Content="{DynamicResource S.Common.Add}" Padding="8,2" FontSize="11"
-                                        Click="AddAttack_Click" Margin="4,0,0,0"/>
-                                <TextBox x:Name="AttackSearchBox" FontSize="11" VerticalContentAlignment="Center"
-                                         KeyDown="AttackSearchBox_KeyDown"
-                                         Text="{Binding AttackCatalog.SearchText, UpdateSourceTrigger=PropertyChanged}"
-                                         ToolTip="{DynamicResource S.Armor.SearchCatalogTip}"/>
-                            </DockPanel>
+                            <StackPanel Grid.Row="1" Margin="0,0,0,2">
+                                <DockPanel>
+                                    <Button DockPanel.Dock="Right" Content="{DynamicResource S.Common.Add}" Padding="8,2" FontSize="11"
+                                            Click="AddAttack_Click" Margin="4,0,0,0"/>
+                                    <TextBox x:Name="AttackSearchBox" FontSize="11" VerticalContentAlignment="Center"
+                                             KeyDown="AttackSearchBox_KeyDown"
+                                             Text="{Binding AttackCatalog.SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                             ToolTip="{DynamicResource S.Armor.SearchCatalogTip}"/>
+                                </DockPanel>
+                                <!-- Ligne de retour : catégories reconnues + ce que les filtres cachent. -->
+                                <TextBlock Style="{StaticResource SearchNoticeStyle}" Tag="{Binding AttackCatalog}"
+                                           Text="{Binding AttackCatalog.SearchNotice}"
+                                           Visibility="{Binding AttackCatalog.HasSearchNotice, Converter={StaticResource BoolToVisibilityConverter}}"
+                                           MouseLeftButtonUp="SearchNotice_Click"/>
+                            </StackPanel>
                             <ListBox Grid.Row="2" MinHeight="60" FontSize="11" Margin="0,0,0,4"
                                      ItemsSource="{Binding AttackCatalog.FilteredSkills}"
                                      SelectedItem="{Binding AttackCatalog.SelectedSkill}"

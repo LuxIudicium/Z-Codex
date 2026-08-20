@@ -16,6 +16,39 @@ public class SkillRepository(AppDbContext db)
             .Where(s => s.ProfessionId == professionId)
             .ToListAsync();
 
+    // Recalcule la colonne Mechanics de toute la table à partir de ce que la base sait déjà (type,
+    // upkeep, sacrifice, conditions scrapées) — aucun accès réseau. Les clés qui ne sont PAS
+    // calculables (aucune à ce jour) sont préservées telles quelles.
+    // Renvoie le nombre de compétences dont la valeur a changé.
+    public async Task<int> RecomputeMechanicsAsync()
+    {
+        var entities = await db.Skills.ToListAsync();
+        int changed = 0;
+        foreach (var e in entities)
+        {
+            // Sonde : seuls les champs que Compute regarde sont renseignés. Name et Description en
+            // font partie depuis l'aire d'effet — c'est le TEXTE de la description qui porte les
+            // portées (« adjacent », « nearby », « in the area », « party »).
+            var probe = new Core.Models.Skill
+            {
+                Name = e.Name,
+                Description = e.Description,
+                SkillType = e.SkillType,
+                Upkeep = e.Upkeep,
+                Sacrifice = e.Sacrifice,
+                Conditions = Core.Models.SkillCategoryData.ParseCsv(e.Conditions),
+            };
+            var csv = string.Join(",",
+                Core.Models.SkillCategoryData.Merge(
+                    Core.Models.SkillCategoryData.ParseCsv(e.Mechanics), probe));
+            if (e.Mechanics == csv) continue;
+            e.Mechanics = csv;
+            changed++;
+        }
+        if (changed > 0) await db.SaveChangesAsync();
+        return changed;
+    }
+
     // Remplace toute la table Skills : supprime l'existant, déduplique par ID, réinsère.
     public async Task ReplaceAllAsync(IEnumerable<SkillEntity> skills)
     {

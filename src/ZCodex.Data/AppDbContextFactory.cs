@@ -34,6 +34,7 @@ public static class AppDbContextFactory
         ("Skills",          "Progression",    "TEXT NOT NULL DEFAULT ''"),
         ("Skills",          "IconUrlHd",      "TEXT NOT NULL DEFAULT ''"),
         ("Skills",          "Conditions",     "TEXT NOT NULL DEFAULT ''"),
+        ("Skills",          "Mechanics",      "TEXT NOT NULL DEFAULT ''"),
         ("Skills",          "NameFr",         "TEXT NOT NULL DEFAULT ''"),
         ("Skills",          "DescriptionFr",  "TEXT NOT NULL DEFAULT ''"),
         ("Skills",          "AttributeFr",    "TEXT NOT NULL DEFAULT ''"),

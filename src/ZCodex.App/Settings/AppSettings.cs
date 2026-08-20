@@ -39,6 +39,20 @@ public class AppSettings
     // en ligne unique au-dessus du teambuild. Visible par défaut.
     public bool ShowConditions { get; set; } = true;
 
+    // Colonnes « Types » et « Mechanics » du catalogue (cases à cocher de la barre de recherche =
+    // menu Affichage). Masquées par défaut ; masquer une colonne remet SON filtre sur « All ».
+    // Deux réglages séparés depuis le 20/08/2026 — l'ancien booléen unique est relu une dernière
+    // fois pour ne pas faire disparaître les colonnes de ceux qui les avaient affichées.
+    public bool ShowTypeColumn { get; set; } = false;
+    public bool ShowMechanicColumn { get; set; } = false;
+
+    /// <summary>Ancien réglage unique (≤ 1.1.0). Nul dans un fichier écrit depuis la séparation.</summary>
+    public bool? ShowCategoryColumns { get; set; }
+
+    // Ligne de puces « Skill Types » des écrans Build et Recherche : dépliée, ou réduite au filtre
+    // actif. Repliée par défaut. (Les mécaniques n'ont plus de ligne de puces : elles sont un rail.)
+    public bool TypeChipsExpanded { get; set; } = false;
+
     // Bandeau des rituels de la nature : afficher TOUS les rituels (cliquables même non équipés)
     // au lieu des seuls équipés. Masqué par défaut.
     public bool ShowAllNatureRituals { get; set; } = false;

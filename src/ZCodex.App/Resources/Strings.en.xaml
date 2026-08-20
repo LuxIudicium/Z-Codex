@@ -30,6 +30,8 @@
     <sys:String x:Key="S.Menu.ViewWheelSelectTip">Clicking a character activates it (blue edge): the wheel only sets attributes there. Everywhere else it scrolls the view.</sys:String>
     <sys:String x:Key="S.Menu.ViewPreviewAttrs">Show attributes in the preview</sys:String>
     <sys:String x:Key="S.Menu.ViewConditions">Show conditions</sys:String>
+    <sys:String x:Key="S.Menu.ViewTypeColumn">Show the Skill Types filter</sys:String>
+    <sys:String x:Key="S.Menu.ViewMechanicColumn">Show the Mechanics filter</sys:String>
     <sys:String x:Key="S.Menu.ViewArmorDamage">Show armor-based damage</sys:String>
     <sys:String x:Key="S.Menu.ViewArmorDamageConfig">Armor-based damage...</sys:String>
     <sys:String x:Key="S.Menu.ViewRitualBand">Show Nature Rituals bar</sys:String>
@@ -48,6 +50,7 @@
     <sys:String x:Key="S.Menu.ExtrasArmorCalc">Armor calculator</sys:String>
     <sys:String x:Key="S.Menu.ExtrasPvx">Download PvX builds...</sys:String>
     <sys:String x:Key="S.Menu.ExtrasCheckIcons">Check icons (wiki)</sys:String>
+    <sys:String x:Key="S.Menu.ExtrasRecomputeCategories">Recompute skill categories</sys:String>
     <sys:String x:Key="S.Menu.Window">Window</sys:String>
     <sys:String x:Key="S.Menu.Help">Help</sys:String>
     <sys:String x:Key="S.Menu.HelpHelp">Help and shortcuts...</sys:String>
@@ -185,6 +188,14 @@
     <sys:String x:Key="S.Cat.Professions">Professions</sys:String>
     <sys:String x:Key="S.Cat.Attributes">Attributes</sys:String>
     <sys:String x:Key="S.Cat.Name">Name</sys:String>
+    <!-- Colonnes Types/Mechanics + ligne de retour de la recherche -->
+    <sys:String x:Key="S.Cat.Types">Skill Types</sys:String>
+    <sys:String x:Key="S.Cat.Mechanics">Mechanics</sys:String>
+    <sys:String x:Key="S.Cat.ChipRowTip">Click to fold or unfold this filter row. Folded, it only shows what is active.</sys:String>
+    <sys:String x:Key="S.Cat.ToggleTypesTip" xml:space="preserve">Filter by skill Type — what the in-game tooltip says.&#10;Hiding it resets that filter to "All".</sys:String>
+    <sys:String x:Key="S.Cat.ToggleMechanicsTip" xml:space="preserve">Filter by game Mechanic — what the skill does.&#10;Hiding it resets that filter to "All".</sys:String>
+    <sys:String x:Key="S.Cat.Recognized">Categories: {0}</sys:String>
+    <sys:String x:Key="S.Cat.Hidden">{0} hidden by {1} — click to show them</sys:String>
 
     <!-- ── Skill tooltip ──────────────────────────────────────────────── -->
     <sys:String x:Key="S.Tooltip.Elite">Elite</sys:String>
@@ -237,6 +248,8 @@
     <sys:String x:Key="S.Msg.CatalogIncompleteTitle">Incomplete catalogue</sys:String>
     <sys:String x:Key="S.Msg.CatalogIncomplete" xml:space="preserve">The skill download was interrupted.&#10;&#10;The catalogue is usable, but progression tables and icons are missing: the value ranges in tooltips will stay unresolved.&#10;&#10;Finish the download now?</sys:String>
     <sys:String x:Key="S.Msg.IconsTitle">Icon check</sys:String>
+    <sys:String x:Key="S.Msg.CategoriesTitle">Skill categories</sys:String>
+    <sys:String x:Key="S.Msg.CategoriesDone">{0} skills updated.</sys:String>
     <sys:String x:Key="S.Msg.IconsAllGood">All {0} interface icons are present and readable.</sys:String>
     <sys:String x:Key="S.Msg.IconsRepaired" xml:space="preserve">{0} missing or unreadable icon(s) were downloaded again.&#10;Restart Z-Codex to show them everywhere.</sys:String>
     <sys:String x:Key="S.Msg.IconsFailed" xml:space="preserve">{0} icon(s) could not be downloaded from the wiki.&#10;Check your internet connection, then try again.</sys:String>
@@ -414,7 +427,7 @@
     <sys:String x:Key="S.Dmg.Blunt">blunt</sys:String>
 
     <!-- ── Spike window ───────────────────────────────────────────────── -->
-    <sys:String x:Key="S.Spike.Teambuild">Teambuild</sys:String>
+    <sys:String x:Key="S.Spike.Teambuild">Edit Teambuild &amp; Spike participants</sys:String>
     <sys:String x:Key="S.Spike.TeambuildTip">Brings the teambuild window to the front to pick the spike roster rows (max 8, roots or variants)</sys:String>
     <sys:String x:Key="S.Spike.ClickHint">Click a skill to count it in the spike (green frame); click again to remove it.</sys:String>
     <sys:String x:Key="S.Spike.Buffs">Buffs:</sys:String>

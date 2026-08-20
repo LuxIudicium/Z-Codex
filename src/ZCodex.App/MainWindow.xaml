@@ -241,17 +241,6 @@
             </Style.Triggers>
         </Style>
 
-        <Style x:Key="ProfessionItemStyle" TargetType="ListBoxItem">
-            <Setter Property="Padding" Value="6,3"/>
-            <Setter Property="FontSize" Value="13"/>
-            <Style.Triggers>
-                <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
-                    <Setter Property="Foreground" Value="{DynamicResource TextOnAccentBrush}"/>
-                </Trigger>
-            </Style.Triggers>
-        </Style>
-
         <Style x:Key="AttributeItemStyle" TargetType="ListBoxItem">
             <Setter Property="Padding" Value="4,2"/>
             <Setter Property="FontSize" Value="12"/>
@@ -262,6 +251,47 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
+
+        <!-- Ligne des colonnes « Skill Types » et « Mechanics ». Hérite du style commun des
+             panneaux de filtre et n'y ajoute qu'une chose : une ligne dont un ancêtre est replié
+             disparaît. La collection, elle, reste plate et complète. -->
+        <Style x:Key="CategoryItemStyle" TargetType="ListBoxItem" BasedOn="{StaticResource AttributeItemStyle}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsVisible}" Value="False">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Lignes des colonnes « Skill Types » et « Mechanics ». Toutes cliquables : les familles
+             (Attacks, Spells…) sont passées en mécaniques, il n'y a plus d'intertitre décoratif.
+             Indentation 0 = entrée méta « All … » ou famille de tête → SemiBold.
+             Le chevron déplie/replie SANS sélectionner la ligne (le handler marque l'événement
+             traité) : on veut pouvoir fouiller l'arbre sans relancer un filtrage à chaque pas. -->
+        <DataTemplate x:Key="CategoryRowTemplate">
+            <DockPanel Margin="{Binding Margin}">
+                <TextBlock DockPanel.Dock="Left" Text="{Binding ExpanderGlyph}" Tag="{Binding}"
+                           Width="12" FontSize="9" VerticalAlignment="Center"
+                           Foreground="{DynamicResource TextSecondaryBrush}"
+                           Background="Transparent" MouseLeftButtonUp="CategoryExpander_Click"/>
+                <TextBlock Text="{Binding DisplayLabel}" TextTrimming="CharacterEllipsis">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Indent}" Value="0">
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                </DataTrigger>
+                                <!-- Entrée qui ne rendrait rien avec les filtres actifs : grisée, mais
+                                     toujours à sa place et cliquable (même règle que les puces). -->
+                                <DataTrigger Binding="{Binding IsEmpty}" Value="True">
+                                    <Setter Property="Opacity" Value="0.45"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </DockPanel>
+        </DataTemplate>
 
         <DataTemplate x:Key="AttributeRowTemplate">
             <Grid Margin="0,1" Tag="{Binding}" PreviewMouseWheel="AttrRow_MouseWheel">
@@ -306,13 +336,16 @@
             </Grid>
         </DataTemplate>
 
-        <!-- Variante « recherche » : nom en largeur FIXE (les spinners restent collés au nom
-             ET alignés verticalement) puis colonne * de remplissage. Ne pas fusionner avec
-             AttributeRowTemplate : l'éditeur a des colonnes étroites où le nom en * convient. -->
+        <!-- Variante « recherche » : nom serré sur le plus long de son bloc (les spinners restent
+             collés au nom ET alignés verticalement) puis colonne * de remplissage. Ne pas fusionner
+             avec AttributeRowTemplate : l'éditeur a des colonnes étroites où le nom en * convient.
+             Les 135 px en dur ont laissé place à Auto + SharedSizeGroup (20/08/2026), comme dans la
+             vue Build : même rendu, mais plus rien à re-régler si un libellé s'allonge ou si on
+             change de langue. La portée du partage est posée sur CHAQUE bloc de seuils. -->
         <DataTemplate x:Key="SearchAttributeRowTemplate">
             <Grid Margin="0,1" Tag="{Binding}" PreviewMouseWheel="AttrRow_MouseWheel">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="135"/>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="SearchAttrName" MinWidth="90"/>
                     <ColumnDefinition Width="20"/>
                     <ColumnDefinition Width="18"/>
                     <ColumnDefinition Width="22"/>
@@ -373,7 +406,12 @@
         <DataTemplate x:Key="EditorAttributeRowTemplate">
             <Grid Margin="0,1" Tag="{Binding}" PreviewMouseWheel="EditorAttrRow_MouseWheel">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
+                    <!-- Auto + SharedSizeGroup : la colonne des noms prend la largeur du nom le plus
+                         long de son bloc, et pas un pixel de plus — les lignes restent alignees entre
+                         elles sans que le nom s'etire sur la moitie du panneau (maquette Philippe
+                         20/08/2026). La portee du partage est posee sur CHAQUE bloc, donc les
+                         caracteristiques primaires et secondaires se dimensionnent separement. -->
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="EditorAttrName" MinWidth="90"/>
                     <ColumnDefinition Width="18"/>
                     <ColumnDefinition Width="24"/>   <!-- niveau de base -->
                     <ColumnDefinition Width="18"/>
@@ -452,6 +490,14 @@
                     <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
                     <Setter Property="BorderBrush" Value="{DynamicResource AccentDarkBrush}"/>
                     <Setter Property="TextElement.Foreground" Value="White"/>
+                </DataTrigger>
+                <!-- Puce des lignes Skill Types / Mechanics qui ne rendrait AUCUN résultat avec les
+                     filtres actifs : grisée, mais toujours à sa place et toujours cliquable (idée
+                     Philippe) — la liste ne bouge pas sous le curseur quand on change de profession.
+                     Placé APRÈS le déclencheur de sélection : une puce vide mais sélectionnée doit
+                     rester lisible sur le fond d'accentuation. -->
+                <DataTrigger Binding="{Binding Category.IsEmpty}" Value="True">
+                    <Setter Property="Opacity" Value="0.4"/>
                 </DataTrigger>
             </Style.Triggers>
         </Style>
@@ -1091,6 +1137,15 @@
                 <MenuItem x:Name="WheelNeedsSelectionMenuItem" Header="{DynamicResource S.Menu.ViewWheelSelect}"
                           ToolTip="{DynamicResource S.Menu.ViewWheelSelectTip}"
                           IsCheckable="True" Click="WheelNeedsSelectionMenuItem_Click"/>
+                <!-- Filtres « Skill Types » et « Mechanics » du catalogue, INDÉPENDANTS l'un de
+                     l'autre : mêmes booléens que les deux cases à cocher des barres de recherche.
+                     Masquer un filtre remet CE filtre-là sur « All ». -->
+                <MenuItem x:Name="ShowTypeColumnMenuItem" Header="{DynamicResource S.Menu.ViewTypeColumn}"
+                          ToolTip="{DynamicResource S.Cat.ToggleTypesTip}"
+                          IsCheckable="True" Click="ShowTypeColumnMenuItem_Click"/>
+                <MenuItem x:Name="ShowMechanicColumnMenuItem" Header="{DynamicResource S.Menu.ViewMechanicColumn}"
+                          ToolTip="{DynamicResource S.Cat.ToggleMechanicsTip}"
+                          IsCheckable="True" Click="ShowMechanicColumnMenuItem_Click"/>
                 <MenuItem x:Name="ShowPreviewAttributesMenuItem"
                           Header="{DynamicResource S.Menu.ViewPreviewAttrs}"
                           IsCheckable="True" Click="ShowPreviewAttributesMenuItem_Click"/>
@@ -1154,6 +1209,10 @@
                      tirés qu'au démarrage, et un premier téléchargement raté n'avait jusqu'ici
                      aucun recours côté utilisateur. -->
                 <MenuItem Header="{DynamicResource S.Menu.ExtrasCheckIcons}" Click="CheckIcons_Click"/>
+                <!-- Recalcule la colonne « Mechanics » du catalogue (enchantements, maintien,
+                     sacrifice, conditions infligées…). Hors du groupe « internet » ci-dessous :
+                     à ce stade tout se déduit de la base, rien n'est téléchargé. -->
+                <MenuItem Header="{DynamicResource S.Menu.ExtrasRecomputeCategories}" Click="RecomputeCategories_Click"/>
                 <!-- Voisines de la mise à jour du catalogue : ces entrées vont chercher de la
                      donnée sur internet, et ce sont les seules du menu à le faire. -->
                 <MenuItem Header="{DynamicResource S.Menu.ExtrasPvx}" Click="PvxImport_Click"/>
@@ -1586,6 +1645,42 @@
                     <RowDefinition Height="*"/>     <!-- catalogue (B3) -->
                     <RowDefinition Height="Auto"/>  <!-- barre du bas : périmètres + Lancer la recherche -->
                 </Grid.RowDefinitions>
+                <!-- Colonne 1 = rail des Mécaniques, comme dans la vue Build : Philippe veut les deux
+                     écrans aussi identiques que possible. Il longe le perso-requête ET le catalogue,
+                     et s'arrête au-dessus de la barre du bas, seule à passer en ColumnSpan=2.
+                     Largeur en Auto pour que le masquage la referme à 0 sans gouttière — ⚠ ne PAS y
+                     accrocher de GridSplitter, il y écrirait une largeur en dur. -->
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <Grid Grid.Row="0" Grid.RowSpan="2" Grid.Column="1"
+                      Visibility="{Binding DataContext.ShowMechanicColumn, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="205" MinWidth="70"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Row="0" Grid.RowSpan="2" Grid.Column="0"
+                            Background="{DynamicResource ControlBackgroundBrush}"/>
+
+                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{DynamicResource S.Cat.Mechanics}"
+                               FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}"
+                               Padding="4,2" Background="{DynamicResource HeaderBackgroundBrush}"/>
+
+                    <ListBox Grid.Row="1" Grid.Column="1"
+                             ItemsSource="{Binding Catalog.MechanicCategories}"
+                             SelectedItem="{Binding Catalog.SelectedMechanicItem}"
+                             ItemContainerStyle="{StaticResource CategoryItemStyle}"
+                             ItemTemplate="{StaticResource CategoryRowTemplate}"
+                             BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="0"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
+                </Grid>
 
                 <!-- Perso-requête (façon PawNed²) : DataContext = QueryCharacter (CharacterSlotViewModel)
                      → réutilise tels quels les handlers du picker de profession, des slots (drop/drag/
@@ -1685,20 +1780,26 @@
                         </StackPanel>
 
                         <!-- Droite : seuils d'attributs (2 colonnes) -->
-                        <Border Grid.Column="2" BorderBrush="{DynamicResource BorderLightBrush}" BorderThickness="1" CornerRadius="3"
+                        <Border Grid.Column="2" Grid.IsSharedSizeScope="True"
+                                BorderBrush="{DynamicResource BorderLightBrush}" BorderThickness="1" CornerRadius="3"
                                 Background="{DynamicResource InsetBackgroundBrush}" Padding="8,6">
                             <StackPanel>
                                 <TextBlock Text="{DynamicResource S.Ed.AttrThresholds}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextHeadingBrush}"/>
                                 <TextBlock Text="{DynamicResource S.Ed.AttrThresholdsHint}"
                                            FontSize="9.5" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" Margin="0,1,0,5"/>
                                 <Grid>
+                                    <!-- Deux moitiés ÉGALES et de largeur FIXE, comme l'encart Attributs
+                                         de la vue Build : le SharedSizeGroup leur donne à toutes deux la
+                                         largeur de la plus large, mesurée sur le contenu. Elles ne
+                                         dépendent donc pas de la place disponible, et décocher
+                                         « Mechanics » ne les fait pas bouger. -->
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="SearchAttrHalf"/>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="SearchAttrHalf"/>
                                     </Grid.ColumnDefinitions>
-                                    <ItemsControl Grid.Column="0" ItemsSource="{Binding PrimaryAttributeRows}"
+                                    <ItemsControl Grid.Column="0" ItemsSource="{Binding PrimaryAttributeRows}" Grid.IsSharedSizeScope="True"
                                                   ItemTemplate="{StaticResource SearchAttributeRowTemplate}" Margin="0,0,6,0"/>
-                                    <ItemsControl Grid.Column="1" ItemsSource="{Binding SecondaryAttributeRows}"
+                                    <ItemsControl Grid.Column="1" ItemsSource="{Binding SecondaryAttributeRows}" Grid.IsSharedSizeScope="True"
                                                   ItemTemplate="{StaticResource SearchAttributeRowTemplate}"/>
                                 </Grid>
                                 <TextBlock Text="{DynamicResource S.Ed.PickProfThresholds}"
@@ -1753,25 +1854,90 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
+                            <!-- Filet de séparation entre les onglets de PROFESSION (au-dessus) et les filtres de
+                                 catégorie (en dessous) : deux familles qui n'ont rien à voir, et qui se touchaient au
+                                 point de se lire comme une seule (demande Philippe 20/08/2026). Il suit la case à
+                                 cocher : pas de trait qui pende sous les onglets quand la ligne est masquée. -->
+                            <Border Height="1" Margin="4,4,4,3" Background="{DynamicResource BorderLightBrush}"
+                                    Visibility="{Binding DataContext.ShowTypeColumn, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                            <!-- Ligne propre pour « Types » : sa sélection est indépendante des onglets de profession,
+                                 donc les deux surlignages coexistent. Visible avec SA case à cocher de la barre de recherche. -->
+                            <DockPanel Margin="4,1,4,0"
+                                       Visibility="{Binding DataContext.ShowTypeColumn, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <!-- En-tête cliquable : replie/déplie la ligne. Repliée, elle ne montre que le filtre ACTIF. -->
+                                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Width="86" VerticalAlignment="Top"
+                                            Margin="0,4,6,0" Background="Transparent" Cursor="Hand"
+                                            Tag="Type" MouseLeftButtonUp="ChipRowHeader_Click"
+                                            ToolTip="{DynamicResource S.Cat.ChipRowTip}">
+                                    <TextBlock Text="{Binding DataContext.TypeChipsGlyph, RelativeSource={RelativeSource AncestorType=Window}}"
+                                               FontSize="9" Margin="0,1,3,0" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                    <TextBlock Text="{DynamicResource S.Cat.Types}" FontSize="11" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
+                            
+                                <!-- Repliée : le filtre actif, et rien d'autre. -->
+                                <TextBlock DockPanel.Dock="Left" FontSize="11" VerticalAlignment="Top" Margin="0,4,0,0"
+                                           Text="{Binding Catalog.SelectedTypeItem.DisplayLabel}"
+                                           Visibility="{Binding DataContext.TypeChipsExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Invert}"/>
+                            
+                                <!-- Dépliée : les 34 puces, sur toute la largeur. Pas de champ de filtre (comme la vue
+                                     Build) : à 34 entrées sur deux lignes, il coûtait plus de place qu'il n'en gagnait. -->
+                                <ItemsControl ItemsSource="{Binding CatalogTypeTabs}"
+                                              Visibility="{Binding DataContext.TypeChipsExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Style="{StaticResource CatalogTabStyle}" Tag="{Binding}"
+                                                    MouseLeftButtonDown="CatalogTypeTab_Click">
+                                                <TextBlock Text="{Binding Label}" FontSize="11"/>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </DockPanel>
                         </StackPanel>
 
                         <!-- Mode PvE/PvP + recherche par nom -->
-                        <DockPanel Grid.Row="1" Margin="6,6,6,4">
-                            <ComboBox DockPanel.Dock="Left" Width="100" Margin="0,0,8,0" FontSize="12"
-                                      VerticalContentAlignment="Center"
-                                      ItemsSource="{Binding Catalog.GameModes}"
-                                      SelectedValuePath="Mode"
-                                      SelectedValue="{Binding Catalog.SelectedGameMode}"
-                                      ToolTip="{DynamicResource S.Ed.GameModeTip}">
-                                <ComboBox.ItemTemplate>
-                                    <DataTemplate><TextBlock Text="{Binding Label}"/></DataTemplate>
-                                </ComboBox.ItemTemplate>
-                            </ComboBox>
-                            <TextBlock Text="{DynamicResource S.Ed.SearchSkills}" DockPanel.Dock="Left" VerticalAlignment="Center"
-                                       Margin="0,0,6,0" FontSize="12"/>
-                            <TextBox Text="{Binding Catalog.SearchText, UpdateSourceTrigger=PropertyChanged}"
-                                     FontSize="12"/>
-                        </DockPanel>
+                        <StackPanel Grid.Row="1" Margin="6,6,6,4">
+                            <DockPanel>
+                                <ComboBox DockPanel.Dock="Left" Width="100" Margin="0,0,8,0" FontSize="12"
+                                          VerticalContentAlignment="Center"
+                                          ItemsSource="{Binding Catalog.GameModes}"
+                                          SelectedValuePath="Mode"
+                                          SelectedValue="{Binding Catalog.SelectedGameMode}"
+                                          ToolTip="{DynamicResource S.Ed.GameModeTip}">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate><TextBlock Text="{Binding Label}"/></DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                                <TextBlock Text="{DynamicResource S.Ed.SearchSkills}" DockPanel.Dock="Left" VerticalAlignment="Center"
+                                           Margin="0,0,6,0" FontSize="12"/>
+                                <!-- Bascule des deux filtres, SÉPARÉMENT (demande Philippe 20/08/2026) : 34 types et
+                                     87 mécaniques n'ont ni le même encombrement ni le même usage. Mêmes booléens que le
+                                     menu Affichage ; ils vivent sur MainViewModel, d'où le RelativeSource jusqu'à la
+                                     fenêtre quand le DataContext local est celui d'un éditeur. -->
+                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <CheckBox Margin="8,0,0,0" VerticalAlignment="Center" FontSize="12"
+                                              IsChecked="{Binding DataContext.ShowTypeColumn, RelativeSource={RelativeSource AncestorType=Window}}"
+                                              Content="{DynamicResource S.Cat.Types}"
+                                              ToolTip="{DynamicResource S.Cat.ToggleTypesTip}"/>
+                                    <CheckBox Margin="8,0,0,0" VerticalAlignment="Center" FontSize="12"
+                                              IsChecked="{Binding DataContext.ShowMechanicColumn, RelativeSource={RelativeSource AncestorType=Window}}"
+                                              Content="{DynamicResource S.Cat.Mechanics}"
+                                              ToolTip="{DynamicResource S.Cat.ToggleMechanicsTip}"/>
+                                </StackPanel>
+                                <TextBox Text="{Binding Catalog.SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                         FontSize="12"/>
+                            </DockPanel>
+                            <!-- Ligne de retour : catégories reconnues dans la saisie + ce que les filtres cachent. -->
+                            <TextBlock Style="{StaticResource SearchNoticeStyle}" Tag="{Binding Catalog}"
+                                       Text="{Binding Catalog.SearchNotice}"
+                                       Visibility="{Binding Catalog.HasSearchNotice, Converter={StaticResource BoolToVisibilityConverter}}"
+                                       MouseLeftButtonUp="SearchNotice_Click"/>
+                        </StackPanel>
 
                         <!-- Table des compétences (drag-source vers les slots du perso-requête).
                              Tag=Catalog → SkillListHeader_Click retrouve le bon SkillPanelViewModel. -->
@@ -1917,12 +2083,25 @@
                 </Border>
 
                 <!-- Barre du bas : titre à gauche, périmètres de recherche + bouton de lancement à droite. -->
-                <Border Grid.Row="2" Background="{DynamicResource PanelAltBackgroundBrush}" BorderBrush="{DynamicResource BorderLightBrush}" BorderThickness="0,1,0,0" Padding="10,6">
+                <Border Grid.Row="2" Grid.ColumnSpan="2" Background="{DynamicResource PanelAltBackgroundBrush}" BorderBrush="{DynamicResource BorderLightBrush}" BorderThickness="0,1,0,0" Padding="10,6">
                     <DockPanel>
                         <TextBlock DockPanel.Dock="Left" Text="{DynamicResource S.Search.Title}"
                                    VerticalAlignment="Center"
                                    FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextHeadingBrush}"/>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <!-- Bascule des deux filtres d'AFFICHAGE du catalogue, descendue ici comme
+                                 dans la vue Build. ⚠ Les deux cases qui suivent sont d'une tout autre
+                                 famille — elles disent OÙ chercher, pas ce qu'on affiche : d'où le
+                                 filet vertical qui les sépare. -->
+                            <CheckBox Margin="0,0,14,0" VerticalAlignment="Center" FontSize="12"
+                                      IsChecked="{Binding DataContext.ShowTypeColumn, RelativeSource={RelativeSource AncestorType=Window}}"
+                                      Content="{DynamicResource S.Cat.Types}"
+                                      ToolTip="{DynamicResource S.Cat.ToggleTypesTip}"/>
+                            <CheckBox Margin="0,0,12,0" VerticalAlignment="Center" FontSize="12"
+                                      IsChecked="{Binding DataContext.ShowMechanicColumn, RelativeSource={RelativeSource AncestorType=Window}}"
+                                      Content="{DynamicResource S.Cat.Mechanics}"
+                                      ToolTip="{DynamicResource S.Cat.ToggleMechanicsTip}"/>
+                            <Border Width="1" Margin="0,2,14,2" Background="{DynamicResource BorderLightBrush}"/>
                             <CheckBox Content="Templates (.txt)" VerticalAlignment="Center" Margin="0,0,14,0"
                                       Foreground="{DynamicResource TextPrimaryBrush}"
                                       IsChecked="{Binding SearchInTemplates}"
@@ -1993,6 +2172,46 @@
                                 <RowDefinition Height="*"/>     <!-- catalogue -->
                                 <RowDefinition Height="Auto"/>  <!-- barre du bas : Enregistrer le modèle -->
                             </Grid.RowDefinitions>
+                            <!-- Colonne 1 = rail des Mécaniques (maquette Philippe 20/08/2026). Il longe
+                                 le perso ET le catalogue, mais s'arrête AU-DESSUS de la barre du bas :
+                                 celle-ci est la seule à passer en ColumnSpan=2, pour que ses boutons
+                                 aillent jusqu'au bord droit de l'app et n'y bougent plus jamais.
+                                 ⚠ L'encart Attributs, lui, est à CÔTÉ du rail : décocher Mechanics
+                                 lui rend la largeur du rail, et ses deux moitiés s'élargissent
+                                 d'autant. C'est le rendu voulu par la maquette. Largeur en Auto pour
+                                 que le masquage la referme à 0 sans gouttière — ⚠ ne PAS y accrocher
+                                 de GridSplitter, il y écrirait une largeur en dur. -->
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Grid Grid.Row="0" Grid.RowSpan="2" Grid.Column="1"
+                                  Visibility="{Binding DataContext.ShowMechanicColumn, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="8"/>
+                                    <ColumnDefinition Width="205" MinWidth="70"/>
+                                </Grid.ColumnDefinitions>
+
+                                <Border Grid.Row="0" Grid.RowSpan="2" Grid.Column="0"
+                                        Background="{DynamicResource ControlBackgroundBrush}"/>
+
+                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{DynamicResource S.Cat.Mechanics}"
+                                           FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}"
+                                           Padding="4,2" Background="{DynamicResource HeaderBackgroundBrush}"/>
+
+                                <ListBox Grid.Row="1" Grid.Column="1"
+                                         ItemsSource="{Binding Catalog.MechanicCategories}"
+                                         SelectedItem="{Binding Catalog.SelectedMechanicItem}"
+                                         ItemContainerStyle="{StaticResource CategoryItemStyle}"
+                                         ItemTemplate="{StaticResource CategoryRowTemplate}"
+                                         BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="0"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
+                            </Grid>
 
                             <!-- Perso édité : DataContext = Character (CharacterSlotViewModel, mode éditeur)
                                  → réutilise tels quels les handlers du picker de profession, des slots
@@ -2163,15 +2382,28 @@
                                     <!-- Droite : attributs RÉELS (mêmes templates AttributeRowTemplate + handlers
                                          spinner/molette que l'éditeur de teambuild) — budget 200, mod « of the
                                          profession », rangs de titre. -->
-                                    <Border Grid.Column="2" BorderBrush="{DynamicResource BorderLightBrush}" BorderThickness="1" CornerRadius="3"
+                                    <Border Grid.Column="2" Grid.IsSharedSizeScope="True"
+                                            BorderBrush="{DynamicResource BorderLightBrush}" BorderThickness="1" CornerRadius="3"
                                             Background="{DynamicResource InsetBackgroundBrush}" Padding="8,6">
                                         <StackPanel>
                                             <TextBlock Text="{DynamicResource S.Ed.Attributes}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextHeadingBrush}" Margin="0,0,0,4"/>
                                             <Grid Margin="0,0,0,2">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="70"/>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="*"/>
+                                                    <!-- Deux moitiés ÉGALES et de largeur FIXE (Philippe, 20/08/2026), sans
+                                                         aucun nombre en dur : les deux colonnes partagent un SharedSizeGroup,
+                                                         donc elles prennent toutes deux la largeur de la PLUS LARGE des deux,
+                                                         mesurée sur leur contenu. Trois propriétés d'un coup —
+                                                           · elles sont égales, le séparateur tombe au milieu ;
+                                                           · elles ne dépendent PAS de la place disponible, donc décocher
+                                                             « Mechanics » ne les fait plus bouger d'un pixel ;
+                                                           · rien à deviner ni à maintenir si un libellé change de longueur.
+                                                         ⚠ La portée de CE partage est le Border parent ; celle du nom de
+                                                         caractéristique est posée plus bas, sur chaque bloc — un groupe se
+                                                         résout toujours sur la portée la plus proche, les deux ne se
+                                                         mélangent donc pas. -->
+                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="EditorAttrHalf"/>
+                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="EditorAttrHalf"/>
                                                 </Grid.ColumnDefinitions>
                                                 <!-- Compteur de points investis (rouge/gras si > 200) -->
                                                 <StackPanel Grid.Column="0" VerticalAlignment="Top" HorizontalAlignment="Center" Margin="0,6">
@@ -2192,13 +2424,17 @@
                                                     <TextBlock Text="attr pts" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center"/>
                                                 </StackPanel>
                                                 <!-- Attributs profession primaire -->
-                                                <Border Grid.Column="1" BorderBrush="{DynamicResource BorderLightBrush}" BorderThickness="0,0,1,0" Margin="2,0">
+                                                <Border Grid.Column="1" BorderBrush="{DynamicResource BorderLightBrush}" BorderThickness="0,0,1,0" Margin="2,0"
+                                                        Grid.IsSharedSizeScope="True">
+                                                    <!-- 6 px de part et d'autre du trait de séparation (c'était 4 d'un côté
+                                                         et 8 de l'autre : 2 de marge du Border + 6 du bloc secondaire). -->
                                                     <ItemsControl ItemsSource="{Binding PrimaryAttributeRows}"
-                                                                  ItemTemplate="{StaticResource EditorAttributeRowTemplate}" Margin="4,2"/>
+                                                                  ItemTemplate="{StaticResource EditorAttributeRowTemplate}" Margin="4,2,6,2"/>
                                                 </Border>
                                                 <!-- Attributs profession secondaire -->
                                                 <ItemsControl Grid.Column="2" ItemsSource="{Binding SecondaryAttributeRows}"
-                                                              ItemTemplate="{StaticResource EditorAttributeRowTemplate}" Margin="6,2,2,2"/>
+                                                              Grid.IsSharedSizeScope="True"
+                                                              ItemTemplate="{StaticResource EditorAttributeRowTemplate}" Margin="4,2,4,2"/>
                                             </Grid>
                                             <!-- Mod « of the profession » : force la carac primaire de la profession choisie à 5 -->
                                             <StackPanel Orientation="Horizontal" Margin="72,0,4,4">
@@ -2215,7 +2451,7 @@
                                             <StackPanel Margin="72,0,4,6"
                                                         Visibility="{Binding HasTitleRanks, Converter={StaticResource BoolToVisibilityConverter}}">
                                                 <TextBlock Text="{DynamicResource S.Ed.TitleRanks}" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" Margin="0,2,0,1"/>
-                                                <ItemsControl ItemsSource="{Binding TitleRankRows}"
+                                                <ItemsControl ItemsSource="{Binding TitleRankRows}" Grid.IsSharedSizeScope="True"
                                                               ItemTemplate="{StaticResource EditorAttributeRowTemplate}"/>
                                             </StackPanel>
                                             <TextBlock Text="{DynamicResource S.Ed.PickProfAttrs}"
@@ -2264,25 +2500,77 @@
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
+                                        <!-- Filet de séparation entre les onglets de PROFESSION (au-dessus) et les filtres de
+                                             catégorie (en dessous) : deux familles qui n'ont rien à voir, et qui se touchaient au
+                                             point de se lire comme une seule (demande Philippe 20/08/2026). Il suit la case à
+                                             cocher : pas de trait qui pende sous les onglets quand la ligne est masquée. -->
+                                        <Border Height="1" Margin="4,4,4,3" Background="{DynamicResource BorderLightBrush}"
+                                                Visibility="{Binding DataContext.ShowTypeColumn, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                        <!-- Ligne propre pour « Types » : sa sélection est indépendante des onglets de profession,
+                                             donc les deux surlignages coexistent. Visible avec SA case à cocher de la barre de recherche. -->
+                                        <DockPanel Margin="4,1,4,0"
+                                                   Visibility="{Binding DataContext.ShowTypeColumn, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibilityConverter}}">
+                                            <!-- En-tête cliquable : replie/déplie la ligne. Repliée, elle ne montre que le filtre ACTIF. -->
+                                            <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Width="86" VerticalAlignment="Top"
+                                                        Margin="0,4,6,0" Background="Transparent" Cursor="Hand"
+                                                        Tag="Type" MouseLeftButtonUp="ChipRowHeader_Click"
+                                                        ToolTip="{DynamicResource S.Cat.ChipRowTip}">
+                                                <TextBlock Text="{Binding DataContext.TypeChipsGlyph, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                           FontSize="9" Margin="0,1,3,0" VerticalAlignment="Center"
+                                                           Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                <TextBlock Text="{DynamicResource S.Cat.Types}" FontSize="11" FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                            </StackPanel>
+                                        
+                                            <!-- Repliée : le filtre actif, et rien d'autre. -->
+                                            <TextBlock DockPanel.Dock="Left" FontSize="11" VerticalAlignment="Top" Margin="0,4,0,0"
+                                                       Text="{Binding Catalog.SelectedTypeItem.DisplayLabel}"
+                                                       Visibility="{Binding DataContext.TypeChipsExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Invert}"/>
+                                        
+                                            <!-- Dépliée : les 34 puces, sur toute la largeur. Pas de champ de filtre ici (maquette
+                                                 Philippe 20/08/2026) : à 34 entrées sur deux lignes, il coûtait plus de place qu'il
+                                                 n'en faisait gagner. L'écran Recherche, lui, garde le sien. -->
+                                            <ItemsControl ItemsSource="{Binding CatalogTypeTabs}"
+                                                          Visibility="{Binding DataContext.TypeChipsExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border Style="{StaticResource CatalogTabStyle}" Tag="{Binding}"
+                                                                MouseLeftButtonDown="BuildCatalogTypeTab_Click">
+                                                            <TextBlock Text="{Binding Label}" FontSize="11"/>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </DockPanel>
                                     </StackPanel>
 
                                     <!-- Mode PvE/PvP + recherche par nom -->
-                                    <DockPanel Grid.Row="1" Margin="6,6,6,4">
-                                        <ComboBox DockPanel.Dock="Left" Width="100" Margin="0,0,8,0" FontSize="12"
-                                                  VerticalContentAlignment="Center"
-                                                  ItemsSource="{Binding Catalog.GameModes}"
-                                                  SelectedValuePath="Mode"
-                                                  SelectedValue="{Binding Catalog.SelectedGameMode}"
-                                                  ToolTip="{DynamicResource S.Ed.GameModeTip}">
-                                            <ComboBox.ItemTemplate>
-                                                <DataTemplate><TextBlock Text="{Binding Label}"/></DataTemplate>
-                                            </ComboBox.ItemTemplate>
-                                        </ComboBox>
-                                        <TextBlock Text="{DynamicResource S.Ed.SearchSkills}" DockPanel.Dock="Left" VerticalAlignment="Center"
-                                                   Margin="0,0,6,0" FontSize="12"/>
-                                        <TextBox Text="{Binding Catalog.SearchText, UpdateSourceTrigger=PropertyChanged}"
-                                                 FontSize="12"/>
-                                    </DockPanel>
+                                    <StackPanel Grid.Row="1" Margin="6,6,6,4">
+                                        <DockPanel>
+                                            <ComboBox DockPanel.Dock="Left" Width="100" Margin="0,0,8,0" FontSize="12"
+                                                      VerticalContentAlignment="Center"
+                                                      ItemsSource="{Binding Catalog.GameModes}"
+                                                      SelectedValuePath="Mode"
+                                                      SelectedValue="{Binding Catalog.SelectedGameMode}"
+                                                      ToolTip="{DynamicResource S.Ed.GameModeTip}">
+                                                <ComboBox.ItemTemplate>
+                                                    <DataTemplate><TextBlock Text="{Binding Label}"/></DataTemplate>
+                                                </ComboBox.ItemTemplate>
+                                            </ComboBox>
+                                            <TextBlock Text="{DynamicResource S.Ed.SearchSkills}" DockPanel.Dock="Left" VerticalAlignment="Center"
+                                                       Margin="0,0,6,0" FontSize="12"/>
+                                            <TextBox Text="{Binding Catalog.SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                                     FontSize="12"/>
+                                        </DockPanel>
+                                        <!-- Ligne de retour : catégories reconnues dans la saisie + ce que les filtres cachent. -->
+                                        <TextBlock Style="{StaticResource SearchNoticeStyle}" Tag="{Binding Catalog}"
+                                                   Text="{Binding Catalog.SearchNotice}"
+                                                   Visibility="{Binding Catalog.HasSearchNotice, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                   MouseLeftButtonUp="SearchNotice_Click"/>
+                                    </StackPanel>
 
                                     <!-- Table des compétences (drag-source). Tag=Catalog → handlers généralisés. -->
                                     <ListView Grid.Row="2" Tag="{Binding Catalog}"
@@ -2406,9 +2694,21 @@
                             </Border>
 
                             <!-- Barre du bas : titre à gauche, boutons Copier le code / Copier le code de chat / Enregistrer le modèle à droite. -->
-                            <Border Grid.Row="2" Background="{DynamicResource PanelAltBackgroundBrush}" BorderBrush="{DynamicResource BorderLightBrush}" BorderThickness="0,1,0,0" Padding="10,6">
+                            <Border Grid.Row="2" Grid.ColumnSpan="2" Background="{DynamicResource PanelAltBackgroundBrush}" BorderBrush="{DynamicResource BorderLightBrush}" BorderThickness="0,1,0,0" Padding="10,6">
                                 <DockPanel>
                                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                        <!-- Bascule des deux filtres, SÉPARÉMENT. Elles vivaient dans la barre de recherche
+                                             du catalogue ; Philippe les a descendues ici (20/08/2026), à gauche des boutons
+                                             de sortie. Mêmes booléens que le menu Affichage, portés par MainViewModel —
+                                             d'où le RelativeSource jusqu'à la fenêtre, le DataContext local étant l'éditeur. -->
+                                        <CheckBox Margin="0,0,14,0" VerticalAlignment="Center" FontSize="12"
+                                                  IsChecked="{Binding DataContext.ShowTypeColumn, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                  Content="{DynamicResource S.Cat.Types}"
+                                                  ToolTip="{DynamicResource S.Cat.ToggleTypesTip}"/>
+                                        <CheckBox Margin="0,0,20,0" VerticalAlignment="Center" FontSize="12"
+                                                  IsChecked="{Binding DataContext.ShowMechanicColumn, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                  Content="{DynamicResource S.Cat.Mechanics}"
+                                                  ToolTip="{DynamicResource S.Cat.ToggleMechanicsTip}"/>
                                         <Button Content="{DynamicResource S.Ed.CopyCode}" Padding="14,4" FontWeight="SemiBold" Cursor="Hand"
                                                 Margin="0,0,8,0"
                                                 Click="CopyBuildCode_Click"
@@ -2438,6 +2738,15 @@
                 <ColumnDefinition Width="5"/>
                 <ColumnDefinition Width="*" MinWidth="280"/>
             </Grid.ColumnDefinitions>
+            <!-- Rangée 1 = barre d'actions, sur TOUTE la largeur (maquette Philippe 20/08/2026).
+                 Elle était une rangée de la seule colonne de gauche et s'arrêtait donc au splitter ;
+                 elle court maintenant sous la grille ET sous le catalogue, comme la barre du bas des
+                 vues Build et Recherche. Ses deux cases de filtre se retrouvent ainsi au vrai bord
+                 droit de la fenêtre, et le splitter vertical ne les déplace plus. -->
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
 
             <!-- Left: Team build grid -->
             <Grid Grid.Column="0">
@@ -2445,7 +2754,6 @@
                     <RowDefinition Height="Auto"/>  <!-- ligne de conditions (tout le teambuild) -->
                     <RowDefinition Height="Auto"/>  <!-- bandeau cadenas (mode sélection) -->
                     <RowDefinition Height="*"/>     <!-- grille des personnages -->
-                    <RowDefinition Height="Auto"/>  <!-- barre d'actions -->
                 </Grid.RowDefinitions>
 
                 <!-- Ligne UNIQUE des conditions infligeables par le teambuild (agrégat des persos
@@ -2508,72 +2816,91 @@
                                   Margin="4"/>
                 </ScrollViewer>
 
-                <!-- Barre d'actions unifiée : filtres cadenas (gauche) + boutons d'action (droite) -->
-                <Border Grid.Row="3" Background="{DynamicResource WindowBackgroundBrush}" BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="0,1,0,0">
-                    <DockPanel LastChildFill="False" Margin="8,6">
-                        <!-- Boutons d'action (droite) -->
-                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                            <Button Content="⚡ Spike" Padding="8,2" Margin="0,0,12,0" VerticalAlignment="Center"
-                                    Click="SpikeCalc_Click"
-                                    ToolTip="{DynamicResource S.Tb2.SpikeTip}"/>
-                            <CheckBox Content="{DynamicResource S.Tb2.Barred}" VerticalAlignment="Center" Margin="0,0,12,0"
-                                      ToolTip="{DynamicResource S.Tb2.BarredTip}"
-                                      IsChecked="{Binding ActiveTeamBuild.ShowInheritedAsBarred}"/>
-                            <CheckBox Content="{DynamicResource S.Tb2.ShowAttrs}" VerticalAlignment="Center"
-                                      IsChecked="{Binding ActiveTeamBuild.ShowAttributes}"/>
-                            <!-- Indicateur de flux : grisé = inactif (flux du mois), coloré = actif.
-                                 Clic = activer/désactiver ; choix d'un autre flux via menu Sélection > Flux. -->
-                            <Button Click="FluxIcon_Click" Margin="16,0,0,0" VerticalAlignment="Center"
-                                    Padding="4,2" Background="Transparent" BorderThickness="0" Cursor="Hand"
-                                    DataContext="{Binding ActiveTeamBuild.FluxIndicator}">
-                                <Button.ToolTip>
-                                    <ToolTip>
-                                        <TextBlock Text="{Binding Tooltip}" TextWrapping="Wrap" MaxWidth="360"/>
-                                    </ToolTip>
-                                </Button.ToolTip>
-                                <Image Source="{Binding IconPath}" Width="20" Height="20" Stretch="Uniform"
-                                       RenderOptions.BitmapScalingMode="HighQuality">
-                                    <Image.Style>
-                                        <Style TargetType="Image">
-                                            <Setter Property="Opacity" Value="0.35"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsActive}" Value="True">
-                                                    <Setter Property="Opacity" Value="1"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Image.Style>
-                                </Image>
-                            </Button>
-                        </StackPanel>
-
-                        <!-- Filtres par cadenas (gauche) : 1 bouton par cadenas + retour à la vue complète -->
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
-                                    Visibility="{Binding ActiveTeamBuild.HasLocks, Converter={StaticResource BoolToVisibilityConverter}}">
-                            <TextBlock Text="{DynamicResource S.Tb2.LocksLabel}" VerticalAlignment="Center" FontSize="11" Margin="0,0,6,0"/>
-                            <Button Content="{DynamicResource S.Tb2.FullView}" Padding="8,2" Click="ShowAllLocks_Click"
-                                    FontWeight="SemiBold"/>
-                            <ItemsControl ItemsSource="{Binding ActiveTeamBuild.Locks}" VerticalAlignment="Center">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Button Tag="{Binding}" Click="FilterByLock_Click" Margin="6,0,0,0"
-                                                Padding="8,2" Foreground="White" BorderThickness="0"
-                                                Background="{Binding ColorBrush}" ToolTip="{Binding MembersTooltip}">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="&#xE72E;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center"/>
-                                                <TextBlock Text="{Binding Index}" FontWeight="Bold" Margin="3,0,0,0" VerticalAlignment="Center"/>
-                                            </StackPanel>
-                                        </Button>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </StackPanel>
-                    </DockPanel>
-                </Border>
             </Grid>
+
+            <!-- Barre d'actions unifiée : filtres cadenas (gauche) + boutons d'action (droite) -->
+            <Border Grid.Row="1" Grid.ColumnSpan="3" Background="{DynamicResource WindowBackgroundBrush}" BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="0,1,0,0">
+                <DockPanel LastChildFill="False" Margin="8,6">
+                    <!-- Boutons d'action (droite) -->
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Content="⚡ Spike" Padding="8,2" Margin="0,0,12,0" VerticalAlignment="Center"
+                                Click="SpikeCalc_Click"
+                                ToolTip="{DynamicResource S.Tb2.SpikeTip}"/>
+                        <CheckBox Content="{DynamicResource S.Tb2.Barred}" VerticalAlignment="Center" Margin="0,0,12,0"
+                                  ToolTip="{DynamicResource S.Tb2.BarredTip}"
+                                  IsChecked="{Binding ActiveTeamBuild.ShowInheritedAsBarred}"/>
+                        <CheckBox Content="{DynamicResource S.Tb2.ShowAttrs}" VerticalAlignment="Center"
+                                  IsChecked="{Binding ActiveTeamBuild.ShowAttributes}"/>
+                        <!-- Indicateur de flux : grisé = inactif (flux du mois), coloré = actif.
+                             Clic = activer/désactiver ; choix d'un autre flux via menu Sélection > Flux. -->
+                        <Button Click="FluxIcon_Click" Margin="16,0,0,0" VerticalAlignment="Center"
+                                Padding="4,2" Background="Transparent" BorderThickness="0" Cursor="Hand"
+                                DataContext="{Binding ActiveTeamBuild.FluxIndicator}">
+                            <Button.ToolTip>
+                                <ToolTip>
+                                    <TextBlock Text="{Binding Tooltip}" TextWrapping="Wrap" MaxWidth="360"/>
+                                </ToolTip>
+                            </Button.ToolTip>
+                            <Image Source="{Binding IconPath}" Width="20" Height="20" Stretch="Uniform"
+                                   RenderOptions.BitmapScalingMode="HighQuality">
+                                <Image.Style>
+                                    <Style TargetType="Image">
+                                        <Setter Property="Opacity" Value="0.35"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                <Setter Property="Opacity" Value="1"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Image.Style>
+                            </Image>
+                        </Button>
+
+                        <!-- Bascule des deux filtres du CATALOGUE (maquette Philippe 20/08/2026).
+                             Elles vivaient dans la barre de recherche du catalogue ; elles sont
+                             descendues ici, tout à droite, comme dans les vues Build et Recherche —
+                             les trois écrans se ressemblent le plus possible. ⚠ Ce qui précède
+                             (« Compétences héritées », « Afficher les caractéristiques ») pilote
+                             l'affichage de la GRILLE, pas le catalogue : d'où le filet qui sépare
+                             les deux familles, comme dans la barre du bas de la Recherche.
+                             DataContext local = MainViewModel, donc binding direct. -->
+                        <Border Width="1" Margin="16,2,14,2" Background="{DynamicResource BorderLightBrush}"/>
+                        <CheckBox Margin="0,0,12,0" VerticalAlignment="Center"
+                                  IsChecked="{Binding ShowTypeColumn}"
+                                  Content="{DynamicResource S.Cat.Types}"
+                                  ToolTip="{DynamicResource S.Cat.ToggleTypesTip}"/>
+                        <CheckBox VerticalAlignment="Center"
+                                  IsChecked="{Binding ShowMechanicColumn}"
+                                  Content="{DynamicResource S.Cat.Mechanics}"
+                                  ToolTip="{DynamicResource S.Cat.ToggleMechanicsTip}"/>
+                    </StackPanel>
+
+                    <!-- Filtres par cadenas (gauche) : 1 bouton par cadenas + retour à la vue complète -->
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+                                Visibility="{Binding ActiveTeamBuild.HasLocks, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <TextBlock Text="{DynamicResource S.Tb2.LocksLabel}" VerticalAlignment="Center" FontSize="11" Margin="0,0,6,0"/>
+                        <Button Content="{DynamicResource S.Tb2.FullView}" Padding="8,2" Click="ShowAllLocks_Click"
+                                FontWeight="SemiBold"/>
+                        <ItemsControl ItemsSource="{Binding ActiveTeamBuild.Locks}" VerticalAlignment="Center">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Tag="{Binding}" Click="FilterByLock_Click" Margin="6,0,0,0"
+                                            Padding="8,2" Foreground="White" BorderThickness="0"
+                                            Background="{Binding ColorBrush}" ToolTip="{Binding MembersTooltip}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="&#xE72E;" FontFamily="Segoe MDL2 Assets" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding Index}" FontWeight="Bold" Margin="3,0,0,0" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
 
             <!-- Splitter -->
             <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" Background="{DynamicResource ControlBackgroundBrush}"/>
@@ -2586,6 +2913,15 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
+                <!-- Colonne 1 = rail des Mécaniques, sur TOUTE la hauteur (idée Philippe
+                     20/08/2026) : il prend la place que la table laissait vide à sa droite, et sort
+                     les 87 mécaniques du bandeau de 220 px où l'on n'en voyait qu'une dizaine.
+                     Largeur en Auto pour que le masquage la referme à 0 sans gouttière — ne PAS y
+                     accrocher de GridSplitter, il y écrirait une largeur en dur (cf. le bloc Types). -->
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
 
                 <!-- Splitter haut / bas -->
                 <GridSplitter Grid.Row="1" Height="4" HorizontalAlignment="Stretch"
@@ -2601,12 +2937,16 @@
                     <!-- Largeurs par défaut calées sur les proportions observées en usage réel (fixes,
                          ajustables via les GridSplitter) : Professions < Caractéristiques < PvE only,
                          ce dernier devant loger les intitulés de catégorie sans les tronquer. -->
+                    <!-- Professions et Caractéristiques resserrées (150→130, 160→145) pour faire de
+                         la place aux colonnes Skill Types/Mechanics, qui occupent la 6e colonne
+                         (Auto → 0 quand le bloc est masqué). -->
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="150" MinWidth="70"/>
+                        <ColumnDefinition Width="130" MinWidth="70"/>
                         <ColumnDefinition Width="4"/>
-                        <ColumnDefinition Width="160" MinWidth="70"/>
+                        <ColumnDefinition Width="145" MinWidth="70"/>
                         <ColumnDefinition Width="4"/>
                         <ColumnDefinition Width="220" MinWidth="70"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
                     <!-- En-têtes -->
@@ -2620,16 +2960,21 @@
                                FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}"
                                Padding="4,2" Background="{DynamicResource HeaderBackgroundBrush}"/>
 
-                    <!-- Profession list -->
+                    <!-- Profession list. ⚠ Elle avait son propre ItemContainerStyle (Padding 6,3 /
+                         FontSize 13) la ou ses trois voisines partagent AttributeItemStyle
+                         (Padding 4,2 / FontSize 12) : une police un point plus grosse et 2 px
+                         d'interligne en trop, plus 2 px encore ajoutes par un Padding sur le
+                         TextBlock lui-meme. Les quatre colonnes sont alignees depuis le
+                         21/08/2026 (Philippe). -->
                     <ListBox Grid.Row="1" Grid.Column="0"
                              ItemsSource="{Binding SkillPanel.Professions}"
                              SelectedItem="{Binding SkillPanel.SelectedProfessionOption}"
-                             ItemContainerStyle="{StaticResource ProfessionItemStyle}"
+                             ItemContainerStyle="{StaticResource AttributeItemStyle}"
                              BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="0"
                              ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding Label}" Padding="2,1">
+                                <TextBlock Text="{Binding Label}">
                                     <TextBlock.Style>
                                         <Style TargetType="TextBlock">
                                             <Style.Triggers>
@@ -2703,26 +3048,102 @@
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
+
+                    <!-- Bloc « Skill Types » (case à cocher de la barre de recherche = menu
+                         Affichage). Un bloc à part, et non une colonne du Grid parent : sa colonne
+                         hôte est en Auto, donc masquer le bloc la referme à 0 sans laisser de
+                         gouttière — et aucun GridSplitter ne doit toucher cette colonne, sous peine
+                         de lui écrire une largeur en dur qui casserait la mécanique.
+                         ⚠ Les MÉCANIQUES ne sont plus ici : ce bandeau est bloqué à 220 px de haut,
+                         ce qui n'en montrait qu'une dizaine sur 87. Elles sont passées dans le rail
+                         de droite, pleine hauteur (demande Philippe 20/08/2026). Les deux filtres
+                         restent INDÉPENDANTS : leur croisement est le but, et chacun a sa case. -->
+                    <Grid Grid.Row="0" Grid.RowSpan="2" Grid.Column="5"
+                          Visibility="{Binding ShowTypeColumn, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="205" MinWidth="70"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Séparation avec « PvE only » : même couleur que les splitters voisins
+                             mais 8 px au lieu de 4 (demande Philippe), et non draggable. -->
+                        <Border Grid.Row="0" Grid.RowSpan="2" Grid.Column="0"
+                                Background="{DynamicResource ControlBackgroundBrush}"/>
+
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{DynamicResource S.Cat.Types}"
+                                   FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}"
+                                   Padding="4,2" Background="{DynamicResource HeaderBackgroundBrush}"/>
+
+                        <ListBox Grid.Row="1" Grid.Column="1"
+                                 ItemsSource="{Binding SkillPanel.TypeCategories}"
+                                 SelectedItem="{Binding SkillPanel.SelectedTypeItem}"
+                                 ItemContainerStyle="{StaticResource CategoryItemStyle}"
+                                 ItemTemplate="{StaticResource CategoryRowTemplate}"
+                                 BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="0"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
+                    </Grid>
                 </Grid>
 
-                <!-- Mode PvE/PvP + Search -->
-                <DockPanel Grid.Row="2" Margin="6,6,6,4">
-                    <ComboBox DockPanel.Dock="Left" Width="100" Margin="0,0,8,0" FontSize="12"
-                              VerticalContentAlignment="Center"
-                              ItemsSource="{Binding SkillPanel.GameModes}"
-                              SelectedValuePath="Mode"
-                              SelectedValue="{Binding SkillPanel.SelectedGameMode}"
-                              ToolTip="{DynamicResource S.Ed.GameModeTip}">
-                        <ComboBox.ItemTemplate>
-                            <DataTemplate><TextBlock Text="{Binding Label}"/></DataTemplate>
-                        </ComboBox.ItemTemplate>
-                    </ComboBox>
-                    <TextBlock Text="{DynamicResource S.Ed.SearchSkills}" DockPanel.Dock="Left" VerticalAlignment="Center"
-                               Margin="0,0,6,0" FontSize="12"/>
-                    <TextBox Text="{Binding SkillPanel.SearchText, UpdateSourceTrigger=PropertyChanged}"
-                             FontSize="12"/>
-                </DockPanel>
+                <!-- Mode PvE/PvP + Search + bascule des colonnes Skill Types/Mechanics + ligne de retour -->
+                <StackPanel Grid.Row="2" Margin="6,6,6,4">
+                    <DockPanel>
+                        <ComboBox DockPanel.Dock="Left" Width="100" Margin="0,0,8,0" FontSize="12"
+                                  VerticalContentAlignment="Center"
+                                  ItemsSource="{Binding SkillPanel.GameModes}"
+                                  SelectedValuePath="Mode"
+                                  SelectedValue="{Binding SkillPanel.SelectedGameMode}"
+                                  ToolTip="{DynamicResource S.Ed.GameModeTip}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate><TextBlock Text="{Binding Label}"/></DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        <TextBlock Text="{DynamicResource S.Ed.SearchSkills}" DockPanel.Dock="Left" VerticalAlignment="Center"
+                                   Margin="0,0,6,0" FontSize="12"/>
+                        <TextBox Text="{Binding SkillPanel.SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                 FontSize="12"/>
+                    </DockPanel>
+                    <!-- Ligne de retour : ce que la saisie a été comprise comme catégorie, et combien
+                         de compétences les filtres profession/caractéristique cachent. Le clic les lève. -->
+                    <TextBlock Style="{StaticResource SearchNoticeStyle}" Tag="{Binding SkillPanel}"
+                               Text="{Binding SkillPanel.SearchNotice}"
+                               Visibility="{Binding SkillPanel.HasSearchNotice, Converter={StaticResource BoolToVisibilityConverter}}"
+                               MouseLeftButtonUp="SearchNotice_Click"/>
+                </StackPanel>
 
+
+                <!-- Rail des Mécaniques : mêmes ItemsSource/SelectedItem que la colonne d'avant,
+                     seule la place change. Il longe le bandeau, la barre de recherche ET la table. -->
+                <Grid Grid.Row="0" Grid.RowSpan="4" Grid.Column="1"
+                      Visibility="{Binding ShowMechanicColumn, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="8"/>
+                        <ColumnDefinition Width="205" MinWidth="70"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Séparation avec la table : 8 px, même couleur que les splitters voisins. -->
+                    <Border Grid.Row="0" Grid.RowSpan="2" Grid.Column="0"
+                            Background="{DynamicResource ControlBackgroundBrush}"/>
+
+                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{DynamicResource S.Cat.Mechanics}"
+                               FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}"
+                               Padding="4,2" Background="{DynamicResource HeaderBackgroundBrush}"/>
+
+                    <ListBox Grid.Row="1" Grid.Column="1"
+                             ItemsSource="{Binding SkillPanel.MechanicCategories}"
+                             SelectedItem="{Binding SkillPanel.SelectedMechanicItem}"
+                             ItemContainerStyle="{StaticResource CategoryItemStyle}"
+                             ItemTemplate="{StaticResource CategoryRowTemplate}"
+                             BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="0"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
+                </Grid>
                 <!-- Skill list (ListView+GridView pour alignement automatique des colonnes) -->
                 <ListView x:Name="SkillList" Grid.Row="3" Tag="{Binding SkillPanel}"
                           ItemsSource="{Binding SkillPanel.FilteredSkills}"

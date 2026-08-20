@@ -34,6 +34,14 @@ public class Skill
     // seulement via une compétence de transfert, cf. GwConditionData). Vide = aucune.
     public string[] Conditions { get; set; } = [];
 
+    // Méta-catégories de jeu (colonne « Mechanics » du catalogue) : clés techniques de
+    // SkillCategoryData — « enchantment », « maintained », « cond:Bleeding »… Certaines sont
+    // calculées depuis la base (type, upkeep, sacrifice, conditions), d'autres viendront du wiki ;
+    // la LECTURE est la même pour les deux. Vide = aucune mécanique connue.
+    public string[] Mechanics { get; set; } = [];
+
+    public bool HasMechanic(string key) => Array.IndexOf(Mechanics, key) >= 0;
+
     // ── Localisation française (gwiki.fr, jointure par ID officiel GW1). Vides = pas
     //    de page FR trouvée → l'affichage retombe champ par champ sur l'anglais. ──
     public string NameFr { get; set; } = string.Empty;

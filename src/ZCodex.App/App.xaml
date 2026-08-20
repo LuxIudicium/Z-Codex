@@ -25,6 +25,7 @@
         <conv:CharacterAttributesConverter x:Key="CharAttrs"/>
         <conv:CharacterProfessionsConverter x:Key="CharProfs"/>
         <conv:AnyTrueToVisibilityConverter x:Key="AnyTrueToVis"/>
+
         <conv:AllTrueToVisibilityConverter x:Key="AllTrueToVis"/>
         <!-- Infobulle de compétence (SkillTooltipControl) -->
         <conv:StatIconConverter x:Key="StatIcon"/>
@@ -39,6 +40,22 @@
         <!-- Calculateur d'armure (chantier 14) -->
         <conv:BoolToBoldConverter x:Key="BoolToBold"/>
         <conv:SubtractConverter x:Key="Subtract"/>
+        <!-- Ligne de retour sous la barre de recherche. Tag = le SkillPanelViewModel de l'hôte :
+             le style et le handler de clic sont ainsi les mêmes pour les 4 catalogues. Elle ne
+             devient cliquable (souligné + accent + main) que si le clic a quelque chose à lever. -->
+        <Style x:Key="SearchNoticeStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Margin" Value="0,3,0,0"/>
+            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextFaintBrush}"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Tag.CanLiftFilters, RelativeSource={RelativeSource Self}}" Value="True">
+                    <Setter Property="Cursor" Value="Hand"/>
+                    <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                    <Setter Property="TextDecorations" Value="Underline"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

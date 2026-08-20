@@ -33,6 +33,8 @@
     <sys:String x:Key="S.Menu.ViewWheelSelectTip">Un clic sur un personnage l'active (liseré bleu) : la molette n'y règle les caractéristiques que là. Partout ailleurs, elle fait défiler la vue.</sys:String>
     <sys:String x:Key="S.Menu.ViewPreviewAttrs">Afficher les caractéristiques dans la preview</sys:String>
     <sys:String x:Key="S.Menu.ViewConditions">Afficher les conditions</sys:String>
+    <sys:String x:Key="S.Menu.ViewTypeColumn">Afficher le filtre Types de compétences</sys:String>
+    <sys:String x:Key="S.Menu.ViewMechanicColumn">Afficher le filtre Mécaniques</sys:String>
     <sys:String x:Key="S.Menu.ViewArmorDamage">Afficher les dégâts selon l'armure</sys:String>
     <sys:String x:Key="S.Menu.ViewArmorDamageConfig">Dégâts selon l'armure...</sys:String>
     <sys:String x:Key="S.Menu.ViewRitualBand">Afficher la barre des Rituels de la Nature</sys:String>
@@ -51,6 +53,7 @@
     <sys:String x:Key="S.Menu.ExtrasArmorCalc">Calculateur d'armure</sys:String>
     <sys:String x:Key="S.Menu.ExtrasPvx">Télécharger les builds PvX...</sys:String>
     <sys:String x:Key="S.Menu.ExtrasCheckIcons">Vérifier les icônes (wiki)</sys:String>
+    <sys:String x:Key="S.Menu.ExtrasRecomputeCategories">Recalculer les catégories de compétences</sys:String>
     <sys:String x:Key="S.Menu.Window">Fenêtre</sys:String>
     <sys:String x:Key="S.Menu.Help">Aide</sys:String>
     <sys:String x:Key="S.Menu.HelpHelp">Aide et raccourcis...</sys:String>
@@ -188,6 +191,14 @@
     <sys:String x:Key="S.Cat.Professions">Professions</sys:String>
     <sys:String x:Key="S.Cat.Attributes">Caractéristiques</sys:String>
     <sys:String x:Key="S.Cat.Name">Nom</sys:String>
+    <!-- Colonnes Types/Mécaniques + ligne de retour de la recherche -->
+    <sys:String x:Key="S.Cat.Types">Types de compétences</sys:String>
+    <sys:String x:Key="S.Cat.Mechanics">Mécaniques</sys:String>
+    <sys:String x:Key="S.Cat.ChipRowTip">Cliquer pour replier ou déplier cette ligne de filtres. Repliée, elle ne montre que ce qui est actif.</sys:String>
+    <sys:String x:Key="S.Cat.ToggleTypesTip" xml:space="preserve">Filtrer par Type de compétence — ce que dit l'infobulle du jeu.&#10;Le masquer remet ce filtre sur « All ».</sys:String>
+    <sys:String x:Key="S.Cat.ToggleMechanicsTip" xml:space="preserve">Filtrer par Mécanique de jeu — ce que la compétence fait.&#10;Le masquer remet ce filtre sur « All ».</sys:String>
+    <sys:String x:Key="S.Cat.Recognized">Catégories : {0}</sys:String>
+    <sys:String x:Key="S.Cat.Hidden">{0} masqués par {1} — cliquer pour les afficher</sys:String>
 
     <!-- ── Infobulle de compétence ────────────────────────────────────── -->
     <sys:String x:Key="S.Tooltip.Elite">élite</sys:String>
@@ -240,6 +251,8 @@
     <sys:String x:Key="S.Msg.CatalogIncompleteTitle">Catalogue incomplet</sys:String>
     <sys:String x:Key="S.Msg.CatalogIncomplete" xml:space="preserve">Le téléchargement des compétences a été interrompu.&#10;&#10;Le catalogue est utilisable, mais les tables de progression et les icônes manquent : les plages de valeurs des infobulles resteront non résolues.&#10;&#10;Terminer le téléchargement maintenant ?</sys:String>
     <sys:String x:Key="S.Msg.IconsTitle">Vérification des icônes</sys:String>
+    <sys:String x:Key="S.Msg.CategoriesTitle">Catégories de compétences</sys:String>
+    <sys:String x:Key="S.Msg.CategoriesDone">{0} compétences mises à jour.</sys:String>
     <sys:String x:Key="S.Msg.IconsAllGood">Les {0} icônes de l'interface sont présentes et lisibles.</sys:String>
     <sys:String x:Key="S.Msg.IconsRepaired" xml:space="preserve">{0} icône(s) manquante(s) ou illisible(s) ont été retéléchargée(s).&#10;Redémarrez Z-Codex pour les afficher partout.</sys:String>
     <sys:String x:Key="S.Msg.IconsFailed" xml:space="preserve">{0} icône(s) n'ont pas pu être téléchargée(s) depuis le wiki.&#10;Vérifiez votre connexion internet, puis réessayez.</sys:String>
@@ -417,7 +430,7 @@
     <sys:String x:Key="S.Dmg.Blunt">contondant</sys:String>
 
     <!-- ── Fenêtre Spike ──────────────────────────────────────────────── -->
-    <sys:String x:Key="S.Spike.Teambuild">Teambuild</sys:String>
+    <sys:String x:Key="S.Spike.Teambuild">Éditer le teambuild et les participants au spike</sys:String>
     <sys:String x:Key="S.Spike.TeambuildTip">Ramène la fenêtre du teambuild au premier plan pour choisir les lignes du roster spike (8 max, racines ou variantes)</sys:String>
     <sys:String x:Key="S.Spike.ClickHint">Cliquez une compétence pour la compter dans le spike (cadre vert) ; recliquez pour la retirer.</sys:String>
     <sys:String x:Key="S.Spike.Buffs">Buffs :</sys:String>

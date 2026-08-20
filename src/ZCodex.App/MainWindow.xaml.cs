@@ -64,6 +64,34 @@ public partial class MainWindow : Window
         _vm.ShowNatureRituals = _settings.ShowNatureRituals;
         _vm.IconSize = _settings.IconSize;
         _vm.WheelNeedsSelection = _settings.WheelNeedsSelection;
+        // Reprise de l'ancien réglage unique (≤ 1.1.0) : qui avait les colonnes affichées les
+        // retrouve toutes les deux. Une fois relu, il est effacé du fichier.
+        _vm.ShowTypeColumn     = _settings.ShowCategoryColumns ?? _settings.ShowTypeColumn;
+        _vm.ShowMechanicColumn = _settings.ShowCategoryColumns ?? _settings.ShowMechanicColumn;
+        if (_settings.ShowCategoryColumns is not null)
+        {
+            _settings.ShowTypeColumn     = _vm.ShowTypeColumn;
+            _settings.ShowMechanicColumn = _vm.ShowMechanicColumn;
+            _settings.ShowCategoryColumns = null;
+            _settings.Save();
+        }
+        _vm.TypeChipsExpanded = _settings.TypeChipsExpanded;
+        _vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName != nameof(MainViewModel.TypeChipsExpanded)) return;
+            _settings.TypeChipsExpanded = _vm.TypeChipsExpanded;
+            _settings.Save();
+        };
+        // Deux booléens, deux commandes chacun (case à cocher des barres de recherche ET menu
+        // Affichage) : on persiste au niveau du VM, quel que soit le chemin emprunté.
+        _vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is not (nameof(MainViewModel.ShowTypeColumn)
+                                    or nameof(MainViewModel.ShowMechanicColumn))) return;
+            _settings.ShowTypeColumn     = _vm.ShowTypeColumn;
+            _settings.ShowMechanicColumn = _vm.ShowMechanicColumn;
+            _settings.Save();
+        };
         _vm.ArmorCalc.LoadSettings(_settings);  // profils du calculateur d'armure (chantier 14)
         ArmorDamageDisplay.Enabled = _settings.ShowArmorDamage;
         // Migration de l'ancien AL custom unique vers la liste (max 8, bornée au chargement :
@@ -787,6 +815,7 @@ public partial class MainWindow : Window
             Campaign = e.Campaign,
             Progression = ParseProgression(e.Progression),
             Conditions = ParseConditions(e.Conditions),
+            Mechanics = SkillCategoryData.ParseCsv(e.Mechanics),
             // Rebasé sur le dossier d'icônes courant : la base stocke des chemins absolus,
             // périmés dès que le dossier de données bouge (cf. AppPaths.IconFile).
             IconPath = AppPaths.IconFile(e.IconUrl),
@@ -799,6 +828,11 @@ public partial class MainWindow : Window
             FrSuspect = e.FrSuspect,
         }).ToList();
         DeriveFrenchPvpNames(skills);
+        // Mécaniques dérivables recalculées À CHAQUE chargement, par-dessus ce que porte la colonne :
+        // la colonne sert aux mécaniques qui viendront du wiki, mais les filtres Types/Mechanics ne
+        // doivent pas rester vides sur une base qui n'a jamais vu « Recalculer les catégories ».
+        foreach (var s in skills)
+            s.Mechanics = SkillCategoryData.Merge(s.Mechanics, s);
         _vm.SkillPanel.LoadSkills(skills);
         _vm.SearchBuilder.Catalog.LoadSkills(skills);
         _vm.ArmorCalc.LoadSkills(skills);   // attaques de référence du calculateur d'armure (Lot D)
@@ -1148,6 +1182,24 @@ public partial class MainWindow : Window
     // même la réinstallation — le dossier de données survit à la désinstallation. Les icônes de
     // COMPÉTENCES, elles, relèvent de la mise à jour du catalogue : on se contente de les compter
     // et de renvoyer vers l'entrée juste au-dessus.
+    // Extras ▸ Recalculer les catégories. À ce stade tout se déduit de la base (type, upkeep,
+    // sacrifice, conditions déjà scrapées) : aucun accès réseau, l'opération dure une seconde.
+    // Les mécaniques qui demanderont une page wiki viendront s'ajouter dans la même colonne.
+    private async void RecomputeCategories_Click(object sender, RoutedEventArgs e)
+    {
+        int changed;
+        Mouse.OverrideCursor = Cursors.Wait;
+        try
+        {
+            changed = await new SkillRepository(_db).RecomputeMechanicsAsync();
+            await LoadSkillsFromDbAsync();
+        }
+        finally { Mouse.OverrideCursor = null; }
+
+        MessageBox.Show(this, string.Format(T("S.Msg.CategoriesDone"), changed),
+                        T("S.Msg.CategoriesTitle"), MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
     private async void CheckIcons_Click(object sender, RoutedEventArgs e)
     {
         IconReport report;
@@ -1354,6 +1406,8 @@ public partial class MainWindow : Window
         IconsMediumMenuItem.IsChecked    = _vm.IconSize == IconSizeMode.Medium;
         IconsSmallMenuItem.IsChecked     = _vm.IconSize == IconSizeMode.Small;
         ShowConditionsMenuItem.IsChecked = _vm.ShowConditions;
+        ShowTypeColumnMenuItem.IsChecked     = _vm.ShowTypeColumn;
+        ShowMechanicColumnMenuItem.IsChecked = _vm.ShowMechanicColumn;
         WheelNeedsSelectionMenuItem.IsChecked = _vm.WheelNeedsSelection;
         ShowNatureRitualBandMenuItem.IsChecked = _vm.ShowNatureRituals;
         ShowAllNatureRitualsMenuItem.IsChecked = _vm.ShowAllNatureRituals;
@@ -1555,6 +1609,44 @@ public partial class MainWindow : Window
         _settings.Save();
     }
 
+    // Colonnes Types/Mechanics du catalogue, indépendantes l'une de l'autre. Le VM se charge de
+    // remettre SON filtre sur « All » quand on masque une colonne, et la persistance passe par son
+    // PropertyChanged (cf. constructeur).
+    private void ShowTypeColumnMenuItem_Click(object sender, RoutedEventArgs e)
+        => _vm.ShowTypeColumn = !_vm.ShowTypeColumn;
+
+    private void ShowMechanicColumnMenuItem_Click(object sender, RoutedEventArgs e)
+        => _vm.ShowMechanicColumn = !_vm.ShowMechanicColumn;
+
+    // En-tête de la ligne de puces « Skill Types » (écrans Build et Recherche) : replie/déplie la
+    // ligne. Le Tag identifiait autrefois laquelle des deux — il ne reste que celle-ci, les
+    // mécaniques étant passées en rail, mais il est gardé : le jour où une deuxième famille
+    // reviendrait en puces, c'est là qu'elle se brancherait.
+    private void ChipRowHeader_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: "Type" }) return;
+        _vm.TypeChipsExpanded = !_vm.TypeChipsExpanded;
+        e.Handled = true;
+    }
+
+    // Chevron d'une ligne de catégorie : déplie/replie sans toucher à la sélection. Sans le
+    // Handled, le clic remonterait au ListBoxItem, qui se sélectionnerait — et relancerait un
+    // filtrage du catalogue à chaque fois qu'on ouvre une branche pour voir ce qu'elle contient.
+    private void CategoryExpander_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: SkillCategoryItem item } || !item.HasChildren) return;
+        item.IsExpanded = !item.IsExpanded;
+        e.Handled = true;
+    }
+
+    // Ligne de retour sous une barre de recherche : lève les filtres qu'elle vient de nommer.
+    // Tag = le catalogue concerné → un seul handler pour les 4 hôtes.
+    private void SearchNotice_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement { Tag: SkillPanelViewModel panel })
+            panel.LiftBlockingFilters();
+    }
+
     // Molette du teambuild : n'autoriser le réglage des caractéristiques que sur le personnage
     // cliqué. Décoché = geste d'origine (paw·ned²), le verrou de salve restant actif dans les deux cas.
     private void WheelNeedsSelectionMenuItem_Click(object sender, RoutedEventArgs e)
@@ -1753,6 +1845,14 @@ public partial class MainWindow : Window
             _vm.SearchBuilder.SelectCatalogSubTab(tab);
     }
 
+    // Lignes « Skill Types » et « Mechanics » : chacune sa sélection, indépendante des onglets de
+    // profession — les trois filtres restent surlignés en même temps.
+    private void CatalogTypeTab_Click(object sender, MouseButtonEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.Tag is CatalogTab tab)
+            _vm.SearchBuilder.SelectCatalogTypeTab(tab);
+    }
+
     // ── Onglets Build (éditeur d'un build simple) ─────────────────────────────
 
     // Menu Fichier > New Build ET bouton toolbar : crée un onglet de build simple vierge.
@@ -1843,6 +1943,12 @@ public partial class MainWindow : Window
     {
         if ((sender as FrameworkElement)?.Tag is CatalogTab tab)
             _vm.ActiveBuild?.SelectCatalogSubTab(tab);
+    }
+
+    private void BuildCatalogTypeTab_Click(object sender, MouseButtonEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.Tag is CatalogTab tab)
+            _vm.ActiveBuild?.SelectCatalogTypeTab(tab);
     }
 
     // Bouton « Enregistrer le modèle » de l'onglet Build : c'est LE bouton d'enregistrement de cet

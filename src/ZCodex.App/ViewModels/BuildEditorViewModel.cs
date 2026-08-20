@@ -120,6 +120,7 @@ public class BuildEditorViewModel : ViewModelBase
                     RefreshNatureRitualBand();
                 }
             };
+        BuildCategoryTabs();   // lignes Skill Types / Mechanics : indépendantes de PR/SEC
         RebuildCatalogTabs();
     }
 
@@ -297,6 +298,10 @@ public class BuildEditorViewModel : ViewModelBase
             foreach (var c in t.Children) c.RaiseLanguageChanged();
         }
         foreach (var s in CatalogSubTabs) s.RaiseLanguageChanged();
+        foreach (var t in CatalogTypeTabs) t.RaiseLanguageChanged();
+        // L'ordre alphabétique dépend de la langue : SkillPanelViewModel vient de réordonner les
+        // deux colonnes, les puces s'alignent dessus (elles n'en sont qu'un reflet).
+        ReorderCategoryTabs();
     }
 
     public void RebuildCatalogTabs()
@@ -362,6 +367,55 @@ public class BuildEditorViewModel : ViewModelBase
         foreach (var a in GwAttributeData.ForProfession(p)
                      .OrderBy(a => a.IsPrimary ? 0 : 1).ThenBy(a => a.Name))
             CatalogTabs.Add(new CatalogTab(a.Name, CatalogTabKind.Attribute) { Attribute = a.Name });
+    }
+
+    // ── Lignes « Skill Types » et « Mechanics » ───────────────────────────────
+    //
+    // Chacune sa ligne, sous les onglets de profession (choix Philippe 19/08/2026). Construites UNE
+    // fois : elles ne dépendent pas de PR/SEC, contrairement aux onglets. Toutes les entrées sont
+    // toujours là, à la même place — celles qui ne rendraient rien sont GRISÉES (SkillCategoryItem
+    // .IsEmpty), jamais retirées : les puces ne bougent pas sous le curseur quand on change de
+    // profession. Le surlignage suit la sélection du catalogue, d'où qu'elle vienne.
+    // ⚠ SEULS les types sont des puces ici. Les MÉCANIQUES sont un rail de droite pleine hauteur
+    // (maquette Philippe 20/08/2026), lié directement à Catalog.MechanicCategories : pas de
+    // collection miroir, donc pas de réordonnancement ni de surlignage à tenir de ce côté.
+    public ObservableCollection<CatalogTab> CatalogTypeTabs { get; } = new();
+
+    private void BuildCategoryTabs()
+    {
+        foreach (var item in Catalog.TypeCategories)
+            CatalogTypeTabs.Add(new CatalogTab(item.Label, CatalogTabKind.TypeCategory) { Category = item });
+
+        Catalog.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(SkillPanelViewModel.SelectedTypeItem))
+                SyncCategoryTabSelection();
+        };
+        SyncCategoryTabSelection();
+    }
+
+
+    // Les puces sont construites dans l'ordre des colonnes du catalogue et doivent y rester : à la
+    // bascule de langue, l'ordre alphabétique change des deux côtés.
+    private void ReorderCategoryTabs()
+    {
+        SkillPanelViewModel.ReorderLike(CatalogTypeTabs,
+            SkillCategoryData.SortForDisplay(SkillCategoryData.TypeDefs), t => t.Category?.Def);
+    }
+
+    // Le surlignage est un REFLET de la sélection du catalogue, pas une seconde source de vérité :
+    // masquer les colonnes (qui remet les deux filtres sur « All ») met donc les puces à jour aussi.
+    private void SyncCategoryTabSelection()
+    {
+        foreach (var t in CatalogTypeTabs)
+            t.IsSelected = ReferenceEquals(t.Category, Catalog.SelectedTypeItem);
+    }
+
+    /// <summary>Clic sur une puce « Skill Types ». N'affecte NI la profession NI la caractéristique :
+    /// c'est le croisement des trois filtres qui est recherché.</summary>
+    public void SelectCatalogTypeTab(CatalogTab tab)
+    {
+        if (tab.Category is { } item) Catalog.SelectedTypeItem = item;
     }
 
     // Clic sur un onglet de la ligne 1 : déplie ses enfants (ligne 2) et applique son filtre.

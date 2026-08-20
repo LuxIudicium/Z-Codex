@@ -77,6 +77,27 @@ public class SkillUpdateService(WikiSkillScraper scraper, AppDbContext db, ILogg
         }
         logger.LogInformation("Conditions appliquées à {Count} skills", conditionsApplied);
 
+        // ── Phase 1 quater : méta-catégories dérivables (colonne Mechanics) ──
+        // Ici et pas ailleurs : la passe conditions vient de finir, et Compute en dépend. Sans
+        // cette ligne, une mise à jour du catalogue (qui réécrit toute la table) laisserait la
+        // colonne vide jusqu'au prochain « Recalculer les catégories ».
+        int mechanicsApplied = 0;
+        foreach (var s in skills)
+        {
+            var probe = new Core.Models.Skill
+            {
+                Name = s.Name,
+                Description = s.Description,
+                SkillType = s.SkillType,
+                Upkeep = s.Upkeep,
+                Sacrifice = s.Sacrifice,
+                Conditions = Core.Models.SkillCategoryData.ParseCsv(s.Conditions),
+            };
+            s.Mechanics = string.Join(",", Core.Models.SkillCategoryData.Compute(probe));
+            if (s.Mechanics.Length > 0) mechanicsApplied++;
+        }
+        logger.LogInformation("Mécaniques calculées pour {Count} skills", mechanicsApplied);
+
         // ── Phase 1 ter : progressions saisies à la main (pages sans table standard) ──
         // Repli : les rares skills dont le wiki n'expose pas de table skill-progression
         // (Rising Bile…) gardaient une progression vide → plages non résolues. On ne remplit

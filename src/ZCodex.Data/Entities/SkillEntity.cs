@@ -36,6 +36,9 @@ public class SkillEntity
     // Conditions infligeables, CSV (ex : "Bleeding,Deep Wound" ; "X:self" = subie par le
     // lanceur). Peuplée par la passe conditions du scraper. "" = aucune.
     public string Conditions { get; set; } = string.Empty;
+    // Méta-catégories de jeu, CSV (ex : "enchantment,maintained,cond:Bleeding"). Clés techniques
+    // de SkillCategoryData, calculées depuis la base ou (lots suivants) scrapées. "" = aucune.
+    public string Mechanics { get; set; } = string.Empty;
     // ── Textes français (gwiki.fr, phase 7 du scraper). "" = pas de page FR. ──
     [MaxLength(200)]
     public string NameFr { get; set; } = string.Empty;

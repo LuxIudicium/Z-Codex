@@ -67,6 +67,7 @@ public class SearchBuilderViewModel : ViewModelBase
             if (e.PropertyName == nameof(SkillPanelViewModel.SelectedGameMode) && ShowPveTab != _pveTabShown)
                 RebuildCatalogTabs();
         };
+        BuildCategoryTabs();   // lignes Skill Types / Mechanics : indépendantes de PR/SEC
         RebuildCatalogTabs();
         RefreshQueryViolations();
     }
@@ -182,6 +183,10 @@ public class SearchBuilderViewModel : ViewModelBase
             foreach (var c in t.Children) c.RaiseLanguageChanged();
         }
         foreach (var s in CatalogSubTabs) s.RaiseLanguageChanged();
+        foreach (var t in CatalogTypeTabs) t.RaiseLanguageChanged();
+        // L'ordre alphabétique dépend de la langue : SkillPanelViewModel vient de réordonner les
+        // deux colonnes, les puces s'alignent dessus (elles n'en sont qu'un reflet).
+        ReorderCategoryTabs();
     }
 
     // Ajoute pour une profession un onglet « toute la profession » (browse complet) puis TOUTES ses
@@ -194,6 +199,55 @@ public class SearchBuilderViewModel : ViewModelBase
         foreach (var a in GwAttributeData.ForProfession(p)
                      .OrderBy(a => a.IsPrimary ? 0 : 1).ThenBy(a => a.Name))
             CatalogTabs.Add(new CatalogTab(a.Name, CatalogTabKind.Attribute) { Attribute = a.Name });
+    }
+
+    // ── Lignes « Skill Types » et « Mechanics » ───────────────────────────────
+    //
+    // Chacune sa ligne, sous les onglets de profession (choix Philippe 19/08/2026). Construites UNE
+    // fois : elles ne dépendent pas de PR/SEC, contrairement aux onglets. Toutes les entrées sont
+    // toujours là, à la même place — celles qui ne rendraient rien sont GRISÉES (SkillCategoryItem
+    // .IsEmpty), jamais retirées : les puces ne bougent pas sous le curseur quand on change de
+    // profession. Le surlignage suit la sélection du catalogue, d'où qu'elle vienne.
+    // ⚠ SEULS les types sont des puces ici. Les MÉCANIQUES sont un rail de droite pleine hauteur,
+    // lié directement à Catalog.MechanicCategories : pas de collection miroir, donc pas de
+    // réordonnancement ni de surlignage à tenir de ce côté. Identique à la vue Build.
+    public ObservableCollection<CatalogTab> CatalogTypeTabs { get; } = new();
+
+    private void BuildCategoryTabs()
+    {
+        foreach (var item in Catalog.TypeCategories)
+            CatalogTypeTabs.Add(new CatalogTab(item.Label, CatalogTabKind.TypeCategory) { Category = item });
+
+        Catalog.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(SkillPanelViewModel.SelectedTypeItem))
+                SyncCategoryTabSelection();
+        };
+        SyncCategoryTabSelection();
+    }
+
+
+    // Les puces sont construites dans l'ordre des colonnes du catalogue et doivent y rester : à la
+    // bascule de langue, l'ordre alphabétique change des deux côtés.
+    private void ReorderCategoryTabs()
+    {
+        SkillPanelViewModel.ReorderLike(CatalogTypeTabs,
+            SkillCategoryData.SortForDisplay(SkillCategoryData.TypeDefs), t => t.Category?.Def);
+    }
+
+    // Le surlignage est un REFLET de la sélection du catalogue, pas une seconde source de vérité :
+    // masquer les colonnes (qui remet les deux filtres sur « All ») met donc les puces à jour aussi.
+    private void SyncCategoryTabSelection()
+    {
+        foreach (var t in CatalogTypeTabs)
+            t.IsSelected = ReferenceEquals(t.Category, Catalog.SelectedTypeItem);
+    }
+
+    /// <summary>Clic sur une puce « Skill Types ». N'affecte NI la profession NI la caractéristique :
+    /// c'est le croisement des trois filtres qui est recherché.</summary>
+    public void SelectCatalogTypeTab(CatalogTab tab)
+    {
+        if (tab.Category is { } item) Catalog.SelectedTypeItem = item;
     }
 
     // Clic sur un onglet de la ligne 1 : déplie ses enfants (ligne 2) et applique son filtre.
@@ -337,7 +391,14 @@ public class SearchBuilderViewModel : ViewModelBase
     }
 }
 
-public enum CatalogTabKind { Profession, Attribute, NoAttribute, PveGroup, PveCategory }
+public enum CatalogTabKind
+{
+    Profession, Attribute, NoAttribute, PveGroup, PveCategory,
+    // Skill Types et Mechanics ont chacun leur PROPRE ligne de puces sous les onglets de
+    // profession (choix Philippe 19/08/2026) : chaque ligne gère sa sélection, donc les trois
+    // filtres — profession, type, mécanique — sont surlignés en même temps sans se mentir.
+    TypeCategory, MechanicCategory,
+}
 
 // Un onglet du catalogue de recherche : soit un groupe-profession dépliable (None/None), soit une
 // caractéristique, soit un onglet commun (No Attribute / PvE only + ses catégories).
@@ -357,6 +418,8 @@ public sealed class CatalogTab : ViewModelBase
         CatalogTabKind.Attribute or CatalogTabKind.NoAttribute => GwAttributeData.DisplayName(Attribute ?? LabelEn),
         CatalogTabKind.PveGroup                          => "PvE only",
         CatalogTabKind.PveCategory                       => PveCategory?.DisplayLabel ?? LabelEn,
+        CatalogTabKind.TypeCategory or CatalogTabKind.MechanicCategory
+                                                         => Category?.DisplayLabel ?? LabelEn,
         _                                                => LabelEn,
     };
     public void RaiseLanguageChanged() => OnPropertyChanged(nameof(Label));
@@ -365,6 +428,9 @@ public sealed class CatalogTab : ViewModelBase
     public Profession Profession { get; init; }
     public string? Attribute { get; init; }
     public PveCategoryItem? PveCategory { get; init; }
+    // Entrée d'une des deux lignes Skill Types / Mechanics. Le grisé (« ne rendrait rien ») vit
+    // sur l'item partagé, pas sur la puce : une seule vérité pour les 4 catalogues.
+    public SkillCategoryItem? Category { get; init; }
     public List<CatalogTab> Children { get; } = new();
     public bool HasChildren => Children.Count > 0;
 

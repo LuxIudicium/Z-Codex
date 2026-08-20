@@ -60,6 +60,13 @@ public partial class ArmorCalcView : UserControl
 
     private void AddAttack_Click(object sender, RoutedEventArgs e) => Vm?.AddAttack(ResolveAttackToAdd());
 
+    // Ligne de retour sous la recherche du catalogue : lève les filtres qu'elle vient de nommer.
+    private void SearchNotice_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement { Tag: SkillPanelViewModel panel })
+            panel.LiftBlockingFilters();
+    }
+
     private void RemoveAttack_Click(object sender, RoutedEventArgs e)
     {
         if (Vm != null && (sender as FrameworkElement)?.DataContext is ReferenceAttackVM a)

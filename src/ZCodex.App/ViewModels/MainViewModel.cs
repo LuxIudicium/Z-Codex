@@ -63,6 +63,68 @@ public class MainViewModel : ViewModelBase
     public ObservableCollection<TeamBuildViewModel> OpenTeamBuilds { get; } = new();
     public SkillPanelViewModel SkillPanel { get; } = new();
 
+    // ── Colonnes Types / Mechanics du catalogue ───────────────────────────────
+
+    // DEUX booléens indépendants depuis le 20/08/2026 (demande Philippe) : les deux colonnes
+    // n'ont pas le même encombrement ni le même usage — 34 types contre 87 mécaniques — et on veut
+    // pouvoir n'en afficher qu'une. Chacun est partagé par la case à cocher de la barre de recherche
+    // des 3 catalogues et par son entrée du menu Affichage. Masquées par défaut.
+    // Masquer une colonne REMET SON filtre sur « All » : jamais de filtre actif invisible.
+    private bool _showTypeColumn;
+    public bool ShowTypeColumn
+    {
+        get => _showTypeColumn;
+        set
+        {
+            if (!SetField(ref _showTypeColumn, value)) return;
+            OnPropertyChanged(nameof(ShowAnyCategoryColumn));
+            if (!value)
+                foreach (var c in AllCatalogs()) c.ResetTypeFilter();
+        }
+    }
+
+    private bool _showMechanicColumn;
+    public bool ShowMechanicColumn
+    {
+        get => _showMechanicColumn;
+        set
+        {
+            if (!SetField(ref _showMechanicColumn, value)) return;
+            OnPropertyChanged(nameof(ShowAnyCategoryColumn));
+            if (!value)
+                foreach (var c in AllCatalogs()) c.ResetMechanicFilter();
+        }
+    }
+
+    // Repli de la ligne de puces « Skill Types » des écrans Build et Recherche (Philippe,
+    // 20/08/2026). Là-bas les types ne sont pas une colonne mais des puces qui s'enroulent sur deux
+    // lignes ; repliée, la ligne ne montre plus que le filtre ACTIF. Repliée par défaut — c'est tout
+    // l'intérêt. Comme les cases à cocher, l'état est global aux catalogues et persisté.
+    // ⚠ Il n'y a PAS d'équivalent pour les mécaniques : elles ne sont plus des puces nulle part,
+    // mais un rail de droite dans les deux écrans.
+    private bool _typeChipsExpanded;
+    public bool TypeChipsExpanded
+    {
+        get => _typeChipsExpanded;
+        set { if (SetField(ref _typeChipsExpanded, value)) OnPropertyChanged(nameof(TypeChipsGlyph)); }
+    }
+
+    public string TypeChipsGlyph => _typeChipsExpanded ? "\u25be" : "\u25b8";
+
+    /// <summary>Au moins une des deux colonnes est demandée — sert aux conteneurs qui n'existent
+    /// que pour les héberger (le bloc du teambuild, la gouttière qui le précède).</summary>
+    public bool ShowAnyCategoryColumn => _showTypeColumn || _showMechanicColumn;
+
+    /// <summary>Les 4 hôtes du catalogue : teambuild, éditeur(s) de build, recherche, calculateur
+    /// d'armure. Le moteur est partagé (SkillPanelViewModel), les colonnes sont câblées par hôte.</summary>
+    public IEnumerable<SkillPanelViewModel> AllCatalogs()
+    {
+        yield return SkillPanel;
+        yield return SearchBuilder.Catalog;
+        yield return ArmorCalc.AttackCatalog;
+        foreach (var b in OpenBuilds) yield return b.Catalog;
+    }
+
     // ── Bandeaux de conditions ────────────────────────────────────────────────
 
     // Toggle du menu View (persisté dans settings.json) : masque/affiche les bandeaux
