@@ -110,6 +110,22 @@ git push origin v1.0.1
 - **Choose a tag** : `v1.0.1`, celle qui vient d'être poussée.
 - **Title** : `1.0.1`.
 - Décrire ce qui change, en français et en anglais.
+- **Remercier les testeurs**, avec les mêmes pseudos et la même orthographe que la
+  fenêtre « À propos » — la liste vit dans la clé `S.About.Thanks` des deux fichiers
+  de chaînes, c'est elle qui fait foi. Anglais d'abord, puis français (liste au
+  21/08/2026) :
+
+  ```markdown
+  ## Thanks
+
+  Thanks to **Holye**, **Arka**, **Dark**, **Courant**, **Ramstram** and **Arloz**
+  for their support and feedback.
+
+  ## Remerciements
+
+  Merci à **Holye**, **Arka**, **Dark**, **Courant**, **Ramstram** et **Arloz**
+  pour leur soutien et leurs retours.
+  ```
 - **Joindre `installer/output/Z-Codex-1.0.1-setup.exe`.** Une release sans
   l'installateur attaché envoie l'utilisateur sur une page vide.
 - Publier en **Draft** tant que l'étape 8 n'est pas faite.

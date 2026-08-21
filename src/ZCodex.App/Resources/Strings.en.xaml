@@ -377,7 +377,7 @@
     <sys:String x:Key="S.About.BuildCredit">Community builds:</sys:String>
     <sys:String x:Key="S.About.Disclaimer">Guild Wars is a trademark of ArenaNet / NCSOFT. Z-Codex is an unofficial tool.</sys:String>
     <sys:String x:Key="S.About.Community">Feedback, bug reports and feature ideas:</sys:String>
-    <sys:String x:Key="S.About.Thanks">Thanks to Holye, Arka, Dark, Courant and Ramstram — and to you, for downloading the app!</sys:String>
+    <sys:String x:Key="S.About.Thanks">Thanks to Holye, Arka, Dark, Courant, Ramstram and Arloz — and to you, for downloading the app!</sys:String>
     <sys:String x:Key="S.Win.ArmorDmgTitle">Armor-based damage</sys:String>
     <sys:String x:Key="S.Armor.CustomALs">Custom armor levels (0–200), empty field = column removed:</sys:String>
     <sys:String x:Key="S.Armor.AddCol">Add an AL column (max 8)</sys:String>
