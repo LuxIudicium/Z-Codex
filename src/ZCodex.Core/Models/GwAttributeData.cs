@@ -38,7 +38,7 @@ public static class GwAttributeData
         new(20, "Swordsmanship",       "Maîtrise de l'épée",     Profession.Warrior,       false),
         new(21, "Tactics",             "Tactique",               Profession.Warrior,       false),
         // Ranger
-        new(22, "Beast Mastery",       "Maîtrise des bêtes",     Profession.Ranger,        false),
+        new(22, "Beast Mastery",       "Domptage",               Profession.Ranger,        false),
         new(23, "Expertise",           "Expertise",              Profession.Ranger,        true),
         new(24, "Wilderness Survival", "Survie",                 Profession.Ranger,        false),
         new(25, "Marksmanship",        "Adresse au tir",         Profession.Ranger,        false),
