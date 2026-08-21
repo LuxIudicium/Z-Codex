@@ -197,11 +197,10 @@
     <sys:String x:Key="S.Cat.ChipRowTip">Cliquer pour replier ou déplier cette ligne de filtres. Repliée, elle ne montre que ce qui est actif.</sys:String>
     <sys:String x:Key="S.Cat.ToggleTypesTip" xml:space="preserve">Filtrer par Type de compétence — ce que dit l'infobulle du jeu.&#10;Le masquer remet ce filtre sur « All ».</sys:String>
     <sys:String x:Key="S.Cat.ToggleMechanicsTip" xml:space="preserve">Filtrer par Mécanique de jeu — ce que la compétence fait.&#10;Le masquer remet ce filtre sur « All ».</sys:String>
+    <sys:String x:Key="S.Cat.TypesTip">Filtrer par Type de compétence — ce que dit l'infobulle du jeu.</sys:String>
+    <sys:String x:Key="S.Cat.MechanicsTip">Filtrer par Mécanique de jeu — ce que la compétence fait.</sys:String>
     <sys:String x:Key="S.Cat.Recognized">Catégories : {0}</sys:String>
     <sys:String x:Key="S.Cat.Hidden">{0} masqués par {1} — cliquer pour les afficher</sys:String>
-
-    <!-- ── Infobulle de compétence ────────────────────────────────────── -->
-    <sys:String x:Key="S.Tooltip.Elite">élite</sys:String>
 
     <!-- ── Messages (MessageBox / dialogues, via LanguageManager.T) ───── -->
     <sys:String x:Key="S.Msg.RootNotFound" xml:space="preserve">Le dossier Templates de Guild Wars est introuvable.&#10;&#10;Voulez-vous sélectionner un dossier ?</sys:String>

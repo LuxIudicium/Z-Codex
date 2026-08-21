@@ -194,11 +194,10 @@
     <sys:String x:Key="S.Cat.ChipRowTip">Click to fold or unfold this filter row. Folded, it only shows what is active.</sys:String>
     <sys:String x:Key="S.Cat.ToggleTypesTip" xml:space="preserve">Filter by skill Type — what the in-game tooltip says.&#10;Hiding it resets that filter to "All".</sys:String>
     <sys:String x:Key="S.Cat.ToggleMechanicsTip" xml:space="preserve">Filter by game Mechanic — what the skill does.&#10;Hiding it resets that filter to "All".</sys:String>
+    <sys:String x:Key="S.Cat.TypesTip">Filter by skill Type — what the in-game tooltip says.</sys:String>
+    <sys:String x:Key="S.Cat.MechanicsTip">Filter by game Mechanic — what the skill does.</sys:String>
     <sys:String x:Key="S.Cat.Recognized">Categories: {0}</sys:String>
     <sys:String x:Key="S.Cat.Hidden">{0} hidden by {1} — click to show them</sys:String>
-
-    <!-- ── Skill tooltip ──────────────────────────────────────────────── -->
-    <sys:String x:Key="S.Tooltip.Elite">Elite</sys:String>
 
     <!-- ── Messages (MessageBox / dialogs, via LanguageManager.T) ─────── -->
     <sys:String x:Key="S.Msg.RootNotFound" xml:space="preserve">The Guild Wars Templates folder was not found.&#10;&#10;Do you want to pick a folder?</sys:String>

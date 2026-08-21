@@ -571,21 +571,19 @@
                                           ToolTip="{DynamicResource S.Armor.DamageOnlyTip}"/>
                                 <!-- Skill Types/Mechanics : cet écran n'a pas d'onglets, ce sont donc
                                      deux listes de plus, dans la même barre que les autres filtres.
-                                     Le booléen vit sur MainViewModel → RelativeSource jusqu'à la fenêtre. -->
-                                <CheckBox FontSize="11" VerticalAlignment="Center" Margin="10,0,0,0"
-                                          IsChecked="{Binding DataContext.ShowCategoryColumns, RelativeSource={RelativeSource AncestorType=Window}}"
-                                          Content="{DynamicResource S.Cat.ToggleLabel}"
-                                          ToolTip="{DynamicResource S.Cat.ToggleTip}"/>
-                                <ComboBox Width="150" FontSize="11" Margin="8,1,6,1" VerticalContentAlignment="Center"
+                                     TOUJOURS affichées, sans case pour les masquer : les booléens
+                                     ShowTypeColumn/ShowMechanicColumn du menu Affichage pilotent les
+                                     lignes de puces des trois autres catalogues, pas ces listes-ci. -->
+                                <ComboBox Width="150" FontSize="11" Margin="10,1,6,1" VerticalContentAlignment="Center"
                                           ItemsSource="{Binding AttackCatalog.TypeCategories}"
                                           SelectedItem="{Binding AttackCatalog.SelectedTypeItem}"
                                           ItemTemplate="{StaticResource CategoryComboItemTemplate}"
-                                          Visibility="{Binding DataContext.ShowCategoryColumns, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                          ToolTip="{DynamicResource S.Cat.TypesTip}"/>
                                 <ComboBox Width="170" FontSize="11" Margin="0,1,6,1" VerticalContentAlignment="Center"
                                           ItemsSource="{Binding AttackCatalog.MechanicCategories}"
                                           SelectedItem="{Binding AttackCatalog.SelectedMechanicItem}"
                                           ItemTemplate="{StaticResource CategoryComboItemTemplate}"
-                                          Visibility="{Binding DataContext.ShowCategoryColumns, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                          ToolTip="{DynamicResource S.Cat.MechanicsTip}"/>
                             </WrapPanel>
                             <StackPanel Grid.Row="1" Margin="0,0,0,2">
                                 <DockPanel>
