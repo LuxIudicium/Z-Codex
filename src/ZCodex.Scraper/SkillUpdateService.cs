@@ -91,6 +91,10 @@ public class SkillUpdateService(WikiSkillScraper scraper, AppDbContext db, ILogg
                 SkillType = s.SkillType,
                 Upkeep = s.Upkeep,
                 Sacrifice = s.Sacrifice,
+                // ⚠ Voir SkillRepository.RecomputeMechanicsAsync : Adrénaline et Épuisement
+                // sont des mécaniques calculées depuis ces colonnes.
+                Adrenaline = s.Adrenaline,
+                Overcast = s.Overcast,
                 Conditions = Core.Models.SkillCategoryData.ParseCsv(s.Conditions),
             };
             s.Mechanics = string.Join(",", Core.Models.SkillCategoryData.Compute(probe));

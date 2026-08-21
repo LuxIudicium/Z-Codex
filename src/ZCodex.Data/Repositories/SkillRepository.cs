@@ -36,6 +36,11 @@ public class SkillRepository(AppDbContext db)
                 SkillType = e.SkillType,
                 Upkeep = e.Upkeep,
                 Sacrifice = e.Sacrifice,
+                // ⚠ Ajoutés le 21/08/2026 avec les mécaniques Adrénaline et Épuisement : elles
+                // se calculent depuis ces COLONNES, pas depuis le texte. Sans elles ici, la
+                // sonde vaut 0 et « Recalculer les catégories » effacerait les deux entrées.
+                Adrenaline = e.Adrenaline,
+                Overcast = e.Overcast,
                 Conditions = Core.Models.SkillCategoryData.ParseCsv(e.Conditions),
             };
             var csv = string.Join(",",

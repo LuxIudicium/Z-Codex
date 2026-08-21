@@ -199,6 +199,50 @@ public static class SkillCategoryData
     public const string MechKdRequire = "kdrel:require";
     // Hausse de caracteristique : categorie wiki « Skills that cause Increased Attribute ».
     public const string MechAttributeBoost = "attrboost";
+    // ── Adrénaline ──────────────────────────────────────────────────────────────────────────
+    // Deux entrées sous une même famille (arbitrage Philippe, 21/08/2026) : ce qui COÛTE de
+    // l'adrénaline, et ce qui INTERAGIT avec elle.
+    // ⚠ Le coût n'a AUCUNE liste : la base a la colonne, exactement comme Upkeep pour les
+    // enchantements maintenus. Contrôlé contre la catégorie wiki « Adrenal skills » — écart ZÉRO
+    // sur le catalogue : les 2 seuls noms qu'elle n'a pas sont « "Save Yourselves!" (Kurzick) » et
+    // « (Luxon) », qu'elle ne connaît que sous le nom nu, lequel est absent du catalogue.
+    // Les 5 seaux « liées » sont les 5 tables nommées de
+    // https://wiki.guildwars.com/wiki/List_of_adrenaline-related_skills. ⚠ Ils se RECOUVRENT, et
+    // le wiki le veut ainsi : Battle Rage accélère le gain ET figure dans « Autres »,
+    // Rage of the Ntouka en fait gagner ET figure dans « Autres », Inspirational Speech en fait
+    // gagner à un allié ET en fait perdre au lanceur.
+    public const string MechAdrenalCost         = "adrenaline";
+    public const string MechAdrenalineRelated   = "adrenrel";
+    public const string MechAdrenalineGain      = "adrenrel:gain";
+    public const string MechAdrenalineRateUp    = "adrenrel:rateup";
+    public const string MechAdrenalineRateDown  = "adrenrel:ratedown";
+    public const string MechAdrenalineLoss      = "adrenrel:loss";
+    public const string MechAdrenalineOther     = "adrenrel:other";
+    // ── Épuisement ──────────────────────────────────────────────────────────────────────────
+    // ⚠ Le jeu a renommé la mécanique « overcast » en anglais en 2012 ; le client FRANÇAIS, lui,
+    // dit toujours « Épuisement » — 21 des 24 descriptions concernées l'écrivent, aucune n'écrit
+    // « surcharge » (ce mot n'apparaît que dans la compétence Overload, sans rapport).
+    // [fr_client_fait_foi] tranche : « Épuisement » en FR, « Overcast » en EN.
+    // Le coût est là encore la COLONNE de la base : écart zéro avec la catégorie wiki « Overcast
+    // skills », dont la seule absente du catalogue est Devourer Siege (règle §9.14).
+    // Les 3 seaux « liés » sont les 3 tables de https://wiki.guildwars.com/wiki/Overcast :
+    // en infliger à autrui, en profiter, l'empêcher.
+    public const string MechOvercast        = "overcast";
+    public const string MechOvercastRelated = "ocrel";
+    public const string MechOvercastCause   = "ocrel:cause";
+    public const string MechOvercastBenefit = "ocrel:benefit";
+    public const string MechOvercastPrevent = "ocrel:prevent";
+    // Blocage et son contraire. Sources : la catégorie wiki « Skills that cause Block » (elle a 2
+    // entrées de plus que la page List_of_blocking_skills, dont la liste en dur est en retard) et
+    // la catégorie « Skills that cause Unblockable ».
+    public const string MechBlocking    = "block";
+    public const string MechUnblockable = "unblockable";
+    // Les Ordres du Nécromant. Périmètre donné par Philippe (21/08/2026) : tout ce qui s'appelle
+    // « Order of… », plus Dark Fury, qui en est un sans en porter le nom.
+    public const string MechOrder = "order";
+    // Retrait de poses de combat. Source : https://wiki.guildwars.com/wiki/Stance#Related_skills,
+    // section « Skills that counter or end stances ».
+    public const string MechStanceRemoval = "stancerem";
     // Accélérations du déplacement. Source : catégorie wiki « Skills that cause Increased Movement
     // Speed » (67 entrées) recoupée avec les 4 tables nommées de https://wiki.guildwars.com/wiki/
     // Speed_boost (64) — 68 noms distincts, 52 au catalogue. La clé reprend « IMS », l'abréviation
@@ -608,6 +652,116 @@ public static class SkillCategoryData
     // Accélère LE LANCEUR. Gust est aussi dans SpeedBoostOnAlly (« vous et la cible alliée »),
     // Run as One et Rampage as One aussi dans SpeedBoostOnPet (« vous et votre animal »).
     // Absentes du catalogue (PNJ / formes / effets d'environnement, règle §9.14) : les 8 dernières.
+    // ── Adrénaline, épuisement, blocage, ordres, poses de combat (21/08/2026) ───────────────
+    // Toutes ces listes sont clés par nom de BASE (ListKey) : les variantes PvP et d'allégeance
+    // suivent leur jumelle. Les noms absents du catalogue y restent, inertes (règle §9.14).
+
+    private static readonly HashSet<string> AdrenalineGainSkills = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "\"I Meant to Do That!\"", "\"Let's Get 'Em!\"", "\"Make Your Time!\"",
+        "\"To the Limit!\"", "\"You Will Die!\"", "Anthem of Fury", "Auspicious Parry",
+        "Balthazar's Rage", "Defensive Stance", "Dragon Slash", "Enraged Smash",
+        "Enraging Charge", "Ferocious Strike", "Furious Axe", "Inspirational Speech",
+        "Knee Cutter", "Lightbringer Signet", "Lion's Comfort", "Mokele Smash",
+        "Rage of the Ntouka", "Rending Touch", "Signet of Aggression", "Soldier's Defense",
+        "Spear of Fury", "Steady Stance", "Steelfang Slash", "Thrill of Victory", "Wary Stance",
+        "Zealous Sweep",
+    };
+
+    private static readonly HashSet<string> AdrenalineRateUpSkills = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "\"For Great Justice!\"", "Avatar of Balthazar", "Balthazar's Spirit", "Battle Rage",
+        "Berserker Stance", "Dark Fury", "Focused Anger", "Infuriating Heat", "Mark of Fury",
+        "Natural Temper", "Onslaught", "Soldier's Fury", "Weapon of Fury",
+    };
+
+    private static readonly HashSet<string> AdrenalineRateDownSkills = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Soothing", "Soothing Images",
+    };
+
+    private static readonly HashSet<string> AdrenalineLossSkills = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "\"On Your Knees!\"", "Ancestor's Visage", "Burst of Aggression", "Decapitate",
+        "Final Thrust", "Hammer Bash", "Heavy Blow", "Inspirational Speech", "Meditation",
+        "Sympathetic Visage", "Wild Blow", "Yeti Smash",
+    };
+
+    private static readonly HashSet<string> AdrenalineOtherSkills = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Battle Rage", "Disciplined Stance", "Rage of the Ntouka", "Signet of Rage",
+    };
+
+    private static readonly HashSet<string> BlockingSkills = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Aegis", "Attacker's Insight", "Auspicious Parry", "Bladeturn Refrain",
+        "Bonetti's Defense", "Burning Shield", "Celestial Stance", "Critical Defenses",
+        "Deadly Riposte", "Defensive Anthem", "Defensive Stance", "Deflect Arrows",
+        "Disciplined Stance", "Displacement", "Distortion", "Dodge", "Dryder's Defenses",
+        "Escape", "Flashing Blades", "Frenzied Defense", "Gladiator's Defense", "Guardian",
+        "Lightning Reflexes", "Magnetic Aura", "Magnetic Surge", "Mental Block", "Mirage Cloak",
+        "Natural Stride", "Pensive Guardian", "Protector's Defense", "Raven Blessing", "Riposte",
+        "Shield Bash", "Shield Guardian", "Shield Stance", "Shield of Deflection",
+        "Shield of Force", "Shroud of Distress", "Sliver Armor", "Soldier's Defense",
+        "Soldier's Stance", "Swirling Aura", "Ward Against Melee", "Wary Stance",
+        "Weapon of Warding", "Whirling Defense", "Zojun's Haste",
+    };
+
+    private static readonly HashSet<string> UnblockableSkills = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "\"Dodge This!\"", "Anthem of Guidance", "Arcing Shot", "Asuran Scan", "Auspicious Blow",
+        "Called Shot", "Crippling Shot", "Crossfire", "Expose Defenses", "Forceful Blow",
+        "Fox Fangs", "Fox's Promise", "Ghostly Weapon", "Golden Fox Strike", "Guided Weapon",
+        "Guiding Hands", "Irresistible Sweep", "Jaizhenju Strike", "Magebane Shot",
+        "Magehunter Strike", "Magehunter's Smash", "Nine Tail Strike", "Otyugh's Cry",
+        "Precision Shot", "Pure Strike", "Rigor Mortis", "Seeking Arrows", "Shattering Assault",
+        "Soldier's Strike", "Sun and Moon Slash", "Swift Javelin", "Twin Moon Sweep",
+        "Unblockable Throw", "Unseen Fury", "Warrior's Cunning", "Way of the Fox", "Whirling Axe",
+        "Wild Blow", "Wild Strike", "Wild Throw",
+    };
+
+    private static readonly HashSet<string> OvercastCauseSkills = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Arcane Languor", "Crystal Haze", "Equinox", "Exhausting Assault", "Iron Mist",
+        "Over the Limit",
+    };
+
+    private static readonly HashSet<string> OvercastBenefitSkills = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Arc Lightning", "Flare", "Ice Spear", "Lava Font", "Lightning Strike", "Magnetic Aura",
+        "Magnetic Surge", "Phoenix", "Rust", "Second Wind", "Shell Shock", "Smoldering Embers",
+        "Stone Daggers", "Swirling Aura", "Whirlwind",
+    };
+
+    private static readonly HashSet<string> OvercastPreventSkills = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Glyph of Energy",
+    };
+
+    private static readonly HashSet<string> OrderSkills = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Dark Fury", "Order of Apostasy", "Order of Pain", "Order of Undeath",
+        "Order of the Vampire",
+    };
+
+    private static readonly HashSet<string> StanceRemovalSkills = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Forceful Blow", "Grapple", "Irresistible Sweep", "Mark of Insecurity", "Shove",
+        "Whirling Axe", "Wild Blow", "Wild Smash", "Wild Strike", "Wild Throw",
+    };
+
+    // ⚠ Audit PvE/PvP de la liste de blocage (cf. la leçon des 156 paires) : les TROIS variantes
+    // PvP que la source ne nomme pas ont bel et bien PERDU le blocage — la clé de base les aurait
+    // toutes les trois embarquées à tort.
+    //   Aegis (PvP)              « Attacks against this party member fail »  (autre mécanique)
+    //   Bladeturn Refrain (PvP)  « +10…40 armor against slashing damage »    (armure, pas blocage)
+    //   Soldier's Stance (PvP)   la phrase « 75% chance to block » a disparu
+    // Sorties par leur nom COMPLET, comme « Masochism (PvP) » au §13.3.
+    private static readonly HashSet<string> BlockingExcluded = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Aegis (PvP)", "Bladeturn Refrain (PvP)", "Soldier's Stance (PvP)",
+    };
+
     private static readonly HashSet<string> SpeedBoostOnSelf = new(StringComparer.OrdinalIgnoreCase)
     {
         "Armor of Mist", "Battle Rage", "Bull's Charge", "Burning Speed", "Charging Strike",
@@ -650,7 +804,7 @@ public static class SkillCategoryData
     // Accélère TES propres attaques. Weapon of Aggression y figure malgré son type : c'est le seul
     // sort d'arme donné « target = self » par le wiki. Never Rampage Alone et Rampage as One sont
     // aussi dans IasOnPet (« vous et votre animal »). Bestial Fury reste ici : malgré sa ligne de
-    // Maîtrise des bêtes, son texte dit « YOU attack 25% faster ».
+    // Domptage, son texte dit « YOU attack 25% faster ».
     // Absentes du catalogue (règle §9.14) : les 2 dernières.
     private static readonly HashSet<string> IasOnSelf = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -1305,6 +1459,46 @@ public static class SkillCategoryData
         if (AttributeBoostSkills.Contains(baseName) && !AttributeBoostExcluded.Contains(s.Name ?? string.Empty))
             keys.Add(MechAttributeBoost);
 
+        // ── Adrénaline ──
+        // Le COÛT est la colonne de la base, aucune liste à tenir (même relation bijective
+        // qu'Upkeep ⇒ enchantement maintenu). Vérifié contre la catégorie wiki : écart zéro.
+        if (s.Adrenaline > 0) keys.Add(MechAdrenalCost);
+
+        // Les 5 tables du wiki se recouvrent : une compétence peut porter plusieurs seaux, et le
+        // parent EST leur union — il n'a pas de liste à lui.
+        bool adrGain     = AdrenalineGainSkills.Contains(baseName);
+        bool adrRateUp   = AdrenalineRateUpSkills.Contains(baseName);
+        bool adrRateDown = AdrenalineRateDownSkills.Contains(baseName);
+        bool adrLoss     = AdrenalineLossSkills.Contains(baseName);
+        bool adrOther    = AdrenalineOtherSkills.Contains(baseName);
+        if (adrGain)     keys.Add(MechAdrenalineGain);
+        if (adrRateUp)   keys.Add(MechAdrenalineRateUp);
+        if (adrRateDown) keys.Add(MechAdrenalineRateDown);
+        if (adrLoss)     keys.Add(MechAdrenalineLoss);
+        if (adrOther)    keys.Add(MechAdrenalineOther);
+        if (adrGain || adrRateUp || adrRateDown || adrLoss || adrOther) keys.Add(MechAdrenalineRelated);
+
+        // ── Épuisement (« Overcast ») ──
+        // Là encore la colonne, pas une liste.
+        if (s.Overcast > 0) keys.Add(MechOvercast);
+
+        bool ocCause   = OvercastCauseSkills.Contains(baseName);
+        bool ocBenefit = OvercastBenefitSkills.Contains(baseName);
+        bool ocPrevent = OvercastPreventSkills.Contains(baseName);
+        if (ocCause)   keys.Add(MechOvercastCause);
+        if (ocBenefit) keys.Add(MechOvercastBenefit);
+        if (ocPrevent) keys.Add(MechOvercastPrevent);
+        if (ocCause || ocBenefit || ocPrevent) keys.Add(MechOvercastRelated);
+
+        // ── Blocage, imblocable, Ordres, retrait de poses ──
+        // ⚠ Le blocage est la 2e liste du chantier à avoir besoin d'une exclusion par nom COMPLET :
+        // 3 variantes PvP ont perdu la mécanique de leur jumelle (cf. BlockingExcluded).
+        if (BlockingSkills.Contains(baseName) && !BlockingExcluded.Contains(s.Name ?? string.Empty))
+            keys.Add(MechBlocking);
+        if (UnblockableSkills.Contains(baseName))   keys.Add(MechUnblockable);
+        if (OrderSkills.Contains(baseName))         keys.Add(MechOrder);
+        if (StanceRemovalSkills.Contains(baseName)) keys.Add(MechStanceRemoval);
+
         // Accélération du déplacement.
         bool imsSelf = SpeedBoostOnSelf.Contains(baseName);
         bool imsAlly = SpeedBoostOnAlly.Contains(baseName);
@@ -1474,6 +1668,8 @@ public static class SkillCategoryData
             or MechMinionAnimation or MechMinionRelated or MechSummonCreature
             or MechSpiritRelated or MechBindingRitualRel or MechSummonRelated or MechAntiSummon
             or MechKdRelated or MechAttributeBoost
+            or MechAdrenalCost or MechAdrenalineRelated or MechOvercast or MechOvercastRelated
+            or MechBlocking or MechUnblockable or MechOrder or MechStanceRemoval
         || key.StartsWith(ConditionPrefix, StringComparison.Ordinal)
         || key.StartsWith(MechAoe + ":", StringComparison.Ordinal)
         || key.StartsWith(MechEnchRemoval + ":", StringComparison.Ordinal)
@@ -1483,6 +1679,8 @@ public static class SkillCategoryData
         || key.StartsWith(MechKnockdown + ":", StringComparison.Ordinal)
         || key.StartsWith(MechSnare + ":", StringComparison.Ordinal)
         || key.StartsWith(MechKdRelated + ":", StringComparison.Ordinal)
+        || key.StartsWith(MechAdrenalineRelated + ":", StringComparison.Ordinal)
+        || key.StartsWith(MechOvercastRelated + ":", StringComparison.Ordinal)
         || key.StartsWith(MechEnergyGain + ":", StringComparison.Ordinal)
         || key.StartsWith(MechEnergyLoss + ":", StringComparison.Ordinal)
         || key.StartsWith(MechSpeedBoost + ":", StringComparison.Ordinal)
@@ -1530,6 +1728,19 @@ public static class SkillCategoryData
     public const string KnockdownLabel = "Knock-down";
     public const string KdRelatedLabel = "Knock-down Related";
     public const string AttributeBoostLabel = "Attribute Boosting";
+    // Famille adrénaline (arbitrage Philippe 21/08/2026) : le coût et les interactions sous un
+    // même parent, comme « Énergie » ou « Vie et soins ». Le parent n'a pas de clé à lui.
+    public const string AdrenalineFamilyLabel  = "Adrenaline";
+    public const string AdrenalCostLabel       = "Adrenaline Cost";
+    public const string AdrenalineRelatedLabel = "Adrenaline Related";
+    // Deux entrées RACINE, comme « Knock-down » / « Knock-down Related » : le coût d'un côté,
+    // ce qui réagit à l'épuisement de l'autre.
+    public const string OvercastLabel        = "Overcast";
+    public const string OvercastRelatedLabel = "Overcast Related";
+    public const string BlockingLabel      = "Blocking";
+    public const string UnblockableLabel   = "Unblockable";
+    public const string OrdersLabel        = "Orders";
+    public const string StanceRemovalLabel = "Stance Removal";
     // Anglicisme retenu par Philippe (19/08/2026) : c'est le mot que les joueurs francophones
     // emploient, et il n'existe aucune page FR correspondante sur le wiki officiel.
     public const string SnareLabel = "Snares";
@@ -1704,6 +1915,30 @@ public static class SkillCategoryData
 
             new(AttributeBoostLabel, 0, Key(MechAttributeBoost)),
 
+            // ⚠ La somme des 5 petits-enfants dépasse leur parent : les tables du wiki se
+            // recouvrent (Battle Rage, Rage of the Ntouka, Inspirational Speech).
+            new(AdrenalineFamilyLabel, 0, Any(MechAdrenalCost, MechAdrenalineRelated)),
+            new(AdrenalCostLabel,       1, Key(MechAdrenalCost)),
+            new(AdrenalineRelatedLabel, 1, Key(MechAdrenalineRelated)),
+            new("Gain",           2, Key(MechAdrenalineGain)),
+            new("Increased Rate", 2, Key(MechAdrenalineRateUp)),
+            new("Decreased Rate", 2, Key(MechAdrenalineRateDown)),
+            new("Loss",           2, Key(MechAdrenalineLoss)),
+            new("Other",          2, Key(MechAdrenalineOther)),
+
+            new(OvercastLabel, 0, Key(MechOvercast)),
+            // « Benefit From » et « Prevent » sont les libellés DÉJÀ posés sous « Knock-down
+            // Related » : même mot, même traduction, rien à ajouter au dictionnaire FR.
+            new(OvercastRelatedLabel, 0, Key(MechOvercastRelated)),
+            new("Inflict",      1, Key(MechOvercastCause)),
+            new("Benefit From", 1, Key(MechOvercastBenefit)),
+            new("Prevent",      1, Key(MechOvercastPrevent)),
+
+            new(BlockingLabel,      0, Key(MechBlocking)),
+            new(UnblockableLabel,   0, Key(MechUnblockable)),
+            new(OrdersLabel,        0, Key(MechOrder)),
+            new(StanceRemovalLabel, 0, Key(MechStanceRemoval)),
+
             new(SignetRelatedLabel, 0, Key(MechSignetRelated)),
             new(MinionAnimationLabel, 0, Key(MechMinionAnimation)),
             new(MinionRelatedLabel,   0, Key(MechMinionRelated)),
@@ -1791,6 +2026,23 @@ public static class SkillCategoryData
             ["Benefit From"] = "En profitent",
             ["Require"]      = "L'exigent",
             [AttributeBoostLabel] = "Hausse de caractéristique",
+            [AdrenalineFamilyLabel]  = "Adrénaline",
+            [AdrenalCostLabel]       = "Coût en adrénaline",
+            [AdrenalineRelatedLabel] = "Liées à l'adrénaline",
+            ["Gain"]                 = "En font gagner",
+            ["Increased Rate"]       = "Accélèrent le gain",
+            ["Decreased Rate"]       = "Ralentissent le gain",
+            ["Loss"]                 = "En font perdre",
+            ["Other"]                = "Autres",
+            // ⚠ Le client FR n'a jamais suivi le renommage anglais de 2012 : il dit
+            // « Épuisement » dans 21 des 24 descriptions concernées. [fr_client_fait_foi].
+            [OvercastLabel]          = "Épuisement",
+            [OvercastRelatedLabel]   = "Liées à l'épuisement",
+            ["Inflict"]              = "En infligent",
+            [BlockingLabel]          = "Blocage",
+            [UnblockableLabel]       = "Impossible à bloquer",
+            [OrdersLabel]            = "Ordres",
+            [StanceRemovalLabel]     = "Retrait de poses de combat",
             [SnareLabel] = "Snares",
             [SpeedBoostLabel] = "Accélérations",
             ["On Pet"] = "Sur le familier",
@@ -1990,6 +2242,18 @@ public static class SkillCategoryData
         [BindingRitualRelLabel]    = ["binding", "rituals", "related"],
         [SummonRelatedLabel]       = ["summons", "creatures", "related"],
         [AntiSummonLabel]          = ["anti", "summons", "counter"],
+        // Les libellés SONT les clés de la recherche (leçon du §10) : tout mot qu'un joueur
+        // taperait sans qu'il figure dans le libellé doit être aliasé ici.
+        [AdrenalineFamilyLabel]    = ["adrenal", "strike", "rage", "fury"],
+        [AdrenalCostLabel]         = ["adrenal", "adrenal skill"],
+        [AdrenalineRelatedLabel]   = ["adrenal", "related"],
+        // « exhaustion » : le nom d'avant 2012, encore employé par les joueurs de longue date.
+        [OvercastLabel]            = ["exhaustion", "exhaust", "oc"],
+        [OvercastRelatedLabel]     = ["exhaustion", "related"],
+        [BlockingLabel]            = ["block", "evade", "defense", "anti", "melee"],
+        [UnblockableLabel]         = ["unblock", "ignore", "block", "wild"],
+        [OrdersLabel]              = ["order", "necro", "dark", "fury"],
+        [StanceRemovalLabel]       = ["stance", "removal", "remove", "wild", "shutdown"],
     };
 
     private static readonly Dictionary<string, string[]> _aliasesFr = new(StringComparer.Ordinal)
@@ -2042,6 +2306,17 @@ public static class SkillCategoryData
         [BindingRitualRelLabel]    = ["rituel", "asservissement", "lie", "liee"],
         [SummonRelatedLabel]       = ["invocation", "creature", "invoquee", "lie", "liee"],
         [AntiSummonLabel]          = ["anti", "invocation", "contre", "creature"],
+        [AdrenalineFamilyLabel]    = ["adrenaline", "decharge", "rage", "fureur"],
+        [AdrenalCostLabel]         = ["adrenaline", "adrenal"],
+        [AdrenalineRelatedLabel]   = ["adrenaline", "adrenal", "lie", "liee"],
+        // Le libellé FR donne déjà « epuisement » (Words retire les accents) ; reste le terme
+        // anglais, seul mot que le wiki et les joueurs anglophones emploient.
+        [OvercastLabel]            = ["overcast", "epuise", "exhaustion"],
+        [OvercastRelatedLabel]     = ["overcast", "epuise", "lie", "liee"],
+        [BlockingLabel]            = ["bloquer", "bloque", "block", "parade", "defense"],
+        [UnblockableLabel]         = ["imbloquable", "unblockable", "block", "wild"],
+        [OrdersLabel]              = ["order", "necro", "fureur", "noire"],
+        [StanceRemovalLabel]       = ["pose", "combat", "stance", "retrait", "retirer", "supprime"],
     };
 
     /// <summary>
