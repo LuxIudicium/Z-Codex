@@ -243,6 +243,69 @@ public static class SkillCategoryData
     // Retrait de poses de combat. Source : https://wiki.guildwars.com/wiki/Stance#Related_skills,
     // section « Skills that counter or end stances ».
     public const string MechStanceRemoval = "stancerem";
+    // ── Résurrection ────────────────────────────────────────────────────────────────────────
+    // Source : catégorie wiki « Resurrection skills », ses 3 pages de concept retirées.
+    // Entrée PLATE (arbitrage Philippe, 21/08/2026) : la scission hard rez / soft rez que le wiki
+    // propose laisserait 10 compétences sous le parent sans enfant — les résurrections de familier,
+    // Vengeance, « By Ural's Hammer! »…
+    public const string MechResurrection = "resurrect";
+    // ── Recharge ────────────────────────────────────────────────────────────────────────────
+    // Deux catégories wiki voisines sous une famille sans clé propre : « Skills that cause
+    // Decreased Recharge Time » et « … Increased Recharge Time ».
+    // ⚠ La 3e catégorie voisine, « Skills that cause Recharge » — celles qui RENDENT une compétence
+    // disponible d'un coup (Assassin's Promise, Glyph of Renewal, Moebius Strike…) — a été
+    // ÉCARTÉE par Philippe le 21/08/2026 : ce n'est pas un cran de vitesse de recharge.
+    public const string MechRechargeFaster  = "rechfast";
+    public const string MechRechargeSlower  = "rechslow";
+    // ── Temps d'incantation ─────────────────────────────────────────────────────────────────
+    // Catégories wiki « Skills that cause Decreased/Increased Activation Time ». L'anglais dit
+    // « activation » et non « casting » parce que la catégorie couvre aussi les pièges et les cris,
+    // qui ne s'incantent pas ; le client FRANÇAIS, lui, écrit « Temps d'incantation » dans
+    // l'infobulle de toute compétence [fr_client_fait_foi].
+    public const string MechCastFaster = "castfast";
+    public const string MechCastSlower = "castslow";
+    // ── Durée des effets ────────────────────────────────────────────────────────────────────
+    // Pas de catégorie wiki : les deux tables nommées de https://wiki.guildwars.com/wiki/Duration.
+    // ⚠ Une liste tenue à la main peut avoir décroché (leçon du blocage, §14.2) : les 1487
+    // descriptions ont été balayées sur « longer / as long / shorter / expire / duration » — cette
+    // page-là n'oublie rien.
+    public const string MechDurationLonger  = "durlong";
+    public const string MechDurationShorter = "durshort";
+    // ── Vie maximale ────────────────────────────────────────────────────────────────────────
+    // Catégorie wiki « Skills that cause Increased Maximum Health ». Pendant exact d'« Énergie
+    // maximale » : rangée comme elle, sous la famille de sa ressource (« Vie et soins »).
+    public const string MechMaxHealth = "hpmax";
+    // ── Armure ──────────────────────────────────────────────────────────────────────────────
+    // Catégories wiki « Skills that cause Increased/Decreased Armor Rating ». Périmètre arbitré
+    // par Philippe (21/08/2026) : le NIVEAU d'armure seulement — la pénétration d'armure et les
+    // dégâts qui l'ignorent sont des mécaniques de dégâts, écartées.
+    // ⚠ « Malus » ne veut PAS dire « sur un ennemi » : 6 des 7 sont des malus qu'on s'inflige à
+    // soi-même (Healing Signet et Barbed Arrows le temps de l'activation, Aggressive Refrain et
+    // Soldier's Fury en permanence, les deux Résistances qui retirent d'un côté ce qu'elles
+    // donnent de l'autre). Seule Shadowy Burden abaisse l'armure d'un ennemi.
+    // La pénétration d'armure est le 3e enfant, ajouté le 21/08/2026 : catégorie wiki
+    // « Skills that cause Armor Penetration ». C'est la liste la plus propre du chantier — les 33
+    // descriptions du jeu écrivent LITTÉRALEMENT « armor penetration » (« pénétration d'armure »
+    // côté FR), aucune des 1487 n'en parle sans y être, et le wiki nomme lui-même ses 6 variantes
+    // PvP, qui gardent toutes la mécanique : aucune exclusion.
+    // ⚠ Objection posée avant de coder, et écartée par Philippe : 18 des 27 sont de la Magie de
+    // l'air, dont la pénétration est l'identité — le filtre semblait doubler l'attribut. Sa
+    // réponse : « il existe aussi des compétences de magie de l'air qui n'ont PAS la pénétration
+    // d'armure », donc le filtre découpe bien à l'intérieur de l'attribut.
+    public const string MechArmorBonus       = "armorup";
+    public const string MechArmorPenalty     = "armordown";
+    public const string MechArmorPenetration = "armorpen";
+    // ── Anti-interruption ───────────────────────────────────────────────────────────────────
+    // Table « Skills with interrupt prevention » de la page
+    // List_of_skills_related_to_interrupt_skills. Entrée RACINE et non 6e enfant d'« Interruptions » :
+    // ces compétences n'interrompent pas, elles protègent. Sa table sœur « Skills that support
+    // interrupts » (18 au catalogue) a été écartée par Philippe.
+    public const string MechInterruptPrevent = "intprev";
+    // ── Substitution de caractéristique ─────────────────────────────────────────────────────
+    // TROIS compétences, et seulement trois. La note de la page Attribute les nomme, et le
+    // balayage des 1487 descriptions ne trouve rien d'autre : « in place of » ne sort qu'
+    // Illusionary Weaponry, qui parle de DÉGÂTS et non de caractéristique.
+    public const string MechAttributeSubst = "attrsubst";
     // Accélérations du déplacement. Source : catégorie wiki « Skills that cause Increased Movement
     // Speed » (67 entrées) recoupée avec les 4 tables nommées de https://wiki.guildwars.com/wiki/
     // Speed_boost (64) — 68 noms distincts, 52 au catalogue. La clé reprend « IMS », l'abréviation
@@ -748,6 +811,120 @@ public static class SkillCategoryData
     {
         "Forceful Blow", "Grapple", "Irresistible Sweep", "Mark of Insecurity", "Shove",
         "Whirling Axe", "Wild Blow", "Wild Smash", "Wild Strike", "Wild Throw",
+    };
+
+    // ⚠ Les 4 titres entre parenthèses (« (monster skill) », « (Gargoyle) », « (Palawa Joko) ») sont
+    // des titres de PAGE wiki désambiguïsés, pas des noms de compétence : ListKey ne retire que
+    // « (PvP) », « (Kurzick) », « (Luxon) » et « (Codex) », donc ils ne matchent jamais rien. Ils
+    // restent là comme les autres absents du catalogue (§9.14) : la liste est la transcription
+    // fidèle de la catégorie wiki, pas une liste retouchée.
+    private static readonly HashSet<string> ResurrectionSkills = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Animate Undead (Palawa Joko)", "\"By Ural's Hammer!\"", "Comfort Animal", "Death Pact Signet",
+        "Eternal Aura", "False Death", "Flesh of My Flesh", "Heal as One", "Junundu Wail",
+        "Light of Dwayna", "Lively Was Naomei", "Rebirth", "Renew Life", "Restoration", "Restore Life",
+        "Restore Life (monster skill)", "Resurrect", "Resurrect (Gargoyle)",
+        "Resurrect (monster skill)", "Resurrection Chant", "Resurrection Signet", "Revive Animal",
+        "Seed of Resurrection", "Signet of Return", "Sunspear Rebirth Signet", "Unyielding Anguish",
+        "Unyielding Aura", "Vengeance", "\"We Shall Return!\"",
+    };
+
+    private static readonly HashSet<string> RechargeFasterSkills = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Avatar of Lyssa", "Celestial Haste", "Chimera of Intensity", "Deadly Haste", "Deadly Paradox",
+        "Discharge Enchantment", "Ebon Battle Standard of Wisdom", "Flame Djinn's Haste", "Foul Feast",
+        "Ghostly Haste", "Glyph of Swiftness", "Iron Mist", "\"Kilroy Stonekin\"", "Lyssa's Haste",
+        "Mantra of Inscriptions", "Mantra of Recovery", "Mirror of Ice", "\"None Shall Pass!\"",
+        "Over the Limit", "Pious Assault", "Practiced Stance", "Quickening Zephyr", "Ritual Lord",
+        "Serpent's Quickness", "Signet of Pious Light", "Signet of Pious Restraint", "Siphon Speed",
+        "Symbolic Posture", "Time Ward", "Trapper's Speed", "Volfen Agility", "Weapon of Quickening",
+    };
+
+    private static readonly HashSet<string> RechargeSlowerSkills = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Auspicious Incantation", "Diversion", "Energizing Wind", "Glyph of Sacrifice",
+        "Rage of the Ntouka", "Repeating Strike", "Shatter Storm", "Withdraw Hexes", "Word of Censure",
+    };
+
+
+    private static readonly HashSet<string> MaxHealthSkills = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Avatar of Melandru", "Defy Pain", "Dragon Empire Rage", "Empowerment", "Endure Pain",
+        "Energy Boon", "Eternal Aura", "Feel No Pain", "Fertile Season", "Generous Was Tsungrai",
+        "Great Dwarf Armor", "Heart of the Norn", "Intimidating Aura", "Raven Blessing",
+        "Signet of Stamina", "Symbiosis", "\"To the Limit!\"", "Ursan Blessing", "Vital Blessing",
+        "Vital Boon", "Vital Weapon", "Volfen Blessing",
+    };
+
+    private static readonly HashSet<string> CastFasterSkills = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Celestial Haste", "Deadly Haste", "Deadly Paradox", "Glyph of Essence", "Glyph of Sacrifice",
+        "Healer's Boon", "\"Help!\"", "Holy Haste", "Iron Mist", "Jaundiced Gaze", "Mindbender",
+        "Natural Healing", "Over the Limit", "Signet of Mystic Speed", "Stolen Speed",
+        "\"There's not enough time!!\"", "Time Ward", "Trapper's Speed",
+    };
+
+    private static readonly HashSet<string> CastSlowerSkills = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Arcane Conundrum", "Confusing Images", "Enchanter's Conundrum", "Frustration", "Holy Veil",
+        "Migraine", "Nature's Renewal", "Rust", "Shared Burden", "Stolen Speed", "Sum of All Fears",
+    };
+
+    private static readonly HashSet<string> ArmorBonusSkills = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Armor of Earth", "Armor of Frost", "Armor of Mist", "Avatar of Balthazar",
+        "Avatar of Melandru", "Bladeturn Refrain", "Convert Hexes", "Conviction", "Critical Agility",
+        "Defy Pain", "Disciplined Stance", "Dolyak Signet", "Dryder's Defenses",
+        "Dwarven Battle Stance", "Ebon Battle Standard of Courage", "Elemental Resistance",
+        "Feigned Neutrality", "Fertile Season", "Frigid Armor", "Great Dwarf Armor",
+        "\"I Am Unstoppable!\"", "Illusionary Weaponry", "Iron Mist", "Kinetic Armor",
+        "Mantra of Signets", "Mighty Was Vorizun", "Obsidian Flesh", "Otyugh's Cry",
+        "Physical Resistance", "Protective Was Kaolai", "Raven Blessing", "Rebel Yell",
+        "Resilient Weapon", "\"Save Yourselves!\"", "Shadow Sanctuary", "Shield of Deflection",
+        "Shield of Regeneration", "\"Shields Up!\"", "\"Stand Your Ground!\"", "Stone Sheath",
+        "Tranquil Was Tanasen", "Ursan Blessing", "Volfen Blessing", "Vow of Piety",
+        "Ward Against Elements", "Ward Against Harm", "\"Watch Yourself!\"",
+    };
+
+    private static readonly HashSet<string> ArmorPenetrationSkills = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Arc Lightning", "Blinding Surge", "Chain Lightning", "Cruel Was Daoshen",
+        "Destructive Was Glaive", "Enervating Charge", "Invoke Lightning", "Judge's Insight",
+        "Lightning Bolt", "Lightning Hammer", "Lightning Javelin", "Lightning Orb", "Lightning Strike",
+        "Lightning Surge", "Lightning Touch", "Mind Shock", "Penetrating Attack", "Penetrating Blow",
+        "Penetrating Chop", "Ride the Lightning", "Shell Shock", "Shock", "Shock Arrow",
+        "Spear of Lightning", "Sundering Attack", "Sundering Weapon", "Thunderclap",
+    };
+
+    private static readonly HashSet<string> ArmorPenaltySkills = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Aggressive Refrain", "Barbed Arrows", "Elemental Resistance", "Healing Signet",
+        "Physical Resistance", "Shadowy Burden", "Soldier's Fury",
+    };
+
+    private static readonly HashSet<string> DurationLongerSkills = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Anguished Was Lingwah", "Archer's Signet", "Blessed Aura", "Chilling Winds",
+        "Dwarven Stability", "Enduring Harmony", "Extend Conditions", "Extend Enchantments",
+        "Mantra of Persistence", "Plague Signet", "Practiced Stance", "Vocal Was Sogolon",
+    };
+
+    private static readonly HashSet<string> DurationShorterSkills = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Air of Disenchantment", "Featherfoot Grace", "Mark of Insecurity", "Peace and Harmony",
+        "Pure Was Li Ming", "Purifying Veil", "Recovery", "Tranquility",
+    };
+
+    private static readonly HashSet<string> InterruptPreventSkills = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Glyph of Concentration", "Mantra of Concentration", "Mantra of Resolve",
+        "Persistence of Memory", "Pious Concentration", "Song of Concentration", "Tranquil Was Tanasen",
+        "Trapper's Focus",
+    };
+
+    private static readonly HashSet<string> AttributeSubstSkills = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Signet of Illusions", "Symbolic Celerity", "Symbols of Inspiration",
     };
 
     // ⚠ Audit PvE/PvP de la liste de blocage (cf. la leçon des 156 paires) : les TROIS variantes
@@ -1499,6 +1676,27 @@ public static class SkillCategoryData
         if (OrderSkills.Contains(baseName))         keys.Add(MechOrder);
         if (StanceRemovalSkills.Contains(baseName)) keys.Add(MechStanceRemoval);
 
+        // ── Résurrection, recharge, incantation, durée, vie maximale, armure ──
+        if (ResurrectionSkills.Contains(baseName))     keys.Add(MechResurrection);
+
+        if (RechargeFasterSkills.Contains(baseName))   keys.Add(MechRechargeFaster);
+        if (RechargeSlowerSkills.Contains(baseName))   keys.Add(MechRechargeSlower);
+
+        if (CastFasterSkills.Contains(baseName))       keys.Add(MechCastFaster);
+        if (CastSlowerSkills.Contains(baseName))       keys.Add(MechCastSlower);
+
+        if (DurationLongerSkills.Contains(baseName))   keys.Add(MechDurationLonger);
+        if (DurationShorterSkills.Contains(baseName))  keys.Add(MechDurationShorter);
+
+        if (MaxHealthSkills.Contains(baseName))        keys.Add(MechMaxHealth);
+
+        if (ArmorBonusSkills.Contains(baseName))       keys.Add(MechArmorBonus);
+        if (ArmorPenaltySkills.Contains(baseName))     keys.Add(MechArmorPenalty);
+        if (ArmorPenetrationSkills.Contains(baseName)) keys.Add(MechArmorPenetration);
+
+        if (InterruptPreventSkills.Contains(baseName)) keys.Add(MechInterruptPrevent);
+        if (AttributeSubstSkills.Contains(baseName))   keys.Add(MechAttributeSubst);
+
         // Accélération du déplacement.
         bool imsSelf = SpeedBoostOnSelf.Contains(baseName);
         bool imsAlly = SpeedBoostOnAlly.Contains(baseName);
@@ -1627,11 +1825,22 @@ public static class SkillCategoryData
         ("Heal as One (PvP)", MechLifeSteal),
         // « You have +N Health regeneration and a X% chance to block » → il ne reste que le blocage.
         ("Shroud of Distress (PvP)", MechRegen),
+        // « All party members in earshot are resurrected » → la version PvP ne relève plus
+        // personne, elle RENFORCE les résurrections des autres (« whenever party members in earshot
+        // use a resurrection skill, their fallen allies return with 10…75 % more Health »).
+        ("\"We Shall Return!\" (PvP)", MechResurrection),
+        // « You have +5 armor for each equipped Illusion Magic skill » a disparu de la version PvP.
+        ("Illusionary Weaponry (PvP)", MechArmorBonus),
 
         // ── cas b : mécanique PvP seulement, c'est la ligne PvE qu'on écarte ──
         // La version PvE ne donne que « +2 Death Magic and Soul Reaping » ; seule la PvP dit
         // « You gain 1…3 Energy whenever you sacrifice Health ».
         ("Masochism", MechEnergyGain),
+        // Miroir EXACT de Bladeturn Refrain dans BlockingExcluded, et le meilleur contrôle croisé
+        // du chantier : la version PvE donne « 5…20% chance to block » (donc du blocage, pas de
+        // l'armure), la PvP « +10…40 armor against slashing damage » (donc de l'armure, pas du
+        // blocage). Chacune est dans une liste, et une seule.
+        ("Bladeturn Refrain", MechArmorBonus),
         // La version PvE crée trois esprits ; seule la PvP dit « You gain 3…12 Energy ».
         ("Signet of Spirits", MechEnergyGain),
 
@@ -1670,6 +1879,10 @@ public static class SkillCategoryData
             or MechKdRelated or MechAttributeBoost
             or MechAdrenalCost or MechAdrenalineRelated or MechOvercast or MechOvercastRelated
             or MechBlocking or MechUnblockable or MechOrder or MechStanceRemoval
+            or MechResurrection or MechRechargeFaster or MechRechargeSlower
+            or MechCastFaster or MechCastSlower or MechDurationLonger or MechDurationShorter
+            or MechMaxHealth or MechArmorBonus or MechArmorPenalty or MechArmorPenetration
+            or MechInterruptPrevent or MechAttributeSubst
         || key.StartsWith(ConditionPrefix, StringComparison.Ordinal)
         || key.StartsWith(MechAoe + ":", StringComparison.Ordinal)
         || key.StartsWith(MechEnchRemoval + ":", StringComparison.Ordinal)
@@ -1741,6 +1954,20 @@ public static class SkillCategoryData
     public const string UnblockableLabel   = "Unblockable";
     public const string OrdersLabel        = "Orders";
     public const string StanceRemovalLabel = "Stance Removal";
+    public const string ResurrectionLabel = "Resurrection";
+    // Trois familles bâties sur le même moule : un parent sans clé, ses deux (ou trois) sens en
+    // enfants. Les enfants portent des libellés COURTS, comme « Retirées »/« Infligées » sous
+    // Conditions : sous un parent qui dit déjà « Recharge », « Recharge accélérée » se répétait.
+    // ⚠ « Faster »/« Slower » servent DEUX fois (recharge et incantation) : c'est sans conséquence
+    // — les libellés dupliqués sont la règle dans cette colonne (« On Foe » y est 7 fois) et rien
+    // n'indexe une catégorie par son libellé (ReorderLike compare les Def par référence).
+    public const string RechargeFamilyLabel   = "Recharge";
+    public const string ActivationFamilyLabel = "Activation Time";
+    public const string DurationFamilyLabel   = "Effect Duration";
+    public const string MaxHealthLabel        = "Maximum Health";
+    public const string ArmorFamilyLabel      = "Armor";
+    public const string InterruptPreventLabel = "Interrupt Prevention";
+    public const string AttributeSubstLabel   = "Attribute Substitution";
     // Anglicisme retenu par Philippe (19/08/2026) : c'est le mot que les joueurs francophones
     // emploient, et il n'existe aucune page FR correspondante sur le wiki officiel.
     public const string SnareLabel = "Snares";
@@ -1882,13 +2109,14 @@ public static class SkillCategoryData
             // découpage n'y existe, et le déduire du texte demanderait de trancher à la main 43 des
             // 124 descriptions (arbitrage Philippe).
             new(HealthFamilyLabel, 0, Any(MechHealing, MechHealthGain, MechLifeSteal,
-                                          MechRegen, MechDegen, MechSacrifice)),
+                                          MechRegen, MechDegen, MechSacrifice, MechMaxHealth)),
             new(HealingLabel,       1, Key(MechHealing)),
             new(HealthGainLabel,    1, Key(MechHealthGain)),
             new(LifeStealLabel,     1, Key(MechLifeSteal)),
             new(RegenLabel,         1, Key(MechRegen)),
             new(DegenLabel,         1, Key(MechDegen)),
             new("Health Sacrifice", 1, Key(MechSacrifice)),
+            new(MaxHealthLabel,     1, Key(MechMaxHealth)),
 
             new(EnergyFamilyLabel, 0, Any(MechEnergyRegen, MechEnergyDegen, MechEnergyGain,
                                           MechEnergyLoss, MechEnergySteal, MechEnergyCostDown,
@@ -1933,6 +2161,32 @@ public static class SkillCategoryData
             new("Inflict",      1, Key(MechOvercastCause)),
             new("Benefit From", 1, Key(MechOvercastBenefit)),
             new("Prevent",      1, Key(MechOvercastPrevent)),
+
+            // ⚠ Les deux enfants se RECOUPENT : Elemental Resistance et Physical Resistance
+            // donnent contre un type de dégâts ce qu'elles retirent contre l'autre, et Aggressive
+            // Refrain comme Soldier's Fury paient leur vitesse d'attaque par −20 d'armure.
+            new(ArmorFamilyLabel, 0, Any(MechArmorBonus, MechArmorPenalty, MechArmorPenetration)),
+            new("Bonus",       1, Key(MechArmorBonus)),
+            new("Penalty",     1, Key(MechArmorPenalty)),
+            new("Penetration", 1, Key(MechArmorPenetration)),
+
+            new(RechargeFamilyLabel, 0, Any(MechRechargeFaster, MechRechargeSlower)),
+            new("Faster", 1, Key(MechRechargeFaster)),
+            new("Slower", 1, Key(MechRechargeSlower)),
+
+            // Stolen Speed est dans les DEUX : elle accélère les sorts du lanceur et ralentit ceux
+            // de la cible.
+            new(ActivationFamilyLabel, 0, Any(MechCastFaster, MechCastSlower)),
+            new("Faster", 1, Key(MechCastFaster)),
+            new("Slower", 1, Key(MechCastSlower)),
+
+            new(DurationFamilyLabel, 0, Any(MechDurationLonger, MechDurationShorter)),
+            new("Longer",  1, Key(MechDurationLonger)),
+            new("Shorter", 1, Key(MechDurationShorter)),
+
+            new(ResurrectionLabel,     0, Key(MechResurrection)),
+            new(InterruptPreventLabel, 0, Key(MechInterruptPrevent)),
+            new(AttributeSubstLabel,   0, Key(MechAttributeSubst)),
 
             new(BlockingLabel,      0, Key(MechBlocking)),
             new(UnblockableLabel,   0, Key(MechUnblockable)),
@@ -2043,6 +2297,21 @@ public static class SkillCategoryData
             [UnblockableLabel]       = "Impossible à bloquer",
             [OrdersLabel]            = "Ordres",
             [StanceRemovalLabel]     = "Retrait de poses de combat",
+            [ResurrectionLabel]      = "Résurrection",
+            [RechargeFamilyLabel]    = "Recharge",
+            ["Faster"]               = "Accélérée",
+            ["Slower"]               = "Ralentie",
+            [ActivationFamilyLabel]  = "Temps d'incantation",
+            [DurationFamilyLabel]    = "Durée d'effets",
+            ["Longer"]               = "Allongée",
+            ["Shorter"]              = "Raccourcie",
+            [MaxHealthLabel]         = "Vie maximale",
+            [ArmorFamilyLabel]       = "Armure",
+            ["Bonus"]                = "Bonus",
+            ["Penalty"]              = "Malus",
+            ["Penetration"]          = "Pénétration",
+            [InterruptPreventLabel]  = "Anti-interruption",
+            [AttributeSubstLabel]    = "Substitution de caractéristique",
             [SnareLabel] = "Snares",
             [SpeedBoostLabel] = "Accélérations",
             ["On Pet"] = "Sur le familier",
@@ -2254,6 +2523,17 @@ public static class SkillCategoryData
         [UnblockableLabel]         = ["unblock", "ignore", "block", "wild"],
         [OrdersLabel]              = ["order", "necro", "dark", "fury"],
         [StanceRemovalLabel]       = ["stance", "removal", "remove", "wild", "shutdown"],
+        // « rez » et « res » sont les mots des joueurs ; « resurrect » est déjà préfixe du libellé.
+        [ResurrectionLabel]        = ["rez", "res", "revive", "raise", "revival"],
+        [RechargeFamilyLabel]      = ["cooldown", "recharges", "refresh"],
+        // Le libellé dit « Activation » ; c'est « casting » que tapent les joueurs.
+        [ActivationFamilyLabel]    = ["casting", "cast", "activate"],
+        [DurationFamilyLabel]      = ["duration", "lasts", "longer", "shorter"],
+        [MaxHealthLabel]           = ["max", "hp", "life"],
+        [ArmorFamilyLabel]         = ["armour", "al", "defense", "tank"],
+        ["Penetration"]            = ["penetrating", "pierce", "sundering", "ignore", "armor"],
+        [InterruptPreventLabel]    = ["anti", "concentration", "uninterruptible", "prevention"],
+        [AttributeSubstLabel]      = ["attributes", "instead", "substitute", "swap"],
     };
 
     private static readonly Dictionary<string, string[]> _aliasesFr = new(StringComparer.Ordinal)
@@ -2317,6 +2597,16 @@ public static class SkillCategoryData
         [UnblockableLabel]         = ["imbloquable", "unblockable", "block", "wild"],
         [OrdersLabel]              = ["order", "necro", "fureur", "noire"],
         [StanceRemovalLabel]       = ["pose", "combat", "stance", "retrait", "retirer", "supprime"],
+        [ResurrectionLabel]        = ["rez", "res", "ressuscite", "ranime", "relever", "revive"],
+        [RechargeFamilyLabel]      = ["cooldown", "recharger", "rechargement"],
+        [ActivationFamilyLabel]    = ["cast", "casting", "activation", "lancement", "incanter"],
+        [DurationFamilyLabel]      = ["duree", "duration", "allonge", "rallonge", "raccourci"],
+        [MaxHealthLabel]           = ["health", "max", "pv", "hp", "sante"],
+        [ArmorFamilyLabel]         = ["armor", "al", "defense", "protection"],
+        ["Penetration"]            = ["penetre", "penetrant", "perce", "armure", "ignore"],
+        [InterruptPreventLabel]    = ["interrompre", "concentration", "empeche", "protege",
+                                      "ininterruptible"],
+        [AttributeSubstLabel]      = ["attribut", "remplace", "substitue", "echange"],
     };
 
     /// <summary>
