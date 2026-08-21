@@ -19,7 +19,9 @@ Auteur : **P. Vincent**.
 **Composition d'équipe**
 - 8 personnages × 8 compétences, professions primaire et secondaire, attributs
 - Variantes de build organisées en arborescence, reliées entre elles par des cadenas
-- Catalogue de compétences filtrable, recherche, infobulles détaillées
+- Catalogue de compétences filtrable par profession, caractéristique, type et
+  mécanique de jeu (enchantements, adrénaline, épuisement, résurrection, armure…),
+  recherche, infobulles détaillées
 
 **Simulation**
 - **Spike** — calcul des dégâts d'une salve : ordre de cast, vol de vie, Deep Wound,

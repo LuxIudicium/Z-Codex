@@ -19,7 +19,9 @@ Author: **P. Vincent**.
 **Party building**
 - 8 characters × 8 skills, primary and secondary professions, attributes
 - Build variants organised as a tree, tied together by locks
-- Filterable skill catalogue, search, detailed tooltips
+- Skill catalogue filterable by profession, attribute, skill type and game
+  mechanic (enchantments, adrenaline, exhaustion, resurrection, armor…), search,
+  detailed tooltips
 
 **Simulation**
 - **Spike** — damage of a coordinated burst: cast order, life stealing, Deep Wound,
