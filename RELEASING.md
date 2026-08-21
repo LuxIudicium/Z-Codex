@@ -34,12 +34,34 @@ ci-dessous.
 
 Exemple pour une version `1.0.1`.
 
-**1. Partir d'un arbre propre.** Rien en attente, tout poussé.
+**1. Partir d'un arbre propre, et d'une documentation à jour.** Rien en attente,
+tout poussé.
 
 ```
 git status
 git push origin main
 ```
+
+Contrôler ensuite l'aide et les traductions, que rien n'oblige à suivre le code et qui
+dérivent donc en silence. Trois questions :
+
+- `Strings.fr.xaml` et `Strings.en.xaml` portent-ils **exactement les mêmes clés** ?
+  Une clé posée d'un seul côté fait disparaître un libellé dans l'autre langue.
+- Le code appelle-t-il une clé **qui n'existe pas** ? Rien ne casse à la compilation :
+  le contrôle s'affiche sans texte, ou le message montre la clé elle-même.
+- La fenêtre d'aide (`HelpContent.cs`) décrit-elle **tous les menus livrés depuis sa
+  dernière version** ? Sa date se lit dans `HelpContent.VersionFr` ; les commits qui
+  ont suivi se lisent avec `git log --since=<cette date> --oneline`.
+
+```
+grep -o 'x:Key="[^"]*"' src/ZCodex.App/Resources/Strings.fr.xaml | sort > /tmp/fr
+grep -o 'x:Key="[^"]*"' src/ZCodex.App/Resources/Strings.en.xaml | sort > /tmp/en
+diff /tmp/fr /tmp/en
+```
+
+Corriger ce qui en sort **avant** l'étape suivante : passé le changement de numéro de
+version, le moindre correctif ajoute un commit à la release. La procédure complète,
+scripts compris, est dans les notes de travail (`docs/verif_aide_i18n.md`, hors dépôt).
 
 **2. Changer le numéro de version.** Une seule ligne, dans
 `src/ZCodex.App/ZCodex.App.csproj` :

@@ -50,7 +50,7 @@ Author: **P. Vincent**.
 |---|---|---|
 | `.zcx` | native format — full party, equipment, settings | read / write |
 | `.pn3` | previous native format | read / write |
-| `.pwnd` | paw\*ned² files | read-only |
+| `.pwnd` | paw\*ned² files | read / write |
 | `.txt` | in-game template code — skills (`O…`) or equipment (`P…`) | read / write |
 
 Template codes copy and paste straight to and from Guild Wars.
@@ -169,7 +169,8 @@ software**: assets are downloaded at runtime, on the user's own machine, from th
 public wiki, and remain subject to that wiki's terms of reuse.
 
 Z-Codex is an independent work, inspired by paw\*ned² but sharing none of its source
-code. Compatibility with the `.pwnd` format is limited to reading it.
+code. Its `.pwnd` support is a codec written from the file format alone, and reads as
+well as writes it.
 
 Community builds come from [PvXwiki](https://gwpvx.fandom.com), an independent wiki
 hosted by Fandom. Written by its contributors, they are licensed under

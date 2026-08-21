@@ -33,8 +33,8 @@ public static class HelpContent
 {
     // Version du CONTENU de l'aide (indépendante de la version applicative de l'À propos) :
     // à incrémenter et redater à chaque mise à jour.
-    public const string VersionFr = "Aide v3 — 01/08/2026";
-    public const string VersionEn = "Help v3 — 2026-08-01";
+    public const string VersionFr = "Aide v4 — 21/08/2026";
+    public const string VersionEn = "Help v4 — 2026-08-21";
 
     public static string Version => AppLanguage.IsFr ? VersionFr : VersionEn;
 
@@ -81,6 +81,9 @@ public static class HelpContent
             R("Fichier" + M + "Enregistrer sous… — Ctrl+Shift+S", "File" + M + "Save as… — Ctrl+Shift+S",
               "Enregistre l'onglet actif sous un nouveau nom ou emplacement, dans les deux vues.",
               "Saves the active tab under a new name or location, in both views."),
+            R("Fichier" + M + "Exporter en paw·ned² (.pwnd)", "File" + M + "Export to paw·ned² (.pwnd)",
+              "Écrit le team build actif au format de paw·ned², en trois portées : tout le teambuild (variantes comprises), les 8 premiers personnages, ou un cadenas. Ce que le format ne transporte pas est détaillé plus bas, dans « Fichiers, formats et données ».",
+              "Writes the active team build in paw·ned²'s format, in three scopes: the whole team build (variants included), the first 8 characters, or one lock. What the format cannot carry is spelled out below, under “Files, formats and data”."),
             R("Fichier" + M + "Quitter", "File" + M + "Exit",
               "Quitte l'application. Propose d'enregistrer les builds modifiés non sauvegardés.",
               "Quits the application. Offers to save any modified, unsaved builds."),
@@ -112,6 +115,14 @@ public static class HelpContent
             R("Affichage" + M + "Afficher les attributs", "View" + M + "Show attributes",
               "Affiche ou masque l'éditeur d'attributs sous chaque personnage du team build.",
               "Shows or hides the attribute editor under each team build character."),
+            R("Affichage" + M + "Molette : sélectionner le personnage d'abord",
+              "View" + M + "Wheel: select the character first",
+              "Sécurise la molette dans un team build : tant qu'aucun personnage n'a été cliqué (liseré bleu), elle ne fait que défiler la vue, et une fois un personnage actif elle ne règle les caractéristiques que sur celui-là. Décochée, la molette agit sur le personnage survolé, sans clic préalable.",
+              "Makes the wheel safe in a team build: until a character has been clicked (blue edge) it only scrolls the view, and once one is active it sets attributes on that character alone. Unticked, the wheel acts on whichever character is hovered, with no click needed."),
+            R("Affichage" + M + "Afficher le filtre Types de compétences / Afficher le filtre Mécaniques",
+              "View" + M + "Show the Skill Types filter / Show the Mechanics filter",
+              "Affichent ou masquent les deux lignes de filtres du catalogue, indépendamment l'une de l'autre (voir « Catalogue de compétences »). Masquer un filtre remet CE filtre-là sur « All ». Les mêmes cases se trouvent dans la barre de recherche de chaque catalogue.",
+              "Show or hide the catalog's two filter rows, independently of each other (see “Skill catalog”). Hiding a filter resets THAT filter to “All”. The same tick boxes sit in every catalog's search bar."),
             R("Affichage" + M + "Afficher les caractéristiques dans la preview",
               "View" + M + "Show attributes in the preview",
               "Superpose le niveau des caractéristiques investies sur les icônes de la preview du browser.",
@@ -169,13 +180,27 @@ public static class HelpContent
             R("Extras" + M + "Calculateur d'armure", "Extras" + M + "Armor calculator",
               "Ouvre l'onglet Armure (voir « Calculateur d'armure »).",
               "Opens the Armor tab (see “Armor calculator”)."),
+            R("Extras" + M + "Télécharger les builds PvX…", "Extras" + M + "Download PvX builds…",
+              "Récupère les build packs publiés par PvXwiki — les builds validés par la communauté, en codes de template lisibles par Z-Codex comme par le jeu. Au choix : les builds PvE (~2 170 fichiers), les PvP (~1 090), ou les deux, dans le dossier que vous désignez. Chaque archive crée son propre sous-dossier ; les équipes d'au plus 8 barres sont assemblées en .zcx, les autres restent en .txt.",
+              "Fetches the build packs published by PvXwiki — the community's vetted builds, as template codes readable by Z-Codex and by the game alike. Your pick: PvE builds (~2,170 files), PvP builds (~1,090), or both, into the folder you choose. Each archive creates its own subfolder; teams of at most 8 bars are assembled as .zcx, the rest stay .txt."),
+            R("Extras" + M + "Vérifier les icônes (wiki)", "Extras" + M + "Check icons (wiki)",
+              "Contrôle les icônes d'interface (professions, coûts, conditions, flux, vol de vie) et re-télécharge celles qui manquent ou sont illisibles, puis annonce le résultat. Les icônes de COMPÉTENCES, elles, viennent de « Mettre à jour les compétences ». Un redémarrage les remet partout.",
+              "Checks the interface icons (professions, costs, conditions, flux, life stealing), downloads again those missing or unreadable, then reports what it did. SKILL icons come from “Update skill database” instead. A restart shows them everywhere."),
+            R("Extras" + M + "Recalculer les catégories de compétences",
+              "Extras" + M + "Recompute skill categories",
+              "Réécrit dans la base les mécaniques de jeu déduites de chaque compétence et indique combien de lignes ont changé. Utile après une mise à jour du catalogue ; l'affichage, lui, refait déjà ce calcul à chaque démarrage.",
+              "Rewrites into the database the game mechanics deduced for each skill and reports how many rows changed. Useful after a catalog update; the display itself already redoes that calculation at every start."),
             R("Fenêtre" + M + "…", "Window" + M + "…",
               "Liste les onglets ouverts et permet de basculer entre eux ou d'activer l'onglet Team Builds. Contient aussi « Fermer l'onglet actif ».",
               "Lists the open tabs and lets you switch between them or activate the Team Builds tab. Also holds “Close active tab”."),
             R("Aide" + M + "Aide et raccourcis… — F1", "Help" + M + "Help and shortcuts… — F1",
               "Ouvre cette fenêtre.", "Opens this window."),
+            R("Aide" + M + "Rechercher les mises à jour…", "Help" + M + "Check for updates…",
+              "Demande à GitHub si une version plus récente de Z-Codex est publiée, et propose d'ouvrir sa page de téléchargement. Le même contrôle a lieu au démarrage : Z-Codex signale, mais n'installe jamais rien de lui-même.",
+              "Asks GitHub whether a newer Z-Codex has been published, and offers to open its download page. The same check runs at startup: Z-Codex tells you, but never installs anything by itself."),
             R("Aide" + M + "À propos de Z-Codex…", "Help" + M + "About Z-Codex…",
-              "Version de l'application et crédits.", "Application version and credits.")),
+              "Version de l'application, crédits, remerciements aux testeurs et lien Discord pour les retours, bugs et idées de fonctionnalités.",
+              "Application version, credits, thanks to the testers and a Discord link for feedback, bug reports and feature ideas.")),
 
         // ═══════════════ BARRE D'OUTILS + ONGLETS ═══════════════
         S("Barre d'outils", "Toolbar",
@@ -414,6 +439,12 @@ public static class HelpContent
               "Professions / Attributes / PvE only columns",
               "Filtrent la liste par profession, par caractéristique, ou par catégorie de compétences PvE.",
               "Filter the list by profession, by attribute, or by PvE skill category."),
+            R("Lignes Types de compétences / Mécaniques", "Skill Types / Mechanics rows",
+              "Deux lignes de puces sous les professions, qu'on affiche depuis le menu Affichage ou par les cases de la barre de recherche. « Types de compétences » reprend ce que dit l'infobulle du jeu (Sort, Sceau, Attaque d'arc…) ; « Mécaniques » ce que la compétence fait (adrénaline, épuisement, blocage, poses, Ordres…). Repliée, la ligne ne montre que la puce active ; un clic dessus la déplie. Les deux filtres se combinent entre eux et avec tous les autres.",
+              "Two chip rows under the professions, shown from the View menu or with the search bar's tick boxes. “Skill Types” mirrors what the in-game tooltip says (Spell, Signet, Bow Attack…); “Mechanics” what the skill does (adrenaline, exhaustion, blocking, stances, Orders…). Folded, a row only shows the active chip; clicking it unfolds the row. Both filters combine with each other and with all the others."),
+            R("Ligne « Catégories : … »", "“Categories: …” line",
+              "Sous la recherche : les catégories reconnues dans ce que vous tapez — écrire « enchantement » ou « aveuglement » filtre directement dessus — puis, s'il y a lieu, le nombre de compétences que les filtres actifs masquent, avec un clic pour lever ces filtres.",
+              "Under the search box: the categories recognized in what you type — typing “enchantment” or “blindness” filters on them straight away — then, where relevant, how many skills the active filters hide, with a click to lift those filters."),
             R("Menu déroulant PvE/PvP", "PvE/PvP dropdown",
               "Restreint le catalogue à toutes les compétences, aux PvE uniquement, ou aux PvP uniquement.",
               "Restricts the catalog to all skills, PvE only, or PvP only."),
@@ -531,6 +562,9 @@ public static class HelpContent
             R("Attaques de référence", "Reference attacks",
               "Ajoutez des compétences depuis le catalogue (double-clic, Entrée ou « + Ajouter ») : dégâts @ AL 60 et @ AL du build, rang réglable, altérations infligées avec leur durée effective.",
               "Add skills from the catalog (double-click, Enter or “+ Add”): damage @ AL 60 and @ build AL, adjustable rank, inflicted conditions with their effective duration."),
+            R("Filtres du catalogue d'attaques", "Attack catalog filters",
+              "Profession, caractéristique, mode de jeu, « dégâts seulement », puis les mêmes catégories que le catalogue de compétences : Types de compétences et Mécaniques, ici en listes déroulantes toujours affichées.",
+              "Profession, attribute, game mode, “damage only”, then the same categories as the skill catalog: Skill Types and Mechanics, here as dropdowns that are always on screen."),
             R("Profils", "Profiles",
               "Enregistrent l'ensemble des réglages sous un nom pour les recharger plus tard.",
               "Save the whole set of settings under a name to reload later.")),
