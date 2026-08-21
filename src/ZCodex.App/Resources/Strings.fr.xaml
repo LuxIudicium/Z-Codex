@@ -380,6 +380,8 @@
     <sys:String x:Key="S.About.DataCredit">Données de compétences et icônes :</sys:String>
     <sys:String x:Key="S.About.BuildCredit">Builds de la communauté :</sys:String>
     <sys:String x:Key="S.About.Disclaimer">Guild Wars est une marque d'ArenaNet / NCSOFT. Z-Codex est un outil non officiel.</sys:String>
+    <sys:String x:Key="S.About.Community">Retours, bugs et idées de fonctionnalités :</sys:String>
+    <sys:String x:Key="S.About.Thanks">Merci à Holye, Arka, Dark, Courant et Ramstram — et à vous, pour avoir téléchargé l'app !</sys:String>
     <sys:String x:Key="S.Win.ArmorDmgTitle">Dégâts selon l'armure</sys:String>
     <sys:String x:Key="S.Armor.CustomALs">Niveaux d'armure personnalisés (0–200), champ vide = colonne retirée :</sys:String>
     <sys:String x:Key="S.Armor.AddCol">Ajouter une colonne d'AL (max 8)</sys:String>
