@@ -20,7 +20,9 @@ public static class SkillDamage
     public enum RowKind { Damage, LifeSteal, HealthLoss }
 
     /// <summary>Un paquet détecté. DamageType null = sans type. Value = valeur listée (AL 60).
-    /// MaxTicks &gt; 1 = paquet périodique (« each second ») répétable jusqu'à MaxTicks fois ;
+    /// MaxTicks &gt; 1 = paquet RÉPÉTÉ jusqu'à MaxTicks fois : périodique (« each second ») ou
+    /// un exemplaire par PROJECTILE d'un sort multi-projectiles (TicksAreProjectiles = true —
+    /// Stone Daggers, Dancing Daggers : « Two/Three projectiles: each deals X damage ») ;
     /// TicksCumulative = le tick n vaut n × Value (Savannah Heat). Conditional = part additionnelle
     /// « X more damage if [état] » (checkbox du spike) ; Condition = clause capturée (tooltip).
     /// IsThreshold = paquet « X for each [ressource] (maximum Y) » (Symbolic Strike, Aneurysm…) :
@@ -32,6 +34,7 @@ public static class SkillDamage
     public sealed record Row(int Value, string? DamageType, bool IsBonus, bool IgnoresArmor,
                              RowKind Kind = RowKind.Damage,
                              int MaxTicks = 1, bool TicksCumulative = false,
+                             bool TicksAreProjectiles = false,
                              bool Conditional = false, string? Condition = null,
                              bool IsThreshold = false, int MaxDamage = 0, string? ThresholdClause = null,
                              int Index = -1);
@@ -124,6 +127,22 @@ public static class SkillDamage
         $@"|\bevery\s+{Value}\s+seconds\b",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
+    // ── Projectiles multiples (« Two projectiles: each deals X earth damage ») ──────────────
+    // Deux compétences au catalogue (audit DB du 22/08 : Stone Daggers 2, Dancing Daggers 3) :
+    // la valeur annoncée est celle d'UN projectile, tous partent sur la même cible → le paquet
+    // se répète comme un tick, mais se COMPTE en projectiles (libellé et compteur distincts,
+    // cf. TicksAreProjectiles). Le nombre est écrit en lettres dans le jeu ; les chiffres sont
+    // acceptés au cas où une description changerait de forme.
+    private static readonly Regex ProjectilesRegex = new(
+        @"\b(?<n>one|two|three|four|five|six|\d+)\s+projectiles\b",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    private static readonly IReadOnlyDictionary<string, int> NumberWords =
+        new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["one"] = 1, ["two"] = 2, ["three"] = 3, ["four"] = 4, ["five"] = 5, ["six"] = 6,
+        };
+
     // ── Seuils « X for each [ressource statique] (maximum Y) » (tranche 2 spike) ──
     // « for each … » : localise le segment de phrase portant le paquet à SEUIL. Exclut seulement
     // « for each second since casting » (Savannah Heat, tick cumulatif géré plus haut) — les comptes
@@ -163,6 +182,9 @@ public static class SkillDamage
         @"lasts\s+twice\s+as\s+long", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     private static readonly char[] SegmentBounds = ['.', ';', ':'];
+    // Le paquet d'un multi-projectiles est annoncé APRÈS un « : » (« Two projectiles: each
+    // deals … ») : son segment se borne à la PHRASE, deux-points compris.
+    private static readonly char[] SentenceBounds = ['.', ';'];
 
     // Garde-fou : les esprits à longue vie (Agony, lifespan 78 s) donneraient des compteurs
     // absurdes — aucun spike ne dure plus de 30 s.
@@ -185,6 +207,7 @@ public static class SkillDamage
             return new Analysis([], 0);
 
         var tickSegments = FindTickSegments(resolvedDescription);
+        var projectileSegments = FindProjectileSegments(resolvedDescription);
         // Spans « maximum N [type] damage » : plafonds, jamais des paquets → sautés partout (fix
         // sur-compte). Segments à seuil (« for each … ») : uniquement pour les skills de la liste
         // blanche, pour marquer le bon paquet par-unité + son plafond.
@@ -200,9 +223,14 @@ public static class SkillDamage
             string? type = m.Groups["type"].Success ? m.Groups["type"].Value.ToLowerInvariant() : null;
             bool isBonus = m.Groups["plus"].Success;
             var (ticks, cum) = TicksAt(tickSegments, m.Index);
+            // Multi-projectiles : le paquet vaut par projectile. Aucun skill n'est à la fois
+            // périodique et multi-projectiles — le tick périodique reste prioritaire si ça arrive.
+            int projectiles = ProjectilesAt(projectileSegments, m.Index);
+            bool areProjectiles = ticks <= 1 && projectiles > 1;
+            if (areProjectiles) ticks = projectiles;
             var (isThreshold, maxDamage, clause) = ThresholdAt(thresholdSegments, m.Index);
             rows.Add(new Row(value, type, isBonus, IgnoresArmor(type, isBonus, skillName),
-                             RowKind.Damage, ticks, cum,
+                             RowKind.Damage, ticks, cum, areProjectiles,
                              IsThreshold: isThreshold, MaxDamage: maxDamage, ThresholdClause: clause,
                              Index: m.Index));
         }
@@ -314,6 +342,34 @@ public static class SkillDamage
                 if (index >= s.Start && index < s.End)
                     return (s.Ticks, s.Cumulative);
         return (1, false);
+    }
+
+    // Segments de PHRASE annonçant plusieurs projectiles, avec leur nombre. Le nombre borne le
+    // compteur de la ligne spike ; il ne dépend pas du rang (texte fixe de la description).
+    private static List<(int Start, int End, int Count)>? FindProjectileSegments(string desc)
+    {
+        List<(int, int, int)>? segments = null;
+        foreach (Match m in ProjectilesRegex.Matches(desc))
+        {
+            string word = m.Groups["n"].Value;
+            if (!NumberWords.TryGetValue(word, out int count)
+                && !int.TryParse(word, out count)) continue;
+            if (count <= 1) continue;
+            int segStart = desc.LastIndexOfAny(SentenceBounds, m.Index) + 1;
+            int segEnd = desc.IndexOfAny(SentenceBounds, m.Index + m.Length);
+            if (segEnd < 0) segEnd = desc.Length;
+            (segments ??= []).Add((segStart, segEnd, Math.Min(count, MaxTickCap)));
+        }
+        return segments;
+    }
+
+    private static int ProjectilesAt(List<(int Start, int End, int Count)>? segments, int index)
+    {
+        if (segments is not null)
+            foreach (var s in segments)
+                if (index >= s.Start && index < s.End)
+                    return s.Count;
+        return 1;
     }
 
     // Spans « maximum N [type] damage » : plafonds à ne jamais compter comme paquets de dégâts.

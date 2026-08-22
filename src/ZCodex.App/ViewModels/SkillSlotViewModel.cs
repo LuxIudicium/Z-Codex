@@ -45,6 +45,7 @@ public class SkillSlotViewModel : ViewModelBase
             {
                 SpikeWeaponDamageType = string.Empty;
                 SpikeTicks = 1;
+                SpikeProjectiles = 0;
                 SpikeOrder = 0;
                 SpikeWeaponKind = string.Empty;
                 SpikeProcs = 1;
@@ -119,6 +120,18 @@ public class SkillSlotViewModel : ViewModelBase
     {
         get => _spikeTicks;
         set => SetField(ref _spikeTicks, value);
+    }
+
+    // Nombre de PROJECTILES comptés pour CE slot du spike (sorts multi-projectiles : Stone Daggers 2,
+    // Dancing Daggers 3 — « Two/Three projectiles: each deals X damage »). Chaque projectile porte le
+    // paquet entier. 0 = auto : TOUS touchent (défaut optimiste, comme la case conditionnelle cochée
+    // et le compteur de seuil au plafond) — c'est aussi ce que lisent les fichiers ≤ v18, qui n'ont
+    // pas le champ. Remis à 0 à la désélection. Persisté (.zcx v19).
+    private int _spikeProjectiles;
+    public int SpikeProjectiles
+    {
+        get => _spikeProjectiles;
+        set => SetField(ref _spikeProjectiles, value);
     }
 
     // Nombre de procs comptés pour CE slot du spike : déclenchements d'un rider (conjuration, ordre,

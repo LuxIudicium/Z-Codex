@@ -468,6 +468,8 @@
     <sys:String x:Key="S.Spike.Threshold">Threshold:</sys:String>
     <sys:String x:Key="S.Spike.Ticks">Ticks:</sys:String>
     <sys:String x:Key="S.Spike.TicksTip">Number of ticks counted in the spike</sys:String>
+    <sys:String x:Key="S.Spike.Projectiles">Projectiles:</sys:String>
+    <sys:String x:Key="S.Spike.ProjectilesTip">Number of projectiles hitting the target (all of them by default)</sys:String>
     <sys:String x:Key="S.Spike.WeaponDmgType">Weapon damage type:</sys:String>
     <sys:String x:Key="S.Spike.WeaponDmgTypeTip">Damage type choice</sys:String>
     <sys:String x:Key="S.Spike.Weapon">Weapon:</sys:String>

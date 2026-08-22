@@ -3271,6 +3271,7 @@ public partial class MainWindow : Window
                 slot.IsSpikeSelected = true;
                 slot.SpikeWeaponDamageType = sk.WeaponDamageType ?? string.Empty;
                 slot.SpikeTicks = Math.Clamp(sk.Ticks, 1, 30);
+                slot.SpikeProjectiles = Math.Clamp(sk.Projectiles, 0, 30);
                 slot.SpikeOrder = sk.Order;
                 slot.SpikeWeaponKind = sk.WeaponKind ?? string.Empty;
                 slot.SpikeProcs = Math.Clamp(sk.Procs, 0, 25);
@@ -3360,6 +3361,7 @@ public partial class MainWindow : Window
                 Slot = s.SlotIndex,
                 WeaponDamageType = string.IsNullOrEmpty(s.SpikeWeaponDamageType) ? null : s.SpikeWeaponDamageType,
                 Ticks = s.SpikeTicks,
+                Projectiles = s.SpikeProjectiles,
                 Order = s.SpikeOrder,
                 WeaponKind = string.IsNullOrEmpty(s.SpikeWeaponKind) ? null : s.SpikeWeaponKind,
                 Procs = s.SpikeProcs,

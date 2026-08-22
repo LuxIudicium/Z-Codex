@@ -113,7 +113,7 @@ public static class TeamBuildSerializer
 
     private sealed class Pn3Dto
     {
-        public int Version { get; set; } = 18; // v18 = mods d'arme du spike (fractionnement / vampirique / arc corne) + compteurs d'attaques vampiriques ; v17 = mode de jeu PvE/PvP enregistré avec le build ; v16 = boosts d'attribut de compétences équipées par perso ; v15 = rang de simulation Tranquility + toggle prolongateurs de durée par perso ; v14 = rang de simulation Roaring Winds ; v13 = rituels de la nature actifs ; v12 = PV lanceur Grenth's Balance ; v11 = buffs d'arme spike ; v10 = seuil spike ; v9 = part conditionnelle spike ; v8 = procs spike ; v7 = flux ; v6 = roster Spike ; v5 = genre du perso
+        public int Version { get; set; } = 19; // v19 = compteur de projectiles du spike (sorts multi-projectiles) ; v18 = mods d'arme du spike (fractionnement / vampirique / arc corne) + compteurs d'attaques vampiriques ; v17 = mode de jeu PvE/PvP enregistré avec le build ; v16 = boosts d'attribut de compétences équipées par perso ; v15 = rang de simulation Tranquility + toggle prolongateurs de durée par perso ; v14 = rang de simulation Roaring Winds ; v13 = rituels de la nature actifs ; v12 = PV lanceur Grenth's Balance ; v11 = buffs d'arme spike ; v10 = seuil spike ; v9 = part conditionnelle spike ; v8 = procs spike ; v7 = flux ; v6 = roster Spike ; v5 = genre du perso
         public Guid Id { get; set; }
         public string Name { get; set; } = string.Empty;
         public List<string> Tags { get; set; } = [];
@@ -152,6 +152,7 @@ public static class TeamBuildSerializer
         public int Slot { get; set; }
         public string? WeaponDamageType { get; set; }
         public int Ticks { get; set; } = 1; // absent des fichiers antérieurs au compteur → 1
+        public int Projectiles { get; set; } // v19 — projectiles comptés d'un sort multi-projectiles ; absent → 0 = auto/tous
         public int Order { get; set; }       // v7 — ordre de cast Chain Combo (0/absent = non normalisé)
         public string? WeaponKind { get; set; } // v7 — arme manuelle d'une attaque libre (nom de maîtrise)
         public int Procs { get; set; } = 1;  // v8 — déclenchements d'un rider ; absent → 1
@@ -241,6 +242,7 @@ public static class TeamBuildSerializer
                 Slot = k.Slot,
                 WeaponDamageType = k.WeaponDamageType,
                 Ticks = k.Ticks,
+                Projectiles = k.Projectiles,
                 Order = k.Order,
                 WeaponKind = k.WeaponKind,
                 Procs = k.Procs,
@@ -333,6 +335,7 @@ public static class TeamBuildSerializer
                         Slot = k.Slot,
                         WeaponDamageType = k.WeaponDamageType,
                         Ticks = Math.Clamp(k.Ticks, 1, 30),
+                        Projectiles = Math.Clamp(k.Projectiles, 0, 30),
                         Order = k.Order,
                         WeaponKind = k.WeaponKind,
                         Procs = Math.Clamp(k.Procs, 0, 25),

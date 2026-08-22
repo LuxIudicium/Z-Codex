@@ -33,8 +33,8 @@ public static class HelpContent
 {
     // Version du CONTENU de l'aide (indépendante de la version applicative de l'À propos) :
     // à incrémenter et redater à chaque mise à jour.
-    public const string VersionFr = "Aide v4 — 21/08/2026";
-    public const string VersionEn = "Help v4 — 2026-08-21";
+    public const string VersionFr = "Aide v5 — 22/08/2026";
+    public const string VersionEn = "Help v5 — 2026-08-22";
 
     public static string Version => AppLanguage.IsFr ? VersionFr : VersionEn;
 
@@ -585,6 +585,9 @@ public static class HelpContent
             R("Procs / Ticks", "Procs / Ticks",
               "Nombre d'occurrences comptées : coups d'une attaque répétée, déclenchements d'un rider, ou ticks d'un effet périodique (Fire Storm, pièges…). Savannah Heat est cumulative : le tick n inflige n × la valeur.",
               "Number of occurrences counted: hits of a repeated attack, rider triggers, or ticks of a periodic effect (Fire Storm, traps…). Savannah Heat is cumulative: tick n deals n × the value."),
+            R("Projectiles", "Projectiles",
+              "Sorts qui envoient plusieurs projectiles (Dagues de pierre 2, Valse des dagues 3) : chacun inflige le paquet entier. Tous comptés par défaut ; réduisez le compteur si tous ne touchent pas la cible.",
+              "Spells sending several projectiles (Stone Daggers 2, Dancing Daggers 3): each one deals the full packet. All counted by default; lower the counter if they don't all hit the target."),
             R("Seuil / Condition remplie", "Threshold / Condition met",
               "Pour les compétences à part conditionnelle (cible sous un seuil de PV, sous condition…) : décide si le bonus compte.",
               "For skills with a conditional part (target below an HP threshold, under a condition…): decides whether the bonus counts."),

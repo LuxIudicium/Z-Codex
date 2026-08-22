@@ -22,6 +22,9 @@ public class SpikeSkill
     public string? WeaponDamageType { get; set; }
     // Nombre de ticks comptés pour les skills à dégâts périodiques (« each second ») ; 1 sinon.
     public int Ticks { get; set; } = 1;
+    // v19 — nombre de projectiles comptés pour un sort multi-projectiles (Stone Daggers 2,
+    // Dancing Daggers 3). 0 = auto (tous touchent, défaut optimiste). Absent (fichiers ≤ v18) → 0.
+    public int Projectiles { get; set; }
     // Indice de l'ordre de cast (1..N) pour Chain Combo. 0/absent (fichiers ≤ v6) = non normalisé.
     public int Order { get; set; }
     // Arme choisie manuellement pour une attaque libre non déductible (nom de maîtrise). Null = auto.

@@ -614,12 +614,26 @@ public class SpikeViewModel : ViewModelBase
             // périodique est répété SpikeTicks fois (borné à son propre max). Savannah Heat est
             // cumulative : le tick i vaut i × la valeur, l'armure et la troncature s'appliquant
             // tick par tick. maxTicks alimente le ComboBox de la ligne (1 = pas de compteur).
-            int maxTicks = 1;
+            // Compteur de PROJECTILES (Stone Daggers 2, Dancing Daggers 3) : même répétition du
+            // paquet, mais compteur et libellé séparés — la sentinelle 0 du slot vaut « tous
+            // touchent » (défaut optimiste), un choix explicite le réduit.
+            int maxTicks = 1, maxProjectiles = 1;
             int TicksOf(SkillDamage.Row r)
             {
+                if (r.TicksAreProjectiles)
+                {
+                    maxProjectiles = Math.Max(maxProjectiles, r.MaxTicks);
+                    return slot.SpikeProjectiles <= 0 ? r.MaxTicks
+                        : Math.Clamp(slot.SpikeProjectiles, 1, r.MaxTicks);
+                }
                 maxTicks = Math.Max(maxTicks, r.MaxTicks);
                 return Math.Clamp(slot.SpikeTicks, 1, r.MaxTicks);
             }
+
+            // Suffixe du détail : « × N ticks » ou « × N projectiles » selon la nature du paquet
+            // répété (les deux mots sont identiques en FR et en EN).
+            static string TimesLabel(SkillDamage.Row r, int t)
+                => r.TicksAreProjectiles ? $" × {t} projectiles" : $" × {t} ticks";
 
             foreach (var r in respecting)
             {
@@ -653,7 +667,7 @@ public class SpikeViewModel : ViewModelBase
                 {
                     int dmg = SkillDamage.DamageAt(r.Value, al, pen, AttackerLevel);
                     min += dmg * t; max += dmg * t; dmgMin += dmg * t; dmgMax += dmg * t;
-                    parts.Add(t > 1 ? $"{TypeLabel(r.DamageType)} {dmg} × {t} ticks"
+                    parts.Add(t > 1 ? $"{TypeLabel(r.DamageType)} {dmg}{TimesLabel(r, t)}"
                                     : $"{TypeLabel(r.DamageType)} {dmg}");
                 }
             }
@@ -691,7 +705,7 @@ public class SpikeViewModel : ViewModelBase
                 int t = TicksOf(r);
                 int total = r.TicksCumulative ? r.Value * t * (t + 1) / 2 : r.Value * t;
                 min += total; max += total; dmgMin += total; dmgMax += total;
-                parts.Add(t > 1 ? $"{r.Value} × {t} ticks{ArmorIgnoring}"
+                parts.Add(t > 1 ? $"{r.Value}{TimesLabel(r, t)}{ArmorIgnoring}"
                                 : $"{(r.IsBonus ? "+" : "")}{r.Value}{ArmorIgnoring}");
             }
             foreach (var r in analysis.Rows.Where(r => r.Kind == SkillDamage.RowKind.LifeSteal))
@@ -812,6 +826,9 @@ public class SpikeViewModel : ViewModelBase
                     ? TypeOptions(WeaponStrike.DamageTypeChoices(wpn)) : [],
                 HasTicks = maxTicks > 1,
                 TickOptions = maxTicks > 1 ? Enumerable.Range(1, maxTicks).ToList() : [],
+                HasProjectiles = maxProjectiles > 1,
+                ProjectileOptions = maxProjectiles > 1
+                    ? Enumerable.Range(1, maxProjectiles).ToList() : [],
                 HasProcs = showProcs,
                 HasConditional = hasConditional,
                 ConditionText = conditionText,
@@ -1152,6 +1169,21 @@ public sealed class SpikeRowViewModel
     // slot, même mécanique de reconstruction que le type d'arme).
     public bool HasTicks { get; init; }
     public IReadOnlyList<int> TickOptions { get; init; } = [];
+    // Compteur de PROJECTILES des sorts multi-projectiles : 1..N (N = projectiles annoncés).
+    // Le slot stocke 0 = « auto/tous » (défaut optimiste) ; le ComboBox affiche le compte EFFECTIF
+    // et écrit le choix explicite → Mutated → recalcul, comme le compteur de seuil.
+    public bool HasProjectiles { get; init; }
+    public IReadOnlyList<int> ProjectileOptions { get; init; } = [];
+    public int ProjectilesValue
+    {
+        get
+        {
+            int max = ProjectileOptions.Count > 0 ? ProjectileOptions[^1] : 1;
+            return Slot is { } s && s.SpikeProjectiles > 0 ? Math.Min(s.SpikeProjectiles, max) : max;
+        }
+        set { if (Slot is not null) Slot.SpikeProjectiles = value; }
+    }
+
     // Colonne « Bonus Flux » : bonus de dégâts du flux actif pour cette ligne ("—" si aucun).
     public string FluxBonusText { get; init; } = "—";
 

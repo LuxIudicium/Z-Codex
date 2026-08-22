@@ -427,6 +427,19 @@
                                                           SelectedItem="{Binding Slot.SpikeTicks}"
                                                           ToolTip="{DynamicResource S.Spike.TicksTip}"/>
                                             </StackPanel>
+                                            <!-- Compteur de PROJECTILES (Stone Daggers 2, Dancing Daggers 3) :
+                                                 nombre de projectiles qui touchent la cible, tous comptés par défaut. -->
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,2"
+                                                        Visibility="{Binding HasProjectiles, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                <TextBlock Text="{DynamicResource S.Spike.Projectiles}" FontSize="10"
+                                                           Foreground="{DynamicResource TextFaintBrush}"
+                                                           VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                                <ComboBox MinWidth="52" FontSize="10" Padding="4,1"
+                                                          VerticalAlignment="Center"
+                                                          ItemsSource="{Binding ProjectileOptions}"
+                                                          SelectedItem="{Binding ProjectilesValue}"
+                                                          ToolTip="{DynamicResource S.Spike.ProjectilesTip}"/>
+                                            </StackPanel>
                                             <StackPanel Orientation="Horizontal"
                                                         Visibility="{Binding IsWeaponRow, Converter={StaticResource BoolToVisibilityConverter}}">
                                                 <TextBlock Text="{DynamicResource S.Spike.WeaponDmgType}" FontSize="10"
