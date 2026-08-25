@@ -3341,9 +3341,16 @@
                             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                             <Setter Property="MinHeight" Value="52"/>
                             <Setter Property="ToolTipService.InitialShowDelay" Value="700"/>
+                            <!-- Tooltip PARESSEUX, comme la liste multi-colonnes : le contenu est bâti
+                                 par ContentTemplate à l'ouverture. Un SkillTooltipControl posé
+                                 DIRECTEMENT ici serait une instance UNIQUE partagée par toutes les
+                                 lignes, réutilisée de survol en survol — et le repeint de la fenêtre
+                                 flottante gardait alors un chiffre de la ligne précédente (« 10 »
+                                 affiché « 1 » après une compétence à 5 d'énergie). -->
                             <Setter Property="ToolTip">
                                 <Setter.Value>
-                                    <ctrl:SkillTooltipControl Skill="{Binding}"/>
+                                    <ToolTip Content="{Binding}"
+                                             ContentTemplate="{StaticResource CatalogSkillTooltipTemplate}"/>
                                 </Setter.Value>
                             </Setter>
                             <Style.Triggers>
