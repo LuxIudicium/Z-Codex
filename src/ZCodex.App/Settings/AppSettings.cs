@@ -137,12 +137,24 @@ public class AppSettings
     // vient d'enregistrer. Le fichier fait alors foi, pas nous.
     private bool _gwRankTokenTouched;
 
+    // Copie de secours de la SEULE clé d'API, dans un fichier à part. Mesuré le 25/08/2026 sur le
+    // poste de Philippe : une version ANCIENNE de Z-Codex ouverte en même temps (la 1.2.0
+    // installée, antérieure à GWRank) réécrit settings.json depuis un modèle qui ignore ces
+    // réglages — les quatre propriétés GwRank* disparaissent purement et simplement du fichier
+    // quand elle se ferme, et la clé avec. Aucun code de la version courante ne peut l'en
+    // empêcher : cette version-là est déjà installée. En revanche, elle ne connaît pas ce
+    // fichier-ci et n'y touchera jamais — la clé s'y retrouve, et n'est pas à ressaisir.
+    private static string TokenBackupPath => AppPaths.In("gwrank_key.txt");
+
     /// <summary>Pose (ou efface, avec null) la clé d'API GWRank. Passer par ici plutôt que par la
-    /// propriété : c'est ce geste qui donne à cette instance le droit de l'écrire sur le disque.</summary>
+    /// propriété : c'est ce geste qui donne à cette instance le droit de l'écrire sur le disque,
+    /// et qui tient la copie de secours à jour.</summary>
     public void SetGwRankToken(string? token)
     {
         GwRankApiToken      = string.IsNullOrWhiteSpace(token) ? null : token;
         _gwRankTokenTouched = true;
+        // Effacer la clé efface AUSSI la copie : un retrait volontaire ne doit pas ressusciter.
+        WriteTokenBackup(GwRankApiToken);
     }
 
     /// <summary>Relit la clé sur le disque et l'adopte si on n'en a pas. À appeler avant de
@@ -152,8 +164,53 @@ public class AppSettings
     public void ReloadGwRankToken()
     {
         if (_gwRankTokenTouched) return;   // la clé effacée en séance ne doit pas ressusciter
-        if (TryReadTokenOnDisk(out var onDisk) && !string.IsNullOrWhiteSpace(onDisk))
+        if (TryEffectiveDiskToken(out var onDisk) && !string.IsNullOrWhiteSpace(onDisk))
             GwRankApiToken = onDisk;
+    }
+
+    /// <summary>La clé enregistrée, vue du disque : celle de settings.json, ou à défaut la copie
+    /// de secours. Renvoie false quand settings.json est là mais illisible — on ne sait alors
+    /// rien, ce qui n'est pas la même chose que « aucune clé ».</summary>
+    private static bool TryEffectiveDiskToken(out string? token)
+    {
+        if (!TryReadTokenOnDisk(out token)) return false;
+        if (string.IsNullOrWhiteSpace(token)) token = ReadTokenBackup();
+        return true;
+    }
+
+    private static string? ReadTokenBackup()
+    {
+        try
+        {
+            if (!File.Exists(TokenBackupPath)) return null;
+            var token = File.ReadAllText(TokenBackupPath).Trim();
+            return token.Length == 0 ? null : token;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"AppSettings: copie de secours illisible {TokenBackupPath} — {ex.Message}");
+            return null;
+        }
+    }
+
+    private static void WriteTokenBackup(string? token)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                File.Delete(TokenBackupPath);
+                return;
+            }
+            Directory.CreateDirectory(Path.GetDirectoryName(TokenBackupPath)!);
+            File.WriteAllText(TokenBackupPath, token);
+        }
+        // Sans conséquence immédiate : la clé reste dans settings.json, c'est seulement le filet
+        // qui manque. Rien à annoncer à l'utilisateur, qui n'a rien demandé de ce côté.
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"AppSettings: copie de secours non écrite {TokenBackupPath} — {ex.Message}");
+        }
     }
 
     /// <summary>Lit la seule clé GWRank du fichier. Renvoie false quand le fichier est là mais
@@ -180,10 +237,10 @@ public class AppSettings
 
     public static AppSettings Load()
     {
-        if (!File.Exists(FilePath)) return new AppSettings();
+        if (!File.Exists(FilePath)) return Recovered(new AppSettings());
         try
         {
-            return JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePath)) ?? new AppSettings();
+            return Recovered(JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePath)) ?? new AppSettings());
         }
         // Volontairement TOUTES les exceptions, pas seulement JsonException : le fichier peut
         // aussi être verrouillé (IOException), inaccessible (UnauthorizedAccessException) ou sur
@@ -193,8 +250,19 @@ public class AppSettings
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"AppSettings.Load: {FilePath} illisible — {ex.Message}");
-            return new AppSettings { _unreadableFile = true };
+            return Recovered(new AppSettings { _unreadableFile = true });
         }
+    }
+
+    /// <summary>Rend les réglages avec leur clé d'API même si le fichier vient de la perdre : une
+    /// version ancienne de Z-Codex ouverte en parallèle la fait disparaître de settings.json en se
+    /// fermant (cf. <see cref="TokenBackupPath"/>). La copie de secours la remet en place sans que
+    /// l'utilisateur ait à la ressaisir, et la prochaine sauvegarde la réinscrit dans le fichier.</summary>
+    private static AppSettings Recovered(AppSettings settings)
+    {
+        if (string.IsNullOrWhiteSpace(settings.GwRankApiToken))
+            settings.GwRankApiToken = ReadTokenBackup();
+        return settings;
     }
 
     /// <summary>Écrit les réglages. Renvoie false si RIEN n'a été écrit : l'appelant qui vient de
@@ -211,7 +279,7 @@ public class AppSettings
         // La clé du disque fait foi tant que cette séance n'y a pas touché (cf. _gwRankTokenTouched).
         if (!_gwRankTokenTouched)
         {
-            if (!TryReadTokenOnDisk(out var onDisk)) return false;   // clé inconnue : ne rien écrire
+            if (!TryEffectiveDiskToken(out var onDisk)) return false;   // clé inconnue : ne rien écrire
             GwRankApiToken = onDisk;
         }
 
@@ -225,6 +293,10 @@ public class AppSettings
             var temp = FilePath + ".tmp";
             File.WriteAllText(temp, json);
             File.Move(temp, FilePath, overwrite: true);
+            // Le filet est tenu à jour même pour une clé qui n'est pas passée par SetGwRankToken :
+            // sinon il ne protégerait que ceux qui ont saisi leur clé APRÈS cette version.
+            if (!string.IsNullOrWhiteSpace(GwRankApiToken) && ReadTokenBackup() != GwRankApiToken)
+                WriteTokenBackup(GwRankApiToken);
             return true;
         }
         catch (Exception ex)
