@@ -710,7 +710,7 @@
     <sys:String x:Key="S.GwRank.TestError">Unexpected server answer: {0}</sys:String>
     <sys:String x:Key="S.GwRank.UnsavedTitle">API key not saved</sys:String>
     <sys:String x:Key="S.GwRank.UnsavedBody" xml:space="preserve">You pasted an API key without saving it. Closing now throws it away, and you would have to fetch it from GWRank again.&#10;&#10;Yes — save the key and close.&#10;No — close without saving.&#10;Cancel — go back to the settings.</sys:String>
-    <sys:String x:Key="S.GwRank.SaveFailed" xml:space="preserve">Z-Codex could not write its settings: your API key was NOT kept, and you would have to paste it again on the next launch.&#10;&#10;{0}&#10;&#10;Check that this file is not read-only and that the disk is not full, then save again.</sys:String>
+    <sys:String x:Key="S.GwRank.SaveFailed" xml:space="preserve">Z-Codex could not write its settings, so your API key may not survive the next launch.&#10;&#10;{0}&#10;&#10;Check that this file is not read-only and that the disk is not full, then save again.</sys:String>
     <sys:String x:Key="S.GwRank.NothingOpen">Open a teambuild first.</sys:String>
     <sys:String x:Key="S.GwRank.SentTitle">GWRank</sys:String>
     <sys:String x:Key="S.GwRank.SentCreated">"{0}" has been sent to GWRank.</sys:String>
