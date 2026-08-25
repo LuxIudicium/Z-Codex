@@ -117,7 +117,66 @@ public class AppSettings
     // l'application définitivement muette. Même principe que ScrapeInfo.IgnoredUpdateDate.
     public string? IgnoredUpdateVersion { get; set; }
 
-    private static string FilePath => AppPaths.In("settings.json");
+    /// <summary>Fichier des préférences. Public pour que le message d'échec d'écriture montre le
+    /// chemin exact sans le réinventer de son côté.</summary>
+    public static string FilePath => AppPaths.In("settings.json");
+
+    // ── Sûreté de la clé d'API GWRank ────────────────────────────────────────
+    // Elle est le SEUL réglage que l'utilisateur ne peut pas reconstituer de tête : perdre une
+    // case à cocher se recoche, perdre la clé oblige à retourner sur GWRank. Les deux drapeaux
+    // ci-dessous existent pour qu'elle ne soit saisie qu'une fois — jamais deux.
+
+    // Un fichier de réglages EXISTAIT mais n'a pas pu être relu (JSON tronqué, verrou, droits) :
+    // cette instance n'est alors qu'un jeu de valeurs par défaut. L'écrire remplacerait les vrais
+    // réglages par du vide — clé comprise. On préfère perdre les préférences de la séance.
+    private bool _unreadableFile;
+
+    // La clé a été posée ou effacée PENDANT cette séance. Tant que ce n'est pas le cas, cette
+    // instance n'a aucune autorité sur elle : rien n'interdit deux Z-Codex ouverts en même temps
+    // (aucun verrou d'instance unique), et notre instantané périmé effacerait la clé que l'autre
+    // vient d'enregistrer. Le fichier fait alors foi, pas nous.
+    private bool _gwRankTokenTouched;
+
+    /// <summary>Pose (ou efface, avec null) la clé d'API GWRank. Passer par ici plutôt que par la
+    /// propriété : c'est ce geste qui donne à cette instance le droit de l'écrire sur le disque.</summary>
+    public void SetGwRankToken(string? token)
+    {
+        GwRankApiToken      = string.IsNullOrWhiteSpace(token) ? null : token;
+        _gwRankTokenTouched = true;
+    }
+
+    /// <summary>Relit la clé sur le disque et l'adopte si on n'en a pas. À appeler avant de
+    /// conclure « aucune clé configurée » : une autre fenêtre de Z-Codex a pu l'enregistrer
+    /// depuis notre démarrage, et redemander sa clé à quelqu'un qui vient de la saisir est le
+    /// meilleur moyen de lui faire croire qu'elle n'a pas été retenue.</summary>
+    public void ReloadGwRankToken()
+    {
+        if (_gwRankTokenTouched) return;   // la clé effacée en séance ne doit pas ressusciter
+        if (TryReadTokenOnDisk(out var onDisk) && !string.IsNullOrWhiteSpace(onDisk))
+            GwRankApiToken = onDisk;
+    }
+
+    /// <summary>Lit la seule clé GWRank du fichier. Renvoie false quand le fichier est là mais
+    /// illisible — cas où l'on ne sait RIEN de la clé enregistrée, à ne pas confondre avec
+    /// « aucune clé » : c'est cette confusion qui l'effacerait.</summary>
+    private static bool TryReadTokenOnDisk(out string? token)
+    {
+        token = null;
+        if (!File.Exists(FilePath)) return true;
+        try
+        {
+            using var doc = JsonDocument.Parse(File.ReadAllText(FilePath));
+            if (doc.RootElement.TryGetProperty(nameof(GwRankApiToken), out var el) &&
+                el.ValueKind == JsonValueKind.String)
+                token = el.GetString();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"AppSettings: clé GWRank illisible dans {FilePath} — {ex.Message}");
+            return false;
+        }
+    }
 
     public static AppSettings Load()
     {
@@ -134,20 +193,46 @@ public class AppSettings
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"AppSettings.Load: {FilePath} illisible — {ex.Message}");
-            return new AppSettings();
+            return new AppSettings { _unreadableFile = true };
         }
     }
 
-    public void Save()
+    /// <summary>Écrit les réglages. Renvoie false si RIEN n'a été écrit : l'appelant qui vient de
+    /// recevoir une saisie de l'utilisateur doit alors le lui dire, sinon il la croira enregistrée
+    /// jusqu'au prochain lancement.</summary>
+    public bool Save()
     {
+        if (_unreadableFile)
+        {
+            System.Diagnostics.Debug.WriteLine($"AppSettings.Save: {FilePath} illisible au démarrage — écriture refusée");
+            return false;
+        }
+
+        // La clé du disque fait foi tant que cette séance n'y a pas touché (cf. _gwRankTokenTouched).
+        if (!_gwRankTokenTouched)
+        {
+            if (!TryReadTokenOnDisk(out var onDisk)) return false;   // clé inconnue : ne rien écrire
+            GwRankApiToken = onDisk;
+        }
+
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-            File.WriteAllText(FilePath, JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true }));
+            var json = JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true });
+            // Écriture en deux temps : une écriture directe interrompue (plantage, coupure,
+            // antivirus) laisse un settings.json tronqué que le lancement suivant ne sait plus
+            // relire — et tous les réglages repartent de zéro. Le remplacement, lui, est atomique.
+            var temp = FilePath + ".tmp";
+            File.WriteAllText(temp, json);
+            File.Move(temp, FilePath, overwrite: true);
+            return true;
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"AppSettings.Save: échec écriture {FilePath} — {ex.Message}");
+            // Ne pas laisser traîner un settings.json.tmp à moitié écrit dans le dossier de données.
+            try { File.Delete(FilePath + ".tmp"); } catch { /* rien de plus à tenter */ }
+            return false;
         }
     }
 }

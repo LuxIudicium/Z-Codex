@@ -711,6 +711,9 @@
     <sys:String x:Key="S.GwRank.TestUnauthorized">Clé refusée par le serveur.</sys:String>
     <sys:String x:Key="S.GwRank.TestOffline">Serveur injoignable.</sys:String>
     <sys:String x:Key="S.GwRank.TestError">Réponse inattendue du serveur : {0}</sys:String>
+    <sys:String x:Key="S.GwRank.UnsavedTitle">Clé d'API non enregistrée</sys:String>
+    <sys:String x:Key="S.GwRank.UnsavedBody" xml:space="preserve">Vous avez collé une clé d'API sans l'enregistrer. Fermer maintenant la jette, et il faudrait retourner la chercher sur GWRank.&#10;&#10;Oui — enregistrer la clé et fermer.&#10;Non — fermer sans enregistrer.&#10;Annuler — revenir aux réglages.</sys:String>
+    <sys:String x:Key="S.GwRank.SaveFailed" xml:space="preserve">Z-Codex n'a pas pu écrire ses réglages : votre clé d'API n'a PAS été conservée, il faudrait la recoller au prochain lancement.&#10;&#10;{0}&#10;&#10;Vérifiez que ce fichier n'est pas en lecture seule et que le disque n'est pas plein, puis enregistrez de nouveau.</sys:String>
     <sys:String x:Key="S.GwRank.NothingOpen">Ouvrez d'abord un teambuild.</sys:String>
     <sys:String x:Key="S.GwRank.SentTitle">GWRank</sys:String>
     <sys:String x:Key="S.GwRank.SentCreated">« {0} » a été envoyé sur GWRank.</sys:String>

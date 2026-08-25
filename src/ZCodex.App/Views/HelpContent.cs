@@ -33,8 +33,8 @@ public static class HelpContent
 {
     // Version du CONTENU de l'aide (indépendante de la version applicative de l'À propos) :
     // à incrémenter et redater à chaque mise à jour.
-    public const string VersionFr = "Aide v13 — 23/08/2026";
-    public const string VersionEn = "Help v13 — 2026-08-23";
+    public const string VersionFr = "Aide v14 — 25/08/2026";
+    public const string VersionEn = "Help v14 — 2026-08-25";
 
     public static string Version => AppLanguage.IsFr ? VersionFr : VersionEn;
 
@@ -193,8 +193,8 @@ public static class HelpContent
               "Lance ce rafraîchissement à chaque ouverture de Z-Codex, en arrière-plan et sans rien afficher. Décoché par défaut : GWRank n'offre aucun moyen de ne demander que ce qui a changé, donc chaque rafraîchissement rapatrie toute la bibliothèque visible.",
               "Runs that refresh every time Z-Codex opens, in the background and silently. Unchecked by default: GWRank offers no way to ask only for what changed, so every refresh fetches the whole visible library."),
             R("Extras" + M + "Réglages GWRank…", "Extras" + M + "GWRank settings…",
-              "Clé d'API GWRank, serveur, et visibilité des envois (privés par défaut). La clé se crée sur votre page de profil GWRank ; « Tester la connexion » la vérifie sans rien envoyer. Elle est enregistrée en clair dans vos réglages locaux et reste révocable depuis GWRank.",
-              "GWRank API key, server, and visibility of uploads (private by default). The key is created on your GWRank profile page; “Test connection” checks it without sending anything. It is stored in plain text in your local settings and can be revoked from GWRank at any time."),
+              "Clé d'API GWRank, serveur, et visibilité des envois (privés par défaut). La clé se crée sur votre page de profil GWRank ; « Tester la connexion » la vérifie sans rien envoyer. Elle est enregistrée en clair dans vos réglages locaux et reste révocable depuis GWRank. Elle n'est à saisir QU'UNE FOIS : une fois enregistrée, Z-Codex ne la redemande plus. Fermer cette fenêtre sans avoir cliqué sur « Enregistrer » perdrait une clé fraîchement collée : Z-Codex vous prévient alors et propose de l'enregistrer.",
+              "GWRank API key, server, and visibility of uploads (private by default). The key is created on your GWRank profile page; “Test connection” checks it without sending anything. It is stored in plain text in your local settings and can be revoked from GWRank at any time. You only ever enter it ONCE: after it is saved, Z-Codex never asks again. Closing this window without clicking “Save” would throw away a freshly pasted key: Z-Codex warns you and offers to save it."),
             R("Extras" + M + "Vérifier les icônes (wiki)", "Extras" + M + "Check icons (wiki)",
               "Contrôle les icônes d'interface (professions, coûts, conditions, flux, vol de vie) et re-télécharge celles qui manquent ou sont illisibles, puis annonce le résultat. Les icônes de COMPÉTENCES, elles, viennent de « Mettre à jour les compétences ». Un redémarrage les remet partout.",
               "Checks the interface icons (professions, costs, conditions, flux, life stealing), downloads again those missing or unreadable, then reports what it did. SKILL icons come from “Update skill database” instead. A restart shows them everywhere."),

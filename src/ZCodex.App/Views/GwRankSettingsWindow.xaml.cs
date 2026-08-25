@@ -14,7 +14,20 @@ public partial class GwRankSettingsWindow : Window
 
     private readonly CancellationTokenSource _cts = new();
 
-    /// <summary>Valeurs retenues, à persister par l'appelant si <c>DialogResult</c> vaut true.</summary>
+    /// <summary>Clé telle qu'elle était à l'ouverture, pour reconnaître une saisie NEUVE à la
+    /// fermeture (cf. <see cref="OnClosing"/>).</summary>
+    private readonly string _initialToken;
+
+    /// <summary>
+    /// L'utilisateur a validé : bouton « Enregistrer », ou « Oui » à l'avertissement de fermeture.
+    /// C'est CE drapeau que l'appelant lit, et non <c>DialogResult</c> : le bouton Annuler est
+    /// <c>IsCancel</c>, et WPF y repose <c>DialogResult</c> à false autour de notre gestionnaire de
+    /// clic — un « Oui, enregistrer » donné dans l'avertissement pourrait être annulé en silence,
+    /// c'est-à-dire perdre exactement la clé qu'on venait de promettre de garder.
+    /// </summary>
+    public bool Accepted { get; private set; }
+
+    /// <summary>Valeurs retenues, à persister par l'appelant si <see cref="Accepted"/> vaut true.</summary>
     public string? Token { get; private set; }
     public string? BaseUrl { get; private set; }
     public bool PublicByDefault { get; private set; }
@@ -27,6 +40,7 @@ public partial class GwRankSettingsWindow : Window
     public GwRankSettingsWindow(string? token, string? baseUrl, bool publicByDefault)
     {
         InitializeComponent();
+        _initialToken = token?.Trim() ?? string.Empty;
         // Après InitializeComponent : les champs posés en XAML déclencheraient Input_Changed
         // alors que les autres ne sont pas encore construits.
         TokenBox.Text  = token ?? string.Empty;
@@ -111,19 +125,51 @@ public partial class GwRankSettingsWindow : Window
 
     private void Save_Click(object sender, RoutedEventArgs e)
     {
+        Capture();
+        DialogResult = true;
+        Close();
+    }
+
+    private void Capture()
+    {
         var token   = TokenBox.Text.Trim();
         var baseUrl = ServerBox.Text.Trim();
         Token           = token.Length == 0 ? null : token;
         BaseUrl         = baseUrl.Length == 0 ? null : baseUrl;
         PublicByDefault = PublicBox.IsChecked == true;
-        DialogResult = true;
-        Close();
+        Accepted        = true;
     }
 
     private void Cancel_Click(object sender, RoutedEventArgs e)
     {
         DialogResult = false;
         Close();
+    }
+
+    /// <summary>
+    /// Filet de sécurité de la clé d'API : fermer sans enregistrer (Annuler, Échap, la croix) la
+    /// jetterait en silence, et il faudrait retourner la chercher sur GWRank. Le cas est loin
+    /// d'être théorique — « Tester la connexion » répond « Connexion OK », ce qui ressemble
+    /// beaucoup à « c'est enregistré », et la fenêtre s'ouvre souvent AU MILIEU d'un envoi, geste
+    /// qu'on termine par Échap par réflexe.
+    ///
+    /// On ne demande rien pour le serveur ou la case de visibilité : ces deux-là se retapent en
+    /// trois secondes. La clé, non.
+    /// </summary>
+    protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+    {
+        base.OnClosing(e);
+        if (e.Cancel || Accepted) return;   // déjà annulé ailleurs, ou « Enregistrer »
+
+        var typed = TokenBox.Text.Trim();
+        if (typed.Length == 0 || typed == _initialToken) return;   // rien de neuf à perdre
+
+        var answer = MessageBox.Show(this, T("S.GwRank.UnsavedBody"), T("S.GwRank.UnsavedTitle"),
+                                     MessageBoxButton.YesNoCancel, MessageBoxImage.Warning);
+        if (answer == MessageBoxResult.Cancel) { e.Cancel = true; return; }
+        if (answer != MessageBoxResult.Yes) return;
+
+        Capture();   // et rien d'autre : on ne touche pas à DialogResult ici (cf. Accepted)
     }
 
     protected override void OnClosed(EventArgs e)

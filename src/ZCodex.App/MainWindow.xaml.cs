@@ -1274,14 +1274,34 @@ public partial class MainWindow : Window
     {
         var win = new GwRankSettingsWindow(_settings.GwRankApiToken, _settings.GwRankBaseUrl,
                                            _settings.GwRankPublicByDefault) { Owner = this };
-        if (win.ShowDialog() != true)
-            return !string.IsNullOrWhiteSpace(_settings.GwRankApiToken);
+        win.ShowDialog();
+        // win.Accepted et non le retour de ShowDialog : la fenêtre peut valider depuis son
+        // avertissement de fermeture, où DialogResult n'est pas fiable (cf. GwRankSettingsWindow).
+        if (!win.Accepted)
+            return HasGwRankToken();
 
-        _settings.GwRankApiToken        = win.Token;
+        _settings.SetGwRankToken(win.Token);
         _settings.GwRankBaseUrl         = win.BaseUrl;
         _settings.GwRankPublicByDefault = win.PublicByDefault;
-        _settings.Save();
+
+        // Une clé saisie puis NON écrite est le pire des cas : l'utilisateur la croit enregistrée
+        // et ne découvre le contraire qu'au lancement suivant, sans savoir pourquoi. On le dit
+        // tout de suite, avec le chemin du fichier fautif.
+        if (!_settings.Save() && !string.IsNullOrWhiteSpace(win.Token))
+            MessageBox.Show(string.Format(T("S.GwRank.SaveFailed"), Settings.AppSettings.FilePath),
+                            T("S.GwRank.Title"), MessageBoxButton.OK, MessageBoxImage.Warning);
+
         return !string.IsNullOrWhiteSpace(win.Token);
+    }
+
+    /// <summary>Une clé d'API est-elle configurée ? Avant de répondre non — et donc de la
+    /// redemander —, on relit le fichier de réglages : deux Z-Codex peuvent tourner en même
+    /// temps, et la clé a pu être saisie dans l'autre depuis notre démarrage.</summary>
+    private bool HasGwRankToken()
+    {
+        if (!string.IsNullOrWhiteSpace(_settings.GwRankApiToken)) return true;
+        _settings.ReloadGwRankToken();
+        return !string.IsNullOrWhiteSpace(_settings.GwRankApiToken);
     }
 
     private void GwRankSettings_Click(object sender, RoutedEventArgs e) => OpenGwRankSettings();
@@ -1311,7 +1331,7 @@ public partial class MainWindow : Window
     /// </summary>
     private async Task RefreshGwRankAsync(bool silent)
     {
-        if (string.IsNullOrWhiteSpace(_settings.GwRankApiToken))
+        if (!HasGwRankToken())
         {
             if (silent) return;
             if (!OpenGwRankSettings()) return;
@@ -1409,7 +1429,7 @@ public partial class MainWindow : Window
         // Aucune cle : on ouvre les reglages, dont le bandeau d'accueil explique ou la prendre.
         // Un MessageBox « voulez-vous ouvrir les reglages ? » n'apprendrait rien et couterait un
         // clic de plus avant la seule fenetre qui, elle, repond a la question.
-        if (string.IsNullOrWhiteSpace(_settings.GwRankApiToken) && !OpenGwRankSettings()) return;
+        if (!HasGwRankToken() && !OpenGwRankSettings()) return;
 
         var index = GwRankSyncIndex.Load();
 
