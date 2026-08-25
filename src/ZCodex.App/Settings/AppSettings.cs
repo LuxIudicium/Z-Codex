@@ -17,6 +17,26 @@ public class AppSettings
     // Null = jamais importé ; la fenêtre propose alors TemplatesRootPath.
     public string? PvxDestinationPath { get; set; }
 
+    // ── GWRank (Extras ▸ Envoyer sur GWRank) ────────────────────────────────
+    // Jeton d'API personnel, créé par l'utilisateur sur sa page de profil GWRank. Null = aucune
+    // synchronisation configurée : le menu propose alors d'ouvrir les réglages.
+    // ⚠ Stocké en clair, comme le reste du fichier : ce n'est PAS un coffre-fort. C'est un jeton
+    // de bibliothèque de builds, révocable côté GWRank — pas un mot de passe de compte.
+    public string? GwRankApiToken { get; set; }
+
+    // Serveur visé. Null = production (GwRankClient.DefaultBaseUrl) ; le champ existe pour viser
+    // une instance de test sans recompiler.
+    public string? GwRankBaseUrl { get; set; }
+
+    // Dépôt public par défaut. false = privé, le choix prudent : un build ne devient visible des
+    // autres joueurs que sur décision explicite.
+    public bool GwRankPublicByDefault { get; set; }
+
+    // Rafraîchir le miroir GWRank du navigateur au lancement (Extras ▸ Synchroniser au démarrage).
+    // false par défaut : l'API n'a aucun filtre « ce qui a changé », donc chaque synchronisation
+    // rapatrie toute la bibliothèque visible — ce n'est pas à imposer au démarrage sans accord.
+    public bool GwRankSyncOnStartup { get; set; }
+
     // Géométrie de MainWindow, sauvegardée à la fermeture. Null = valeurs par défaut du XAML.
     public double? WindowWidth { get; set; }
     public double? WindowHeight { get; set; }

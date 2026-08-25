@@ -663,4 +663,66 @@
     <sys:String x:Key="S.Egg.Player6">Six heals and Mending. This Warrior is now officially harmless.</sys:String>
     <sys:String x:Key="S.Egg.Player7">Eight slots, eight heals. Congratulations — you have built the ultimate Warrior/Monk.</sys:String>
 
+    <!-- ── GWRank (Extras ▸ Send to GWRank) ───────────────────────────── -->
+    <sys:String x:Key="S.Menu.ExtrasGwRankSend">Send to GWRank...</sys:String>
+    <sys:String x:Key="S.Menu.ExtrasGwRankSettings">GWRank settings...</sys:String>
+    <sys:String x:Key="S.Tb.GwRankSend">Send to GWRank</sys:String>
+    <sys:String x:Key="S.GwRank.OnboardTitle">Connect Z-Codex to your GWRank account</sys:String>
+    <sys:String x:Key="S.GwRank.OnboardIntro">Z-Codex can send your builds to your GWRank library. It needs a personal API key, which you create on GWRank itself — it takes a minute.</sys:String>
+    <sys:String x:Key="S.GwRank.OnboardStep1">1. Open gwrank.com and sign in.</sys:String>
+    <sys:String x:Key="S.GwRank.OnboardStep2">2. Go to your profile page and create an API key.</sys:String>
+    <sys:String x:Key="S.GwRank.OnboardStep3">3. Copy the key, then paste it in the field below.</sys:String>
+    <sys:String x:Key="S.GwRank.OnboardOpenSite">Open gwrank.com</sys:String>
+    <sys:String x:Key="S.Menu.ExtrasGwRankRefresh">Refresh from GWRank</sys:String>
+    <sys:String x:Key="S.Menu.ExtrasGwRankStartup">Refresh GWRank on startup</sys:String>
+    <sys:String x:Key="S.GwRank.SyncDone" xml:space="preserve">GWRank is up to date.&#10;&#10;Yours: {0} build(s), {1} teambuild(s).&#10;Public: {2} build(s), {3} teambuild(s).</sys:String>
+    <sys:String x:Key="S.GwRank.SyncSkipped">{0} entr(y/ies) could not be read and were skipped.</sys:String>
+    <sys:String x:Key="S.GwRank.CopyTitle">Build from GWRank</sys:String>
+    <sys:String x:Key="S.GwRank.CopyBody" xml:space="preserve">This build comes from GWRank and lives in a view that the next refresh will rebuild — saving over it would lose your changes.&#10;&#10;Z-Codex will save it as a copy of your own, with a fresh identity, in the folder you choose.</sys:String>
+    <sys:String x:Key="S.GwRank.UploadTitle">Send to GWRank</sys:String>
+    <sys:String x:Key="S.GwRank.UploadConfirm">Send</sys:String>
+    <sys:String x:Key="S.GwRank.CurrentlyPrivate">This build is already in your collection, not shared.</sys:String>
+    <sys:String x:Key="S.GwRank.CurrentlyPublic">This build is already in your collection, and shared with everyone.</sys:String>
+    <sys:String x:Key="S.GwRank.SentPrivate">It is in your collection, visible to you only.</sys:String>
+    <sys:String x:Key="S.GwRank.SentPublic">It is in your collection and shared with every GWRank player.</sys:String>
+    <sys:String x:Key="S.GwRank.AlwaysInCollection">This build goes into your GWRank collection.</sys:String>
+    <sys:String x:Key="S.GwRank.SharePublicly">Also share it with everyone</sys:String>
+    <sys:String x:Key="S.GwRank.SharePubliclyHint">It stays in your collection either way. Ticked, it also becomes visible and downloadable by every GWRank player; unticked, you are the only one who sees it.</sys:String>
+    <sys:String x:Key="S.GwRank.ScopeLabel">What do you want to send?</sys:String>
+    <sys:String x:Key="S.GwRank.ScopeWhole">The whole teambuild — {0} line(s), variants included</sys:String>
+    <sys:String x:Key="S.GwRank.ScopeLock">Lock {0} only — {1} character(s)</sys:String>
+    <sys:String x:Key="S.GwRank.ScopeLockName">{0} - lock {1}</sys:String>
+    <sys:String x:Key="S.GwRank.ScopeLockEmpty">That lock no longer holds any character.</sys:String>
+    <sys:String x:Key="S.GwRank.NameLabel">Name on GWRank</sys:String>
+    <sys:String x:Key="S.GwRank.NameEmpty">A name is required.</sys:String>
+    <sys:String x:Key="S.GwRank.Title">GWRank settings</sys:String>
+    <sys:String x:Key="S.GwRank.TokenLabel">API key</sys:String>
+    <sys:String x:Key="S.GwRank.TokenHint">Create a key on your GWRank profile page, then paste it here. It is stored in plain text in your local settings and can be revoked from GWRank at any time.</sys:String>
+    <sys:String x:Key="S.GwRank.ServerLabel">Server</sys:String>
+    <sys:String x:Key="S.GwRank.ServerHint">Leave empty for the official server.</sys:String>
+    <sys:String x:Key="S.GwRank.PublicDefault">Preselect &quot;public&quot; when sending (you still choose each time)</sys:String>
+    <sys:String x:Key="S.GwRank.Test">Test connection</sys:String>
+    <sys:String x:Key="S.GwRank.Testing">Testing...</sys:String>
+    <sys:String x:Key="S.GwRank.TestOk">Connection OK — {0} teambuild(s) in your library.</sys:String>
+    <sys:String x:Key="S.GwRank.TestNoToken">Enter a key first.</sys:String>
+    <sys:String x:Key="S.GwRank.TestUnauthorized">Key refused by the server.</sys:String>
+    <sys:String x:Key="S.GwRank.TestOffline">Server unreachable.</sys:String>
+    <sys:String x:Key="S.GwRank.TestError">Unexpected server answer: {0}</sys:String>
+    <sys:String x:Key="S.GwRank.NothingOpen">Open a teambuild first.</sys:String>
+    <sys:String x:Key="S.GwRank.SentTitle">GWRank</sys:String>
+    <sys:String x:Key="S.GwRank.SentCreated">"{0}" has been sent to GWRank.</sys:String>
+    <sys:String x:Key="S.GwRank.SentUpdated">"{0}" has been updated on GWRank.</sys:String>
+    <sys:String x:Key="S.GwRank.Unchanged">"{0}" is already up to date on GWRank — nothing was sent.</sys:String>
+    <sys:String x:Key="S.GwRank.FailedTitle">Send failed</sys:String>
+    <sys:String x:Key="S.GwRank.FailedUnauthorized">GWRank refused your key. Check it in the GWRank settings.</sys:String>
+    <sys:String x:Key="S.GwRank.FailedOffline">GWRank is unreachable. Nothing was sent.</sys:String>
+    <sys:String x:Key="S.GwRank.FailedRejected">GWRank refused this build: {0}</sys:String>
+    <sys:String x:Key="S.GwRank.FailedOther">Send failed: {0}</sys:String>
+    <!-- Collision d'identité : deux fichiers portent le même id (copie dans l'explorateur).
+         Le libellé doit nommer les DEUX fichiers, sinon l'utilisateur ne peut pas comprendre. -->
+    <sys:String x:Key="S.GwRank.CollisionTitle">Duplicate build identity</sys:String>
+    <sys:String x:Key="S.GwRank.CollisionBody" xml:space="preserve">This build shares its internal identity with another file already sent to GWRank:&#10;&#10;    {0}&#10;&#10;This happens when a build file is duplicated outside Z-Codex. Sending it as is would overwrite the other build on GWRank.&#10;&#10;Z-Codex can give this build a new identity and send it separately. Your skills, attributes, variants and locks are unchanged.&#10;&#10;Give it a new identity and send?</sys:String>
+    <sys:String x:Key="S.GwRank.CollisionFixed">A new identity was assigned and the file was saved.</sys:String>
+    <sys:String x:Key="S.GwRank.CollisionUnsaved">A new identity was assigned. Save this build to keep it.</sys:String>
+
 </ResourceDictionary>

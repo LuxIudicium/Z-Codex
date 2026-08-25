@@ -15,6 +15,14 @@
         <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
     </Style>
 
+    <!-- Pendant du CheckBox ci-dessus. Sans lui, un RadioButton prend le noir du thème WPF par
+         défaut et devient illisible en mode sombre : le Foreground de la fenêtre ne l'atteint pas,
+         son template impose le sien. Les RadioButton à Style x:Key (onglets de sets d'armes) ne
+         sont pas concernés — une clé remplace le style implicite. -->
+    <Style TargetType="RadioButton">
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+    </Style>
+
     <!-- ── Button : template plat ; hover/pressed en Style.Triggers pour que
          les styles dérivés (ex. ✕ rouge) puissent les surcharger. ── -->
     <Style TargetType="Button">

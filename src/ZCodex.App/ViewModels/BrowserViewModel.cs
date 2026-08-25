@@ -144,8 +144,45 @@ public class BrowserViewModel : ViewModelBase
         var root = new FolderTreeItemViewModel(path);
         root.IsExpanded = true;
         RootItems.Add(root);
+        AddGwRankNode();
         LoadFiles(path);
         RootChanged?.Invoke(path);
+    }
+
+    // ── GWRank ────────────────────────────────────────────────────────────────
+    // Le miroir GWRank est une SECONDE racine de l'arbre, à côté du dossier de templates, et non
+    // un sous-dossier de celui-ci : ce sont les builds du serveur (dont ceux d'autres joueurs),
+    // pas la bibliothèque de l'utilisateur. Les mélanger fausserait la recherche, les sauvegardes
+    // et la détection de doublons d'identité.
+    private void AddGwRankNode()
+    {
+        if (!Directory.Exists(ZCodex.Core.Sync.GwRankBrowserCache.Root)) return;
+
+        // Deplie d'office : le noeud est RECREE a chaque synchro, et le retrouver ferme apres
+        // chaque envoi donnerait l'impression que rien n'est arrive.
+        var node = new FolderTreeItemViewModel(ZCodex.Core.Sync.GwRankBrowserCache.Root)
+        {
+            IsExpanded = true,
+        };
+        RootItems.Add(node);
+    }
+
+    /// <summary>Reconstruit le nœud GWRank après une synchronisation. Le nœud est RECRÉÉ et non
+    /// mis à jour : ses enfants sont chargés une seule fois, à la première expansion, donc un
+    /// nœud conservé continuerait d'afficher l'arborescence d'avant la synchro.</summary>
+    public void RefreshGwRankNode()
+    {
+        for (int i = RootItems.Count - 1; i >= 0; i--)
+            if (ZCodex.Core.Sync.GwRankBrowserCache.IsInCache(RootItems[i].Path)
+                || string.Equals(RootItems[i].Path, ZCodex.Core.Sync.GwRankBrowserCache.Root,
+                                 StringComparison.OrdinalIgnoreCase))
+                RootItems.RemoveAt(i);
+
+        AddGwRankNode();
+
+        // La liste de droite peut montrer un dossier du miroir qui vient d'être remplacé.
+        if (ZCodex.Core.Sync.GwRankBrowserCache.IsInCache(_currentFolderPath))
+            LoadFiles(Directory.Exists(_currentFolderPath) ? _currentFolderPath : null);
     }
 
     public void OpenSelected()

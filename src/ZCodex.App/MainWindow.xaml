@@ -1202,7 +1202,7 @@
                      dynamiquement dans SelectionMenu_SubmenuOpened. Environnement global au build. -->
                 <MenuItem x:Name="NatureRitualMenuItem" Header="{DynamicResource S.Menu.SelRituals}"/>
             </MenuItem>
-            <MenuItem Header="Extras">
+            <MenuItem Header="Extras" SubmenuOpened="ExtrasMenu_SubmenuOpened">
                 <MenuItem Header="{DynamicResource S.Menu.ExtrasUpdateSkills}" Click="UpdateSkills_Click"/>
                 <!-- Sous la mise à jour du catalogue, qui ne répare PAS ces icônes-là : les jeux
                      à taille fixe (stats, professions, conditions, flux, vol de vie) ne sont
@@ -1216,6 +1216,16 @@
                 <!-- Voisines de la mise à jour du catalogue : ces entrées vont chercher de la
                      donnée sur internet, et ce sont les seules du menu à le faire. -->
                 <MenuItem Header="{DynamicResource S.Menu.ExtrasPvx}" Click="PvxImport_Click"/>
+                <!-- Dépôt du teambuild actif sur GWRank. Voisin de l'import PvX : même
+                     groupe « ces entrées parlent à internet ». -->
+                <MenuItem Header="{DynamicResource S.Menu.ExtrasGwRankSend}" Click="GwRankSend_Click"/>
+                <MenuItem Header="{DynamicResource S.Menu.ExtrasGwRankSettings}" Click="GwRankSettings_Click"/>
+                <MenuItem Header="{DynamicResource S.Menu.ExtrasGwRankRefresh}" Click="GwRankRefresh_Click"/>
+                <!-- Case a cocher : l'etat est relu a l'ouverture du menu (ExtrasMenu_SubmenuOpened),
+                     car le reglage peut avoir change ailleurs. -->
+                <MenuItem x:Name="GwRankStartupMenuItem" IsCheckable="True"
+                          Header="{DynamicResource S.Menu.ExtrasGwRankStartup}"
+                          Click="GwRankSyncOnStartup_Click"/>
                 <Separator/>
                 <!-- Sites de builds ouverts dans le navigateur (rien n'est téléchargé ici) —
                      mêmes destinations que le bouton « Partager le build » de la barre d'outils. -->
@@ -1276,9 +1286,17 @@
                         <ContextMenu>
                             <MenuItem Header="GW1 Builds" Click="OpenGw1Builds_Click"/>
                             <MenuItem Header="GW PvX Fandom Wiki" Click="OpenGwPvx_Click"/>
+                            <MenuItem Header="GWRank" Click="OpenGwRank_Click"/>
                         </ContextMenu>
                     </Button.ContextMenu>
                     <TextBlock Text="&#xE774;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="#2AA0A0"/>
+                </Button>
+                <!-- Envoi direct sur GWRank, voisin du menu des sites de builds : le monde OUVRE
+                     un site, celui-ci DEPOSE le build ouvert. Deux gestes distincts, d'ou deux
+                     boutons et non une entree de plus dans le menu. -->
+                <Button Style="{StaticResource ToolbarButtonStyle}" ToolTip="{DynamicResource S.Tb.GwRankSend}"
+                        Click="GwRankSendToolbar_Click">
+                    <TextBlock Text="&#xE898;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="#4E9A4E"/>
                 </Button>
                 <Separator ToolBar.OverflowMode="Never"/>
                 <!-- Mode de jeu : INDICATEUR permanent du filtre PvE/PvP, qui est global à la

@@ -12,6 +12,7 @@ using ZCodex.Core.Models;
 using ZCodex.Core.Importers;
 using ZCodex.Core.Search;
 using ZCodex.Core.Serialization;
+using ZCodex.Core.Sync;
 using ZCodex.Core.Templates;
 using ZCodex.Data;
 using ZCodex.Data.Repositories;
@@ -163,6 +164,10 @@ public partial class MainWindow : Window
             _ = ConditionIconService.DownloadAllAsync();
             _ = FluxIconService.DownloadAllAsync();
             _ = LifeStealIconService.DownloadAllAsync();
+            // Miroir GWRank : en tache de fond et SILENCIEUX (aucune boite de dialogue), comme
+            // les icones ci-dessus. Personne n'ouvre Z-Codex pour attendre le reseau, et un echec
+            // y est sans consequence : la vue precedente reste consultable.
+            if (_settings.GwRankSyncOnStartup) _ = RefreshGwRankAsync(silent: true);
             await InitializeSkillsAsync();
         };
     }
@@ -406,6 +411,7 @@ public partial class MainWindow : Window
     // Sites de partage de builds GW1, aussi accessibles depuis Extras.
     private const string Gw1BuildsUrl = "https://www.gw1builds.com/";
     private const string GwPvxUrl     = "https://gwpvx.fandom.com/wiki/PvX_wiki";
+    private const string GwRankUrl    = "https://gwrank.com";
 
     // Toolbar « Partager le build » : deux destinations → le bouton ouvre son propre menu
     // plutôt que d'en imposer une (même idiome que le clic gauche sur le joueur assigné).
@@ -422,6 +428,13 @@ public partial class MainWindow : Window
 
     private void OpenGwPvx_Click(object sender, RoutedEventArgs e)
         => Process.Start(new ProcessStartInfo(GwPvxUrl) { UseShellExecute = true });
+
+    private void OpenGwRank_Click(object sender, RoutedEventArgs e)
+        => Process.Start(new ProcessStartInfo(GwRankUrl) { UseShellExecute = true });
+
+    // Bouton dedie de la barre d'outils : meme action que « Extras ▸ Envoyer sur GWRank ».
+    private void GwRankSendToolbar_Click(object sender, RoutedEventArgs e)
+        => GwRankSend_Click(sender, e);
 
     // Bouton « 🔍 Rechercher » de l'onglet Search : construit la requête depuis le perso-requête,
     // scanne récursivement la racine des builds (en tâche de fond → pas de gel UI) selon les
@@ -1095,6 +1108,20 @@ public partial class MainWindow : Window
 
     private bool SaveTeamBuild(TeamBuildViewModel tb, bool forceDialog = false)
     {
+        // Build ouvert depuis le miroir GWRank : il n'est pas à l'utilisateur, et le prochain
+        // rafraîchissement reconstruit le dossier — écrire par-dessus perdrait le travail sans
+        // prévenir. On bascule donc en « enregistrer une copie » : destination demandée, et
+        // identité NEUVE pour ne pas revendiquer celle de l'auteur (sinon le premier envoi
+        // écraserait son build sur le serveur, cf. la clé (propriétaire, source_uuid) de l'API).
+        if (GwRankBrowserCache.IsInCache(tb.FilePath))
+        {
+            MessageBox.Show(T("S.GwRank.CopyBody"), T("S.GwRank.CopyTitle"),
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            tb.Id = Guid.NewGuid();
+            tb.FilePath = null;
+            forceDialog = true;
+        }
+
         var filePath = forceDialog ? null : tb.FilePath;
         if (filePath == null)
         {
@@ -1240,6 +1267,343 @@ public partial class MainWindow : Window
 
     // Extras → Télécharger les builds PvX. Le catalogue est indispensable : sans lui aucun code
     // template ne se décode, et les équipes ne pourraient pas être assemblées.
+    // ── GWRank ────────────────────────────────────────────────────────────────
+    // « Extras ▸ Réglages GWRank ». Renvoie true si une clé est configurée EN SORTIE : le
+    // chemin d'envoi enchaîne dessus quand l'utilisateur n'en avait pas encore.
+    private bool OpenGwRankSettings()
+    {
+        var win = new GwRankSettingsWindow(_settings.GwRankApiToken, _settings.GwRankBaseUrl,
+                                           _settings.GwRankPublicByDefault) { Owner = this };
+        if (win.ShowDialog() != true)
+            return !string.IsNullOrWhiteSpace(_settings.GwRankApiToken);
+
+        _settings.GwRankApiToken        = win.Token;
+        _settings.GwRankBaseUrl         = win.BaseUrl;
+        _settings.GwRankPublicByDefault = win.PublicByDefault;
+        _settings.Save();
+        return !string.IsNullOrWhiteSpace(win.Token);
+    }
+
+    private void GwRankSettings_Click(object sender, RoutedEventArgs e) => OpenGwRankSettings();
+
+    // ── Miroir GWRank du navigateur ───────────────────────────────────────────
+
+    /// <summary>« Extras ▸ Rafraîchir depuis GWRank ». Rapatrie tout ce qui est visible et
+    /// reconstruit les quatre dossiers du navigateur.</summary>
+    private async void GwRankRefresh_Click(object sender, RoutedEventArgs e)
+        => await RefreshGwRankAsync(silent: false);
+
+    /// <summary>« Extras ▸ Synchroniser GWRank au démarrage ». Bascule le réglage ; le cocher
+    /// lance tout de suite une synchronisation, sinon la case resterait cochée sans effet visible
+    /// jusqu'au prochain lancement.</summary>
+    private async void GwRankSyncOnStartup_Click(object sender, RoutedEventArgs e)
+    {
+        _settings.GwRankSyncOnStartup = sender is MenuItem { IsChecked: true };
+        _settings.Save();
+        if (_settings.GwRankSyncOnStartup) await RefreshGwRankAsync(silent: false);
+    }
+
+    /// <summary>
+    /// Rafraîchit le miroir. <paramref name="silent"/> pour la synchronisation de démarrage :
+    /// elle ne doit ni bloquer le lancement ni ouvrir une boîte de dialogue devant un utilisateur
+    /// qui voulait juste ouvrir l'application — un échec y est sans conséquence, l'ancienne vue
+    /// reste consultable.
+    /// </summary>
+    private async Task RefreshGwRankAsync(bool silent)
+    {
+        if (string.IsNullOrWhiteSpace(_settings.GwRankApiToken))
+        {
+            if (silent) return;
+            if (!OpenGwRankSettings()) return;
+        }
+
+        GwRankSyncReport report;
+        var previousCursor = Mouse.OverrideCursor;
+        if (!silent) Mouse.OverrideCursor = Cursors.Wait;
+        try
+        {
+            using var client = new GwRankClient(_settings.GwRankApiToken, _settings.GwRankBaseUrl);
+            report = await GwRankBrowserCache.RefreshAsync(client);
+        }
+        finally { if (!silent) Mouse.OverrideCursor = previousCursor; }
+
+        _vm.Browser.RefreshGwRankNode();
+
+        if (silent) return;
+
+        if (!report.IsOk)
+        {
+            var message = report.Status switch
+            {
+                GwRankStatus.Unauthorized => T("S.GwRank.FailedUnauthorized"),
+                GwRankStatus.Offline      => T("S.GwRank.FailedOffline"),
+                _                         => string.Format(T("S.GwRank.FailedOther"), report.Message ?? "?"),
+            };
+            MessageBox.Show(message, T("S.GwRank.FailedTitle"),
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        var text = string.Format(T("S.GwRank.SyncDone"),
+            report.MyBuilds, report.MyTeamBuilds, report.PublicBuilds, report.PublicTeamBuilds);
+        if (report.Skipped > 0)
+            text += "\n\n" + string.Format(T("S.GwRank.SyncSkipped"), report.Skipped);
+
+        MessageBox.Show(text, T("S.GwRank.SentTitle"), MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
+
+    /// <summary>
+    /// « Extras ▸ Envoyer sur GWRank ». Dépose le teambuild ACTIF sur la bibliothèque GWRank de
+    /// l'utilisateur.
+    ///
+    /// Le garde-fou central est la collision d'identité : le <c>id</c> d'un .zcx n'est pas unique
+    /// entre fichiers (dupliquer un build dans l'explorateur en crée deux qui le partagent), et
+    /// l'API GWRank est clé DESSUS. Envoyer sans vérifier écraserait le jumeau côté serveur, sans
+    /// que rien ne le signale. On vérifie donc AVANT le réseau, et on propose la réparation.
+    /// </summary>
+    /// <summary>
+    /// Emballe l'onglet Build actif en teambuild à UN personnage, la forme sous laquelle GWRank
+    /// stocke les deux (un build simple n'est qu'un .zcx d'un seul personnage).
+    ///
+    /// Le point délicat est l'IDENTITÉ : un onglet Build vient d'un .txt, le format de template du
+    /// jeu, qui n'a aucun champ pour en porter une. On la reprend donc, par ordre de préférence :
+    ///   1. celle sous laquelle CE FICHIER a déjà été déposé (index, clé par chemin) — sinon
+    ///      chaque envoi du même build créerait un doublon de plus sur le serveur ;
+    ///   2. à défaut, celle du personnage, qui est stable tant que l'onglet reste ouvert.
+    ///
+    /// <c>CreatedAt</c> suit la même exigence de STABILITÉ : pris sur la date du fichier source, il
+    /// ne bouge pas d'un envoi à l'autre. Un <c>UtcNow</c> changerait l'empreinte à chaque clic et
+    /// le « déjà à jour » ne tomberait jamais.
+    /// </summary>
+    private TeamBuild BuildTabToModel(BuildEditorViewModel buildTab, GwRankSyncIndex index)
+    {
+        DateTime created = default;
+        if (buildTab.SourcePath is { } p)
+        {
+            try { if (File.Exists(p)) created = File.GetLastWriteTimeUtc(p); }
+            catch (IOException) { /* fichier verrouillé ou lecteur tombé : date inconnue, pas grave */ }
+            catch (UnauthorizedAccessException) { }
+        }
+
+        var character = CharToModel(buildTab.Character);
+        // Le personnage d'un .txt reçoit un identifiant neuf à CHAQUE ouverture, et cet
+        // identifiant fait partie du document déposé : sans cette reprise reproductible, fermer
+        // puis rouvrir l'onglet suffisait à faire « changer » un build que personne n'avait
+        // touché. Aucun cadenas ni membre de spike ne le référence dans un build simple.
+        if (buildTab.SourcePath is { } src)
+            character.Id = GwRankSyncIndex.DeterministicId(src);
+
+        return new TeamBuild
+        {
+            Id         = index.FindIdByPath(buildTab.SourcePath) ?? character.Id,
+            Name       = buildTab.Title,
+            Characters = { character },
+            CreatedAt  = created,
+            UpdatedAt  = DateTime.UtcNow,
+        };
+    }
+
+    private async void GwRankSend_Click(object sender, RoutedEventArgs e)
+    {
+        // Aucune cle : on ouvre les reglages, dont le bandeau d'accueil explique ou la prendre.
+        // Un MessageBox « voulez-vous ouvrir les reglages ? » n'apprendrait rien et couterait un
+        // clic de plus avant la seule fenetre qui, elle, repond a la question.
+        if (string.IsNullOrWhiteSpace(_settings.GwRankApiToken) && !OpenGwRankSettings()) return;
+
+        var index = GwRankSyncIndex.Load();
+
+        // Les DEUX vues sont envoyables : un build simple est un .zcx à un personnage, exactement
+        // la même ressource côté GWRank (cf. docs/zcx_format.md §1). Même dispatch que Save_Click.
+        TeamBuild model;
+        string displayName;
+        string? filePath;
+        TeamBuildViewModel? teamTab = null;
+
+        if (_vm.IsBuildEditorActive && _vm.ActiveBuild is { } buildTab)
+        {
+            model       = BuildTabToModel(buildTab, index);
+            displayName = buildTab.Title;
+            filePath    = buildTab.SourcePath;
+        }
+        else if (_vm.ActiveTeamBuild is { } tb)
+        {
+            teamTab     = tb;
+            model       = ViewModelToModel(tb);
+            displayName = tb.Name;
+            filePath    = tb.FilePath;
+        }
+        else
+        {
+            MessageBox.Show(T("S.GwRank.NothingOpen"), T("S.GwRank.SentTitle"),
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        // Même capture qu'à l'enregistrement : le mode courant fait partie de ce qu'on dépose.
+        model.GameMode = ToCoreGameMode(_vm.SkillPanel.SelectedGameMode);
+
+        // Le nom qui fait foi est celui du FICHIER, pas le champ interne du document. Renommer un
+        // onglet dans Z-Codex met les deux à jour, mais un fichier renommé depuis l'explorateur
+        // laisse le champ interne en arrière : mesuré sur la bibliothèque de référence, 16 des
+        // 269 fichiers divergent, dont 14 encore sur « New Teambuild 1 » / « New PawNed3
+        // Template 1 ». Sans cette reprise, GWRank affiche ces noms-là au lieu du vrai.
+        if (filePath is { Length: > 0 } named
+            && Path.GetFileNameWithoutExtension(named) is { Length: > 0 } fileName)
+        {
+            model.Name  = fileName;
+            displayName = fileName;
+        }
+
+        // Portées proposées : le teambuild entier, plus une par cadenas. Un cadenas relie des
+        // lignes — racines ET variantes — en une équipe cohérente : c'est elle qu'on veut pouvoir
+        // publier, sans l'atelier de variantes autour.
+        var scopes = new List<GwRankUploadScope>
+        {
+            new(string.Format(T("S.GwRank.ScopeWhole"), CountLines(model.Characters)), null),
+        };
+        foreach (var l in model.Locks.Where(l => l.MemberIds.Count > 0).OrderBy(l => l.Index))
+            scopes.Add(new GwRankUploadScope(
+                string.Format(T("S.GwRank.ScopeLock"), l.Index, l.MemberIds.Count), l.Index));
+
+        // Chaque cadenas est un teambuild À PART sur le serveur : son identité est dérivée de celle
+        // du teambuild d'origine, de façon reproductible, pour qu'un renvoi mette à jour LE MÊME
+        // build sans jamais écraser le teambuild complet.
+        Guid IdOfScope(GwRankUploadScope s) => s.LockIndex is { } i
+            ? GwRankSyncIndex.DeterministicId($"{model.Id:D}#lock{i}")
+            : model.Id;
+
+        // Nom proposé : celui du dernier dépôt de CETTE portée s'il existe — sinon l'utilisateur
+        // qui a publié sous un autre nom le verrait écrasé par le nom de fichier à chaque envoi.
+        string NameForScope(GwRankUploadScope s)
+            => index.NameOf(IdOfScope(s))
+               ?? (s.LockIndex is { } i
+                   ? string.Format(T("S.GwRank.ScopeLockName"), model.Name, i)
+                   : model.Name);
+
+        // Demandé AVANT de toucher à quoi que ce soit : si l'utilisateur renonce ici, rien ne doit
+        // avoir bougé — ni son fichier, ni l'identité du build. C'est aussi pour cela que la
+        // question passe avant la réparation de collision, qui, elle, réécrit le fichier.
+        var upload = new GwRankUploadWindow(scopes, NameForScope,
+                                            s => index.VisibilityOf(IdOfScope(s)),
+                                            _settings.GwRankPublicByDefault) { Owner = this };
+        if (upload.ShowDialog() != true) return;
+
+        var visibility = upload.SelectedVisibility;
+        bool isPublic = visibility == GwRankUploadWindow.Public;
+        // Le choix devient le DÉFAUT du prochain envoi — un défaut, pas une règle : la fenêtre
+        // s'ouvre quand même à chaque fois.
+        if (_settings.GwRankPublicByDefault != isPublic)
+        {
+            _settings.GwRankPublicByDefault = isPublic;
+            _settings.Save();
+        }
+
+        if (upload.SelectedScope.LockIndex is { } lockIndex)
+        {
+            var lockDef = model.Locks.FirstOrDefault(l => l.Index == lockIndex);
+            var subset  = lockDef is null ? null : TeamBuildSubset.FromLock(model, lockDef);
+            if (subset is null)
+            {
+                MessageBox.Show(T("S.GwRank.ScopeLockEmpty"), T("S.GwRank.FailedTitle"),
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            subset.Id   = IdOfScope(upload.SelectedScope);
+            model       = subset;
+            // Le sous-ensemble ne correspond à AUCUN fichier : l'associer au .zcx du teambuild
+            // complet ferait croire à l'index que ce fichier a été déposé sous cette identité-là.
+            filePath    = null;
+            // Rien à réenregistrer : un cadenas extrait n'existe pas sur le disque.
+            teamTab     = null;
+        }
+
+        // Le nom saisi fait foi — c'est sous celui-là que le build vivra sur GWRank.
+        model.Name  = upload.SelectedName;
+        displayName = upload.SelectedName;
+
+        // Le verdict porte sur ce qu'on envoie VRAIMENT, donc après le choix de la portée.
+        var verdict = index.Check(model, filePath);
+        string? extra = null;
+
+        if (verdict.Check == GwRankUploadCheck.Unchanged)
+        {
+            MessageBox.Show(string.Format(T("S.GwRank.Unchanged"), displayName),
+                T("S.GwRank.SentTitle"), MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        if (verdict.Check == GwRankUploadCheck.IdentityCollision)
+        {
+            var ask = MessageBox.Show(
+                string.Format(T("S.GwRank.CollisionBody"), verdict.ConflictingPath),
+                T("S.GwRank.CollisionTitle"), MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            if (ask != MessageBoxResult.Yes) return;
+
+            GwRankSyncIndex.ReassignIdentity(model);
+            // Un teambuild PORTE son identité dans son fichier : sans réenregistrement, la
+            // prochaine ouverture repartirait de l'ancienne et la collision reviendrait. Un build
+            // simple, lui, vit dans un .txt qui n'a pas de champ d'identité — c'est l'index, clé
+            // par chemin, qui s'en souvient, et il n'y a donc rien à réécrire ni à signaler.
+            if (teamTab is not null)
+            {
+                teamTab.Id = model.Id;
+                extra = teamTab.FilePath is not null && SaveTeamBuild(teamTab)
+                    ? T("S.GwRank.CollisionFixed")
+                    : T("S.GwRank.CollisionUnsaved");
+            }
+        }
+
+        GwRankResult<GwRankSummary> res;
+        var previousCursor = Mouse.OverrideCursor;
+        Mouse.OverrideCursor = Cursors.Wait;
+        try
+        {
+            using var client = new GwRankClient(_settings.GwRankApiToken, _settings.GwRankBaseUrl);
+            res = await client.UploadAsync(model, isPublic);
+        }
+        finally { Mouse.OverrideCursor = previousCursor; }
+
+        if (!res.IsOk)
+        {
+            var message = res.Status switch
+            {
+                GwRankStatus.Unauthorized => T("S.GwRank.FailedUnauthorized"),
+                GwRankStatus.Offline      => T("S.GwRank.FailedOffline"),
+                GwRankStatus.Rejected     => string.Format(T("S.GwRank.FailedRejected"), res.Message ?? "?"),
+                _                         => string.Format(T("S.GwRank.FailedOther"), res.Message ?? "?"),
+            };
+            // L'identité réattribuée, elle, RESTE : la reprendre relancerait la collision au
+            // prochain essai, pour rien.
+            MessageBox.Show(Join(message, extra), T("S.GwRank.FailedTitle"),
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        index.Record(model, filePath, res.Value!.Id, visibility);
+        index.Save();
+
+        // Le miroir du navigateur doit refleter ce qu'on vient de deposer : sans cela, le build
+        // envoye n'apparait dans « My GWRank … » qu'apres un rafraichissement manuel, ce qui donne
+        // l'impression que l'envoi n'a rien fait. Silencieux : le message de succes suffit.
+        await RefreshGwRankAsync(silent: true);
+
+        var ok = string.Format(T(res.Value.Created ? "S.GwRank.SentCreated" : "S.GwRank.SentUpdated"), displayName);
+        // Rappeler l'etat obtenu : « envoye » ne dit pas si le build est partage ou non.
+        ok += Environment.NewLine + T(isPublic ? "S.GwRank.SentPublic" : "S.GwRank.SentPrivate");
+        MessageBox.Show(Join(ok, extra), T("S.GwRank.SentTitle"),
+            MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
+    /// <summary>Nombre total de lignes d'un arbre de personnages, variantes comprises — c'est ce
+    /// que « tout le teambuild » envoie réellement.</summary>
+    private static int CountLines(List<CharacterBuild> list)
+        => list.Sum(c => 1 + CountLines(c.Variants));
+
+    private static string Join(string message, string? extra)
+        => string.IsNullOrEmpty(extra) ? message : $"{message}\n\n{extra}";
+
     private void PvxImport_Click(object sender, RoutedEventArgs e)
     {
         if (_vm.SkillPanel.AllSkills.Count == 0)
@@ -1396,6 +1760,11 @@ public partial class MainWindow : Window
     }
 
     // ── View menu ─────────────────────────────────────────────────────────────
+
+    // Le reglage de synchro GWRank est persiste : la case doit refleter settings.json a chaque
+    // ouverture du menu, pas l'etat pose au demarrage.
+    private void ExtrasMenu_SubmenuOpened(object sender, RoutedEventArgs e)
+        => GwRankStartupMenuItem.IsChecked = _settings.GwRankSyncOnStartup;
 
     private void ViewMenu_SubmenuOpened(object sender, RoutedEventArgs e)
     {

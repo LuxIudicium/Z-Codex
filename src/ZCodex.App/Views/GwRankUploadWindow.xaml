@@ -1,0 +1,66 @@
+<Window x:Class="ZCodex.App.Views.GwRankUploadWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{DynamicResource S.GwRank.UploadTitle}"
+        Width="500" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Background="{DynamicResource DialogBackgroundBrush}"
+        Foreground="{DynamicResource TextPrimaryBrush}">
+
+    <!-- Choix de la visibilité AU MOMENT DE L'ENVOI, et non dans un réglage global : rendre un
+         build public est un geste public, il doit être décidé build par build et sous les yeux de
+         l'utilisateur. Le dernier choix devient le défaut du suivant — c'est un défaut, pas une
+         règle : la fenêtre s'ouvre quand même à chaque fois. -->
+    <StackPanel Margin="22,18">
+
+        <!-- Nom modifiable : le nom du fichier n'est pas toujours celui sous lequel on veut
+             publier. Prérempli avec le nom déjà déposé s'il y en a un — sinon le choix de
+             l'utilisateur serait écrasé par le nom de fichier à chaque envoi. -->
+        <TextBlock Text="{DynamicResource S.GwRank.NameLabel}" FontWeight="SemiBold"/>
+        <TextBox x:Name="NameBox" Margin="0,4,0,0" Padding="4,3" FontSize="13"
+                 MaxLength="120" TextChanged="Name_Changed"/>
+        <TextBlock x:Name="NameWarning" Text="{DynamicResource S.GwRank.NameEmpty}"
+                   Visibility="Collapsed" TextWrapping="Wrap" FontSize="11" Margin="0,4,0,0"
+                   Foreground="OrangeRed"/>
+
+        <!-- Rappel de l'état actuel : replier ce build en privé (ou l'exposer) sans s'en rendre
+             compte est précisément ce qu'il faut empêcher. Masqué s'il n'a jamais été déposé. -->
+        <Border x:Name="CurrentPanel" Visibility="Collapsed" Margin="0,10,0,0"
+                Background="{DynamicResource InsetBackgroundBrush}"
+                BorderBrush="{DynamicResource BorderLightBrush}" BorderThickness="1"
+                CornerRadius="4" Padding="10,7">
+            <TextBlock x:Name="CurrentText" TextWrapping="Wrap" FontSize="12"/>
+        </Border>
+
+        <!-- Portée : tout le teambuild, ou l'une de ses compositions cadenassées. Le panneau est
+             replié quand il n'y a aucun cadenas — il n'y a alors rien à choisir. -->
+        <StackPanel x:Name="ScopePanel" Visibility="Collapsed" Margin="0,16,0,0">
+            <TextBlock Text="{DynamicResource S.GwRank.ScopeLabel}" FontWeight="SemiBold"/>
+            <StackPanel x:Name="ScopeOptions" Margin="0,6,0,0"/>
+        </StackPanel>
+
+        <!-- Le build rejoint TOUJOURS la collection de l'utilisateur : « public » n'est pas une
+             destination concurrente, c'est un partage EN PLUS. Deux boutons exclusifs
+             « privé / public » laissaient croire qu'un build partagé quittait la collection —
+             d'où une simple case, et la ligne d'acquis au-dessus. -->
+        <TextBlock Text="{DynamicResource S.GwRank.AlwaysInCollection}" TextWrapping="Wrap"
+                   FontSize="12" Margin="0,16,0,0"/>
+
+        <CheckBox x:Name="PublicCheck" Margin="0,12,0,0">
+            <StackPanel>
+                <TextBlock Text="{DynamicResource S.GwRank.SharePublicly}" FontWeight="SemiBold"/>
+                <TextBlock Text="{DynamicResource S.GwRank.SharePubliclyHint}" TextWrapping="Wrap"
+                           FontSize="11" Margin="0,2,0,0"
+                           Foreground="{DynamicResource TextSecondaryBrush}"/>
+            </StackPanel>
+        </CheckBox>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+            <Button Content="{DynamicResource S.Common.Cancel}" Padding="14,4"
+                    IsCancel="True" Click="Cancel_Click"/>
+            <Button x:Name="SendButton" Content="{DynamicResource S.GwRank.UploadConfirm}"
+                    Padding="14,4" Margin="8,0,0,0" IsDefault="True" Click="Send_Click"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

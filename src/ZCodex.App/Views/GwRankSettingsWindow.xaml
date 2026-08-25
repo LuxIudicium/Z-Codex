@@ -1,0 +1,75 @@
+<Window x:Class="ZCodex.App.Views.GwRankSettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{DynamicResource S.GwRank.Title}"
+        Width="580" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Background="{DynamicResource DialogBackgroundBrush}"
+        Foreground="{DynamicResource TextPrimaryBrush}">
+
+    <!-- Réglages de la synchronisation GWRank. La clé est saisie ici et nulle part ailleurs :
+         elle n'apparaît dans aucun libellé, aucun journal, aucun fichier du dépôt.
+         Le bouton de test permet de valider la clé SANS rien envoyer — indispensable, sinon le
+         premier retour sur une clé fautive serait un échec d'envoi de build. -->
+    <StackPanel Margin="22,18">
+
+        <!-- Bandeau d'accueil, affiché UNIQUEMENT quand aucune clé n'est encore configurée : c'est
+             le premier contact de l'utilisateur avec GWRank, et « collez votre clé » ne veut rien
+             dire tant qu'on ne lui a pas dit où la prendre. Une fois la clé posée, l'explication
+             n'est plus que du bruit — d'où le repli complet (Collapsed). -->
+        <Border x:Name="OnboardPanel" Visibility="Collapsed"
+                Background="{DynamicResource InsetBackgroundBrush}"
+                BorderBrush="{DynamicResource BorderLightBrush}" BorderThickness="1"
+                CornerRadius="4" Padding="14,12" Margin="0,0,0,18">
+            <StackPanel>
+                <TextBlock Text="{DynamicResource S.GwRank.OnboardTitle}"
+                           FontWeight="SemiBold" FontSize="13" TextWrapping="Wrap"/>
+                <TextBlock Text="{DynamicResource S.GwRank.OnboardIntro}" TextWrapping="Wrap"
+                           FontSize="12" Margin="0,6,0,0"/>
+                <TextBlock Text="{DynamicResource S.GwRank.OnboardStep1}" TextWrapping="Wrap"
+                           FontSize="12" Margin="0,8,0,0"/>
+                <TextBlock Text="{DynamicResource S.GwRank.OnboardStep2}" TextWrapping="Wrap"
+                           FontSize="12" Margin="0,3,0,0"/>
+                <TextBlock Text="{DynamicResource S.GwRank.OnboardStep3}" TextWrapping="Wrap"
+                           FontSize="12" Margin="0,3,0,0"/>
+                <Button x:Name="OpenSiteButton" HorizontalAlignment="Left" Margin="0,10,0,0"
+                        Padding="10,3" Content="{DynamicResource S.GwRank.OnboardOpenSite}"
+                        Click="OpenSite_Click"/>
+            </StackPanel>
+        </Border>
+
+        <TextBlock Text="{DynamicResource S.GwRank.TokenLabel}" FontWeight="SemiBold"/>
+        <!-- PasswordBox serait plus « sûr » visuellement, mais la clé se colle depuis le site et
+             doit pouvoir être relue pour être vérifiée : un champ masqué rendrait toute erreur de
+             copier-coller indétectable. -->
+        <TextBox x:Name="TokenBox" Margin="0,4,0,0" Padding="4,3"
+                 FontFamily="Consolas" TextChanged="Input_Changed"/>
+        <TextBlock Text="{DynamicResource S.GwRank.TokenHint}" TextWrapping="Wrap"
+                   FontSize="11" Margin="0,4,0,0"
+                   Foreground="{DynamicResource TextSecondaryBrush}"/>
+
+        <TextBlock Text="{DynamicResource S.GwRank.ServerLabel}" FontWeight="SemiBold" Margin="0,14,0,0"/>
+        <TextBox x:Name="ServerBox" Margin="0,4,0,0" Padding="4,3" TextChanged="Input_Changed"/>
+        <TextBlock Text="{DynamicResource S.GwRank.ServerHint}" TextWrapping="Wrap"
+                   FontSize="11" Margin="0,4,0,0"
+                   Foreground="{DynamicResource TextSecondaryBrush}"/>
+
+        <CheckBox x:Name="PublicBox" Margin="0,14,0,0"
+                  Content="{DynamicResource S.GwRank.PublicDefault}"/>
+
+        <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+            <Button x:Name="TestButton" Content="{DynamicResource S.GwRank.Test}"
+                    Padding="12,4" Click="Test_Click"/>
+            <TextBlock x:Name="TestResult" Margin="12,0,0,0" VerticalAlignment="Center"
+                       TextWrapping="Wrap" MaxWidth="360"/>
+        </StackPanel>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+            <Button Content="{DynamicResource S.Common.Cancel}" Padding="14,4"
+                    IsCancel="True" Click="Cancel_Click"/>
+            <Button Content="{DynamicResource S.Common.Save}" Padding="14,4" Margin="8,0,0,0"
+                    IsDefault="True" Click="Save_Click"/>
+        </StackPanel>
+    </StackPanel>
+</Window>
