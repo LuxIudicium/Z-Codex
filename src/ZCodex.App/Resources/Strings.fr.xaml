@@ -52,7 +52,7 @@
     <sys:String x:Key="S.Menu.ExtrasUpdateSkills">Mettre à jour les compétences (wiki)</sys:String>
     <sys:String x:Key="S.Menu.ExtrasArmorCalc">Calculateur d'armure</sys:String>
     <sys:String x:Key="S.Menu.ExtrasPvx">Télécharger les builds PvX...</sys:String>
-    <sys:String x:Key="S.Menu.ExtrasGvgReport">Importer un rapport GvG...</sys:String>
+    <sys:String x:Key="S.Menu.ExtrasGvgReport">Importer de GvG Report...</sys:String>
     <sys:String x:Key="S.Menu.ExtrasCheckIcons">Vérifier les icônes (wiki)</sys:String>
     <sys:String x:Key="S.Menu.ExtrasRecomputeCategories">Recalculer les catégories de compétences</sys:String>
     <sys:String x:Key="S.Menu.Window">Fenêtre</sys:String>
@@ -374,7 +374,7 @@
     <sys:String x:Key="S.Pvx.NoDestination">Choisissez un dossier de destination existant.</sys:String>
     <sys:String x:Key="S.Dlg.SelectPvxDestination">Où déposer les builds PvX</sys:String>
 
-    <sys:String x:Key="S.Win.GvgTitle">Importer un rapport GvG</sys:String>
+    <sys:String x:Key="S.Win.GvgTitle">Importer de GvG Report</sys:String>
     <sys:String x:Key="S.Gvg.Intro">Transforme le rapport d'un match GvG publié en team builds : un .zcx par guilde, nommé d'après la date, les deux guildes avec leur classement, et la carte.</sys:String>
     <sys:String x:Key="S.Gvg.Credit">Rapports de match enregistrés et publiés par</sys:String>
     <sys:String x:Key="S.Gvg.Url">Lien du rapport :</sys:String>
@@ -403,6 +403,7 @@
     <sys:String x:Key="S.About.Successor">Inspiré de paw·ned², avec une architecture moderne et les identifiants de template officiels du jeu.</sys:String>
     <sys:String x:Key="S.About.DataCredit">Données de compétences et icônes :</sys:String>
     <sys:String x:Key="S.About.BuildCredit">Builds de la communauté :</sys:String>
+    <sys:String x:Key="S.About.ServiceCredit">Bibliothèque de builds et rapports de match, merci à :</sys:String>
     <sys:String x:Key="S.About.Disclaimer">Guild Wars est une marque d'ArenaNet / NCSOFT. Z-Codex est un outil non officiel.</sys:String>
     <sys:String x:Key="S.About.Community">Retours, bugs et idées de fonctionnalités :</sys:String>
     <sys:String x:Key="S.About.Thanks">Merci à Holye, Arka, Dark, Courant, Ramstram et Arloz — et à vous, pour avoir téléchargé l'app !</sys:String>

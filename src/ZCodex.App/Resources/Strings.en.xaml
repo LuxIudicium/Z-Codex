@@ -49,7 +49,7 @@
     <sys:String x:Key="S.Menu.ExtrasUpdateSkills">Update skill database (wiki)</sys:String>
     <sys:String x:Key="S.Menu.ExtrasArmorCalc">Armor calculator</sys:String>
     <sys:String x:Key="S.Menu.ExtrasPvx">Download PvX builds...</sys:String>
-    <sys:String x:Key="S.Menu.ExtrasGvgReport">Import a GvG report...</sys:String>
+    <sys:String x:Key="S.Menu.ExtrasGvgReport">Import from GvG Report...</sys:String>
     <sys:String x:Key="S.Menu.ExtrasCheckIcons">Check icons (wiki)</sys:String>
     <sys:String x:Key="S.Menu.ExtrasRecomputeCategories">Recompute skill categories</sys:String>
     <sys:String x:Key="S.Menu.Window">Window</sys:String>
@@ -371,7 +371,7 @@
     <sys:String x:Key="S.Pvx.NoDestination">Choose an existing destination folder.</sys:String>
     <sys:String x:Key="S.Dlg.SelectPvxDestination">Where to put the PvX builds</sys:String>
 
-    <sys:String x:Key="S.Win.GvgTitle">Import a GvG report</sys:String>
+    <sys:String x:Key="S.Win.GvgTitle">Import from GvG Report</sys:String>
     <sys:String x:Key="S.Gvg.Intro">Turns a published GvG match report into team builds: one .zcx per guild, named after the date, both guilds with their rating, and the map.</sys:String>
     <sys:String x:Key="S.Gvg.Credit">Match reports recorded and published by</sys:String>
     <sys:String x:Key="S.Gvg.Url">Report link:</sys:String>
@@ -400,6 +400,7 @@
     <sys:String x:Key="S.About.Successor">Inspired by paw·ned², with a modern architecture and the game's official template identifiers.</sys:String>
     <sys:String x:Key="S.About.DataCredit">Skill data and icons:</sys:String>
     <sys:String x:Key="S.About.BuildCredit">Community builds:</sys:String>
+    <sys:String x:Key="S.About.ServiceCredit">Build library and match reports, with thanks to:</sys:String>
     <sys:String x:Key="S.About.Disclaimer">Guild Wars is a trademark of ArenaNet / NCSOFT. Z-Codex is an unofficial tool.</sys:String>
     <sys:String x:Key="S.About.Community">Feedback, bug reports and feature ideas:</sys:String>
     <sys:String x:Key="S.About.Thanks">Thanks to Holye, Arka, Dark, Courant, Ramstram and Arloz — and to you, for downloading the app!</sys:String>

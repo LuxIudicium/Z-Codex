@@ -63,6 +63,20 @@
                     </Hyperlink>
                     <Run Text="— CC BY-NC-SA 3.0"/>
                 </TextBlock>
+                <!-- GWRank et gvg.report : deux services tiers dont Z-Codex lit les données. Ici,
+                     dans le bloc des crédits, plutôt que dans la ligne de remerciements au-dessus
+                     qui ne nomme que des personnes — et ici les liens sont cliquables. -->
+                <TextBlock FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"
+                           TextWrapping="Wrap" Margin="0,4,0,0">
+                    <Run Text="{DynamicResource S.About.ServiceCredit}"/>
+                    <Hyperlink NavigateUri="https://gwrank.com" RequestNavigate="Hyperlink_RequestNavigate">
+                        GWRank
+                    </Hyperlink>
+                    <Run Text="·"/>
+                    <Hyperlink NavigateUri="https://gvg.report" RequestNavigate="Hyperlink_RequestNavigate">
+                        gvg.report
+                    </Hyperlink>
+                </TextBlock>
                 <TextBlock Text="{DynamicResource S.About.Disclaimer}"
                            FontSize="11" Foreground="{DynamicResource TextMutedBrush}" Margin="0,6,0,0" TextWrapping="Wrap"/>
             </StackPanel>

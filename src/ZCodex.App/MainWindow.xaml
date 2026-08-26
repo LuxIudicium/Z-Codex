@@ -1202,25 +1202,30 @@
                      dynamiquement dans SelectionMenu_SubmenuOpened. Environnement global au build. -->
                 <MenuItem x:Name="NatureRitualMenuItem" Header="{DynamicResource S.Menu.SelRituals}"/>
             </MenuItem>
+            <!-- Cinq familles, séparées par un trait. Le menu reste À PLAT : tout ce qu'il contient
+                 s'atteint d'un seul clic, et une entrée cherchée se lit sans ouvrir de sous-menu.
+                 L'ordre à l'intérieur de chaque famille est celui d'avant, pour ne pas défaire les
+                 habitudes acquises. -->
             <MenuItem Header="Extras" SubmenuOpened="ExtrasMenu_SubmenuOpened">
+
+                <!-- 1. Entretien du catalogue de compétences. « Vérifier les icônes » suit la mise
+                     à jour, qui ne répare PAS ces icônes-là : les jeux à taille fixe (stats,
+                     professions, conditions, flux, vol de vie) ne sont tirés qu'au démarrage, et un
+                     premier téléchargement raté n'avait jusqu'ici aucun recours côté utilisateur.
+                     Le recalcul des catégories, lui, ne télécharge rien : tout se déduit de la base. -->
                 <MenuItem Header="{DynamicResource S.Menu.ExtrasUpdateSkills}" Click="UpdateSkills_Click"/>
-                <!-- Sous la mise à jour du catalogue, qui ne répare PAS ces icônes-là : les jeux
-                     à taille fixe (stats, professions, conditions, flux, vol de vie) ne sont
-                     tirés qu'au démarrage, et un premier téléchargement raté n'avait jusqu'ici
-                     aucun recours côté utilisateur. -->
                 <MenuItem Header="{DynamicResource S.Menu.ExtrasCheckIcons}" Click="CheckIcons_Click"/>
-                <!-- Recalcule la colonne « Mechanics » du catalogue (enchantements, maintien,
-                     sacrifice, conditions infligées…). Hors du groupe « internet » ci-dessous :
-                     à ce stade tout se déduit de la base, rien n'est téléchargé. -->
                 <MenuItem Header="{DynamicResource S.Menu.ExtrasRecomputeCategories}" Click="RecomputeCategories_Click"/>
-                <!-- Voisines de la mise à jour du catalogue : ces entrées vont chercher de la
-                     donnée sur internet, et ce sont les seules du menu à le faire. -->
+
+                <Separator/>
+
+                <!-- 2. Faire ENTRER des builds venus d'ailleurs : deux sources, même geste. -->
                 <MenuItem Header="{DynamicResource S.Menu.ExtrasPvx}" Click="PvxImport_Click"/>
-                <!-- Import d'un match réel depuis gvg.report. Sous l'import PvX : même geste
-                     (aller chercher des builds ailleurs), autre source. -->
                 <MenuItem Header="{DynamicResource S.Menu.ExtrasGvgReport}" Click="GvgReportImport_Click"/>
-                <!-- Dépôt du teambuild actif sur GWRank. Voisin de l'import PvX : même
-                     groupe « ces entrées parlent à internet ». -->
+
+                <Separator/>
+
+                <!-- 3. GWRank : le seul aller-retour du menu (on dépose ET on rapatrie). -->
                 <MenuItem Header="{DynamicResource S.Menu.ExtrasGwRankSend}" Click="GwRankSend_Click"/>
                 <MenuItem Header="{DynamicResource S.Menu.ExtrasGwRankBulk}" Click="GwRankBulk_Click"/>
                 <MenuItem Header="{DynamicResource S.Menu.ExtrasGwRankSettings}" Click="GwRankSettings_Click"/>
@@ -1230,12 +1235,17 @@
                 <MenuItem x:Name="GwRankStartupMenuItem" IsCheckable="True"
                           Header="{DynamicResource S.Menu.ExtrasGwRankStartup}"
                           Click="GwRankSyncOnStartup_Click"/>
+
                 <Separator/>
-                <!-- Sites de builds ouverts dans le navigateur (rien n'est téléchargé ici) —
+
+                <!-- 4. Sites de builds ouverts dans le navigateur (rien n'est téléchargé ici) —
                      mêmes destinations que le bouton « Partager le build » de la barre d'outils. -->
                 <MenuItem Header="GW1 Builds" Click="OpenGw1Builds_Click"/>
                 <MenuItem Header="GW PvX Fandom Wiki" Click="OpenGwPvx_Click"/>
+
                 <Separator/>
+
+                <!-- 5. Outil à part : ni donnée, ni réseau. -->
                 <MenuItem Header="{DynamicResource S.Menu.ExtrasArmorCalc}" Click="ArmorCalculator_Click"/>
             </MenuItem>
             <MenuItem Header="{DynamicResource S.Menu.Window}" SubmenuOpened="WindowMenu_SubmenuOpened">
