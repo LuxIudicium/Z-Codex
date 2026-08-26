@@ -21,10 +21,14 @@ public class FolderTreeItemViewModel : ViewModelBase
         _childrenLoaded = true;
     }
 
-    public FolderTreeItemViewModel(string path)
+    /// <param name="displayName">Libellé à afficher à la place du nom de dossier. Sert au nœud
+    /// GWRank, qui doit pouvoir annoncer que la vue date d'avant la panne en cours. Le
+    /// <see cref="Path"/>, lui, reste le vrai chemin.</param>
+    public FolderTreeItemViewModel(string path, string? displayName = null)
     {
         Path = path;
-        DisplayName = System.IO.Path.GetFileName(path) is { Length: > 0 } n ? n : path;
+        DisplayName = displayName is { Length: > 0 } d ? d
+                    : System.IO.Path.GetFileName(path) is { Length: > 0 } n ? n : path;
         if (HasSubDirectories())
             Children.Add(new FolderTreeItemViewModel(isPlaceholder: true));
     }

@@ -33,9 +33,20 @@ public class AppSettings
     public bool GwRankPublicByDefault { get; set; }
 
     // Rafraîchir le miroir GWRank du navigateur au lancement (Extras ▸ Synchroniser au démarrage).
-    // false par défaut : l'API n'a aucun filtre « ce qui a changé », donc chaque synchronisation
-    // rapatrie toute la bibliothèque visible — ce n'est pas à imposer au démarrage sans accord.
+    // false par défaut : c'est un accès réseau au lancement, il se demande.
     public bool GwRankSyncOnStartup { get; set; }
+
+    // Dossiers cochés lors du dernier envoi de bibliothèque, en chemins complets. Vide = rien de
+    // choisi, l'utilisateur désignera. Rien n'est coché d'office : la bibliothèque de référence
+    // contient des milliers de gabarits venus de packs téléchargés, qui n'ont pas à partir sur
+    // GWRank parce qu'ils se trouvaient sous la même racine.
+    public List<string> GwRankBulkFolders { get; set; } = [];
+
+    // Fichiers écartés à la main dans ces dossiers, en chemins complets. On retient les
+    // EXCEPTIONS et non la sélection : cocher un dossier coche tout son contenu, et les exceptions
+    // se comptent en dizaines là où la sélection peut se compter en milliers. Un chemin disparu
+    // est simplement ignoré au chargement suivant.
+    public List<string> GwRankBulkExcluded { get; set; } = [];
 
     // Géométrie de MainWindow, sauvegardée à la fermeture. Null = valeurs par défaut du XAML.
     public double? WindowWidth { get; set; }

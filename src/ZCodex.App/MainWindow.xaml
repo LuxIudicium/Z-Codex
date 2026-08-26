@@ -1219,6 +1219,7 @@
                 <!-- Dépôt du teambuild actif sur GWRank. Voisin de l'import PvX : même
                      groupe « ces entrées parlent à internet ». -->
                 <MenuItem Header="{DynamicResource S.Menu.ExtrasGwRankSend}" Click="GwRankSend_Click"/>
+                <MenuItem Header="{DynamicResource S.Menu.ExtrasGwRankBulk}" Click="GwRankBulk_Click"/>
                 <MenuItem Header="{DynamicResource S.Menu.ExtrasGwRankSettings}" Click="GwRankSettings_Click"/>
                 <MenuItem Header="{DynamicResource S.Menu.ExtrasGwRankRefresh}" Click="GwRankRefresh_Click"/>
                 <!-- Case a cocher : l'etat est relu a l'ouverture du menu (ExtrasMenu_SubmenuOpened),

@@ -154,24 +154,44 @@ public class BrowserViewModel : ViewModelBase
     // un sous-dossier de celui-ci : ce sont les builds du serveur (dont ceux d'autres joueurs),
     // pas la bibliothèque de l'utilisateur. Les mélanger fausserait la recherche, les sauvegardes
     // et la détection de doublons d'identité.
+    private bool _gwRankOffline;
+
     private void AddGwRankNode()
     {
         if (!Directory.Exists(ZCodex.Core.Sync.GwRankBrowserCache.Root)) return;
 
         // Deplie d'office : le noeud est RECREE a chaque synchro, et le retrouver ferme apres
         // chaque envoi donnerait l'impression que rien n'est arrive.
-        var node = new FolderTreeItemViewModel(ZCodex.Core.Sync.GwRankBrowserCache.Root)
+        var node = new FolderTreeItemViewModel(ZCodex.Core.Sync.GwRankBrowserCache.Root,
+                                               GwRankNodeLabel())
         {
             IsExpanded = true,
         };
         RootItems.Add(node);
     }
 
+    /// <summary>« GWRank », ou « GWRank — hors ligne, vue du … » quand la dernière tentative a
+    /// échoué. Sans date connue (jamais synchronisé), on n'en promet pas une.</summary>
+    private string? GwRankNodeLabel()
+    {
+        if (!_gwRankOffline) return null;
+
+        var when = ZCodex.Core.Sync.GwRankBrowserCache.LastSyncUtc;
+        var name = Path.GetFileName(ZCodex.Core.Sync.GwRankBrowserCache.Root);
+        return when is { } utc
+            ? $"{name} — {string.Format(LanguageManager.T("S.GwRank.NodeOffline"), utc.ToLocalTime())}"
+            : $"{name} — {LanguageManager.T("S.GwRank.NodeOfflineNoDate")}";
+    }
+
     /// <summary>Reconstruit le nœud GWRank après une synchronisation. Le nœud est RECRÉÉ et non
     /// mis à jour : ses enfants sont chargés une seule fois, à la première expansion, donc un
     /// nœud conservé continuerait d'afficher l'arborescence d'avant la synchro.</summary>
-    public void RefreshGwRankNode()
+    /// <param name="offline">Vrai quand la dernière tentative de synchronisation a échoué. Le
+    /// nœud annonce alors de QUAND date ce qu'on y voit — la vue reste consultable hors ligne,
+    /// mais la prendre pour l'état actuel de GWRank serait trompeur.</param>
+    public void RefreshGwRankNode(bool offline = false)
     {
+        _gwRankOffline = offline;
         for (int i = RootItems.Count - 1; i >= 0; i--)
             if (ZCodex.Core.Sync.GwRankBrowserCache.IsInCache(RootItems[i].Path)
                 || string.Equals(RootItems[i].Path, ZCodex.Core.Sync.GwRankBrowserCache.Root,

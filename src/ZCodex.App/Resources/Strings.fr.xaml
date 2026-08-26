@@ -680,6 +680,46 @@
     <sys:String x:Key="S.Menu.ExtrasGwRankStartup">Rafraîchir GWRank au démarrage</sys:String>
     <sys:String x:Key="S.GwRank.SyncDone" xml:space="preserve">GWRank est à jour.&#10;&#10;À vous : {0} build(s), {1} teambuild(s).&#10;Publics : {2} build(s), {3} teambuild(s).</sys:String>
     <sys:String x:Key="S.GwRank.SyncSkipped">{0} entrée(s) illisible(s) ont été ignorées.</sys:String>
+    <sys:String x:Key="S.Menu.ExtrasGwRankBulk">Envoyer ma bibliothèque sur GWRank…</sys:String>
+    <sys:String x:Key="S.GwRank.BulkTitle">Envoyer ma bibliothèque sur GWRank</sys:String>
+    <sys:String x:Key="S.GwRank.BulkIntro">Choisissez les dossiers qui contiennent vos propres builds. Z-Codex vous montre exactement ce qui partirait avant que quoi que ce soit ne quitte votre ordinateur.</sys:String>
+    <sys:String x:Key="S.GwRank.BulkFolders">Dossiers à envoyer</sys:String>
+    <sys:String x:Key="S.GwRank.BulkFolderCount">{0} build(s)</sys:String>
+    <sys:String x:Key="S.GwRank.BulkNoFolderFound">Aucun sous-dossier trouvé dans votre dossier de templates.</sys:String>
+    <sys:String x:Key="S.GwRank.BulkNoRoot">Votre dossier de templates est introuvable. Indiquez-le d'abord dans les réglages.</sys:String>
+    <sys:String x:Key="S.GwRank.BulkPickFolder">Cochez au moins un dossier.</sys:String>
+    <sys:String x:Key="S.GwRank.FailedRateLimited">GWRank demande de lever le pied — trop de requêtes en peu de temps. Réessayez dans une minute.</sys:String>
+    <sys:String x:Key="S.GwRank.FailedServerDown">GWRank n'a pas répondu. Le site redémarre peut-être ; rien n'a été modifié. Réessayez dans un instant.</sys:String>
+    <sys:String x:Key="S.GwRank.NodeOffline">hors ligne, vue du {0:g}</sys:String>
+    <sys:String x:Key="S.GwRank.NodeOfflineNoDate">hors ligne</sys:String>
+    <sys:String x:Key="S.GwRank.BulkStoppedOffline" xml:space="preserve">GWRank a cessé de répondre, le lot s'est arrêté : {0} envoyé(s) sur {1}, {2} non tenté(s).&#10;Ceux qui sont partis sont acquis — relancer n'enverra que le reste.</sys:String>
+    <sys:String x:Key="S.GwRank.BulkStoppedRateLimited" xml:space="preserve">GWRank a demandé de lever le pied, le lot s'est arrêté : {0} envoyé(s) sur {1}, {2} non tenté(s).&#10;Ceux qui sont partis sont acquis — relancez dans une minute, seul le reste partira.</sys:String>
+    <sys:String x:Key="S.GwRank.BulkTooManyToDetail">{0} fichiers — trop nombreux pour les détailler un à un (limite {1}). Décochez le dossier entier, ou choisissez-en un plus petit.</sys:String>
+    <sys:String x:Key="S.GwRank.BulkVerdictNew">nouveau</sys:String>
+    <sys:String x:Key="S.GwRank.BulkVerdictChanged">modifié</sys:String>
+    <sys:String x:Key="S.GwRank.BulkVerdictUnchanged">déjà à jour</sys:String>
+    <sys:String x:Key="S.GwRank.BulkVerdictCollision">identité en double — écarté</sys:String>
+    <sys:String x:Key="S.GwRank.BulkVerdictUnknownSkills">compétences inconnues — écarté</sys:String>
+    <sys:String x:Key="S.GwRank.BulkVerdictUnreadable">pas un build lisible</sys:String>
+    <sys:String x:Key="S.GwRank.BulkAnalyze">Analyser</sys:String>
+    <sys:String x:Key="S.GwRank.BulkAnalyzing">Lecture de vos builds…</sys:String>
+    <sys:String x:Key="S.GwRank.BulkSummary" xml:space="preserve">{0} nouveau(x), {1} modifié(s), {2} déjà à jour.</sys:String>
+    <sys:String x:Key="S.GwRank.BulkAttention">{0} fichier(s) ne partiront PAS :</sys:String>
+    <sys:String x:Key="S.GwRank.BulkItemCollision">{0} — partage son identité interne avec {1}, déjà sur GWRank. Envoyez-le seul pour lui en donner une neuve.</sys:String>
+    <sys:String x:Key="S.GwRank.BulkItemUnknownSkills">{0} — contient des compétences que votre catalogue ignore. L'envoyer viderait ces emplacements sur GWRank. Mettez d'abord le catalogue à jour.</sys:String>
+    <sys:String x:Key="S.GwRank.BulkItemUnreadable">{0} — n'a pas pu être lu comme un build.</sys:String>
+    <sys:String x:Key="S.GwRank.BulkItemConflict">{0} — a changé sur GWRank depuis votre dernier envoi. Envoyez-le seul pour décider de l'écraser ou non.</sys:String>
+    <sys:String x:Key="S.GwRank.BulkItemFailed">{0} — refusé : {1}</sys:String>
+    <sys:String x:Key="S.GwRank.BulkSendIdle">Envoyer</sys:String>
+    <sys:String x:Key="S.GwRank.BulkSend">Envoyer {0} build(s)</sys:String>
+    <sys:String x:Key="S.GwRank.BulkNothing">Rien à envoyer</sys:String>
+    <sys:String x:Key="S.GwRank.BulkProgress">Envoi… {0} sur {1}</sys:String>
+    <sys:String x:Key="S.GwRank.BulkStop">Arrêter</sys:String>
+    <sys:String x:Key="S.GwRank.BulkStopped">Arrêté : {0} sur {1} envoyés. Ils sont retenus — relancer n'enverra que le reste.</sys:String>
+    <sys:String x:Key="S.GwRank.BulkDone" xml:space="preserve">Terminé. {0} build(s) ajouté(s) à votre collection GWRank, {1} mis à jour.</sys:String>
+    <sys:String x:Key="S.GwRank.BulkDoneUnchanged">{0} étaient déjà à jour et n'ont pas été envoyés.</sys:String>
+    <sys:String x:Key="S.GwRank.SyncNothingNew">Rien n'avait changé depuis la dernière synchronisation.</sys:String>
+    <sys:String x:Key="S.GwRank.SyncUpdated">{0} build(s) rapatrié(s).</sys:String>
     <sys:String x:Key="S.GwRank.CopyTitle">Build venu de GWRank</sys:String>
     <sys:String x:Key="S.GwRank.CopyBody" xml:space="preserve">Ce build vient de GWRank et se trouve dans une vue que le prochain rafraîchissement reconstruira — l'enregistrer par-dessus perdrait vos modifications.&#10;&#10;Z-Codex va donc l'enregistrer comme une copie à vous, avec une identité neuve, dans le dossier que vous choisirez.</sys:String>
     <sys:String x:Key="S.GwRank.UploadTitle">Envoyer sur GWRank</sys:String>
@@ -724,6 +764,8 @@
     <sys:String x:Key="S.GwRank.FailedOffline">GWRank est injoignable. Rien n'a été envoyé.</sys:String>
     <sys:String x:Key="S.GwRank.FailedRejected">GWRank a refusé ce build : {0}</sys:String>
     <sys:String x:Key="S.GwRank.FailedOther">Échec de l'envoi : {0}</sys:String>
+    <sys:String x:Key="S.GwRank.ConflictTitle">Build modifié sur GWRank</sys:String>
+    <sys:String x:Key="S.GwRank.ConflictBody" xml:space="preserve">« {0} » a changé sur GWRank depuis votre dernier envoi depuis cet ordinateur — il y a été modifié, ou supprimé, ailleurs.&#10;&#10;Rien n'a été touché : GWRank a refusé l'envoi au lieu de remplacer ce travail en silence.&#10;&#10;Envoyer votre version maintenant écrasera ce qui est en ligne.&#10;&#10;L'écraser avec votre version ?</sys:String>
     <sys:String x:Key="S.GwRank.CollisionTitle">Identité de build en double</sys:String>
     <sys:String x:Key="S.GwRank.CollisionBody" xml:space="preserve">Ce build partage son identité interne avec un autre fichier déjà envoyé sur GWRank :&#10;&#10;    {0}&#10;&#10;Cela arrive quand un fichier de build est dupliqué en dehors de Z-Codex. L'envoyer tel quel écraserait l'autre build sur GWRank.&#10;&#10;Z-Codex peut donner une identité neuve à ce build et l'envoyer à part. Vos compétences, caractéristiques, variantes et cadenas ne changent pas.&#10;&#10;Lui donner une identité neuve et l'envoyer ?</sys:String>
     <sys:String x:Key="S.GwRank.CollisionFixed">Une identité neuve a été attribuée et le fichier a été enregistré.</sys:String>

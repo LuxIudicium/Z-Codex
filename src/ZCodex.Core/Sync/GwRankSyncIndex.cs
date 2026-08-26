@@ -18,6 +18,16 @@ public sealed class GwRankEntry
     /// <summary>Empreinte du contenu déposé, <c>updatedAt</c> EXCLU (cf. <see cref="ZcxHash"/>).</summary>
     public string ContentHash { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Empreinte rendue par le SERVEUR au dernier dépôt (<c>documentHash</c>).
+    ///
+    /// Elle ne se recalcule pas en local — le serveur normalise certains champs, et l'empreinte
+    /// porte sur ce qu'IL a stocké. Renvoyée en <c>If-Match</c> au dépôt suivant, elle fait
+    /// refuser l'envoi si une autre machine a modifié le build entre-temps. Vide = dépôt
+    /// inconditionnel, comme avant.
+    /// </summary>
+    public string ServerHash { get; set; } = string.Empty;
+
     /// <summary>Id numérique attribué par le serveur, pour un lien direct vers la fiche.</summary>
     public long ServerId { get; set; }
 
@@ -159,18 +169,36 @@ public sealed class GwRankSyncIndex
 
     /// <summary>Enregistre un dépôt réussi. Sans <see cref="Save"/> l'index reste en mémoire :
     /// l'appelant sauvegarde une fois à la fin d'un lot plutôt qu'à chaque fichier.</summary>
-    public void Record(TeamBuild build, string? filePath, long serverId, string? visibility = null)
+    public void Record(TeamBuild build, string? filePath, long serverId, string? visibility = null,
+                       string? serverHash = null)
     {
         Entries[build.Id.ToString("D")] = new GwRankEntry
         {
             FilePath      = filePath ?? string.Empty,
             ContentHash   = ZcxHash.OfBuild(build),
+            ServerHash    = serverHash ?? string.Empty,
             ServerId      = serverId,
             Visibility    = visibility ?? string.Empty,
             Name          = build.Name,
             LastUploadUtc = DateTime.UtcNow,
         };
     }
+
+    /// <summary>
+    /// Empreinte serveur du dernier dépôt de ce build, à renvoyer en <c>If-Match</c>.
+    ///
+    /// Null quand on ne l'a pas — index d'avant cette fonction, ou build jamais déposé depuis ce
+    /// poste. On dépose alors SANS condition : exiger une empreinte qu'on n'a pas ferait échouer
+    /// des envois parfaitement légitimes, ce qui est pire que le risque qu'on cherche à couvrir.
+    /// </summary>
+    /// <summary>Cette identité a-t-elle déjà été déposée depuis ce poste ? Sépare « jamais
+    /// envoyé » de « envoyé puis modifié », que <see cref="Check"/> confond tous deux en
+    /// <see cref="GwRankUploadCheck.Ready"/>.</summary>
+    public bool Knows(Guid id) => Entries.ContainsKey(id.ToString("D"));
+
+    public string? ServerHashOf(Guid id)
+        => Entries.TryGetValue(id.ToString("D"), out var e) && e.ServerHash.Length > 0
+            ? e.ServerHash : null;
 
     /// <summary>Nom sous lequel ce build a été déposé, ou null s'il ne l'a jamais été depuis ce
     /// poste.</summary>

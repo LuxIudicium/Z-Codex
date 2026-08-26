@@ -25,10 +25,29 @@ public enum GwRankStatus
     NotFound,
     /// <summary>422 — le serveur refuse le document (règles de format).</summary>
     Rejected,
+    /// <summary>412 — le build a changé sur le serveur depuis la lecture dont vient l'empreinte
+    /// envoyée en <c>If-Match</c>. RIEN n'a été modifié côté serveur : c'est le garde-fou qui
+    /// évite d'écraser en silence le travail d'une autre machine.</summary>
+    Conflict,
     /// <summary>Panne réseau, DNS, TLS, délai dépassé.</summary>
     Offline,
+    /// <summary>429 — le serveur demande de lever le pied. Distinct d'une panne : il va très
+    /// bien, c'est nous qui insistons trop.</summary>
+    RateLimited,
     /// <summary>Tout le reste (5xx, réponse illisible).</summary>
     ServerError,
+}
+
+/// <summary>Ce qu'on peut espérer voir passer tout seul si on réessaie.</summary>
+public static class GwRankStatusExtensions
+{
+    /// <summary>
+    /// Vrai pour les pannes de PASSAGE : serveur qui redémarre, réseau qui hoquette, quota
+    /// momentané. Faux pour tout ce qui vient du contenu ou des droits — réessayer un jeton
+    /// refusé ou un document invalide donnerait exactement le même refus, en plus lent.
+    /// </summary>
+    public static bool IsTransient(this GwRankStatus s)
+        => s is GwRankStatus.Offline or GwRankStatus.ServerError or GwRankStatus.RateLimited;
 }
 
 /// <summary>Résultat d'un appel : un statut, la charge utile si succès, un message si échec.</summary>
@@ -55,6 +74,17 @@ public class GwRankSummary
     public long Id { get; set; }
     public string SourceId { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
+
+    /// <summary>Nom de compte du propriétaire (v3 de l'API). Vide sur un serveur plus ancien —
+    /// auquel cas on ne peut RIEN affirmer sur l'auteur, et surtout pas que le build est à soi.</summary>
+    public string Author { get; set; } = string.Empty;
+
+    /// <summary>Empreinte SHA-256 du document stocké, <c>updatedAt</c> exclu, calculée par le
+    /// SERVEUR. Deux usages : savoir si un document local est à jour sans le télécharger, et
+    /// servir de <c>If-Match</c> au dépôt suivant. Ne se recalcule pas côté client — le serveur
+    /// normalise certains champs (les étiquettes canoniques, par exemple « gvg » → « GvG »).</summary>
+    public string DocumentHash { get; set; } = string.Empty;
+
     public List<string> Tags { get; set; } = [];
     public string GameMode { get; set; } = string.Empty;
     public int PlayerCount { get; set; }
@@ -137,27 +167,59 @@ public sealed class GwRankClient : IDisposable
     public Task<GwRankResult<GwRankList>> TestConnectionAsync(CancellationToken ct = default)
         => ListAsync(perPage: 1, ct: ct);
 
+    /// <summary>
+    /// Liste paginée de RÉSUMÉS (sans les documents), donc peu coûteuse.
+    ///
+    /// ⚠ <paramref name="visibility"/> vide ne veut PAS dire « les miens » : le serveur renvoie
+    /// alors tout ce que l'appelant peut voir, builds publics des autres joueurs compris. Seule la
+    /// valeur <c>mine</c> filtre réellement — <c>public</c> et <c>all</c> sont acceptés avec un
+    /// 200 mais IGNORÉS (mesuré sur le serveur : ils renvoient l'intégralité).
+    /// </summary>
     public async Task<GwRankResult<GwRankList>> ListAsync(int page = 1, int perPage = 100,
+                                                          string? visibility = null,
+                                                          DateTime? updatedSince = null,
                                                           CancellationToken ct = default)
     {
         if (!HasToken) return GwRankResult<GwRankList>.Fail(GwRankStatus.NoToken);
-        var url = Endpoint($"?page={page}&per_page={perPage}");
+        var url = Endpoint($"?page={page}&per_page={perPage}")
+                + (visibility is { Length: > 0 } v ? $"&visibility={Uri.EscapeDataString(v)}" : "")
+                + UpdatedSinceParam(updatedSince, "&");
         return await SendAsync<GwRankList>(HttpMethod.Get, url, null, ct);
     }
+
+    /// <summary>Les seuls builds de l'utilisateur. C'est la SEULE autorité sur « à qui est ce
+    /// build » : déduire la propriété du nom d'auteur reviendrait à parier que deux joueurs ne
+    /// portent jamais le même pseudo.</summary>
+    public Task<GwRankResult<GwRankList>> ListMineAsync(int page = 1, int perPage = 100,
+                                                        CancellationToken ct = default)
+        => ListAsync(page, perPage, visibility: "mine", ct: ct);
+
+    /// <summary>Le serveur veut un instant ISO 8601 ; une date mal formée est refusée en 400
+    /// (<c>invalid_updated_since</c>), pas ignorée — contrairement aux paramètres inconnus.</summary>
+    private static string UpdatedSinceParam(DateTime? since, string lead)
+        => since is { } d
+            ? $"{lead}updated_since={Uri.EscapeDataString(d.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ"))}"
+            : "";
 
     /// <summary>
     /// Tout ce que l'appelant peut voir — ses builds ET les builds publics des autres — documents
     /// `.zcx` intégraux compris, en UN appel.
     ///
-    /// ⚠ Sans pagination ni filtre temporel côté serveur : la réponse grossit avec la
-    /// bibliothèque publique entière, et il n'existe aucun moyen de ne demander que ce qui a
-    /// changé. À n'appeler que sur action explicite de l'utilisateur, jamais en boucle.
+    /// C'est l'appel LOURD : la réponse porte tous les documents et n'est pas paginée. D'où
+    /// <paramref name="updatedSince"/>, qui ne rapatrie que ce qui a bougé depuis cet instant.
+    ///
+    /// ⚠ Un filtre temporel ne dit JAMAIS ce qui a été SUPPRIMÉ. Un appelant qui s'en sert seul
+    /// garderait indéfiniment des builds disparus : la liste des résumés reste l'autorité sur ce
+    /// qui existe encore (cf. <see cref="GwRankBrowserCache"/>).
     /// </summary>
     public async Task<GwRankResult<GwRankExport>> ExportAsync(string? status = null,
+                                                              DateTime? updatedSince = null,
                                                               CancellationToken ct = default)
     {
         if (!HasToken) return GwRankResult<GwRankExport>.Fail(GwRankStatus.NoToken);
-        var url = Endpoint("/export") + (status is { Length: > 0 } s ? $"?status={Uri.EscapeDataString(s)}" : "");
+        var url = Endpoint("/export")
+                + (status is { Length: > 0 } s ? $"?status={Uri.EscapeDataString(s)}" : "")
+                + UpdatedSinceParam(updatedSince, status is { Length: > 0 } ? "&" : "?");
         return await SendAsync<GwRankExport>(HttpMethod.Get, url, null, ct);
     }
 
@@ -175,7 +237,13 @@ public sealed class GwRankClient : IDisposable
     /// l'appelant DOIT s'être assuré qu'aucun autre fichier local ne porte le même — sinon le
     /// second envoi écrase le premier côté serveur (cf. <see cref="GwRankSyncIndex"/>).
     /// </summary>
+    /// <param name="ifMatch">Empreinte serveur (<c>documentHash</c>) rendue par le dernier dépôt
+    /// de CE build depuis CE poste. Fournie, le serveur refuse en <see cref="GwRankStatus.Conflict"/>
+    /// si le build a changé entre-temps, sans rien modifier — c'est ce qui empêche deux machines
+    /// de s'écraser en silence. Null = dépôt inconditionnel (première fois, ou écrasement demandé
+    /// explicitement par l'utilisateur).</param>
     public async Task<GwRankResult<GwRankSummary>> UploadAsync(TeamBuild build, bool isPublic = false,
+                                                                string? ifMatch = null,
                                                                 CancellationToken ct = default)
     {
         if (!HasToken) return GwRankResult<GwRankSummary>.Fail(GwRankStatus.NoToken);
@@ -190,7 +258,25 @@ public sealed class GwRankClient : IDisposable
         // On envoie la sérialisation du build OUVERT, pas l'octet du fichier sur disque : c'est
         // ce que l'utilisateur voit à l'écran qu'il croit envoyer.
         var body = TeamBuildSerializer.Serialize(build);
-        return await SendAsync<GwRankSummary>(HttpMethod.Put, url, body, ct);
+        // L'en-tête attend une étiquette d'entité, donc GUILLEMETS COMPRIS. Sans eux le serveur
+        // ne reconnaît pas l'empreinte et refuse tout, y compris un dépôt légitime.
+        var tag = ifMatch is { Length: > 0 } h ? (h.StartsWith('"') ? h : $"\"{h}\"") : null;
+        var res = await SendAsync<GwRankSummary>(HttpMethod.Put, url, body, ct, tag);
+
+        // ⚠ Le serveur répond 412 dans DEUX cas que l'utilisateur ne vit pas du tout pareil :
+        // le build a changé ailleurs (conflit réel, il faut lui demander), ou il n'existe tout
+        // simplement plus — supprimé depuis le site, ou base repartie de zéro. Dans ce
+        // second cas il n'y a AUCUN travail à protéger : refuser reviendrait à réclamer un
+        // arbitrage sur du vide, et un envoi de masse écarterait toute la bibliothèque d'un coup.
+        // On ne le devine pas, on le vérifie.
+        if (res.Status == GwRankStatus.Conflict && tag is not null)
+        {
+            var probe = await SendRawAsync(HttpMethod.Get, Endpoint($"/{id}"), null, ct);
+            if (probe.Status == GwRankStatus.NotFound)
+                return await SendAsync<GwRankSummary>(HttpMethod.Put, url, body, ct);
+        }
+
+        return res;
     }
 
     public async Task<GwRankResult<bool>> DeleteAsync(string id, CancellationToken ct = default)
@@ -203,9 +289,9 @@ public sealed class GwRankClient : IDisposable
     // ── Plomberie ─────────────────────────────────────────────────────────────
 
     private async Task<GwRankResult<T>> SendAsync<T>(HttpMethod method, string url, string? body,
-                                                     CancellationToken ct)
+                                                     CancellationToken ct, string? ifMatch = null)
     {
-        var raw = await SendRawAsync(method, url, body, ct);
+        var raw = await SendRawAsync(method, url, body, ct, ifMatch);
         if (!raw.IsOk) return GwRankResult<T>.Fail(raw.Status, raw.Message);
 
         try
@@ -217,13 +303,53 @@ public sealed class GwRankClient : IDisposable
         }
         catch (JsonException ex)
         {
-            // Réponse illisible = serveur cassé ou portail captif qui renvoie du HTML.
-            return GwRankResult<T>.Fail(GwRankStatus.ServerError, ex.Message);
+            // Réponse illisible = serveur cassé, ou portail captif qui renvoie sa page de
+            // connexion. Le détail du parseur (« '<' is an invalid start of a value ») n'apprend
+            // rien à un utilisateur : il part au journal, pas à l'écran.
+            Debug.WriteLine($"[GwRank] réponse illisible sur {url} : {ex.Message}");
+            return GwRankResult<T>.Fail(GwRankStatus.ServerError,
+                "réponse inattendue du serveur (page d'erreur ou portail de connexion ?)");
         }
     }
 
+    /// <summary>
+    /// Attentes entre deux tentatives. Deux essais de rattrapage, courts : un redémarrage de
+    /// serveur dure quelques secondes, et au-delà l'utilisateur préfère qu'on lui rende la main
+    /// plutôt qu'on insiste dans une fenêtre figée.
+    /// </summary>
+    private static readonly TimeSpan[] RetryDelays = [TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(3)];
+
+    /// <summary>Plafond de l'attente réclamée par le serveur : un <c>Retry-After</c> généreux ne
+    /// doit pas immobiliser l'application plusieurs minutes.</summary>
+    private static readonly TimeSpan MaxRetryAfter = TimeSpan.FromSeconds(10);
+
+    /// <summary>
+    /// Émet la requête, en réessayant les pannes de passage.
+    ///
+    /// ⚠ Réessayer n'est acceptable que parce que TOUS les appels de ce client sont idempotents :
+    /// le <c>PUT</c> est un upsert clé par <c>source_uuid</c>, donc une requête dont la réponse
+    /// s'est perdue en route peut être rejouée sans créer de doublon ni écraser autre chose.
+    /// </summary>
     private async Task<GwRankResult<string>> SendRawAsync(HttpMethod method, string url, string? body,
-                                                          CancellationToken ct)
+                                                          CancellationToken ct, string? ifMatch = null)
+    {
+        for (int attempt = 0; ; attempt++)
+        {
+            var (result, retryAfter) = await SendOnceAsync(method, url, body, ct, ifMatch);
+            if (result.IsOk || attempt >= RetryDelays.Length || !result.Status.IsTransient())
+                return result;
+
+            // Le serveur sait mieux que nous quand revenir : son Retry-After l'emporte, borné.
+            var wait = retryAfter is { } ra && ra > TimeSpan.Zero
+                ? (ra < MaxRetryAfter ? ra : MaxRetryAfter)
+                : RetryDelays[attempt];
+            Debug.WriteLine($"[GwRank] {result.Status} sur {method} {url} — nouvelle tentative dans {wait.TotalSeconds:F0} s");
+            await Task.Delay(wait, ct);
+        }
+    }
+
+    private async Task<(GwRankResult<string> Result, TimeSpan? RetryAfter)> SendOnceAsync(
+        HttpMethod method, string url, string? body, CancellationToken ct, string? ifMatch)
     {
         try
         {
@@ -231,32 +357,52 @@ public sealed class GwRankClient : IDisposable
             if (body is not null)
                 req.Content = new StringContent(body, Encoding.UTF8, "application/json");
             req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            // TryAddWithoutValidation : « * » n'est pas une étiquette d'entité valide au sens du
+            // parseur de .NET, alors que le serveur l'accepte (« exige que le build existe »).
+            if (ifMatch is { Length: > 0 })
+                req.Headers.TryAddWithoutValidation("If-Match", ifMatch);
 
             using var res = await _http.SendAsync(req, ct);
             var text = await res.Content.ReadAsStringAsync(ct);
 
-            if (res.IsSuccessStatusCode) return GwRankResult<string>.Ok(text);
+            if (res.IsSuccessStatusCode) return (GwRankResult<string>.Ok(text), null);
 
-            return GwRankResult<string>.Fail(res.StatusCode switch
+            var status = res.StatusCode switch
             {
                 HttpStatusCode.Unauthorized          => GwRankStatus.Unauthorized,
                 HttpStatusCode.Forbidden             => GwRankStatus.Forbidden,
                 HttpStatusCode.NotFound              => GwRankStatus.NotFound,
                 HttpStatusCode.UnprocessableEntity   => GwRankStatus.Rejected,
                 HttpStatusCode.BadRequest            => GwRankStatus.Rejected,
+                HttpStatusCode.PreconditionFailed    => GwRankStatus.Conflict,
+                HttpStatusCode.TooManyRequests       => GwRankStatus.RateLimited,
+                HttpStatusCode.RequestTimeout        => GwRankStatus.Offline,
                 _                                    => GwRankStatus.ServerError,
-            }, DescribeError(text, res.StatusCode));
+            };
+            return (GwRankResult<string>.Fail(status, DescribeError(text, res.StatusCode)),
+                    RetryAfterOf(res));
         }
         // L'annulation vient de l'utilisateur (fermeture de la fenêtre) : ce n'est pas une panne,
         // et elle doit remonter telle quelle pour ne pas afficher un faux message d'erreur.
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
-        catch (TaskCanceledException ex)   { return GwRankResult<string>.Fail(GwRankStatus.Offline, ex.Message); }
-        catch (HttpRequestException ex)    { return GwRankResult<string>.Fail(GwRankStatus.Offline, ex.Message); }
+        catch (TaskCanceledException ex)   { return (GwRankResult<string>.Fail(GwRankStatus.Offline, ex.Message), null); }
+        catch (HttpRequestException ex)    { return (GwRankResult<string>.Fail(GwRankStatus.Offline, ex.Message), null); }
         catch (Exception ex)
         {
             Debug.WriteLine($"[GwRank] {method} {url}: {ex}");
-            return GwRankResult<string>.Fail(GwRankStatus.ServerError, ex.Message);
+            return (GwRankResult<string>.Fail(GwRankStatus.ServerError, ex.Message), null);
         }
+    }
+
+    /// <summary>Délai réclamé par le serveur, en secondes ou en date HTTP — les deux formes sont
+    /// admises par la norme, et un serveur peut employer l'une ou l'autre.</summary>
+    private static TimeSpan? RetryAfterOf(HttpResponseMessage res)
+    {
+        var ra = res.Headers.RetryAfter;
+        if (ra is null) return null;
+        if (ra.Delta is { } d) return d;
+        if (ra.Date is { } when) return when - DateTimeOffset.UtcNow;
+        return null;
     }
 
     /// <summary>Extrait le premier message d'erreur exploitable d'une réponse d'échec. Le serveur

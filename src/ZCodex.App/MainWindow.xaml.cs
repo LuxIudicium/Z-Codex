@@ -1329,6 +1329,71 @@ public partial class MainWindow : Window
     /// qui voulait juste ouvrir l'application — un échec y est sans conséquence, l'ancienne vue
     /// reste consultable.
     /// </summary>
+    /// <summary>
+    /// « Extras ▸ Envoyer ma bibliothèque sur GWRank… ». Dépose en un lot tous les builds des
+    /// dossiers que l'utilisateur désigne.
+    ///
+    /// Trois garde-fous, tous éprouvés sur la bibliothèque de référence :
+    ///   • aucun dossier n'est coché d'office — des milliers de gabarits venus de packs
+    ///     téléchargés vivent sous la même racine que les builds de l'utilisateur ;
+    ///   • un build inchangé ne déclenche AUCUNE requête ;
+    ///   • une identité déjà prise par un autre fichier, ou un build modifié ailleurs, est écarté
+    ///     et signalé — jamais écrasé. L'écrasement ne s'offre qu'à l'unité, sous les yeux.
+    /// </summary>
+    private async void GwRankBulk_Click(object sender, RoutedEventArgs e)
+    {
+        if (!HasGwRankToken() && !OpenGwRankSettings()) return;
+
+        if (_vm.SkillPanel.AllSkills.Count == 0)
+        {
+            MessageBox.Show(T("S.Msg.CatalogNotLoaded"), T("S.Msg.CatalogNotLoadedTitle"),
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var root = _settings.TemplatesRootPath;
+        if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(root))
+        {
+            MessageBox.Show(T("S.GwRank.BulkNoRoot"), T("S.GwRank.BulkTitle"),
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        // Le catalogue doit être COMPLET : un id de compétence qu'il ignore serait réécrit en
+        // « emplacement vide » à la sérialisation (cf. GwRankBulkUpload.UnknownSkills).
+        var skillsById = _vm.SkillPanel.AllSkills.ToDictionary(s => s.Id, s => s);
+        // Le mode de jeu inscrit dans le document est celui que l'interface AFFICHE — même règle
+        // que l'envoi à l'unité, sans quoi chaque build ferait la navette entre les deux chemins.
+        var gameMode = ToCoreGameMode(_vm.SkillPanel.SelectedGameMode);
+        var index = GwRankSyncIndex.Load();
+
+        var window = new GwRankBulkWindow(
+            root,
+            _settings.GwRankBulkFolders,
+            _settings.GwRankBulkExcluded,
+            files => Task.Run(() => GwRankBulkUpload.Analyze(files, skillsById, index, gameMode)),
+            async (items, progress, ct) =>
+            {
+                using var client = new GwRankClient(_settings.GwRankApiToken, _settings.GwRankBaseUrl);
+                return await GwRankBulkUpload.UploadAsync(items, client, index, progress, ct);
+            })
+        { Owner = this };
+
+        window.ShowDialog();
+
+        // Dossiers cochés ET fichiers écartés se retiennent, qu'on ait envoyé ou non : refaire ce
+        // tri à chaque envoi serait le plus sûr moyen d'en oublier un.
+        if (!window.SelectedFolders.SequenceEqual(_settings.GwRankBulkFolders)
+            || !window.ExcludedFiles.OrderBy(x => x).SequenceEqual(_settings.GwRankBulkExcluded.OrderBy(x => x)))
+        {
+            _settings.GwRankBulkFolders = window.SelectedFolders;
+            _settings.GwRankBulkExcluded = window.ExcludedFiles;
+            _settings.Save();
+        }
+
+        if (window.AnythingSent) await RefreshGwRankAsync(silent: true);
+    }
+
     private async Task RefreshGwRankAsync(bool silent)
     {
         if (!HasGwRankToken())
@@ -1347,7 +1412,9 @@ public partial class MainWindow : Window
         }
         finally { if (!silent) Mouse.OverrideCursor = previousCursor; }
 
-        _vm.Browser.RefreshGwRankNode();
+        // Le nœud dit de quand date la vue quand la synchro a échoué : hors ligne, l'utilisateur
+        // continue de consulter le miroir, et rien ne doit lui laisser croire qu'il est à jour.
+        _vm.Browser.RefreshGwRankNode(offline: !report.IsOk && report.Status.IsTransient());
 
         if (silent) return;
 
@@ -1357,6 +1424,8 @@ public partial class MainWindow : Window
             {
                 GwRankStatus.Unauthorized => T("S.GwRank.FailedUnauthorized"),
                 GwRankStatus.Offline      => T("S.GwRank.FailedOffline"),
+                GwRankStatus.RateLimited  => T("S.GwRank.FailedRateLimited"),
+                GwRankStatus.ServerError  => T("S.GwRank.FailedServerDown"),
                 _                         => string.Format(T("S.GwRank.FailedOther"), report.Message ?? "?"),
             };
             MessageBox.Show(message, T("S.GwRank.FailedTitle"),
@@ -1366,6 +1435,11 @@ public partial class MainWindow : Window
 
         var text = string.Format(T("S.GwRank.SyncDone"),
             report.MyBuilds, report.MyTeamBuilds, report.PublicBuilds, report.PublicTeamBuilds);
+        // Dire ce qui a réellement transité : sans ça, une synchro qui ne télécharge rien est
+        // indiscernable d'une synchro qui a tout retéléchargé.
+        text += "\n\n" + (report.Downloaded > 0
+            ? string.Format(T("S.GwRank.SyncUpdated"), report.Downloaded)
+            : T("S.GwRank.SyncNothingNew"));
         if (report.Skipped > 0)
             text += "\n\n" + string.Format(T("S.GwRank.SyncSkipped"), report.Skipped);
 
@@ -1581,7 +1655,33 @@ public partial class MainWindow : Window
         try
         {
             using var client = new GwRankClient(_settings.GwRankApiToken, _settings.GwRankBaseUrl);
-            res = await client.UploadAsync(model, isPublic);
+
+            // Empreinte du dernier dépôt fait DEPUIS CE POSTE : le serveur refusera si le build a
+            // changé entre-temps, au lieu d'écraser en silence le travail d'une autre machine.
+            res = await client.UploadAsync(model, isPublic, index.ServerHashOf(model.Id));
+
+            if (res.Status == GwRankStatus.Conflict)
+            {
+                Mouse.OverrideCursor = previousCursor;
+                var ask = MessageBox.Show(
+                    string.Format(T("S.GwRank.ConflictBody"), displayName),
+                    T("S.GwRank.ConflictTitle"), MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                if (ask != MessageBoxResult.Yes)
+                {
+                    // Annuler doit VRAIMENT tout laisser en l'état, y compris le miroir : rien
+                    // n'a été modifié côté serveur, le refus l'a garanti.
+                    // L'identité a pu être réattribuée juste avant : ce n'est pas rien, et
+                    // l'utilisateur doit le savoir même s'il renonce à l'envoi.
+                    if (extra is { Length: > 0 })
+                        MessageBox.Show(extra, T("S.GwRank.SentTitle"),
+                            MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                Mouse.OverrideCursor = Cursors.Wait;
+                // Écrasement assumé : on redépose sans condition.
+                res = await client.UploadAsync(model, isPublic);
+            }
         }
         finally { Mouse.OverrideCursor = previousCursor; }
 
@@ -1591,6 +1691,8 @@ public partial class MainWindow : Window
             {
                 GwRankStatus.Unauthorized => T("S.GwRank.FailedUnauthorized"),
                 GwRankStatus.Offline      => T("S.GwRank.FailedOffline"),
+                GwRankStatus.RateLimited  => T("S.GwRank.FailedRateLimited"),
+                GwRankStatus.ServerError  => T("S.GwRank.FailedServerDown"),
                 GwRankStatus.Rejected     => string.Format(T("S.GwRank.FailedRejected"), res.Message ?? "?"),
                 _                         => string.Format(T("S.GwRank.FailedOther"), res.Message ?? "?"),
             };
@@ -1601,7 +1703,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        index.Record(model, filePath, res.Value!.Id, visibility);
+        index.Record(model, filePath, res.Value!.Id, visibility, res.Value.DocumentHash);
         index.Save();
 
         // Le miroir du navigateur doit refleter ce qu'on vient de deposer : sans cela, le build
