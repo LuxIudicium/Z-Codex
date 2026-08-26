@@ -233,7 +233,7 @@ public class WikiSkillScraper(ILogger<WikiSkillScraper> logger)
                 // Signet). On lit la page maintenant.
                 try
                 {
-                    var pageDoc = await context.OpenAsync(orphan.WikiUrl, ct);
+                    var pageDoc = await context.OpenFreshAsync(orphan.WikiUrl, ct);
                     EnrichFromSkillPage(pageDoc, orphan);
                 }
                 catch (Exception ex) { logger.LogWarning(ex, "Enrichissement orphelin échoué {Skill}", name); }
@@ -303,6 +303,10 @@ public class WikiSkillScraper(ILogger<WikiSkillScraper> logger)
                     // Un IBrowsingContext AngleSharp n'est pas prévu pour un usage concurrent :
                     // chaque tâche ouvre le sien plutôt que de partager celui de la méthode.
                     var ctx = BrowsingContext.New(config);
+                    // Cache ordinaire ASSUMÉ ici, seul endroit à ne pas passer par OpenFreshAsync :
+                    // ~1300 pages, et forcer autant de régénérations sur un wiki communautaire
+                    // serait hors de proportion. Le retard possible est borné à 5 h, sans commune
+                    // mesure avec le délai que met le wiki à être édité après une mise à jour.
                     var doc = await ctx.OpenAsync(url, ct);
                     var prog = WikiProgressionParser.Parse(doc);
                     progressionByUrl[url] = prog is null ? string.Empty : JsonSerializer.Serialize(prog);
@@ -381,7 +385,7 @@ public class WikiSkillScraper(ILogger<WikiSkillScraper> logger)
     private async Task<List<SkillEntity>> ScrapeStatsPageAsync(
         IBrowsingContext ctx, Profession profession, string path, CancellationToken ct)
     {
-        var doc = await ctx.OpenAsync(BaseUrl + path, ct);
+        var doc = await ctx.OpenFreshAsync(BaseUrl + path, ct);
         var skills = new List<SkillEntity>();
         var table = doc.QuerySelector("table.sortable");
         if (table == null) { logger.LogWarning("Pas de table.sortable sur {Path}", path); return skills; }
@@ -474,7 +478,7 @@ public class WikiSkillScraper(ILogger<WikiSkillScraper> logger)
     private async Task<Dictionary<string, string>> ScrapeGalleryAsync(
         IBrowsingContext ctx, string path, CancellationToken ct)
     {
-        var doc = await ctx.OpenAsync(BaseUrl + path, ct);
+        var doc = await ctx.OpenFreshAsync(BaseUrl + path, ct);
         var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         // Structure : <div><a href="File:..."><img srcset="...url 2x"></a><br><a title="Name">Name</a></div>
@@ -520,7 +524,7 @@ public class WikiSkillScraper(ILogger<WikiSkillScraper> logger)
 
     private async Task<List<SkillEntity>> ScrapePvEPageAsync(IBrowsingContext ctx, CancellationToken ct)
     {
-        var doc = await ctx.OpenAsync(BaseUrl + "/wiki/PvE-only_skill", ct);
+        var doc = await ctx.OpenFreshAsync(BaseUrl + "/wiki/PvE-only_skill", ct);
         var results = new List<SkillEntity>();
         string currentAttribute = "No Attribute";
 
@@ -635,7 +639,7 @@ public class WikiSkillScraper(ILogger<WikiSkillScraper> logger)
     private async Task<(Dictionary<string, int> Singles, Dictionary<string, (int K, int L)> Pairs)>
         ScrapeSkillIdListAsync(IBrowsingContext ctx, CancellationToken ct)
     {
-        var doc = await ctx.OpenAsync(BaseUrl + "/wiki/Skill_template_format/Skill_list", ct);
+        var doc = await ctx.OpenFreshAsync(BaseUrl + "/wiki/Skill_template_format/Skill_list", ct);
         var singles = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         var pairs   = new Dictionary<string, (int K, int L)>(StringComparer.OrdinalIgnoreCase);
 
@@ -717,7 +721,7 @@ public class WikiSkillScraper(ILogger<WikiSkillScraper> logger)
             try
             {
                 var path = "/wiki/" + condition.Name.Replace(' ', '_');
-                var doc = await context.OpenAsync(BaseUrl + path, ct);
+                var doc = await context.OpenFreshAsync(BaseUrl + path, ct);
 
                 var table = FindCauseTable(doc);
                 if (table is null)
