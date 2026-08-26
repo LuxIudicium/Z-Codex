@@ -432,6 +432,11 @@ public partial class MainWindow : Window
     private void OpenGwRank_Click(object sender, RoutedEventArgs e)
         => Process.Start(new ProcessStartInfo(GwRankUrl) { UseShellExecute = true });
 
+    // L'URL du site vit déjà dans GvgReportService, qui l'utilise pour interroger l'API : la
+    // recopier ici en donnerait deux à tenir à jour.
+    private void OpenGvgReport_Click(object sender, RoutedEventArgs e)
+        => Process.Start(new ProcessStartInfo(GvgReportService.SiteUrl) { UseShellExecute = true });
+
     // Bouton dedie de la barre d'outils : meme action que « Extras ▸ Envoyer sur GWRank ».
     private void GwRankSendToolbar_Click(object sender, RoutedEventArgs e)
         => GwRankSend_Click(sender, e);

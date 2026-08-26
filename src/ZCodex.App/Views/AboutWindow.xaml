@@ -65,14 +65,19 @@
                 </TextBlock>
                 <!-- GWRank et gvg.report : deux services tiers dont Z-Codex lit les données. Ici,
                      dans le bloc des crédits, plutôt que dans la ligne de remerciements au-dessus
-                     qui ne nomme que des personnes — et ici les liens sont cliquables. -->
+                     qui ne nomme que des personnes — et ici les liens sont cliquables. Une ligne
+                     CHACUN : ils ne rendent pas le même service, et les réunir laissait croire à
+                     une seule source. -->
                 <TextBlock FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"
                            TextWrapping="Wrap" Margin="0,4,0,0">
-                    <Run Text="{DynamicResource S.About.ServiceCredit}"/>
+                    <Run Text="{DynamicResource S.About.GwRankCredit}"/>
                     <Hyperlink NavigateUri="https://gwrank.com" RequestNavigate="Hyperlink_RequestNavigate">
                         GWRank
                     </Hyperlink>
-                    <Run Text="·"/>
+                </TextBlock>
+                <TextBlock FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}"
+                           TextWrapping="Wrap" Margin="0,4,0,0">
+                    <Run Text="{DynamicResource S.About.GvgReportCredit}"/>
                     <Hyperlink NavigateUri="https://gvg.report" RequestNavigate="Hyperlink_RequestNavigate">
                         gvg.report
                     </Hyperlink>

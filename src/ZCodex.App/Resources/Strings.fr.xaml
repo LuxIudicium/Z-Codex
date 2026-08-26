@@ -403,7 +403,8 @@
     <sys:String x:Key="S.About.Successor">Inspiré de paw·ned², avec une architecture moderne et les identifiants de template officiels du jeu.</sys:String>
     <sys:String x:Key="S.About.DataCredit">Données de compétences et icônes :</sys:String>
     <sys:String x:Key="S.About.BuildCredit">Builds de la communauté :</sys:String>
-    <sys:String x:Key="S.About.ServiceCredit">Bibliothèque de builds et rapports de match, merci à :</sys:String>
+    <sys:String x:Key="S.About.GwRankCredit">Bibliothèque de builds et partage, merci à :</sys:String>
+    <sys:String x:Key="S.About.GvgReportCredit">Rapports de match GvG, merci à :</sys:String>
     <sys:String x:Key="S.About.Disclaimer">Guild Wars est une marque d'ArenaNet / NCSOFT. Z-Codex est un outil non officiel.</sys:String>
     <sys:String x:Key="S.About.Community">Retours, bugs et idées de fonctionnalités :</sys:String>
     <sys:String x:Key="S.About.Thanks">Merci à Holye, Arka, Dark, Courant, Ramstram et Arloz — et à vous, pour avoir téléchargé l'app !</sys:String>
@@ -703,7 +704,7 @@
     <sys:String x:Key="S.GwRank.OnboardStep3">3. Copiez la clé, puis collez-la dans le champ ci-dessous.</sys:String>
     <sys:String x:Key="S.GwRank.OnboardOpenSite">Ouvrir gwrank.com</sys:String>
     <sys:String x:Key="S.Menu.ExtrasGwRankRefresh">Rafraîchir depuis GWRank</sys:String>
-    <sys:String x:Key="S.Menu.ExtrasGwRankStartup">Rafraîchir GWRank au démarrage</sys:String>
+    <sys:String x:Key="S.Menu.ExtrasGwRankStartup">Activer/désactiver le rafraîchissement GWRank au démarrage</sys:String>
     <sys:String x:Key="S.GwRank.SyncDone" xml:space="preserve">GWRank est à jour.&#10;&#10;À vous : {0} build(s), {1} teambuild(s).&#10;Publics : {2} build(s), {3} teambuild(s).</sys:String>
     <sys:String x:Key="S.GwRank.SyncSkipped">{0} entrée(s) illisible(s) ont été ignorées.</sys:String>
     <sys:String x:Key="S.Menu.ExtrasGwRankBulk">Envoyer ma bibliothèque sur GWRank…</sys:String>

@@ -1225,21 +1225,24 @@
 
                 <Separator/>
 
-                <!-- 3. GWRank : le seul aller-retour du menu (on dépose ET on rapatrie). -->
+                <!-- 3. GWRank : le seul aller-retour du menu (on dépose ET on rapatrie). Les
+                     quatre gestes courants d'abord, les réglages EN DERNIER — on les ouvre une
+                     fois pour coller sa clé d'API, puis presque plus jamais. -->
                 <MenuItem Header="{DynamicResource S.Menu.ExtrasGwRankSend}" Click="GwRankSend_Click"/>
                 <MenuItem Header="{DynamicResource S.Menu.ExtrasGwRankBulk}" Click="GwRankBulk_Click"/>
-                <MenuItem Header="{DynamicResource S.Menu.ExtrasGwRankSettings}" Click="GwRankSettings_Click"/>
                 <MenuItem Header="{DynamicResource S.Menu.ExtrasGwRankRefresh}" Click="GwRankRefresh_Click"/>
                 <!-- Case a cocher : l'etat est relu a l'ouverture du menu (ExtrasMenu_SubmenuOpened),
                      car le reglage peut avoir change ailleurs. -->
                 <MenuItem x:Name="GwRankStartupMenuItem" IsCheckable="True"
                           Header="{DynamicResource S.Menu.ExtrasGwRankStartup}"
                           Click="GwRankSyncOnStartup_Click"/>
+                <MenuItem Header="{DynamicResource S.Menu.ExtrasGwRankSettings}" Click="GwRankSettings_Click"/>
 
                 <Separator/>
 
-                <!-- 4. Sites de builds ouverts dans le navigateur (rien n'est téléchargé ici) —
-                     mêmes destinations que le bouton « Partager le build » de la barre d'outils. -->
+                <!-- 4. Sites de builds ouverts dans le navigateur (rien n'est téléchargé ici).
+                     Les deux qui se consultent sans compte ; la liste complète, GWRank et
+                     GvG Report compris, est sous le bouton « Partager le build ». -->
                 <MenuItem Header="GW1 Builds" Click="OpenGw1Builds_Click"/>
                 <MenuItem Header="GW PvX Fandom Wiki" Click="OpenGwPvx_Click"/>
 
@@ -1293,14 +1296,16 @@
                 <Button Style="{StaticResource ToolbarButtonStyle}" ToolTip="{DynamicResource S.Tb.Search}" Click="SearchTemplates_Click">
                     <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="#7A5CB5"/>
                 </Button>
-                <!-- Partage : deux sites de builds → menu déroulant plutôt qu'une destination
-                     imposée. Mêmes entrées que le menu Extras. -->
+                <!-- Partage : quatre sites de builds → menu déroulant plutôt qu'une destination
+                     imposée. Ce menu-ci est la liste COMPLÈTE ; le menu Extras n'en reprend que
+                     les deux sites sans compte à créer. -->
                 <Button Style="{StaticResource ToolbarButtonStyle}" ToolTip="{DynamicResource S.Tb.Share}" Click="ShareBuild_Click">
                     <Button.ContextMenu>
                         <ContextMenu>
                             <MenuItem Header="GW1 Builds" Click="OpenGw1Builds_Click"/>
                             <MenuItem Header="GW PvX Fandom Wiki" Click="OpenGwPvx_Click"/>
                             <MenuItem Header="GWRank" Click="OpenGwRank_Click"/>
+                            <MenuItem Header="GvG Report" Click="OpenGvgReport_Click"/>
                         </ContextMenu>
                     </Button.ContextMenu>
                     <TextBlock Text="&#xE774;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="#2AA0A0"/>
