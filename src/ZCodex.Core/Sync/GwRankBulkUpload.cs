@@ -305,6 +305,14 @@ public static class GwRankBulkUpload
         // inscrit dans le document (mesuré : 13 fichiers sur 263).
         model.Name = index.NameOf(model.Id) ?? fileName;
 
+        // ⚠ Même piège que le mode de jeu : les étiquettes GWRank ne sont pas dans le fichier
+        // mais dans l'index. Sans cette reprise, un passage du lot les EFFACERAIT sur le serveur
+        // (il remplace la liste par celle qu'il reçoit), et le build ferait ensuite la navette
+        // entre le bouton et le lot, chacun défaisant le travail de l'autre.
+        // Remplacer et non compléter : un `.zcx` venu d'ailleurs peut porter des étiquettes
+        // libres, que la liste fermée du serveur refuse désormais en 422.
+        model.Tags = [.. index.TagsOf(model.Id)];
+
         var verdict = index.Check(model, path);
         return new GwRankBulkItem
         {

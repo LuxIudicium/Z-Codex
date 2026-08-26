@@ -48,6 +48,12 @@ public class AppSettings
     // est simplement ignoré au chargement suivant.
     public List<string> GwRankBulkExcluded { get; set; } = [];
 
+    // Dernière liste d'étiquettes rendue par GWRank, et quand. L'autorité reste le serveur
+    // (GET /api/v1/tags, liste fermée) : ce cache évite seulement d'attendre le réseau à chaque
+    // ouverture de la fenêtre d'envoi. Vide = jamais lue, on retombe sur GwRankClient.FallbackTags.
+    public List<string> GwRankTags { get; set; } = [];
+    public DateTime? GwRankTagsFetchedUtc { get; set; }
+
     // Géométrie de MainWindow, sauvegardée à la fermeture. Null = valeurs par défaut du XAML.
     public double? WindowWidth { get; set; }
     public double? WindowHeight { get; set; }

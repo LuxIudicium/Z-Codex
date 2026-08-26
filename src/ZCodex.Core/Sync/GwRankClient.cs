@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
@@ -99,6 +99,13 @@ public class GwRankSummary
     public bool Changed { get; set; }
 }
 
+/// <summary>Réponse de <c>GET /api/v1/tags</c> : la liste FERMÉE des étiquettes que le serveur
+/// accepte, dans l'ordre voulu par les administrateurs de GWRank.</summary>
+public sealed class GwRankTagList
+{
+    public List<string> Tags { get; set; } = [];
+}
+
 public sealed class GwRankList
 {
     public List<GwRankSummary> Teambuilds { get; set; } = [];
@@ -161,6 +168,31 @@ public sealed class GwRankClient : IDisposable
     public bool HasToken { get; }
 
     private string Endpoint(string suffix = "") => $"{_baseUrl}/api/v1/teambuilds{suffix}";
+
+    /// <summary>
+    /// Étiquettes admises par le serveur, en DERNIER RECOURS seulement.
+    ///
+    /// L'autorité est <see cref="GetTagsAsync"/> : ces neuf valeurs ne servent qu'à proposer
+    /// quelque chose quand la liste n'a jamais pu être lue (premier envoi, machine hors ligne).
+    /// Une étiquette qu'Arka aurait retirée depuis serait refusée en 422 — le message du serveur
+    /// dit alors exactement laquelle.
+    /// </summary>
+    public static readonly string[] FallbackTags =
+        ["GvG", "HA", "RA", "TA", "AB", "FA", "JQ", "PvP", "PvE"];
+
+    /// <summary>
+    /// La liste des étiquettes acceptées.
+    ///
+    /// ⚠ Seul appel de ce client qui ne demande AUCUN jeton : l'endpoint est public (vérifié sur
+    /// le serveur réel). Ne pas y remettre de garde <c>HasToken</c> — la liste doit pouvoir
+    /// s'afficher avant même que l'utilisateur ait collé sa clé.
+    ///
+    /// ⚠ Elle est FERMÉE depuis la v4 de l'API : une valeur hors liste fait refuser le dépôt
+    /// entier en <c>422 invalid_tag</c>, sans rien créer (mesuré). Envoyer autre chose que ce que
+    /// rend cet appel, c'est faire échouer l'envoi.
+    /// </summary>
+    public Task<GwRankResult<GwRankTagList>> GetTagsAsync(CancellationToken ct = default)
+        => SendAsync<GwRankTagList>(HttpMethod.Get, $"{_baseUrl}/api/v1/tags", null, ct);
 
     /// <summary>Vérifie que le jeton est accepté. Sert au bouton « Tester la connexion » des
     /// réglages : l'utilisateur doit pouvoir valider sa clé sans rien envoyer.</summary>

@@ -1498,6 +1498,50 @@ public partial class MainWindow : Window
         };
     }
 
+    /// <summary>
+    /// La liste FERMÉE des étiquettes que GWRank accepte (<c>GET /api/v1/tags</c>).
+    ///
+    /// Rafraîchie au plus une fois par jour : c'est une donnée administrative, tenue par les
+    /// gestionnaires de GWRank, qui ne bouge pas au rythme des envois. Le reste du temps la
+    /// fenêtre d'envoi s'ouvre sans attendre le réseau.
+    ///
+    /// Jamais bloquant : liste indisponible → celle du dernier appel ; jamais lue → les neuf
+    /// valeurs de repli du client. Un envoi ne doit pas devenir impossible parce qu'on n'a pas
+    /// pu lire une liste, alors même que l'appel ne demande aucun jeton.
+    /// </summary>
+    private async Task<IReadOnlyList<string>> GwRankTagsAsync()
+    {
+        bool fresh = _settings.GwRankTags.Count > 0
+                  && _settings.GwRankTagsFetchedUtc is { } when
+                  && DateTime.UtcNow - when < TimeSpan.FromHours(24);
+
+        if (!fresh)
+        {
+            var previousCursor = Mouse.OverrideCursor;
+            Mouse.OverrideCursor = Cursors.Wait;
+            try
+            {
+                using var client = new GwRankClient(_settings.GwRankApiToken, _settings.GwRankBaseUrl);
+                // 8 s et non les 30 s du client : cet appel précède l'ouverture d'une fenêtre.
+                // Un serveur qui traîne ne doit pas faire attendre devant un écran figé pour une
+                // liste dont on a déjà une version acceptable.
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
+                var res = await client.GetTagsAsync(cts.Token);
+                if (res is { IsOk: true, Value.Tags.Count: > 0 })
+                {
+                    _settings.GwRankTags = res.Value.Tags;
+                    _settings.GwRankTagsFetchedUtc = DateTime.UtcNow;
+                    _settings.Save();
+                }
+            }
+            // Délai dépassé : on garde ce qu'on a. Le client relaie l'annulation telle quelle.
+            catch (OperationCanceledException) { }
+            finally { Mouse.OverrideCursor = previousCursor; }
+        }
+
+        return _settings.GwRankTags.Count > 0 ? _settings.GwRankTags : GwRankClient.FallbackTags;
+    }
+
     private async void GwRankSend_Click(object sender, RoutedEventArgs e)
     {
         // Aucune cle : on ouvre les reglages, dont le bandeau d'accueil explique ou la prendre.
@@ -1580,6 +1624,8 @@ public partial class MainWindow : Window
         // question passe avant la réparation de collision, qui, elle, réécrit le fichier.
         var upload = new GwRankUploadWindow(scopes, NameForScope,
                                             s => index.VisibilityOf(IdOfScope(s)),
+                                            s => index.TagsOf(IdOfScope(s)),
+                                            await GwRankTagsAsync(),
                                             _settings.GwRankPublicByDefault) { Owner = this };
         if (upload.ShowDialog() != true) return;
 
@@ -1616,6 +1662,13 @@ public partial class MainWindow : Window
         // Le nom saisi fait foi — c'est sous celui-là que le build vivra sur GWRank.
         model.Name  = upload.SelectedName;
         displayName = upload.SelectedName;
+
+        // Les étiquettes sont REMPLACÉES, pas complétées : elles ne vivent pas dans le fichier
+        // mais dans l'index (cf. GwRankEntry.Tags), et un `.zcx` venu d'ailleurs peut porter des
+        // étiquettes libres, que la liste fermée du serveur refuse en 422 — ce qui ferait échouer
+        // tout le dépôt. Posées ICI, donc avant le verdict : sans cela, ne changer QUE les
+        // étiquettes rendrait « déjà à jour » et rien ne partirait.
+        model.Tags = [.. upload.SelectedTags];
 
         // Le verdict porte sur ce qu'on envoie VRAIMENT, donc après le choix de la portée.
         var verdict = index.Check(model, filePath);

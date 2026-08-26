@@ -8,6 +8,45 @@
         Background="{DynamicResource DialogBackgroundBrush}"
         Foreground="{DynamicResource TextPrimaryBrush}">
 
+    <Window.Resources>
+        <!-- Puce d'étiquette. Reprend l'aspect des puces du catalogue (CatalogTabStyle), qui vit
+             dans les ressources de MainWindow et n'est donc pas visible d'ici.
+             ⚠ Le gabarit est REDÉFINI en entier, à dessein : Themes/Controls.xaml n'a aucun style
+             implicite de ToggleButton, et un ToggleButton laissé à WPF sort en chrome clair,
+             illisible en thème sombre. Toutes les couleurs passent par les jetons de thème. -->
+        <Style x:Key="TagPillStyle" TargetType="ToggleButton">
+            <Setter Property="Margin" Value="0,0,6,6"/>
+            <Setter Property="Padding" Value="10,3"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="Chip" CornerRadius="3" BorderThickness="1"
+                                Padding="{TemplateBinding Padding}"
+                                Background="{DynamicResource InsetBackgroundBrush}"
+                                BorderBrush="{DynamicResource BorderStrongBrush}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <!-- Survol AVANT sélection : une puce cochée ET survolée doit garder
+                                 son liseré d'accentuation foncé, sinon elle perd son contour. -->
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chip" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Chip" Property="Background" Value="{DynamicResource AccentBrush}"/>
+                                <Setter TargetName="Chip" Property="BorderBrush" Value="{DynamicResource AccentDarkBrush}"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
     <!-- Choix de la visibilité AU MOMENT DE L'ENVOI, et non dans un réglage global : rendre un
          build public est un geste public, il doit être décidé build par build et sous les yeux de
          l'utilisateur. Le dernier choix devient le défaut du suivant — c'est un défaut, pas une
@@ -47,7 +86,8 @@
         <TextBlock Text="{DynamicResource S.GwRank.AlwaysInCollection}" TextWrapping="Wrap"
                    FontSize="12" Margin="0,16,0,0"/>
 
-        <CheckBox x:Name="PublicCheck" Margin="0,12,0,0">
+        <CheckBox x:Name="PublicCheck" Margin="0,12,0,0"
+                  Checked="Public_Changed" Unchecked="Public_Changed">
             <StackPanel>
                 <TextBlock Text="{DynamicResource S.GwRank.SharePublicly}" FontWeight="SemiBold"/>
                 <TextBlock Text="{DynamicResource S.GwRank.SharePubliclyHint}" TextWrapping="Wrap"
@@ -55,6 +95,19 @@
                            Foreground="{DynamicResource TextSecondaryBrush}"/>
             </StackPanel>
         </CheckBox>
+
+        <!-- Étiquettes : demandées SEULEMENT au partage, et jamais inventées ici — la liste vient
+             de GWRank (GET /api/v1/tags) et elle est FERMÉE : une valeur hors liste fait refuser
+             tout le dépôt. Indenté sous la case : c'est la question qu'elle ouvre. -->
+        <StackPanel x:Name="TagPanel" Visibility="Collapsed" Margin="26,10,0,0">
+            <TextBlock Text="{DynamicResource S.GwRank.TagsLabel}" FontWeight="SemiBold" FontSize="12"/>
+            <TextBlock Text="{DynamicResource S.GwRank.TagsHint}" TextWrapping="Wrap" FontSize="11"
+                       Margin="0,2,0,6" Foreground="{DynamicResource TextSecondaryBrush}"/>
+            <WrapPanel x:Name="TagPills"/>
+            <TextBlock x:Name="TagWarning" Text="{DynamicResource S.GwRank.TagsNone}"
+                       Visibility="Collapsed" TextWrapping="Wrap" FontSize="11"
+                       Foreground="OrangeRed"/>
+        </StackPanel>
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
             <Button Content="{DynamicResource S.Common.Cancel}" Padding="14,4"

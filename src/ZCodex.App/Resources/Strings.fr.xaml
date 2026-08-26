@@ -731,6 +731,9 @@
     <sys:String x:Key="S.GwRank.AlwaysInCollection">Ce build rejoint votre collection GWRank.</sys:String>
     <sys:String x:Key="S.GwRank.SharePublicly">Le partager aussi avec tout le monde</sys:String>
     <sys:String x:Key="S.GwRank.SharePubliclyHint">Il reste dans votre collection dans les deux cas. Coché, il devient en plus visible et téléchargeable par tous les joueurs de GWRank ; décoché, vous êtes le seul à le voir.</sys:String>
+    <sys:String x:Key="S.GwRank.TagsLabel">Tags — au moins un</sys:String>
+    <sys:String x:Key="S.GwRank.TagsHint">C’est par eux que les joueurs cherchent dans la bibliothèque publique de GWRank. Un build sans tag ne ressort d’aucune recherche filtrée. La liste vient de GWRank lui-même.</sys:String>
+    <sys:String x:Key="S.GwRank.TagsNone">Choisissez au moins un tag, ou décochez le partage.</sys:String>
     <sys:String x:Key="S.GwRank.ScopeLabel">Que faut-il envoyer ?</sys:String>
     <sys:String x:Key="S.GwRank.ScopeWhole">Tout le teambuild — {0} ligne(s), variantes comprises</sys:String>
     <sys:String x:Key="S.GwRank.ScopeLock">Le cadenas {0} seul — {1} personnage(s)</sys:String>

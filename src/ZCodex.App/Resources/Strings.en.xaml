@@ -728,6 +728,9 @@
     <sys:String x:Key="S.GwRank.AlwaysInCollection">This build goes into your GWRank collection.</sys:String>
     <sys:String x:Key="S.GwRank.SharePublicly">Also share it with everyone</sys:String>
     <sys:String x:Key="S.GwRank.SharePubliclyHint">It stays in your collection either way. Ticked, it also becomes visible and downloadable by every GWRank player; unticked, you are the only one who sees it.</sys:String>
+    <sys:String x:Key="S.GwRank.TagsLabel">Tags — pick at least one</sys:String>
+    <sys:String x:Key="S.GwRank.TagsHint">GWRank players search the public library through these. A build with no tag never shows up in a filtered search. The list comes from GWRank itself.</sys:String>
+    <sys:String x:Key="S.GwRank.TagsNone">Pick at least one tag, or untick sharing.</sys:String>
     <sys:String x:Key="S.GwRank.ScopeLabel">What do you want to send?</sys:String>
     <sys:String x:Key="S.GwRank.ScopeWhole">The whole teambuild — {0} line(s), variants included</sys:String>
     <sys:String x:Key="S.GwRank.ScopeLock">Lock {0} only — {1} character(s)</sys:String>

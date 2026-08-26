@@ -36,6 +36,19 @@ public sealed class GwRankEntry
     /// fois au profit du nom de fichier.</summary>
     public string Name { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Étiquettes GWRank du dernier dépôt.
+    ///
+    /// Elles vivent ICI et non dans le `.zcx` (décision du 26/08) : un build simple vient d'un
+    /// `.txt`, dont le format du jeu n'a aucun champ où les loger, et un cadenas n'a pas de
+    /// fichier à lui. L'index est le seul endroit qui couvre les trois cas — et l'utilisateur
+    /// n'y gagne aucun fichier réécrit dans son dos.
+    ///
+    /// ⚠ Elles doivent être réinscrites dans le document à CHAQUE dépôt : le serveur remplace
+    /// la liste par celle qu'il reçoit. Envoyer sans les reprendre les effacerait sur GWRank.
+    /// </summary>
+    public List<string> Tags { get; set; } = [];
+
     /// <summary>« private » ou « public » lors du dernier dépôt. Sert à rappeler à l'utilisateur
     /// où en est CE build : repasser un build partagé en privé (ou l'inverse) sans s'en rendre
     /// compte est exactement ce qu'il ne faut pas pouvoir faire par inadvertance.</summary>
@@ -179,6 +192,9 @@ public sealed class GwRankSyncIndex
             ServerHash    = serverHash ?? string.Empty,
             ServerId      = serverId,
             Visibility    = visibility ?? string.Empty,
+            // Celles du document qu'on vient d'empreinter, pas celles qu'on croit avoir envoyées :
+            // les deux doivent décrire le MÊME dépôt, sinon le verdict « déjà à jour » ment.
+            Tags          = [.. build.Tags],
             Name          = build.Name,
             LastUploadUtc = DateTime.UtcNow,
         };
@@ -210,6 +226,16 @@ public sealed class GwRankSyncIndex
     public string? VisibilityOf(Guid id)
         => Entries.TryGetValue(id.ToString("D"), out var e) && e.Visibility.Length > 0
             ? e.Visibility : null;
+
+    /// <summary>
+    /// Étiquettes du dernier dépôt de ce build, ou une liste vide s'il n'a jamais été déposé
+    /// depuis ce poste.
+    ///
+    /// Sert deux fois : à précocher les puces de la fenêtre d'envoi, et à empêcher l'envoi de
+    /// masse d'effacer sur le serveur des étiquettes posées à l'unité.
+    /// </summary>
+    public IReadOnlyList<string> TagsOf(Guid id)
+        => Entries.TryGetValue(id.ToString("D"), out var e) ? e.Tags : [];
 
     /// <summary>Oublie une identité — après une suppression côté serveur, ou après avoir réattribué
     /// une identité neuve à un doublon.</summary>
