@@ -18,6 +18,7 @@ using ZCodex.Data;
 using ZCodex.Data.Repositories;
 using ZCodex.Scraper;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Reflection;
 using System.Text.Json;
@@ -769,6 +770,14 @@ public partial class MainWindow : Window
     private async void CheckUpdate_Click(object sender, RoutedEventArgs e)
         => await CheckForAppUpdateAsync(manual: true);
 
+    // Une date écrite dans la langue de l'INTERFACE, et non dans celle de Windows. Sans cela, un
+    // utilisateur anglophone sur un Windows français lisait « A GW update was detected
+    // (26 août 2026) » — la phrase en anglais, la date en français. L'ordre des éléments change
+    // aussi d'une langue à l'autre, d'où deux formats et non une simple bascule de culture.
+    private static string LongDate(DateTime date) => AppLanguage.IsFr
+        ? date.ToString("d MMMM yyyy", CultureInfo.GetCultureInfo("fr-FR"))
+        : date.ToString("MMMM d, yyyy", CultureInfo.GetCultureInfo("en-US"));
+
     private async Task CheckForGameUpdatesAsync()
     {
         try
@@ -788,7 +797,7 @@ public partial class MainWindow : Window
             {
                 var dlg = new GwUpdateWindow(
                     string.Format(T("S.Msg.GwUpdateDetected"),
-                        $"{lastGwUpdate.Value:d MMMM yyyy}", $"{scrapeInfo.LastScrapeDate:d MMMM yyyy}"))
+                        LongDate(lastGwUpdate.Value), LongDate(scrapeInfo.LastScrapeDate)))
                 { Owner = this };
                 dlg.ShowDialog();
 
