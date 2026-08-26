@@ -17,6 +17,10 @@ public class AppSettings
     // Null = jamais importé ; la fenêtre propose alors TemplatesRootPath.
     public string? PvxDestinationPath { get; set; }
 
+    // Destination du dernier import de rapport GvG (Extras ▸ Importer un rapport GvG).
+    // Null = jamais importé ; la fenêtre propose alors TemplatesRootPath.
+    public string? GvgReportDestinationPath { get; set; }
+
     // ── GWRank (Extras ▸ Envoyer sur GWRank) ────────────────────────────────
     // Jeton d'API personnel, créé par l'utilisateur sur sa page de profil GWRank. Null = aucune
     // synchronisation configurée : le menu propose alors d'ouvrir les réglages.

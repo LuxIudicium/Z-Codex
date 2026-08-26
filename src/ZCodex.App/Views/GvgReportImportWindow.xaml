@@ -1,0 +1,85 @@
+<Window x:Class="ZCodex.App.Views.GvgReportImportWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{DynamicResource S.Win.GvgTitle}"
+        Width="560" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Background="{DynamicResource DialogBackgroundBrush}"
+        Foreground="{DynamicResource TextPrimaryBrush}">
+
+    <!-- Import d'un rapport de match gvg.report. En DEUX temps : on lit d'abord le rapport pour
+         afficher les deux guildes par leur nom, car « équipe bleue / équipe rouge » ne dirait rien
+         à personne au moment de choisir. Rien n'est écrit avant le second clic. -->
+    <StackPanel Margin="22,18">
+
+        <TextBlock Text="{DynamicResource S.Gvg.Intro}" TextWrapping="Wrap" FontSize="13"/>
+
+        <!-- Attribution : les rapports sont produits par gvg.report et ses contributeurs. Elle est
+             ici, sous les yeux de l'utilisateur au moment où il les récupère. -->
+        <TextBlock TextWrapping="Wrap" FontSize="12" Margin="0,10,0,0"
+                   Foreground="{DynamicResource TextSecondaryBrush}">
+            <Run Text="{DynamicResource S.Gvg.Credit}"/>
+            <Hyperlink NavigateUri="https://gvg.report" RequestNavigate="Hyperlink_RequestNavigate">
+                gvg.report
+            </Hyperlink>
+        </TextBlock>
+
+        <Border BorderBrush="{DynamicResource BorderLightBrush}" BorderThickness="0,1,0,0"
+                Margin="0,14,0,0" Padding="0,12,0,0">
+            <StackPanel>
+                <TextBlock Text="{DynamicResource S.Gvg.Url}" Margin="0,0,0,4" FontSize="12"/>
+                <DockPanel>
+                    <Button x:Name="ReadButton" DockPanel.Dock="Right"
+                            Content="{DynamicResource S.Gvg.Read}"
+                            Padding="10,3" Margin="8,0,0,0" IsDefault="True" Click="Read_Click"/>
+                    <TextBox x:Name="UrlBox" Padding="4,3" VerticalContentAlignment="Center"
+                             TextChanged="UrlBox_TextChanged"/>
+                </DockPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- Tout ce qui suit reste masqué tant qu'aucun rapport n'a été lu : proposer une
+             destination avant de savoir s'il y a quelque chose à écrire n'aurait pas de sens. -->
+        <StackPanel x:Name="MatchPanel" Visibility="Collapsed">
+
+            <TextBlock x:Name="MatchText" TextWrapping="Wrap" FontSize="13" FontWeight="SemiBold"
+                       Margin="0,16,0,0"/>
+
+            <TextBlock Text="{DynamicResource S.Gvg.Teams}" Margin="0,12,0,6" FontSize="12"/>
+
+            <CheckBox x:Name="FirstTeamCheck" IsChecked="True"/>
+            <TextBlock x:Name="FirstTeamBars" FontSize="11" Margin="24,2,0,0"
+                       Foreground="{DynamicResource TextMutedBrush}"/>
+
+            <CheckBox x:Name="SecondTeamCheck" IsChecked="True" Margin="0,10,0,0"/>
+            <TextBlock x:Name="SecondTeamBars" FontSize="11" Margin="24,2,0,0"
+                       Foreground="{DynamicResource TextMutedBrush}"/>
+
+            <TextBlock Text="{DynamicResource S.Gvg.Caveat}" TextWrapping="Wrap" FontSize="11"
+                       Foreground="{DynamicResource TextMutedBrush}" Margin="0,12,0,0"/>
+
+            <TextBlock Text="{DynamicResource S.Gvg.Destination}" Margin="0,14,0,4" FontSize="12"/>
+            <DockPanel>
+                <Button x:Name="BrowseButton" DockPanel.Dock="Right" Content="{DynamicResource S.Common.Browse}"
+                        Padding="10,3" Margin="8,0,0,0" Click="Browse_Click"/>
+                <TextBox x:Name="DestinationBox" IsReadOnly="True" Padding="4,3"
+                         VerticalContentAlignment="Center"
+                         ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
+            </DockPanel>
+
+            <TextBlock Text="{DynamicResource S.Gvg.Warning}" TextWrapping="Wrap" FontSize="11"
+                       Foreground="{DynamicResource TextMutedBrush}" Margin="0,8,0,0"/>
+        </StackPanel>
+
+        <TextBlock x:Name="StatusText" Text="" TextWrapping="Wrap" FontSize="12"
+                   Margin="0,14,0,0" Visibility="Collapsed"/>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+            <Button x:Name="SaveButton" Content="{DynamicResource S.Gvg.Start}" Width="150" Padding="8,4"
+                    Visibility="Collapsed" Click="Save_Click"/>
+            <Button x:Name="CloseButton" Content="{DynamicResource S.Common.Close}" Width="90" Padding="8,4"
+                    Margin="8,0,0,0" IsCancel="True" Click="Close_Click"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

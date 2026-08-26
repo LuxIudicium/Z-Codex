@@ -1216,6 +1216,9 @@
                 <!-- Voisines de la mise à jour du catalogue : ces entrées vont chercher de la
                      donnée sur internet, et ce sont les seules du menu à le faire. -->
                 <MenuItem Header="{DynamicResource S.Menu.ExtrasPvx}" Click="PvxImport_Click"/>
+                <!-- Import d'un match réel depuis gvg.report. Sous l'import PvX : même geste
+                     (aller chercher des builds ailleurs), autre source. -->
+                <MenuItem Header="{DynamicResource S.Menu.ExtrasGvgReport}" Click="GvgReportImport_Click"/>
                 <!-- Dépôt du teambuild actif sur GWRank. Voisin de l'import PvX : même
                      groupe « ces entrées parlent à internet ». -->
                 <MenuItem Header="{DynamicResource S.Menu.ExtrasGwRankSend}" Click="GwRankSend_Click"/>

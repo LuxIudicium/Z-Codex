@@ -1811,6 +1811,36 @@ public partial class MainWindow : Window
         }
     }
 
+    private void GvgReportImport_Click(object sender, RoutedEventArgs e)
+    {
+        if (_vm.SkillPanel.AllSkills.Count == 0)
+        {
+            MessageBox.Show(T("S.Msg.CatalogNotLoaded"),
+                T("S.Msg.CatalogNotLoadedTitle"), MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var skillsById = _vm.SkillPanel.AllSkills.ToDictionary(s => s.Id, s => s);
+        // Défaut : la destination du dernier import, sinon la racine du navigateur.
+        var initial = _settings.GvgReportDestinationPath ?? _settings.TemplatesRootPath;
+
+        var win = new GvgReportImportWindow(skillsById, initial) { Owner = this };
+        win.ShowDialog();
+
+        if (win.ChosenDestination is { } destination)
+        {
+            _settings.GvgReportDestinationPath = destination;
+            _settings.Save();
+
+            // Sans relecture, les .zcx qui viennent d'atterrir n'apparaissent pas dans le
+            // navigateur et l'import a l'air d'avoir échoué. On ne relit que si la destination
+            // est DANS l'arborescence affichée, pour ne pas déplacer l'utilisateur sans raison.
+            var root = _vm.Browser.RootPath;
+            if (root is not null && destination.StartsWith(root, StringComparison.OrdinalIgnoreCase))
+                _vm.Browser.SetRoot(root);
+        }
+    }
+
     private void ArmorCalculatorTab_Click(object sender, RoutedEventArgs e)
         => _vm.ActivateArmorCalc();
 
