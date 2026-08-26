@@ -35,10 +35,18 @@ Auteur : **P. Vincent**.
 - **Flux** — les 12 flux du cycle mensuel, avec leur impact sur les calculs
 - **Invocation** — durée des sorts d'arme, PV et armure des esprits et serviteurs
 
-**Confort**
+**Partage et communauté**
+- **GWRank** — envoyez vos builds et teambuilds sur [gwrank.com](https://gwrank.com)
+  depuis la barre d'outils, classez-les par tags, partagez-les avec tous les joueurs
+  et parcourez la bibliothèque depuis l'application. Toute une bibliothèque part en
+  une passe, et rien de déjà en ligne n'est écrasé sans vous demander d'abord
+- **GvG Report** — transformez un rapport de match de [gvg.report](https://gvg.report)
+  en deux teambuilds, un par guilde
 - **Builds de la communauté** — récupération des *build packs* de PvXwiki depuis le menu
   Extras : ~1 460 builds et ~250 équipes, déposés là où vous voulez, au format que
   Guild Wars lit lui-même
+
+**Confort**
 - Interface **française et anglaise**, permutable à chaud (drapeaux en haut à droite)
 - Thème clair et sombre
 - Trois tailles d'icônes

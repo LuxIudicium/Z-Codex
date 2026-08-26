@@ -35,10 +35,18 @@ Author: **P. Vincent**.
 - **Flux** — the 12 monthly Flux, and their impact on the calculations
 - **Spawning Power** — weapon spell duration, health and armor of spirits and minions
 
-**Comfort**
+**Sharing and community**
+- **GWRank** — send your builds and team builds to [gwrank.com](https://gwrank.com)
+  from the toolbar, file them under tags, share them with every player, and browse
+  the library from inside the application. A whole library goes up in one pass, and
+  nothing already on the server is overwritten without asking you first
+- **GvG Report** — turn a match report from [gvg.report](https://gvg.report) into
+  two team builds, one per guild
 - **Community builds** — fetch the PvXwiki build packs from the Extras menu: ~1,460
   builds and ~250 teams, dropped wherever you like, in the format Guild Wars itself
   reads
+
+**Comfort**
 - **French and English** interface, switchable on the fly (flags at the top right)
 - Light and dark themes
 - Three icon sizes
