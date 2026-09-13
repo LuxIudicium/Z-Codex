@@ -236,6 +236,7 @@
     <sys:String x:Key="S.Msg.UnsavedBuild" xml:space="preserve">The build "{0}" has unsaved changes.&#10;&#10;Do you want to save before closing?</sys:String>
     <sys:String x:Key="S.Msg.UnsavedBuilds" xml:space="preserve">The following builds have unsaved changes:&#10;{0}&#10;&#10;Do you want to save before exiting?</sys:String>
     <sys:String x:Key="S.Msg.GwUpdateDetected" xml:space="preserve">A GW update was detected ({0}).&#10;Last scrape: {1}.&#10;&#10;Update the skill database?</sys:String>
+    <sys:String x:Key="S.Msg.GwUpdateWikiLag">Z-Codex builds on the individual skill pages of the official wiki. A skill ArenaNet has just added may not be fully categorized there yet — whether it is PvE-only, for one. If so, run this update again later from Extras ▸ Update skill database (wiki).</sys:String>
     <sys:String x:Key="S.Msg.GwUpdateTitle">Update available</sys:String>
     <sys:String x:Key="S.Msg.GwUpdateIgnore">Don't ask again until the next update</sys:String>
     <sys:String x:Key="S.Msg.AppUpdateTitle">Z-Codex update</sys:String>

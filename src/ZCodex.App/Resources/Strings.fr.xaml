@@ -239,6 +239,7 @@
     <sys:String x:Key="S.Msg.UnsavedBuild" xml:space="preserve">Le build « {0} » a des modifications non sauvegardées.&#10;&#10;Voulez-vous sauvegarder avant de fermer ?</sys:String>
     <sys:String x:Key="S.Msg.UnsavedBuilds" xml:space="preserve">Les builds suivants ont des modifications non sauvegardées :&#10;{0}&#10;&#10;Voulez-vous sauvegarder avant de quitter ?</sys:String>
     <sys:String x:Key="S.Msg.GwUpdateDetected" xml:space="preserve">Une mise à jour GW a été détectée ({0}).&#10;Dernier scrapping : {1}.&#10;&#10;Mettre à jour la base de données des compétences ?</sys:String>
+    <sys:String x:Key="S.Msg.GwUpdateWikiLag">Z-Codex se base sur les pages individuelles des compétences du wiki officiel. Une compétence tout juste ajoutée par ArenaNet peut ne pas y être encore entièrement catégorisée — son statut « PvE uniquement », par exemple. Le cas échéant, relancez cette mise à jour plus tard depuis Extras ▸ Mettre à jour les compétences (wiki).</sys:String>
     <sys:String x:Key="S.Msg.GwUpdateTitle">Mise à jour disponible</sys:String>
     <sys:String x:Key="S.Msg.GwUpdateIgnore">Ne plus demander jusqu'à la prochaine mise à jour</sys:String>
     <sys:String x:Key="S.Msg.AppUpdateTitle">Mise à jour de Z-Codex</sys:String>

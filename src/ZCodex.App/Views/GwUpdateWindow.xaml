@@ -8,6 +8,12 @@
         Foreground="{DynamicResource TextPrimaryBrush}">
     <StackPanel Margin="16">
         <TextBlock x:Name="MessageText" FontSize="13" TextWrapping="Wrap" Margin="0,0,0,14"/>
+        <!-- Le catalogue ne vaut que ce que vaut le wiki à l'instant du scrapping : une compétence
+             tout juste sortie peut y être encore incomplète (son statut PvE uniquement, typiquement).
+             On le dit ici plutôt que dans l'aide — c'est au moment de lancer la mise à jour que
+             l'utilisateur peut en tirer la conséquence : la relancer plus tard. -->
+        <TextBlock Text="{DynamicResource S.Msg.GwUpdateWikiLag}" FontSize="12" TextWrapping="Wrap"
+                   Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,14"/>
         <CheckBox x:Name="IgnoreBox" Content="{DynamicResource S.Msg.GwUpdateIgnore}"
                   FontSize="12" Margin="0,0,0,16"/>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
