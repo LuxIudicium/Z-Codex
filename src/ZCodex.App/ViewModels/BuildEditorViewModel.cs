@@ -74,6 +74,8 @@ public class BuildEditorViewModel : ViewModelBase
             () => CharacterSlotViewModel.RoaringWindsBonusFor(NatureRituals.Active, new[] { Character }, NatureRituals.RoaringWindsRank);
         Character.TranquilityPercentProvider =
             () => CharacterSlotViewModel.TranquilityPercentFor(NatureRituals.Active, new[] { Character }, NatureRituals.TranquilityRank);
+        Character.NaturesRenewalPercentProvider =
+            () => CharacterSlotViewModel.NaturesRenewalPercentFor(new[] { Character }, NatureRituals.NaturesRenewalRank);
         NatureRituals.Changed += () => { Character.RefreshSkillTooltips(); RefreshNatureRitualBand(); };
         NatureRituals.RankPreview += RefreshNatureRitualBand;   // badge immédiat, recalcul débouncé via Changed
 

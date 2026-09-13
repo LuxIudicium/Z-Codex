@@ -227,6 +227,18 @@ public partial class SkillTooltipControl : UserControl
         set => SetValue(RoaringWindsBonusProperty, value);
     }
 
+    // Surcoût d'incantation de Nature's Renewal, en % « plus long » : 100 = le ×2 du PvE (défaut),
+    // 50…83 en PvP où l'effet suit le rang de Survie du lanceur. Fourni par le slot.
+    public static readonly DependencyProperty NaturesRenewalCastPctProperty =
+        DependencyProperty.Register(nameof(NaturesRenewalCastPct), typeof(int), typeof(SkillTooltipControl),
+            new PropertyMetadata(100, OnInputsChanged));
+
+    public int NaturesRenewalCastPct
+    {
+        get => (int)GetValue(NaturesRenewalCastPctProperty);
+        set => SetValue(NaturesRenewalCastPctProperty, value);
+    }
+
     // ── Durée d'enchantement (Lot D) : % des modificateurs applicables à cette compétence ────
     // Arme « of Enchanting » (+20), prolongateur personnel (Blessed Aura/Extend), Tranquility (−).
     // Fournis par le slot ; 0 en catalogue ou hors enchantement → aucune ligne de durée.
@@ -572,15 +584,16 @@ public partial class SkillTooltipControl : UserControl
         EnergyText = $"{shown} ({baseCost})";
     }
 
-    // Temps d'activation : Nature's Renewal double le cast des enchantements/hex (couleur rituel) ;
-    // le flux Jack of All Trades le réduit de 25 % (couleur flux). Les deux se combinent (× puis ×).
+    // Temps d'activation : Nature's Renewal allonge le cast des enchantements/hex (couleur rituel)
+    // — ×2 en PvE, +50…83 % en PvP selon le rang du lanceur ; le flux Jack of All Trades le réduit
+    // de 25 % (couleur flux). Les deux se combinent (× puis ×).
     private void UpdateCast()
     {
         float baseCast = Skill?.CastTime ?? 0f;
         if (baseCast <= 0f || Skill is not { } s) { CastText = baseCast > 0f ? baseCast.ToString("0.##") : string.Empty; return; }
 
         var rituals = NatureRituals ?? EmptyRituals;
-        float ncast = NatureRitualData.CastTime(baseCast, s, rituals);
+        float ncast = NatureRitualData.CastTime(baseCast, s, rituals, NaturesRenewalCastPct);
         bool ritual = Math.Abs(ncast - baseCast) > 0.001f;
 
         int pct = FluxCastPercent;

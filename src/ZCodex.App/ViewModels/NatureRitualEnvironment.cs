@@ -76,6 +76,26 @@ public class NatureRitualEnvironment
     public void LoadTranquilityRank(int rank)
         => _tranquilityRank = Math.Clamp(rank, 0, NatureRitualData.MaxRitualRank);
 
+    // Rang de SIMULATION de Nature's Renewal (surcoût d'incantation) — n'a de sens QU'EN PvP, où
+    // l'effet dépend du rang (en PvE le ×2 est fixe). Même patron que les deux autres.
+    private int _naturesRenewalRank = 12;
+    public int NaturesRenewalRank
+    {
+        get => _naturesRenewalRank;
+        set
+        {
+            var v = Math.Clamp(value, 0, NatureRitualData.MaxRitualRank);
+            if (v == _naturesRenewalRank) return;
+            _naturesRenewalRank = v;
+            RankPreview?.Invoke();                     // badge immédiat
+            _rankTimer.Stop(); _rankTimer.Start();     // recalcul lourd débouncé (500 ms)
+        }
+    }
+
+    // Chargement (.pn3) : pose le rang SANS déclencher de recalcul ni marquer dirty.
+    public void LoadNaturesRenewalRank(int rank)
+        => _naturesRenewalRank = Math.Clamp(rank, 0, NatureRitualData.MaxRitualRank);
+
     // Synchronise l'ensemble ÉQUIPÉ et DÉSACTIVE les rituels qui viennent d'être retirés du build
     // (option B, décision Philippe : « extinction au retrait »). Un rituel activé sans jamais avoir
     // été équipé (menu View / bandeau « tous ») n'entre jamais dans _equipped → n'est PAS purgé.

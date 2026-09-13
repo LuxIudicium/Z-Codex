@@ -2028,8 +2028,9 @@ public partial class MainWindow : Window
     // l'état du contexte actif. Désactivé si aucun teambuild/build n'est affiché.
     // Nom affiché d'un rituel = DisplayName de sa compétence (les rituels SONT des skills → nom FR
     // déjà en base, résolu par SkillId) ; repli sur le nom EN du descripteur si absent du catalogue.
+    // DisplaySkillId, pas SkillId : en PvP les 2 rituels splittés affichent leur variante « (PvP) ».
     private string RitualDisplayName(NatureRitualData.Descriptor d) =>
-        _vm.SkillPanel.AllSkills.FirstOrDefault(s => s.Id == d.SkillId)?.DisplayName ?? d.Name;
+        _vm.SkillPanel.AllSkills.FirstOrDefault(s => s.Id == d.DisplaySkillId)?.DisplayName ?? d.Name;
 
     private void BuildNatureRitualMenu()
     {
@@ -3827,6 +3828,7 @@ public partial class MainWindow : Window
         vm.NatureRituals.LoadFromSkillIds(model.ActiveNatureRituals);
         vm.NatureRituals.LoadRoaringWindsRank(model.RoaringWindsRitualRank);
         vm.NatureRituals.LoadTranquilityRank(model.TranquilityRitualRank);
+        vm.NatureRituals.LoadNaturesRenewalRank(model.NaturesRenewalRitualRank);
         vm.VampiricHits3 = Math.Clamp(model.VampiricHits3, 0, 25);
         vm.VampiricHits5 = Math.Clamp(model.VampiricHits5, 0, 25);
         vm.Tags.Clear();
@@ -3933,6 +3935,7 @@ public partial class MainWindow : Window
         ActiveNatureRituals = vm.NatureRituals.ToSkillIds(),
         RoaringWindsRitualRank = vm.NatureRituals.RoaringWindsRank,
         TranquilityRitualRank = vm.NatureRituals.TranquilityRank,
+        NaturesRenewalRitualRank = vm.NatureRituals.NaturesRenewalRank,
         VampiricHits3 = vm.VampiricHits3,
         VampiricHits5 = vm.VampiricHits5,
         Characters = vm.Characters.Select(CharToModel).ToList(),

@@ -185,20 +185,28 @@ public class CharacterSlotViewModel : ViewModelBase
     public int RoaringWindsBonus =>
         RoaringWindsBonusProvider?.Invoke() ?? OwnerBuild?.RoaringWindsBonus ?? 0;
 
-    // Bonus Roaring Winds pour un ensemble de persos. Rang effectif = celui du/des PORTEUR(S)
-    // équipé(s) — le plus fort (décision Philippe : « le plus fort gagne ») — ou, si personne ne
-    // l'équipe, le rang de SIMULATION saisi dans le bandeau. 0 si le rituel n'est pas actif.
+    // Rang effectif d'un rituel à rang : le plus fort des PORTEUR(S) qui l'ont équipé (décision
+    // Philippe : « le plus fort gagne »), ou null si personne ne l'équipe — l'appelant retombe
+    // alors sur le rang de SIMULATION du bandeau. La reconnaissance passe par BySkillId, donc la
+    // variante « (PvP) » d'un rituel splitté compte comme sa jumelle PvE.
+    private static int? WearerRank(
+        NatureRitualData.Ritual ritual, IEnumerable<CharacterSlotViewModel> characters)
+    {
+        int? best = null;
+        foreach (var c in characters)
+            foreach (var slot in c.SkillSlots)
+                if (slot.Skill is { } s && NatureRitualData.BySkillId(s.Id)?.Ritual == ritual)
+                    best = Math.Max(best ?? 0, c.AttributeLevel(NatureRitualData.RitualAttribute) ?? 0);
+        return best;
+    }
+
+    // Bonus Roaring Winds pour un ensemble de persos. 0 si le rituel n'est pas actif.
     public static int RoaringWindsBonusFor(
         IReadOnlySet<NatureRitualData.Ritual> active, IEnumerable<CharacterSlotViewModel> characters, int simRank)
     {
         if (!active.Contains(NatureRitualData.Ritual.RoaringWinds)) return 0;
-        int rwId = NatureRitualData.SkillIdOf(NatureRitualData.Ritual.RoaringWinds);
-        int? bestRank = null;
-        foreach (var c in characters)
-            foreach (var slot in c.SkillSlots)
-                if (slot.Skill is { } rw && rw.Id == rwId)
-                    bestRank = Math.Max(bestRank ?? 0, c.AttributeLevel(NatureRitualData.RoaringWindsAttribute) ?? 0);
-        return NatureRitualData.RoaringWindsBonusAtRank(bestRank ?? simRank);
+        return NatureRitualData.RoaringWindsBonusAtRank(
+            WearerRank(NatureRitualData.Ritual.RoaringWinds, characters) ?? simRank);
     }
 
     // ── Tranquility : durée d'enchantement (Lot D) ────────────────────────────
@@ -210,18 +218,31 @@ public class CharacterSlotViewModel : ViewModelBase
 
     // % Tranquility pour un ensemble de persos. Même règle que Roaring Winds (même attribut, Survie
     // en pleine nature) : rang effectif = MAX des PORTEUR(S) équipé(s), sinon le rang de SIMULATION.
-    // 0 si Tranquility n'est pas actif.
+    // 0 si Tranquility n'est pas actif. Le % lui-même dépend du mode (20…50 % en PvE, 10…30 % en PvP).
     public static int TranquilityPercentFor(
         IReadOnlySet<NatureRitualData.Ritual> active, IEnumerable<CharacterSlotViewModel> characters, int simRank)
     {
         if (!active.Contains(NatureRitualData.Ritual.Tranquility)) return 0;
-        int tId = NatureRitualData.SkillIdOf(NatureRitualData.Ritual.Tranquility);
-        int? bestRank = null;
-        foreach (var c in characters)
-            foreach (var slot in c.SkillSlots)
-                if (slot.Skill is { } t && t.Id == tId)
-                    bestRank = Math.Max(bestRank ?? 0, c.AttributeLevel(NatureRitualData.RoaringWindsAttribute) ?? 0);
-        return NatureRitualData.TranquilityPercentAtRank(bestRank ?? simRank);
+        return NatureRitualData.TranquilityPercentAtRank(
+            WearerRank(NatureRitualData.Ritual.Tranquility, characters) ?? simRank);
+    }
+
+    // ── Nature's Renewal : surcoût d'incantation (splitté PvE/PvP) ────────────
+
+    public Func<int>? NaturesRenewalPercentProvider { get; set; }
+    // Surcoût d'incantation « plus long » (%) applicable aux enchantements/maléfices de ce perso.
+    // Toujours renseigné (100 en PvE) : c'est NatureRitualData.CastTime qui teste l'activation.
+    public int NaturesRenewalPercent =>
+        NaturesRenewalPercentProvider?.Invoke() ?? OwnerBuild?.NaturesRenewalPercent ?? 100;
+
+    // % Nature's Renewal pour un ensemble de persos. En PvE c'est 100 (×2, sans rang) ; en PvP,
+    // même règle de rang que Roaring Winds / Tranquility.
+    public static int NaturesRenewalPercentFor(
+        IEnumerable<CharacterSlotViewModel> characters, int simRank)
+    {
+        if (!NatureRitualData.PvpVariants) return 100;
+        return NatureRitualData.NaturesRenewalPercentAtRank(
+            WearerRank(NatureRitualData.Ritual.NaturesRenewal, characters) ?? simRank);
     }
 
     // ── Prolongateurs de durée d'enchantement par perso (Lot D) ───────────────
@@ -1091,10 +1112,46 @@ public class CharacterSlotViewModel : ViewModelBase
             _attributes?.Allocations.RemoveAll(a => a.AttributeId == attr.Id);
     }
 
+    // Vide les points investis dans une carac qui n'appartient plus aux professions du perso.
+    // Sans ça, changer de profession laissait dans Allocations une carac ORPHELINE : aucune ligne
+    // ne l'affiche plus (on ne bâtit ci-dessous que les caracs de PR/SEC), TotalAttributePoints ne
+    // la compte pas (il somme les lignes) — mais GwTemplateCodec.Encode, lui, écrit TOUT le
+    // dictionnaire. Le code O partait donc avec une carac hors profession, le jeu refusait le
+    // template, et RIEN dans l'app ne le laissait voir. Cas réel remonté par un utilisateur :
+    // Prières du vent 8 (Derviche) dans un Moine/Assassin, code de 27 caractères au lieu de 26
+    // (l'ID élevé de la carac orpheline élargit le champ, d'où un code plus long — la signature
+    // reconnaissable du bug).
+    //
+    // Le filtre est le MIROIR EXACT des lignes bâties plus bas — primaire : toutes ses caracs ;
+    // secondaire : ses NON-primaires seulement. Sinon une Faveur divine sur un Guerrier/Moine
+    // survivrait à la purge tout en restant invisible : le même bug, sous un autre nom.
+    //
+    // Appelé depuis RefreshAttributeRows, point de passage commun au changement de profession ET
+    // au chargement d'un build (setter Attributes) : un .zcx déjà infecté est donc nettoyé à
+    // l'ouverture, onglet Build comme teambuild, variantes comprises.
+    private void PruneOrphanAttributes()
+    {
+        if (_attributes is null || _attributes.Allocations.Count == 0) return;
+
+        // Perso sans AUCUNE profession : rien ne permet de juger une carac, et purger ici viderait
+        // un build dont les professions n'ont pas encore été posées. On laisse passer — le code
+        // produit serait de toute façon sans profession.
+        if (_primaryProfession == Profession.None && _secondaryProfession == Profession.None) return;
+
+        var kept = GwAttributeData.ForProfession(_primaryProfession)
+            .Concat(GwAttributeData.ForProfession(_secondaryProfession).Where(a => !a.IsPrimary))
+            .Select(a => a.Id)
+            .ToHashSet();
+
+        _attributes.Allocations.RemoveAll(a => !kept.Contains(a.AttributeId));
+    }
+
     // ── Attribute rows ────────────────────────────────────────────────────────
 
     private void RefreshAttributeRows()
     {
+        PruneOrphanAttributes();
+
         foreach (var r in PrimaryAttributeRows)   r.PropertyChanged -= OnAttributeRowChanged;
         foreach (var r in SecondaryAttributeRows) r.PropertyChanged -= OnAttributeRowChanged;
 

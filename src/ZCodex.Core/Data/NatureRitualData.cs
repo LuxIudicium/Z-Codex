@@ -19,9 +19,22 @@ namespace ZCodex.Core.Data;
 ///  • Fast Casting reste hors périmètre.
 /// Tranquility (durée d'enchantement) est déclarée ici pour le bandeau, mais son effet est traité
 /// dans un lot séparé (Lot D) — ses fonctions énergie/recharge/cast sont des no-op.
+///
+/// SPLIT PvE/PvP : 2 des 8 rituels ont une variante « (PvP) » aux chiffres DIFFÉRENTS
+/// (Tranquility 1213/3460, Nature's Renewal 476/3445). Les deux versions ne coexistent jamais en
+/// jeu → le rituel reste UNE entrée du bandeau, et c'est <see cref="PvpVariants"/> (le mode de jeu
+/// du catalogue) qui décide de l'icône, du nom et des chiffres. Les 6 autres n'ont pas de jumelle.
 /// </summary>
 public static class NatureRitualData
 {
+    /// <summary>
+    /// Mode de jeu courant du catalogue (PvP = vrai). Ambiant comme <see cref="AppLanguage.IsFr"/> :
+    /// posé par MainViewModel à chaque bascule du filtre PvE/PvP, lu par tout ce qui dépend de la
+    /// variante affichée (id d'icône, tables de rang de Tranquility et Nature's Renewal).
+    /// N'affecte JAMAIS la persistance : <see cref="SkillIdOf"/> renvoie toujours l'id de base.
+    /// </summary>
+    public static bool PvpVariants { get; set; }
+
     public enum Ritual
     {
         EnergizingWind,
@@ -35,11 +48,24 @@ public static class NatureRitualData
     }
 
     /// <summary>Métadonnées d'un rituel : identité, mappage vers la compétence de la base, libellé
-    /// bilingue (<see cref="DisplayTooltip"/> choisit selon <see cref="AppLanguage.IsFr"/>).</summary>
-    public sealed record Descriptor(Ritual Ritual, int SkillId, string Name, string TooltipFr, string TooltipEn)
+    /// bilingue (<see cref="DisplayTooltip"/> choisit selon <see cref="AppLanguage.IsFr"/>).
+    /// <paramref name="PvpSkillId"/> = 0 quand le rituel n'a pas de variante « (PvP) » ; sinon les
+    /// libellés PvP prennent le relais en mode PvP (chiffres différents).</summary>
+    public sealed record Descriptor(
+        Ritual Ritual, int SkillId, string Name, string TooltipFr, string TooltipEn,
+        int PvpSkillId = 0, string? PvpTooltipFr = null, string? PvpTooltipEn = null)
     {
-        /// <summary>Résumé du rituel dans la langue affichée.</summary>
-        public string DisplayTooltip => AppLanguage.IsFr ? TooltipFr : TooltipEn;
+        /// <summary>Le rituel existe-t-il en deux versions aux chiffres différents ?</summary>
+        public bool HasPvpVariant => PvpSkillId != 0;
+
+        /// <summary>SkillId de la variante à AFFICHER (icône, infobulle, nom) dans le mode courant.
+        /// Jamais utilisé pour persister : la sauvegarde passe par <see cref="SkillIdOf"/>.</summary>
+        public int DisplaySkillId => PvpVariants && HasPvpVariant ? PvpSkillId : SkillId;
+
+        /// <summary>Résumé du rituel dans la langue ET le mode de jeu affichés.</summary>
+        public string DisplayTooltip => PvpVariants && HasPvpVariant
+            ? (AppLanguage.IsFr ? PvpTooltipFr! : PvpTooltipEn!)
+            : (AppLanguage.IsFr ? TooltipFr : TooltipEn);
     }
 
     // SkillId relevés dans la base réelle (probe scratchpad).
@@ -56,15 +82,25 @@ public static class NatureRitualData
         new(Ritual.Quicksand,        1473, "Quicksand",         "+1 énergie sur toute compétence, +1 de plus sur les attaques.",
             "+1 Energy on every skill, +1 more on attacks."),
         new(Ritual.NaturesRenewal,   476,  "Nature's Renewal",  "Enchantements/maléfices : incantation ×2 ; entretien des enchantements ×2 énergie.",
-            "Enchantments/hexes: ×2 cast time; enchantment upkeep ×2 Energy."),
+            "Enchantments/hexes: ×2 cast time; enchantment upkeep ×2 Energy.",
+            PvpSkillId: 3445,
+            PvpTooltipFr: "Enchantements/maléfices : incantation +50…75 % (rang du lanceur) ; entretien des enchantements ×2 énergie.",
+            PvpTooltipEn: "Enchantments/hexes: +50…75% cast time (caster's rank); enchantment upkeep ×2 Energy."),
         new(Ritual.Equinox,          1212, "Equinox",           "Les sorts à overcast infligent +10 overcast.",
             "Overcast spells inflict +10 overcast."),
-        new(Ritual.Tranquility,      1213, "Tranquility",       "Les enchantements expirent 20…50 % plus vite. (durée — lot séparé)",
-            "Enchantments expire 20…50% faster. (duration — separate lot)"),
+        new(Ritual.Tranquility,      1213, "Tranquility",       "Les enchantements expirent 20…50 % plus vite.",
+            "Enchantments expire 20…50% faster.",
+            PvpSkillId: 3460,
+            PvpTooltipFr: "Les enchantements expirent 10…30 % plus vite.",
+            PvpTooltipEn: "Enchantments expire 10…30% faster."),
     ];
 
-    public static Descriptor? BySkillId(int skillId) => All.FirstOrDefault(d => d.SkillId == skillId);
+    /// <summary>Rituel portant ce SkillId, variante « (PvP) » COMPRISE : les deux ids mènent à la
+    /// même entrée (une compétence équipée bascule d'id avec le mode, cf. ApplyGameModeTo).</summary>
+    public static Descriptor? BySkillId(int skillId) =>
+        All.FirstOrDefault(d => d.SkillId == skillId || d.PvpSkillId == skillId);
 
+    /// <summary>Id de BASE (PvE) du rituel — celui qu'on persiste, stable quel que soit le mode.</summary>
     public static int SkillIdOf(Ritual ritual) => All.First(d => d.Ritual == ritual).SkillId;
 
     // ── Prédicats de type (valeurs SkillType exactes de la base) ──────────────
@@ -145,13 +181,15 @@ public static class NatureRitualData
         return baseRecharge;
     }
 
-    /// <summary>Temps d'incantation : Nature's Renewal double celui des enchantements et hex.
+    /// <summary>Temps d'incantation : Nature's Renewal allonge celui des enchantements et hex.
+    /// <paramref name="naturesRenewalPct"/> = surcoût « plus long » en % — 100 en PvE (×2, fixe),
+    /// 50…83 en PvP où l'effet dépend du rang de Survie du lanceur.
     /// (Le flux Jack of All Trades ×0,75 est appliqué séparément par l'infobulle.)</summary>
-    public static float CastTime(float baseCast, Skill skill, IReadOnlySet<Ritual> active)
+    public static float CastTime(float baseCast, Skill skill, IReadOnlySet<Ritual> active, int naturesRenewalPct = 100)
     {
         if (baseCast <= 0f) return baseCast;
         if (active.Contains(Ritual.NaturesRenewal) && (IsEnchantment(skill) || IsHex(skill)))
-            return baseCast * 2f;
+            return baseCast * (1f + Math.Max(naturesRenewalPct, 0) / 100f);
         return baseCast;
     }
 
@@ -168,10 +206,11 @@ public static class NatureRitualData
         => baseOvercast > 0 && active.Contains(Ritual.Equinox) ? baseOvercast + 10 : baseOvercast;
 
     // ── Roaring Winds : bonus « +X more Energy » dépendant du rang ────────────
-    // SEUL rituel dont le modificateur scale avec un attribut (Wilderness Survival).
+    // Rituels dont le modificateur scale avec un attribut : Roaring Winds, Tranquility, et —
+    // en PvP seulement — Nature's Renewal. Tous les trois lisent Survie en pleine nature.
 
-    /// <summary>Attribut de Roaring Winds (pour lire le rang du/des lanceur(s) équipé(s)).</summary>
-    public const string RoaringWindsAttribute = "Wilderness Survival";
+    /// <summary>Attribut des rituels à rang (pour lire le rang du/des lanceur(s) équipé(s)).</summary>
+    public const string RitualAttribute = "Wilderness Survival";
 
     /// <summary>Rang max réglable pour la simulation (borne d'attribut).</summary>
     public const int MaxRitualRank = 20;
@@ -208,12 +247,50 @@ public static class NatureRitualData
     private static readonly int[] TranquilityByRank =
         { 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48, 50, 52, 54, 56, 58, 60 };
 
-    /// <summary>Pourcentage « expire plus vite » de Tranquility au rang de Survie (clampé 0..20).</summary>
-    public static int TranquilityPercentAtRank(int rank) =>
-        TranquilityByRank[Math.Clamp(rank, 0, TranquilityByRank.Length - 1)];
+    // Variante PvP (skill 3460) : ArenaNet a divisé l'effet par deux — « 10…26…30 % faster ».
+    // Table = progression[1] de la skill 3460 (DB réelle) : 10 % (rang 0) → 26 % (12) → 30 % (15).
+    private static readonly int[] TranquilityPvpByRank =
+        { 10, 11, 13, 14, 15, 17, 18, 19, 21, 22, 23, 25, 26, 27, 29, 30, 31, 33, 34, 35, 37 };
+
+    /// <summary>Pourcentage « expire plus vite » de Tranquility au rang de Survie (clampé 0..20),
+    /// dans la version correspondant au mode de jeu courant (<see cref="PvpVariants"/>).</summary>
+    public static int TranquilityPercentAtRank(int rank)
+    {
+        var table = PvpVariants ? TranquilityPvpByRank : TranquilityByRank;
+        return table[Math.Clamp(rank, 0, table.Length - 1)];
+    }
 
     /// <summary>% Tranquility résolu depuis la progression scrapée (progression[1]) — référence de
-    /// test : croise la table codée en dur ci-dessus contre la vraie DB au harnais.</summary>
+    /// test : croise la table codée en dur ci-dessus contre la vraie DB au harnais. Marche pour les
+    /// deux versions (on lui passe la skill 1213 ou 3460).</summary>
     public static int TranquilityPercentResolved(Skill tranquility, int casterRank) =>
         SkillProgression.IntAt(tranquility.Progression is { Length: > 1 } p ? p[1] : null, casterRank) ?? 0;
+
+    // ── Nature's Renewal : surcoût d'incantation, SPLITTÉ PvE/PvP ─────────────
+    // PvE (skill 476) : « twice as long to cast » — fixe, aucun rang.
+    // PvP (skill 3445) : « 50…70…75 % longer to cast » — dépend du rang de Survie du lanceur, comme
+    // Tranquility. Table = progression[2] de la skill 3445 (DB réelle) : 50 % (rang 0) → 70 % (12)
+    // → 75 % (15). Le doublement de l'ENTRETIEN des enchantements, lui, est identique dans les deux
+    // versions (cf. Upkeep) — seule l'incantation a été nerfée.
+    private static readonly int[] NaturesRenewalPvpByRank =
+        { 50, 52, 53, 55, 57, 58, 60, 62, 63, 65, 67, 68, 70, 72, 73, 75, 77, 78, 80, 82, 83 };
+
+    /// <summary>Surcoût d'incantation « plus long » (%) de Nature's Renewal : 100 en PvE (×2, sans
+    /// rang), table PvP au rang de Survie (clampé 0..20) sinon.</summary>
+    public static int NaturesRenewalPercentAtRank(int rank) =>
+        PvpVariants ? NaturesRenewalPvpByRank[Math.Clamp(rank, 0, NaturesRenewalPvpByRank.Length - 1)] : 100;
+
+    /// <summary>% Nature's Renewal (PvP) résolu depuis la progression scrapée (progression[2]) —
+    /// référence de test, même rôle que <see cref="TranquilityPercentResolved"/>.</summary>
+    public static int NaturesRenewalPercentResolved(Skill naturesRenewalPvp, int casterRank) =>
+        SkillProgression.IntAt(naturesRenewalPvp.Progression is { Length: > 2 } p ? p[2] : null, casterRank) ?? 0;
+
+    /// <summary>Le rituel a-t-il un rang réglable DANS LE MODE COURANT ? Nature's Renewal n'en a un
+    /// qu'en PvP (en PvE son ×2 est fixe) ; Roaring Winds et Tranquility en ont un dans les deux.</summary>
+    public static bool HasRank(Ritual ritual) => ritual switch
+    {
+        Ritual.RoaringWinds or Ritual.Tranquility => true,
+        Ritual.NaturesRenewal                     => PvpVariants,
+        _                                         => false,
+    };
 }

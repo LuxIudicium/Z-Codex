@@ -33,8 +33,8 @@ public static class HelpContent
 {
     // Version du CONTENU de l'aide (indépendante de la version applicative de l'À propos) :
     // à incrémenter et redater à chaque mise à jour.
-    public const string VersionFr = "Aide v17 — 26/08/2026";
-    public const string VersionEn = "Help v17 — 2026-08-26";
+    public const string VersionFr = "Aide v18 — 13/09/2026";
+    public const string VersionEn = "Help v18 — 2026-09-13";
 
     public static string Version => AppLanguage.IsFr ? VersionFr : VersionEn;
 
@@ -391,11 +391,11 @@ public static class HelpContent
               "Montre le flux actif ; clic pour l'activer ou le désactiver. Grise = inactif. Le flux est enregistré avec le team build.",
               "Shows the active flux; click to activate or deactivate it. Greyed = inactive. The flux is saved with the team build."),
             R("Bandeau des Rituels de la Nature", "Nature Rituals bar",
-              "Une icône par rituel équipé par l'équipe (ou les 8 avec « Afficher tous ») ; clic = activer/désactiver. Cadre vert = actif.",
-              "One icon per ritual equipped by the team (or all 8 with “Show all”); click = toggle. Green frame = active."),
-            R("Molette sur Roaring Winds / Tranquility", "Wheel on Roaring Winds / Tranquility",
-              "Règle le rang simulé (badge sur l'icône) quand aucun personnage équipé ne l'impose. Si un porteur l'a équipé, c'est son rang le plus fort qui gagne.",
-              "Sets the simulated rank (badge on the icon) when no equipped character dictates it. If a carrier has it equipped, their highest rank wins."),
+              "Une icône par rituel équipé par l'équipe (ou les 8 avec « Afficher tous ») ; clic = activer/désactiver. Cadre vert = actif. Tranquility et Nature's Renewal suivent le mode PvE/PvP du catalogue : en PvP, l'icône et les chiffres sont ceux de la variante « (PvP) », plus faible.",
+              "One icon per ritual equipped by the team (or all 8 with “Show all”); click = toggle. Green frame = active. Tranquility and Nature's Renewal follow the catalogue's PvE/PvP mode: in PvP the icon and the numbers are those of the weaker “(PvP)” variant."),
+            R("Molette sur une icône à badge de rang", "Wheel on an icon with a rank badge",
+              "Règle le rang simulé (badge sur l'icône) quand aucun personnage équipé ne l'impose. Si un porteur l'a équipé, c'est son rang le plus fort qui gagne. Concerne Roaring Winds, Tranquility, et Nature's Renewal en mode PvP (son effet y dépend du rang).",
+              "Sets the simulated rank (badge on the icon) when no equipped character dictates it. If a carrier has it equipped, their highest rank wins. Applies to Roaring Winds, Tranquility, and — in PvP mode — Nature's Renewal, whose effect became rank-dependent there."),
             R("Icône horloge (personnage)", "Clock icon (character)",
               "Active les prolongateurs de durée d'enchantement du personnage (Blessed Aura / Extend Enchantments). Se combine avec le mod d'arme « of Enchanting » et Tranquility.",
               "Enables the character's enchantment duration extenders (Blessed Aura / Extend Enchantments). Combines with the “of Enchanting” weapon mod and Tranquility."),

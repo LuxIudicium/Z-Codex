@@ -1,4 +1,5 @@
-﻿using ZCodex.Core.Models;
+﻿using ZCodex.Core.Data;
+using ZCodex.Core.Models;
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -183,14 +184,35 @@ public class MainViewModel : ViewModelBase
         {
             if (e.PropertyName == nameof(SkillPanelViewModel.SelectedGameMode))
             {
+                // EN PREMIER : tout ce qui suit (ids équipés, signature du bandeau, tables de rang)
+                // lit le mode via NatureRitualData.PvpVariants.
+                ApplyNatureRitualVariants();
                 // AVANT le bandeau : sa signature dépend des ids des compétences équipées.
                 ApplyGameModeToEquippedSkills();
                 RefreshTeamConditionBand();
                 ApplyPvpAttributeRule();
+                RefreshNatureRitualVariants();
                 PushGameModeToBuildCatalogs();
             }
         };
         ApplyPvpAttributeRule();
+        ApplyNatureRitualVariants();
+    }
+
+    // Tranquility et Nature's Renewal ont une variante « (PvP) » aux chiffres différents (et, pour
+    // Nature's Renewal, dépendante du rang). Le bandeau garde UNE icône par rituel — les deux
+    // versions ne coexistent jamais en jeu — et c'est ce drapeau ambiant qui décide laquelle.
+    private void ApplyNatureRitualVariants() =>
+        NatureRitualData.PvpVariants = SkillPanel.SelectedGameMode == SkillGameMode.PvP;
+
+    // Après bascule : les bandeaux affichent l'autre icône et les infobulles d'enchantement/maléfice
+    // l'autre chiffre. Personne ne le notifie tout seul quand le rituel n'est équipé par personne
+    // (rang de simulation) → on pousse le rafraîchissement.
+    private void RefreshNatureRitualVariants()
+    {
+        RefreshTeamNatureRitualBand();
+        foreach (var b in OpenBuilds) b.RefreshNatureRitualBand();
+        foreach (var c in AllCharacters()) c.RefreshSkillTooltips();
     }
 
     // ── Mode de jeu : bouton global ⇄ combo des catalogues Build ──────────────

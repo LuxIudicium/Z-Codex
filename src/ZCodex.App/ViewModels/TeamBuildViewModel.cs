@@ -98,6 +98,11 @@ public class TeamBuildViewModel : ViewModelBase, IRenamableTab
     public int TranquilityPercent =>
         CharacterSlotViewModel.TranquilityPercentFor(NatureRituals.Active, EnumerateTree(), NatureRituals.TranquilityRank);
 
+    // % « incantation plus longue » de Nature's Renewal : 100 en PvE (×2 fixe), rang du porteur (ou
+    // rang de simulation) en PvP, où ArenaNet a rendu l'effet dépendant de la Survie.
+    public int NaturesRenewalPercent =>
+        CharacterSlotViewModel.NaturesRenewalPercentFor(EnumerateTree(), NatureRituals.NaturesRenewalRank);
+
     // Heroic Refrain (Lot D) : compétence trouvée + bonus résolu au rang du porteur le plus fort,
     // sur TOUT l'arbre (racines + variantes). (null, 0) si personne ne l'équipe.
     public (Skill? Skill, int Bonus) HeroicRefrain => CharacterSlotViewModel.HeroicRefrainFor(EnumerateTree());

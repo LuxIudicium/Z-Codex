@@ -95,6 +95,7 @@
                                                                                       FluxCastPercent="{Binding FluxCastPercent}"
                                                                                       NatureRituals="{Binding NatureRituals}"
                                                                                       RoaringWindsBonus="{Binding RoaringWindsBonus}"
+                                                                                      NaturesRenewalCastPct="{Binding NaturesRenewalCastPct}"
                                                                                       EnchantEnchantingPct="{Binding EnchantEnchantingPct}"
                                                                                       EnchantExtenderPct="{Binding EnchantExtenderPct}"
                                                                                       EnchantTranquilityPct="{Binding EnchantTranquilityPct}"/>
