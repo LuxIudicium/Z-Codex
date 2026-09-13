@@ -293,52 +293,11 @@
             </DockPanel>
         </DataTemplate>
 
-        <DataTemplate x:Key="AttributeRowTemplate">
-            <Grid Margin="0,1" Tag="{Binding}" PreviewMouseWheel="AttrRow_MouseWheel">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="18"/>
-                    <ColumnDefinition Width="66"/>  <!-- valeur : « 12+3 » + le +2 de flux + un boost de compétence -->
-                    <ColumnDefinition Width="18"/>
-                </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="{Binding DisplayName}" FontSize="11"
-                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
-                    <TextBlock.Style>
-                        <Style TargetType="TextBlock">
-                            <Setter Property="FontWeight" Value="Normal"/>
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsPrimary}" Value="True">
-                                    <Setter Property="FontWeight" Value="Bold"/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </TextBlock.Style>
-                </TextBlock>
-                <Button Grid.Column="1" Content="−" Tag="{Binding}"
-                        Click="AttrDecrement_Click"
-                        Width="16" Height="16" FontSize="10" Padding="0"
-                        Background="Transparent" BorderBrush="{DynamicResource SlotBorderBrush}" BorderThickness="1"/>
-                <!-- Valeur : niveau+bonus, puis le +2 de flux (Hidden Talent / Meek) dans la couleur du flux -->
-                <StackPanel Grid.Column="2" Orientation="Horizontal"
-                            HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <TextBlock Text="{Binding PointsDisplay}" FontSize="11"/>
-                    <TextBlock Text="{Binding FluxBonusDisplay}" FontSize="11" FontWeight="Bold"
-                               Foreground="{DynamicResource FluxVariableBrush}"
-                               Visibility="{Binding HasFluxBonus, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                    <TextBlock Text="{Binding SkillBoostDisplay}" FontSize="11" FontWeight="Bold"
-                               Foreground="{DynamicResource SkillBoostVariableBrush}"
-                               Visibility="{Binding HasSkillBoost, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                </StackPanel>
-                <Button Grid.Column="3" Content="+" Tag="{Binding}"
-                        Click="AttrIncrement_Click"
-                        Width="16" Height="16" FontSize="10" Padding="0"
-                        Background="Transparent" BorderBrush="{DynamicResource SlotBorderBrush}" BorderThickness="1"/>
-            </Grid>
-        </DataTemplate>
-
         <!-- Variante « recherche » : nom serré sur le plus long de son bloc (les spinners restent
-             collés au nom ET alignés verticalement) puis colonne * de remplissage. Ne pas fusionner
-             avec AttributeRowTemplate : l'éditeur a des colonnes étroites où le nom en * convient.
+             collés au nom ET alignés verticalement) puis colonne * de remplissage. SEUL template de
+             ligne d'attribut à garder l'affichage combiné « 12+3 » : un seuil de recherche se pose
+             sur le niveau EFFECTIF, il n'y a rien à y dédoubler, et la bascule ≥/≤ occupe déjà la
+             place que prendrait un second spinner.
              Les 135 px en dur ont laissé place à Auto + SharedSizeGroup (20/08/2026), comme dans la
              vue Build : même rendu, mais plus rien à re-régler si un libellé s'allonge ou si on
              change de langue. La portée du partage est posée sur CHAQUE bloc de seuils. -->
@@ -398,10 +357,11 @@
             <Setter Property="BorderThickness" Value="1"/>
         </Style>
 
-        <!-- Variante « éditeur de build » : la colonne d'attributs y est large, on dédouble donc le
-             spinner — niveau de base (0–12) à gauche, niveau bonus rune/casque/conso (0–20) à droite,
-             puis le niveau effectif. Ne PAS généraliser aux deux autres templates : la carte du
-             teambuild et la grille de seuils n'ont pas la place et gardent l'affichage combiné.
+        <!-- Ligne d'attribut ÉDITABLE : spinner dédoublé — niveau de base (0–12) à gauche, niveau
+             bonus rune/casque/conso (0–20) à droite, puis le niveau effectif. Servait l'onglet Build
+             seul ; la carte du teambuild l'utilise aussi depuis le 13/09/2026 (demande Philippe : il
+             manquait de quoi régler les bonus là-bas), ce qui a retiré son ancien template à
+             affichage combiné. Seule la grille de seuils de la recherche garde le sien.
              Rang de titre (SupportsBonus faux) : ni bonus ni total, la base fait tout. -->
         <DataTemplate x:Key="EditorAttributeRowTemplate">
             <Grid Margin="0,1" Tag="{Binding}" PreviewMouseWheel="EditorAttrRow_MouseWheel">
@@ -1002,14 +962,20 @@
                             </TextBlock>
                             <TextBlock Text="attr pts" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center"/>
                         </StackPanel>
-                        <!-- Primary profession attributes -->
-                        <Border Grid.Column="1" BorderBrush="{DynamicResource BorderLightBrush}" BorderThickness="0,0,1,0" Margin="2,0">
+                        <!-- Primary profession attributes — même template que l'onglet Build : base,
+                             bonus et total ont chacun leur colonne. Grid.IsSharedSizeScope sur CHAQUE
+                             bloc (et non sur la carte) : la colonne des noms se cale sur le nom le
+                             plus long de SON bloc, sinon toutes les cartes du teambuild partageraient
+                             une seule largeur, dictée par la plus longue de l'équipe. -->
+                        <Border Grid.Column="1" Grid.IsSharedSizeScope="True"
+                                BorderBrush="{DynamicResource BorderLightBrush}" BorderThickness="0,0,1,0" Margin="2,0">
                             <ItemsControl ItemsSource="{Binding PrimaryAttributeRows}"
-                                          ItemTemplate="{StaticResource AttributeRowTemplate}" Margin="4,2"/>
+                                          ItemTemplate="{StaticResource EditorAttributeRowTemplate}" Margin="4,2,6,2"/>
                         </Border>
                         <!-- Secondary profession attributes -->
                         <ItemsControl Grid.Column="2" ItemsSource="{Binding SecondaryAttributeRows}"
-                                      ItemTemplate="{StaticResource AttributeRowTemplate}" Margin="6,2,2,2"/>
+                                      Grid.IsSharedSizeScope="True"
+                                      ItemTemplate="{StaticResource EditorAttributeRowTemplate}" Margin="4,2,4,2"/>
                     </Grid>
                     <!-- Mod "of the profession" : force la carac primaire de la profession choisie à 5 -->
                     <StackPanel Orientation="Horizontal" Margin="116,0,4,4">
@@ -1024,8 +990,8 @@
                     <StackPanel Margin="116,0,4,6"
                                 Visibility="{Binding HasTitleRanks, Converter={StaticResource BoolToVisibilityConverter}}">
                         <TextBlock Text="{DynamicResource S.Ed.TitleRanks}" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" Margin="0,2,0,1"/>
-                        <ItemsControl ItemsSource="{Binding TitleRankRows}"
-                                      ItemTemplate="{StaticResource AttributeRowTemplate}"/>
+                        <ItemsControl ItemsSource="{Binding TitleRankRows}" Grid.IsSharedSizeScope="True"
+                                      ItemTemplate="{StaticResource EditorAttributeRowTemplate}"/>
                     </StackPanel>
                     </StackPanel>
                 </Border>
@@ -2416,7 +2382,7 @@
                                                         Margin="2,4,0,0" Focusable="False"/>
                                     </StackPanel>
 
-                                    <!-- Droite : attributs RÉELS (mêmes templates AttributeRowTemplate + handlers
+                                    <!-- Droite : attributs RÉELS (mêmes templates EditorAttributeRowTemplate + handlers
                                          spinner/molette que l'éditeur de teambuild) — budget 200, mod « of the
                                          profession », rangs de titre. -->
                                     <Border Grid.Column="2" Grid.IsSharedSizeScope="True"

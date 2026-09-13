@@ -4127,10 +4127,10 @@ public partial class MainWindow : Window
                        && Changes(row, r => r.Adjust(e.Delta > 0 ? 1 : -1)));
     }
 
-    // Idem, cadre d'attributs de l'éditeur de build : molette nue = niveau de base, Shift+molette =
-    // niveau bonus (même convention que sur les slots de compétence). Handler distinct
-    // d'AttrRow_MouseWheel : ailleurs la molette ne règle que la base, Shift compris — comportement
-    // du teambuild et de la grille de seuils inchangé (demande Philippe : « dans build uniquement »).
+    // Idem, lignes d'attribut à spinner dédoublé (onglet Build ET carte du teambuild) : molette nue =
+    // niveau de base, Shift+molette = niveau bonus — même convention que sur les slots de compétence,
+    // qui la portaient déjà dans le teambuild. Handler distinct d'AttrRow_MouseWheel, resté à la
+    // grille de seuils de la recherche : là-bas la molette ne règle que la base, Shift compris.
     private void EditorAttrRow_MouseWheel(object sender, MouseWheelEventArgs e)
     {
         if (!WheelMayAdjust(e, sender)) return;

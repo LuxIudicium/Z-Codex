@@ -146,10 +146,10 @@ public class AttributeRowViewModel : ViewModelBase
     // Affiche "8+3" si bonus, "8" sinon.
     public string PointsDisplay => BonusPoints > 0 ? $"{Points}+{BonusPoints}" : Points.ToString();
 
-    // ── Cadre d'attributs de l'ÉDITEUR DE BUILD uniquement ────────────────────────────────
+    // ── Lignes d'attribut à spinner dédoublé (onglet Build + carte du teambuild) ──────────
     // Là-bas, base et bonus ont chacun leur spinner : il faut les deux valeurs SÉPARÉMENT plus
-    // le total. Ailleurs (carte du teambuild, grille de recherche) la place manque et l'affichage
-    // combiné PointsDisplay reste seul en piste.
+    // le total. Seule la grille de seuils de la recherche garde l'affichage combiné PointsDisplay
+    // (un seuil porte sur le niveau effectif, rien à y dédoubler).
     public string BonusDisplay     => BonusPoints > 0 ? $"+{BonusPoints}" : "0";
     public string EffectiveDisplay => $"= {EffectiveLevel}";
 
