@@ -164,10 +164,16 @@ public class WikiSkillScraper(ILogger<WikiSkillScraper> logger)
         */
 
         // ── 3. Skills PvE cross-profession ────────────────────────────────
+        // Cette page est AUSSI la seule source qui dise qui est PvE-only : on retient les noms
+        // qu'elle liste pour en marquer le catalogue plus bas (étape 5 bis). Vide si le scrape
+        // de la page échoue → le marquage ne retire rien, il ne fait qu'ajouter.
+        var pveOnlyNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         progress?.Report((done++, total, L("Skills PvE (toutes professions)", "PvE skills (all professions)")));
         try
         {
             var pveSkills = await ScrapePvEPageAsync(context, ct);
+            foreach (var s in pveSkills)
+                pveOnlyNames.Add(NormalizeApostrophe(s.Name));
             // Icônes HD en pause (cf. étape 2 commentée) :
             // foreach (var s in pveSkills)
             //     if (TryResolveHdIcon(s.Name, iconsByName, out var hdUrl))
@@ -259,6 +265,25 @@ public class WikiSkillScraper(ILogger<WikiSkillScraper> logger)
 
         results.RemoveAll(s => dualBases.Contains(s.Name));
         logger.LogInformation("Doublons Allegiance supprimés : {Count} entrées retirées", dualBases.Count);
+
+        // ── 5 bis. Marquage PvE-only ────────────────────────────────────────
+        // Le dédoublonnage (SkillRepository.ReplaceAllAsync) préfère l'entrée qui a une profession
+        // connue : pour « Soul Ignition » ou les élites anniversaire, c'est la ligne de la page de
+        // profession qui gagne et l'entrée de la page PvE — la seule à porter l'information — est
+        // jetée. On reporte donc le fait sur une COLONNE, qui elle survit au dédoublonnage.
+        //
+        // Comparaison par nom EXACT (jamais de nom de base) : une variante « (PvP) » ne doit
+        // évidemment pas hériter du marquage, et les paires Kurzick/Luxon sont déjà nommées avec
+        // leur suffixe des deux côtés à ce stade.
+        int pveOnlyMarked = 0;
+        foreach (var s in results)
+            if (pveOnlyNames.Contains(NormalizeApostrophe(s.Name)))
+            {
+                s.PveOnly = true;
+                pveOnlyMarked++;
+            }
+        logger.LogInformation("PvE-only marquées : {Count} (page wiki : {Listed} noms)",
+            pveOnlyMarked, pveOnlyNames.Count);
 
         // ── Point de sauvegarde intermédiaire ────────────────────────────────
         // Le catalogue est exploitable ici : noms, professions, attributs, coûts, descriptions.
@@ -601,6 +626,10 @@ public class WikiSkillScraper(ILogger<WikiSkillScraper> logger)
         }
         return results;
     }
+
+    // Le wiki mélange l'apostrophe droite et la courbe selon les pages ; on aligne avant toute
+    // jointure par nom, comme la passe conditions de SkillUpdateService.
+    private static string NormalizeApostrophe(string name) => name.Replace('’', '\'');
 
     private static SkillEntity MakePvEEntity(
         string name, string attribute, string description,

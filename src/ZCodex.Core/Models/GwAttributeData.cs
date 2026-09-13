@@ -117,13 +117,29 @@ public static class GwAttributeData
     public static bool IsAnniversaryElite(string? name) =>
         name != null && _anniversaryElites.Contains(name);
 
-    // Compétences INTRINSÈQUEMENT PvE-only (n'existent qu'en PvE) : attribut rang de titre / catégorie
-    // transverse PvE, ou élite anniversaire (qui garde son attribut de profession). = l'union exacte des
-    // catégories du panneau "PvE only". NB : la version PvE d'une compétence SPLITTÉE est aussi utilisable
-    // uniquement en PvE, mais ça dépend du catalogue chargé (nom "(PvP)" jumeau) → géré au niveau du
-    // filtre de mode du catalogue, pas ici.
+    // Filet pour les catalogues scrapés AVANT l'ajout de la colonne PveOnly (13/09/2026) : ces
+    // compétences sont PvE-only sans qu'aucune règle ne puisse le deviner (attribut de profession
+    // ou "No Attribute" ordinaires). Le wiki reste la source de vérité — cette liste ne sert qu'à
+    // ne pas imposer un re-scrape complet, il est INUTILE d'y ajouter les futures compétences.
+    private static readonly HashSet<string> _legacyPveOnlyNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Signet of Capture", "Soul Ignition",
+    };
+
+    // Compétences INTRINSÈQUEMENT PvE-only (n'existent qu'en PvE). Union de trois sources, jamais
+    // exclusives — un seul « oui » suffit, donc une source muette ne peut pas déclasser une
+    // compétence (pas de régression si le scrape de la page PvE échoue) :
+    //   • s.PveOnly            → page wiki "List of PvE-only skills", captée au scrapping. Seule
+    //                            source qui suit ArenaNet sans toucher au code.
+    //   • attribut / élite     → les règles historiques : rang de titre, catégorie transverse PvE,
+    //                            élite anniversaire (qui garde l'attribut de sa profession).
+    //   • filet hérité         → catalogues d'avant la colonne (cf. _legacyPveOnlyNames).
+    // NB : la version PvE d'une compétence SPLITTÉE est aussi utilisable uniquement en PvE, mais ça
+    // dépend du catalogue chargé (nom "(PvP)" jumeau) → géré au niveau du filtre de mode du
+    // catalogue, pas ici.
     public static bool IsPveOnlySkill(Skill s) =>
-        IsPveOnlyAttribute(s.Attribute) || IsAnniversaryElite(s.Name);
+        s.PveOnly || IsPveOnlyAttribute(s.Attribute) || IsAnniversaryElite(s.Name)
+        || _legacyPveOnlyNames.Contains(s.Name);
 
     // Entrée méta du panneau caractéristiques : aucune restriction d'attribut.
     public const string AllAttributesLabel = "All attributes";
@@ -136,14 +152,25 @@ public static class GwAttributeData
 
     // Regroupements campagne du panneau PvE-only. Le champ Campaign des skills cross-profession
     // (Profession.None) est vide en base, d'où le mapping explicite rang de titre → campagne.
+    public const string CorePveCategory = "Core PvE only skills";
     public const string FactionsPveCategory = "Factions PvE only skills";
     public const string NightfallPveCategory = "Nightfall PvE only skills";
     public const string EotnPveCategory = "Eye of the North PvE only skills";
 
+    // Compétences PvE-only du jeu de base : celles qui ne relèvent d'AUCUNE piste de campagne
+    // (allégeance Kurzick/Luxon, rang de titre). Définies par différence et jamais par une liste
+    // de noms — une nouvelle compétence « Core » d'ArenaNet y tombe toute seule dès que le
+    // catalogue est mis à jour (vécu avec « Soul Ignition », 13/09/2026). Couvre les élites
+    // anniversaire (sous-rubrique) ET les compétences sans rubrique propre, exactement comme la
+    // section Core de la page wiki « List of PvE-only skills » (« Signet of Capture »…).
+    private static bool IsCorePveOnly(Skill s) =>
+        IsPveOnlySkill(s) && !IsPveOnlyAttribute(s.Attribute);
+
     // Définition d'une entrée du panneau PvE-only : libellé, niveau d'indentation (0 = umbrella
-    // campagne, 1 = sous-catégorie) et prédicat d'appartenance. L'umbrella matche l'union de ses
-    // sous-catégories. Allegiance est split Kurzick/Luxon par suffixe de nom (l'umbrella Factions
-    // couvre déjà l'ensemble, donc un seul "Allegiance rank" serait redondant).
+    // campagne, 1 = sous-catégorie) et prédicat d'appartenance. L'umbrella couvre toujours ses
+    // sous-catégories (Core y ajoute ses compétences sans sous-catégorie). Allegiance est split
+    // Kurzick/Luxon par suffixe de nom (l'umbrella Factions couvre déjà l'ensemble, donc un seul
+    // "Allegiance rank" serait redondant).
     public record PveCategoryDef(string Label, int Indent, Func<Skill, bool> Matches);
 
     public static IReadOnlyList<PveCategoryDef> PveCategoryDefs { get; } = BuildPveCategoryDefs();
@@ -165,6 +192,10 @@ public static class GwAttributeData
 
         return new PveCategoryDef[]
         {
+            // Ordre de la page wiki : Core d'abord, puis les campagnes.
+            new(CorePveCategory, 0, IsCorePveOnly),
+            new(AnniversaryEliteCategory, 1, s => IsAnniversaryElite(s.Name)),
+
             new(FactionsPveCategory, 0, Attr("Allegiance rank")),
             new("Kurzick", 1, KurzickLuxon("(Kurzick)")),
             new("Luxon",   1, KurzickLuxon("(Luxon)")),
@@ -178,8 +209,6 @@ public static class GwAttributeData
             new("Deldrimor rank",     1, deldrimor),
             new("Ebon Vanguard rank", 1, ebon),
             new("Norn rank",          1, norn),
-
-            new(AnniversaryEliteCategory, 0, s => IsAnniversaryElite(s.Name)),
         };
     }
 
@@ -213,6 +242,9 @@ public static class GwAttributeData
         d["Sunspear rank"]       = "Lanciers du Soleil";
 
         // Catégories campagne du panneau PvE-only (umbrellas + entrée anniversaire).
+        // « de base » pour Core : le jeu français n'a pas de libellé pour cette campagne
+        // fictive (à confirmer Philippe).
+        d[CorePveCategory]          = "Compétences PvE de base";
         d[FactionsPveCategory]      = "Compétences PvE de Factions";
         d[NightfallPveCategory]     = "Compétences PvE de Nightfall";
         d[EotnPveCategory]          = "Compétences PvE d'Eye of the North";

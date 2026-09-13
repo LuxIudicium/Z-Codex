@@ -40,6 +40,7 @@ public static class AppDbContextFactory
         ("Skills",          "AttributeFr",    "TEXT NOT NULL DEFAULT ''"),
         ("Skills",          "TypeFr",         "TEXT NOT NULL DEFAULT ''"),
         ("Skills",          "FrSuspect",      "INTEGER NOT NULL DEFAULT 0"),
+        ("Skills",          "PveOnly",        "INTEGER NOT NULL DEFAULT 0"),
     ];
 
     private static void EnsureColumns(AppDbContext ctx)

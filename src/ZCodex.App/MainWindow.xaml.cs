@@ -853,6 +853,7 @@ public partial class MainWindow : Window
             AttributeFr = e.AttributeFr,
             TypeFr = e.TypeFr,
             FrSuspect = e.FrSuspect,
+            PveOnly = e.PveOnly,
         }).ToList();
         DeriveFrenchPvpNames(skills);
         // Mécaniques dérivables recalculées À CHAQUE chargement, par-dessus ce que porte la colonne :

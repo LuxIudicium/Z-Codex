@@ -50,5 +50,9 @@ public class SkillEntity
     public string TypeFr { get; set; } = string.Empty;
     // Page FR suspecte (stat d'infobox ≠ EN ou plage non appariée) → description EN affichée.
     public bool FrSuspect { get; set; }
+    // Compétence PvE-only, telle que listée par la page wiki « List of PvE-only skills »
+    // (scrapée à chaque mise à jour du catalogue). Source de vérité du filtre PvP : une
+    // nouvelle compétence PvE-only ajoutée par ArenaNet est classée sans toucher au code.
+    public bool PveOnly { get; set; }
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }

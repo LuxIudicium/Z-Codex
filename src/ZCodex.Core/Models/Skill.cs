@@ -54,6 +54,13 @@ public class Skill
     // la progression) → la DESCRIPTION affichée retombe sur l'anglais ; le nom FR reste.
     public bool FrSuspect { get; set; }
 
+    // Compétence PvE-only (page wiki « List of PvE-only skills », captée par le scraper et
+    // persistée). Porte les cas qu'aucune règle ne devine : « Soul Ignition » garde l'attribut
+    // Conservation d'énergie, « Signet of Capture » est une No Attribute ordinaire.
+    // Lue via GwAttributeData.IsPveOnlySkill, jamais en direct : cette propriété vaut false sur
+    // un catalogue scrapé avant l'ajout de la colonne, et le repli est dans le helper.
+    public bool PveOnly { get; set; }
+
     // ── Affichage selon la langue courante (AppLanguage.IsFr). Jamais utilisés par le
     //    moteur : les calculs et matchings lisent Name/Description/Attribute/SkillType. ──
     public string DisplayName => AppLanguage.IsFr && NameFr.Length > 0 ? NameFr : Name;
