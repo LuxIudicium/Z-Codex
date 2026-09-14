@@ -113,17 +113,17 @@ git push origin v1.0.1
 - **Remercier les testeurs**, avec les mêmes pseudos et la même orthographe que la
   fenêtre « À propos » — la liste vit dans la clé `S.About.Thanks` des deux fichiers
   de chaînes, c'est elle qui fait foi. Anglais d'abord, puis français (liste au
-  21/08/2026) :
+  14/09/2026) :
 
   ```markdown
   ## Thanks
 
-  Thanks to **Holye**, **Arka**, **Dark**, **Courant**, **Ramstram** and **Arloz**
+  Thanks to **Holye**, **Arka**, **Dark**, **Courant**, **Ramstram**, **Arloz** and **Maga**
   for their support and feedback.
 
   ## Remerciements
 
-  Merci à **Holye**, **Arka**, **Dark**, **Courant**, **Ramstram** et **Arloz**
+  Merci à **Holye**, **Arka**, **Dark**, **Courant**, **Ramstram**, **Arloz** et **Maga**
   pour leur soutien et leurs retours.
   ```
 - **Joindre `installer/output/Z-Codex-1.0.1-setup.exe`.** Une release sans
