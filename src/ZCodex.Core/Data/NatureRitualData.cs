@@ -24,13 +24,18 @@ namespace ZCodex.Core.Data;
 /// (Tranquility 1213/3460, Nature's Renewal 476/3445). Les deux versions ne coexistent jamais en
 /// jeu → le rituel reste UNE entrée du bandeau, et c'est <see cref="PvpVariants"/> (le mode de jeu
 /// du catalogue) qui décide de l'icône, du nom et des chiffres. Les 6 autres n'ont pas de jumelle.
+///
+/// BANDEAU D'ÉQUIPE (chantier infobulle, lot 1b) : le bandeau accueille aussi les effets d'équipe
+/// sur l'adrénaline — Infuriating Heat (rituel de la nature), Dark Fury, Mark of Fury et Soothing
+/// (lancé par l'ennemi) —, rangés par famille (<see cref="BandGroup"/>). Leur calcul vit dans
+/// <see cref="AdrenalineTeamEffects"/> ; les fonctions énergie/recharge/cast les ignorent.
 /// </summary>
 public static class NatureRitualData
 {
     /// <summary>
     /// Mode de jeu courant du catalogue (PvP = vrai). Ambiant comme <see cref="AppLanguage.IsFr"/> :
     /// posé par MainViewModel à chaque bascule du filtre PvE/PvP, lu par tout ce qui dépend de la
-    /// variante affichée (id d'icône, tables de rang de Tranquility et Nature's Renewal).
+    /// variante affichée (id d'icône, tables de rang de Tranquility, Nature's Renewal et Infuriating Heat).
     /// N'affecte JAMAIS la persistance : <see cref="SkillIdOf"/> renvoie toujours l'id de base.
     /// </summary>
     public static bool PvpVariants { get; set; }
@@ -45,7 +50,18 @@ public static class NatureRitualData
         NaturesRenewal,
         Equinox,
         Tranquility,
+        // Effets d'adrénaline du bandeau d'équipe (lot 1b). Infuriating Heat est un rituel de la
+        // nature ; les trois autres n'en sont pas, mais partagent le bandeau et sa persistance.
+        InfuriatingHeat,
+        DarkFury,
+        MarkOfFury,
+        Soothing,
     }
+
+    /// <summary>Famille d'un effet du bandeau : un petit séparateur s'intercale entre deux familles
+    /// (bandeau et menu Sélection). <see cref="Enemy"/> = effet lancé par l'ennemi et subi par
+    /// l'équipe (Soothing) : cadre rouge, et jamais « équipé » par un perso de l'équipe.</summary>
+    public enum BandGroup { NatureRitual, Enchantment, Hex, Enemy }
 
     /// <summary>Métadonnées d'un rituel : identité, mappage vers la compétence de la base, libellé
     /// bilingue (<see cref="DisplayTooltip"/> choisit selon <see cref="AppLanguage.IsFr"/>).
@@ -53,10 +69,14 @@ public static class NatureRitualData
     /// libellés PvP prennent le relais en mode PvP (chiffres différents).</summary>
     public sealed record Descriptor(
         Ritual Ritual, int SkillId, string Name, string TooltipFr, string TooltipEn,
-        int PvpSkillId = 0, string? PvpTooltipFr = null, string? PvpTooltipEn = null)
+        int PvpSkillId = 0, string? PvpTooltipFr = null, string? PvpTooltipEn = null,
+        BandGroup Group = BandGroup.NatureRitual)
     {
         /// <summary>Le rituel existe-t-il en deux versions aux chiffres différents ?</summary>
         public bool HasPvpVariant => PvpSkillId != 0;
+
+        /// <summary>Effet lancé par l'ennemi (Soothing) : le porter dans l'équipe le vise, lui.</summary>
+        public bool IsEnemyEffect => Group == BandGroup.Enemy;
 
         /// <summary>SkillId de la variante à AFFICHER (icône, infobulle, nom) dans le mode courant.
         /// Jamais utilisé pour persister : la sauvegarde passe par <see cref="SkillIdOf"/>.</summary>
@@ -93,6 +113,24 @@ public static class NatureRitualData
             PvpSkillId: 3460,
             PvpTooltipFr: "Les enchantements expirent 10…30 % plus vite.",
             PvpTooltipEn: "Enchantments expire 10…30% faster."),
+        // Effets d'adrénaline (lot 1b), SkillId relevés dans la base réelle le 14/09/2026.
+        new(Ritual.InfuriatingHeat,  1730, "Infuriating Heat",  "Adrénaline gagnée ×2.",
+            "Adrenaline gain ×2.",
+            PvpSkillId: 3466,
+            PvpTooltipFr: "Adrénaline gagnée +33…66 % (rang d'Expertise du lanceur).",
+            PvpTooltipEn: "Adrenaline gain +33…66% (caster's Expertise rank)."),
+        new(Ritual.DarkFury,         147,  "Dark Fury",         "Membres du groupe : +1 coup d'adrénaline par attaque réussie (enchantement).",
+            "Party members: +1 strike of adrenaline per hit (enchantment).",
+            Group: BandGroup.Enchantment),
+        new(Ritual.MarkOfFury,       1360, "Mark of Fury",      "Alliés qui frappent la cible : +0…2 coups d'adrénaline (rang de Magie du sang du lanceur).",
+            "Allies hitting the target: +0…2 strikes of adrenaline (caster's Blood Magic rank).",
+            Group: BandGroup.Hex),
+        new(Ritual.Soothing,         1266, "Soothing",          "Effet ennemi : l'équipe gagne l'adrénaline deux fois moins vite.",
+            "Enemy effect: the team builds adrenaline half as fast.",
+            PvpSkillId: 3009,
+            PvpTooltipFr: "Effet ennemi : l'équipe gagne l'adrénaline deux fois moins vite.",
+            PvpTooltipEn: "Enemy effect: the team builds adrenaline half as fast.",
+            Group: BandGroup.Enemy),
     ];
 
     /// <summary>Rituel portant ce SkillId, variante « (PvP) » COMPRISE : les deux ids mènent à la
@@ -206,11 +244,18 @@ public static class NatureRitualData
         => baseOvercast > 0 && active.Contains(Ritual.Equinox) ? baseOvercast + 10 : baseOvercast;
 
     // ── Roaring Winds : bonus « +X more Energy » dépendant du rang ────────────
-    // Rituels dont le modificateur scale avec un attribut : Roaring Winds, Tranquility, et —
-    // en PvP seulement — Nature's Renewal. Tous les trois lisent Survie en pleine nature.
+    // Effets dont le modificateur scale avec un attribut : Roaring Winds, Tranquility, Mark of Fury,
+    // et — en PvP seulement — Nature's Renewal et Infuriating Heat.
 
-    /// <summary>Attribut des rituels à rang (pour lire le rang du/des lanceur(s) équipé(s)).</summary>
-    public const string RitualAttribute = "Wilderness Survival";
+    /// <summary>Caractéristique qui fixe le rang d'un effet à rang (rang du/des lanceur(s) équipé(s)) :
+    /// Survie en pleine nature pour les rituels d'origine, Expertise pour Infuriating Heat, Magie du
+    /// sang pour Mark of Fury.</summary>
+    public static string AttributeOf(Ritual ritual) => ritual switch
+    {
+        Ritual.InfuriatingHeat => "Expertise",
+        Ritual.MarkOfFury      => "Blood Magic",
+        _                      => "Wilderness Survival",
+    };
 
     /// <summary>Rang max réglable pour la simulation (borne d'attribut).</summary>
     public const int MaxRitualRank = 20;
@@ -285,12 +330,52 @@ public static class NatureRitualData
     public static int NaturesRenewalPercentResolved(Skill naturesRenewalPvp, int casterRank) =>
         SkillProgression.IntAt(naturesRenewalPvp.Progression is { Length: > 2 } p ? p[2] : null, casterRank) ?? 0;
 
-    /// <summary>Le rituel a-t-il un rang réglable DANS LE MODE COURANT ? Nature's Renewal n'en a un
-    /// qu'en PvP (en PvE son ×2 est fixe) ; Roaring Winds et Tranquility en ont un dans les deux.</summary>
+    // ── Effets d'adrénaline du bandeau d'équipe (chantier infobulle, lot 1b) ──
+    // Règle de cumul et calcul des coups : AdrenalineGain (page wiki « Adrenaline »).
+
+    // Infuriating Heat — PvE (1730) : « Doubles adrenaline gain », fixe (+100 %, dans le plafond des
+    // multiplicateurs). PvP (3466) : « 33…59…66 % », progression[2] au rang d'Expertise du lanceur
+    // (DB réelle) : 33 % (rang 0) → 59 % (12) → 66 % (15).
+    private static readonly int[] InfuriatingHeatPvpByRank =
+        { 33, 35, 37, 40, 42, 44, 46, 48, 51, 53, 55, 57, 59, 62, 64, 66, 68, 70, 73, 75, 77 };
+
+    /// <summary>Multiplicateur (%) d'Infuriating Heat : 100 en PvE (sans rang), table PvP au rang
+    /// d'Expertise (clampé 0..20) sinon.</summary>
+    public static int InfuriatingHeatPercentAtRank(int rank) =>
+        PvpVariants ? InfuriatingHeatPvpByRank[Math.Clamp(rank, 0, InfuriatingHeatPvpByRank.Length - 1)] : 100;
+
+    // Mark of Fury (1360) : « Allies hitting target foe gain 0…2…2 strike[s] », progression[0] au rang
+    // de Magie du sang du lanceur (DB réelle). Aucun coup sous le rang 4 : l'icône allumée n'y change rien.
+    private static readonly int[] MarkOfFuryByRank =
+        { 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 3, 3 };
+
+    /// <summary>Coups ajoutés par touche par Mark of Fury au rang de Magie du sang (clampé 0..20).</summary>
+    public static int MarkOfFuryStrikesAtRank(int rank) =>
+        MarkOfFuryByRank[Math.Clamp(rank, 0, MarkOfFuryByRank.Length - 1)];
+
+    /// <summary>Effets d'adrénaline du bandeau actifs, communs à tous les persos de l'équipe. Dark Fury
+    /// (+1 coup, sans rang) enchante : Natural Temper devient sans effet. Soothing, effet ennemi, divise
+    /// le gain total. Rangs = lanceur le plus fort ou rang de simulation, résolus par l'appelant.</summary>
+    public static AdrenalineGain.TeamEffects AdrenalineTeamEffects(
+        IReadOnlySet<Ritual> active, int infuriatingHeatRank, int markOfFuryRank)
+    {
+        var effects = new List<AdrenalineGain.Effect>();
+        if (active.Contains(Ritual.InfuriatingHeat))
+            effects.Add(new(MultiplierPct: InfuriatingHeatPercentAtRank(infuriatingHeatRank)));
+        if (active.Contains(Ritual.DarkFury))
+            effects.Add(new(FixedStrikes: 1, Enchants: true));
+        if (active.Contains(Ritual.MarkOfFury))
+            effects.Add(new(FixedStrikes: MarkOfFuryStrikesAtRank(markOfFuryRank)));
+        return new(effects, Slowed: active.Contains(Ritual.Soothing));
+    }
+
+    /// <summary>L'effet a-t-il un rang réglable DANS LE MODE COURANT ? Nature's Renewal et Infuriating
+    /// Heat n'en ont un qu'en PvP (en PvE leur effet est fixe) ; Roaring Winds, Tranquility et Mark of
+    /// Fury en ont un dans les deux.</summary>
     public static bool HasRank(Ritual ritual) => ritual switch
     {
-        Ritual.RoaringWinds or Ritual.Tranquility => true,
-        Ritual.NaturesRenewal                     => PvpVariants,
-        _                                         => false,
+        Ritual.RoaringWinds or Ritual.Tranquility or Ritual.MarkOfFury => true,
+        Ritual.NaturesRenewal or Ritual.InfuriatingHeat                => PvpVariants,
+        _                                                              => false,
     };
 }

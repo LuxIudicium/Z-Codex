@@ -36,65 +36,46 @@ public class NatureRitualEnvironment
 
     public bool IsActive(R ritual) => _active.Contains(ritual);
 
-    // Rang de SIMULATION de Roaring Winds (le seul rituel dont l'effet dépend du rang). Utilisé
-    // UNIQUEMENT quand Roaring Winds n'est PAS équipé ; équipé → rang du/des porteur(s) (le plus fort).
+    // Pose un rang de simulation : badge immédiat, recalcul lourd débouncé (500 ms).
+    private void SetRank(ref int field, int value)
+    {
+        var v = Math.Clamp(value, 0, NatureRitualData.MaxRitualRank);
+        if (v == field) return;
+        field = v;
+        RankPreview?.Invoke();                     // badge immédiat
+        _rankTimer.Stop(); _rankTimer.Start();     // recalcul lourd débouncé (500 ms)
+    }
+
+    // Chargement (.pn3) : pose un rang SANS déclencher de recalcul ni marquer dirty.
+    private static int ClampRank(int rank) => Math.Clamp(rank, 0, NatureRitualData.MaxRitualRank);
+
+    // Rang de SIMULATION de Roaring Winds. Utilisé UNIQUEMENT quand Roaring Winds n'est PAS équipé ;
+    // équipé → rang du/des porteur(s) (le plus fort).
     private int _roaringWindsRank = 12;
-    public int RoaringWindsRank
-    {
-        get => _roaringWindsRank;
-        set
-        {
-            var v = Math.Clamp(value, 0, NatureRitualData.MaxRitualRank);
-            if (v == _roaringWindsRank) return;
-            _roaringWindsRank = v;
-            RankPreview?.Invoke();                     // badge immédiat
-            _rankTimer.Stop(); _rankTimer.Start();     // recalcul lourd débouncé (500 ms)
-        }
-    }
+    public int RoaringWindsRank { get => _roaringWindsRank; set => SetRank(ref _roaringWindsRank, value); }
+    public void LoadRoaringWindsRank(int rank) => _roaringWindsRank = ClampRank(rank);
 
-    // Chargement (.pn3) : pose le rang SANS déclencher de recalcul ni marquer dirty.
-    public void LoadRoaringWindsRank(int rank)
-        => _roaringWindsRank = Math.Clamp(rank, 0, NatureRitualData.MaxRitualRank);
-
-    // Rang de SIMULATION de Tranquility (durée d'enchantement) — même patron que Roaring Winds :
-    // utilisé UNIQUEMENT quand Tranquility n'est pas équipé ; équipé → rang du/des porteur(s).
+    // Rang de SIMULATION de Tranquility (durée d'enchantement) — même patron que Roaring Winds.
     private int _tranquilityRank = 12;
-    public int TranquilityRank
-    {
-        get => _tranquilityRank;
-        set
-        {
-            var v = Math.Clamp(value, 0, NatureRitualData.MaxRitualRank);
-            if (v == _tranquilityRank) return;
-            _tranquilityRank = v;
-            RankPreview?.Invoke();                     // badge immédiat
-            _rankTimer.Stop(); _rankTimer.Start();     // recalcul lourd débouncé (500 ms)
-        }
-    }
-
-    // Chargement (.pn3) : pose le rang SANS déclencher de recalcul ni marquer dirty.
-    public void LoadTranquilityRank(int rank)
-        => _tranquilityRank = Math.Clamp(rank, 0, NatureRitualData.MaxRitualRank);
+    public int TranquilityRank { get => _tranquilityRank; set => SetRank(ref _tranquilityRank, value); }
+    public void LoadTranquilityRank(int rank) => _tranquilityRank = ClampRank(rank);
 
     // Rang de SIMULATION de Nature's Renewal (surcoût d'incantation) — n'a de sens QU'EN PvP, où
-    // l'effet dépend du rang (en PvE le ×2 est fixe). Même patron que les deux autres.
+    // l'effet dépend du rang (en PvE le ×2 est fixe).
     private int _naturesRenewalRank = 12;
-    public int NaturesRenewalRank
-    {
-        get => _naturesRenewalRank;
-        set
-        {
-            var v = Math.Clamp(value, 0, NatureRitualData.MaxRitualRank);
-            if (v == _naturesRenewalRank) return;
-            _naturesRenewalRank = v;
-            RankPreview?.Invoke();                     // badge immédiat
-            _rankTimer.Stop(); _rankTimer.Start();     // recalcul lourd débouncé (500 ms)
-        }
-    }
+    public int NaturesRenewalRank { get => _naturesRenewalRank; set => SetRank(ref _naturesRenewalRank, value); }
+    public void LoadNaturesRenewalRank(int rank) => _naturesRenewalRank = ClampRank(rank);
 
-    // Chargement (.pn3) : pose le rang SANS déclencher de recalcul ni marquer dirty.
-    public void LoadNaturesRenewalRank(int rank)
-        => _naturesRenewalRank = Math.Clamp(rank, 0, NatureRitualData.MaxRitualRank);
+    // Rang de SIMULATION d'Infuriating Heat (gain d'adrénaline, rang d'Expertise) — PvP seulement,
+    // comme Nature's Renewal : en PvE le doublement est fixe.
+    private int _infuriatingHeatRank = 12;
+    public int InfuriatingHeatRank { get => _infuriatingHeatRank; set => SetRank(ref _infuriatingHeatRank, value); }
+    public void LoadInfuriatingHeatRank(int rank) => _infuriatingHeatRank = ClampRank(rank);
+
+    // Rang de SIMULATION de Mark of Fury (coups d'adrénaline par touche, rang de Magie du sang).
+    private int _markOfFuryRank = 12;
+    public int MarkOfFuryRank { get => _markOfFuryRank; set => SetRank(ref _markOfFuryRank, value); }
+    public void LoadMarkOfFuryRank(int rank) => _markOfFuryRank = ClampRank(rank);
 
     // Synchronise l'ensemble ÉQUIPÉ et DÉSACTIVE les rituels qui viennent d'être retirés du build
     // (option B, décision Philippe : « extinction au retrait »). Un rituel activé sans jamais avoir

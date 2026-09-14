@@ -157,7 +157,7 @@ public class MainViewModel : ViewModelBase
     }
 
     // Toggle du menu View (persisté settings.json) : le bandeau des rituels de la nature affiche
-    // TOUS les 8 rituels (cliquables même non équipés, pour la simulation) au lieu des seuls équipés.
+    // TOUS les effets d'équipe (cliquables même non équipés, pour la simulation) au lieu des seuls équipés.
     private bool _showAllNatureRituals;
     public bool ShowAllNatureRituals
     {

@@ -2024,8 +2024,9 @@ public partial class MainWindow : Window
         _vm.IsBuildEditorActive ? _vm.ActiveBuild?.NatureRituals :
         null;
 
-    // (Re)construit le sous-menu Sélection > Rituels de la Nature : les 8 rituels, cochés selon
-    // l'état du contexte actif. Désactivé si aucun teambuild/build n'est affiché.
+    // (Re)construit le sous-menu Sélection > Effets d'équipe : les 12 effets du bandeau (rituels de la
+    // nature et effets d'adrénaline), cochés selon l'état du contexte actif, séparés par famille
+    // comme dans le bandeau. Désactivé si aucun teambuild/build n'est affiché.
     // Nom affiché d'un rituel = DisplayName de sa compétence (les rituels SONT des skills → nom FR
     // déjà en base, résolu par SkillId) ; repli sur le nom EN du descripteur si absent du catalogue.
     // DisplaySkillId, pas SkillId : en PvP les 2 rituels splittés affichent leur variante « (PvP) ».
@@ -2039,8 +2040,12 @@ public partial class MainWindow : Window
         NatureRitualMenuItem.Items.Clear();
         if (env == null) return;
 
+        NatureRitualData.BandGroup? lastGroup = null;
         foreach (var d in NatureRitualData.All)
         {
+            // Même découpage que le bandeau : un séparateur entre deux familles d'effets.
+            if (lastGroup is { } g && g != d.Group) NatureRitualMenuItem.Items.Add(new Separator());
+            lastGroup = d.Group;
             var item = new MenuItem
             {
                 Header = RitualDisplayName(d),
@@ -2246,7 +2251,7 @@ public partial class MainWindow : Window
         _settings.Save();
     }
 
-    // Bandeau des rituels de la nature : « équipés seulement » ↔ « tous les 8 ». Persisté settings.json.
+    // Bandeau des effets d'équipe : « équipés seulement » ↔ « tous ». Persisté settings.json.
     private void ShowAllNatureRitualsMenuItem_Click(object sender, RoutedEventArgs e)
     {
         _vm.ShowAllNatureRituals = !_vm.ShowAllNatureRituals;
@@ -3829,6 +3834,8 @@ public partial class MainWindow : Window
         vm.NatureRituals.LoadRoaringWindsRank(model.RoaringWindsRitualRank);
         vm.NatureRituals.LoadTranquilityRank(model.TranquilityRitualRank);
         vm.NatureRituals.LoadNaturesRenewalRank(model.NaturesRenewalRitualRank);
+        vm.NatureRituals.LoadInfuriatingHeatRank(model.InfuriatingHeatRitualRank);
+        vm.NatureRituals.LoadMarkOfFuryRank(model.MarkOfFuryRitualRank);
         vm.VampiricHits3 = Math.Clamp(model.VampiricHits3, 0, 25);
         vm.VampiricHits5 = Math.Clamp(model.VampiricHits5, 0, 25);
         vm.Tags.Clear();
@@ -3936,6 +3943,8 @@ public partial class MainWindow : Window
         RoaringWindsRitualRank = vm.NatureRituals.RoaringWindsRank,
         TranquilityRitualRank = vm.NatureRituals.TranquilityRank,
         NaturesRenewalRitualRank = vm.NatureRituals.NaturesRenewalRank,
+        InfuriatingHeatRitualRank = vm.NatureRituals.InfuriatingHeatRank,
+        MarkOfFuryRitualRank = vm.NatureRituals.MarkOfFuryRank,
         VampiricHits3 = vm.VampiricHits3,
         VampiricHits5 = vm.VampiricHits5,
         Characters = vm.Characters.Select(CharToModel).ToList(),

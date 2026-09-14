@@ -113,7 +113,7 @@ public static class TeamBuildSerializer
 
     private sealed class Pn3Dto
     {
-        public int Version { get; set; } = 20; // v20 = rang de simulation Nature's Renewal (son surcoût d'incantation dépend du rang en PvP) ; v19 = compteur de projectiles du spike (sorts multi-projectiles) ; v18 = mods d'arme du spike (fractionnement / vampirique / arc corne) + compteurs d'attaques vampiriques ; v17 = mode de jeu PvE/PvP enregistré avec le build ; v16 = boosts d'attribut de compétences équipées par perso ; v15 = rang de simulation Tranquility + toggle prolongateurs de durée par perso ; v14 = rang de simulation Roaring Winds ; v13 = rituels de la nature actifs ; v12 = PV lanceur Grenth's Balance ; v11 = buffs d'arme spike ; v10 = seuil spike ; v9 = part conditionnelle spike ; v8 = procs spike ; v7 = flux ; v6 = roster Spike ; v5 = genre du perso
+        public int Version { get; set; } = 21; // v21 = rangs de simulation Infuriating Heat (PvP) et Mark of Fury ; Infuriating Heat, Dark Fury, Mark of Fury et Soothing rejoignent la liste NatureRituals sans nouveau champ, comme les icônes d'adrénaline du perso (lot 1a du chantier infobulle) la liste ActiveAttributeBoosts ; v20 = rang de simulation Nature's Renewal (son surcoût d'incantation dépend du rang en PvP) ; v19 = compteur de projectiles du spike (sorts multi-projectiles) ; v18 = mods d'arme du spike (fractionnement / vampirique / arc corne) + compteurs d'attaques vampiriques ; v17 = mode de jeu PvE/PvP enregistré avec le build ; v16 = boosts d'attribut de compétences équipées par perso ; v15 = rang de simulation Tranquility + toggle prolongateurs de durée par perso ; v14 = rang de simulation Roaring Winds ; v13 = rituels de la nature actifs ; v12 = PV lanceur Grenth's Balance ; v11 = buffs d'arme spike ; v10 = seuil spike ; v9 = part conditionnelle spike ; v8 = procs spike ; v7 = flux ; v6 = roster Spike ; v5 = genre du perso
         public Guid Id { get; set; }
         public string Name { get; set; } = string.Empty;
         public List<string> Tags { get; set; } = [];
@@ -128,6 +128,8 @@ public static class TeamBuildSerializer
         public int RoaringWindsRank { get; set; } = 12;    // v14 — rang de simulation Roaring Winds
         public int TranquilityRank { get; set; } = 12;     // v15 — rang de simulation Tranquility (durée d'enchantement)
         public int NaturesRenewalRank { get; set; } = 12;  // v20 — rang de simulation Nature's Renewal (surcoût d'incantation, PvP)
+        public int InfuriatingHeatRank { get; set; } = 12; // v21 — rang de simulation Infuriating Heat (gain d'adrénaline, PvP)
+        public int MarkOfFuryRank { get; set; } = 12;      // v21 — rang de simulation Mark of Fury (coups d'adrénaline par touche)
         // v17 — mode de jeu à restaurer à l'ouverture ("All"/"PvE"/"PvP"). Chaîne vide ou valeur
         // inconnue = fichier ≤ v16 : aucun mode enregistré, le mode courant s'applique.
         public string GameMode { get; set; } = string.Empty;
@@ -262,6 +264,8 @@ public static class TeamBuildSerializer
         RoaringWindsRank = b.RoaringWindsRitualRank,
         TranquilityRank = b.TranquilityRitualRank,
         NaturesRenewalRank = b.NaturesRenewalRitualRank,
+        InfuriatingHeatRank = b.InfuriatingHeatRitualRank,
+        MarkOfFuryRank = b.MarkOfFuryRitualRank,
         GameMode = b.GameMode?.ToString() ?? string.Empty,   // v17 — "" = aucun mode enregistré
         VampiricHits3 = b.VampiricHits3,
         VampiricHits5 = b.VampiricHits5,
@@ -368,6 +372,8 @@ public static class TeamBuildSerializer
         RoaringWindsRitualRank = Math.Clamp(dto.RoaringWindsRank, 0, NatureRitualData.MaxRitualRank),
         TranquilityRitualRank = Math.Clamp(dto.TranquilityRank, 0, NatureRitualData.MaxRitualRank),
         NaturesRenewalRitualRank = Math.Clamp(dto.NaturesRenewalRank, 0, NatureRitualData.MaxRitualRank),
+        InfuriatingHeatRitualRank = Math.Clamp(dto.InfuriatingHeatRank, 0, NatureRitualData.MaxRitualRank),
+        MarkOfFuryRitualRank = Math.Clamp(dto.MarkOfFuryRank, 0, NatureRitualData.MaxRitualRank),
         // v17 — valeur inconnue traitée comme absente (même politique que les autres champs) :
         // un fichier écrit par une version future ne doit pas imposer un mode incompréhensible.
         GameMode = Enum.TryParse<GameMode>(dto.GameMode, out var gm) ? gm : null,

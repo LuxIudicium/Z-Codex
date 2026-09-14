@@ -5,21 +5,25 @@ using R = ZCodex.Core.Data.NatureRitualData.Ritual;
 
 namespace ZCodex.App.ViewModels;
 
-// Une icône du bandeau : un rituel de la nature (équipé, ou n'importe lequel en mode « tous »),
-// togglable (clic → active/désactive l'environnement). Grisée = inactif, cadre vert = actif.
-// Roaring Winds, Tranquility et — en PvP seulement — Nature's Renewal portent un rang réglable
-// (molette, rang de Survie) ; les autres ont un effet fixe. La compétence reçue est déjà la
-// variante du mode de jeu courant (PvE ou « (PvP) »), cf. NatureRitualBandViewModel.Refresh.
+// Une icône du bandeau d'équipe : un rituel de la nature ou un effet d'adrénaline (équipé, ou
+// n'importe lequel en mode « tous »), togglable (clic → active/désactive l'environnement). Grisée
+// = inactif, cadre vert = actif, rouge pour un effet ennemi (Soothing). Roaring Winds, Tranquility,
+// Mark of Fury et — en PvP seulement — Nature's Renewal et Infuriating Heat portent un rang
+// réglable (molette) ; les autres ont un effet fixe. La compétence reçue est déjà la variante du
+// mode de jeu courant (PvE ou « (PvP) »), cf. NatureRitualBandViewModel.Refresh.
 public class NatureRitualIndicatorViewModel : ViewModelBase
 {
     private readonly NatureRitualEnvironment _env;
 
-    public NatureRitualIndicatorViewModel(NatureRitualData.Descriptor d, Skill skill, NatureRitualEnvironment env, bool isEquipped)
+    public NatureRitualIndicatorViewModel(
+        NatureRitualData.Descriptor d, Skill skill, NatureRitualEnvironment env, bool isEquipped, bool startsGroup)
     {
         _env = env;
         Ritual = d.Ritual;
         Skill = skill;
         IsEquipped = isEquipped;
+        StartsGroup = startsGroup;
+        IsEnemyEffect = d.IsEnemyEffect;
         HasRank = NatureRitualData.HasRank(d.Ritual);
 
         // Tooltip du bandeau résolu au RANG du rituel (Roaring Winds / Tranquility) : les plages
@@ -44,8 +48,20 @@ public class NatureRitualIndicatorViewModel : ViewModelBase
                 : (fr ? $"Rang de simulation : {Rank} (molette pour changer).\n"
                       : $"Simulation rank: {Rank} (scroll to change).\n"))
             : string.Empty;
-        ClickNote = fr ? $"{rankNote}Cliquer pour {state}" : $"{rankNote}Click to {state}";
+        // Sens de l'icône allumée quand il n'est pas évident : Soothing est subi (lancé par l'ennemi),
+        // Mark of Fury ne profite qu'à qui frappe la cible marquée.
+        string meaningNote = d.IsEnemyEffect
+            ? (fr ? "Effet ennemi subi par l'équipe.\n" : "Enemy effect suffered by the team.\n")
+            : d.Ritual == R.MarkOfFury
+                ? (fr ? "Allumée = on frappe la cible marquée.\n" : "On = hitting the marked target.\n")
+                : string.Empty;
+        ClickNote = fr ? $"{meaningNote}{rankNote}Cliquer pour {state}" : $"{meaningNote}{rankNote}Click to {state}";
     }
+
+    // Premier effet d'une nouvelle famille (hors premier du bandeau) → petit séparateur devant lui.
+    public bool StartsGroup { get; }
+    // Effet lancé par l'ennemi (Soothing) → cadre rouge une fois allumé.
+    public bool IsEnemyEffect { get; }
 
     // Description résolue au rang (rituels à rang) alimentant le SkillTooltipControl du bandeau ;
     // null pour les rituels sans rang → le contrôle affiche le corps concis avec ses plages.
@@ -68,9 +84,11 @@ public class NatureRitualIndicatorViewModel : ViewModelBase
     // Rang affiché (badge) sur l'icône : le rang de simulation courant du rituel concerné.
     public int Rank => Ritual switch
     {
-        R.Tranquility    => _env.TranquilityRank,
-        R.NaturesRenewal => _env.NaturesRenewalRank,
-        _                => _env.RoaringWindsRank,
+        R.Tranquility     => _env.TranquilityRank,
+        R.NaturesRenewal  => _env.NaturesRenewalRank,
+        R.InfuriatingHeat => _env.InfuriatingHeatRank,
+        R.MarkOfFury      => _env.MarkOfFuryRank,
+        _                 => _env.RoaringWindsRank,
     };
 
     // Rang alimentant la mention de caractéristique du tooltip : suit DescriptionOverride ci-dessus
@@ -85,41 +103,51 @@ public class NatureRitualIndicatorViewModel : ViewModelBase
     {
         switch (Ritual)
         {
-            case R.Tranquility:    _env.TranquilityRank    += delta; break;
-            case R.NaturesRenewal: _env.NaturesRenewalRank  += delta; break;
-            case R.RoaringWinds:   _env.RoaringWindsRank    += delta; break;
+            case R.Tranquility:     _env.TranquilityRank     += delta; break;
+            case R.NaturesRenewal:  _env.NaturesRenewalRank  += delta; break;
+            case R.RoaringWinds:    _env.RoaringWindsRank    += delta; break;
+            case R.InfuriatingHeat: _env.InfuriatingHeatRank += delta; break;
+            case R.MarkOfFury:      _env.MarkOfFuryRank      += delta; break;
         }
     }
 }
 
 /// <summary>
-/// Bandeau des rituels de la nature, façon [[project_conditions_band]] mais clic = toggle de
-/// l'environnement. Mode « équipés seulement » (défaut) ou « tous les 8 » (<see cref="ShowAll"/>,
-/// préférence de vue globale). Agrège 1..n persos (build simple = 1 ; teambuild = racines).
+/// Bandeau des effets d'équipe (rituels de la nature + effets d'adrénaline du lot 1b), façon
+/// [[project_conditions_band]] mais clic = toggle de l'environnement. Mode « équipés seulement »
+/// (défaut) ou « tous » (<see cref="ShowAll"/>, préférence de vue globale). Agrège 1..n persos
+/// (build simple = 1 ; teambuild = racines).
 /// </summary>
 public class NatureRitualBandViewModel : ViewModelBase
 {
-    // Préférence de vue GLOBALE (menu View → « Afficher tous les rituels »), persistée settings.json.
-    // Statique : partagée par tous les bandeaux (teambuild + éditeurs). Le refresh est poussé par
-    // MainViewModel au changement.
+    // Préférence de vue GLOBALE (menu View → « Afficher tous les effets d'équipe »), persistée
+    // settings.json. Statique : partagée par tous les bandeaux (teambuild + éditeurs). Le refresh est
+    // poussé par MainViewModel au changement.
     public static bool ShowAll { get; set; }
 
-    // Cache des VRAIES compétences des 8 rituels (résolu une fois depuis le catalogue) : sert l'icône
-    // ET le tooltip riche du bandeau.
+    // Cache des VRAIES compétences des effets du bandeau (résolu une fois depuis le catalogue) : sert
+    // l'icône ET le tooltip riche du bandeau.
     private readonly Dictionary<int, Skill> _skillCache = new();
     private string _lastSig = "";
 
-    // Nombre de compétences distinctes à mettre en cache : un id par rituel, plus un de plus pour
-    // chaque rituel splitté PvE/PvP (Tranquility, Nature's Renewal).
+    // Nombre de compétences distinctes à mettre en cache : un id par effet, plus un de plus pour
+    // chaque effet splitté PvE/PvP (Tranquility, Nature's Renewal, Infuriating Heat, Soothing).
     private static int VariantCount =>
         NatureRitualData.All.Count + NatureRitualData.All.Count(d => d.HasPvpVariant);
 
     public ObservableCollection<NatureRitualIndicatorViewModel> Items { get; } = new();
     public bool HasItems => Items.Count > 0;
 
-    // Rituels de la nature (en périmètre) présents parmi des compétences équipées.
-    public static IEnumerable<R> EquippedRituals(IEnumerable<Skill> equipped) =>
-        equipped.Select(s => NatureRitualData.BySkillId(s.Id)).Where(d => d is not null).Select(d => d!.Ritual);
+    // Effets du bandeau proposés par des compétences équipées. Soothing est lancé par l'ennemi : le
+    // porter dans l'équipe le vise, lui, et ne compte donc jamais ; il est proposé dès qu'un perso
+    // porte une compétence d'adrénaline (décision Philippe, 14/09/2026).
+    public static IEnumerable<R> EquippedRituals(IEnumerable<Skill> equipped)
+    {
+        var skills = equipped as IReadOnlyCollection<Skill> ?? equipped.ToList();
+        var found = skills.Select(s => NatureRitualData.BySkillId(s.Id))
+            .Where(d => d is { IsEnemyEffect: false }).Select(d => d!.Ritual);
+        return skills.Any(s => s.Adrenaline > 0) ? found.Append(R.Soothing) : found;
+    }
 
     public void Clear()
     {
@@ -142,6 +170,7 @@ public class NatureRitualBandViewModel : ViewModelBase
         // rangs, mode « tous », mode de jeu). Un changement d'ATTRIBUT ne concerne pas ce bandeau → skip.
         // Le mode PvE/PvP en fait partie : il change l'icône et les chiffres des rituels splittés.
         string sig = $"{ShowAll}|{NatureRitualData.PvpVariants}|{env.RoaringWindsRank}|{env.TranquilityRank}|{env.NaturesRenewalRank}|"
+            + $"{env.InfuriatingHeatRank}|{env.MarkOfFuryRank}|"
             + string.Join(",", equippedSet.Select(r => (int)r).OrderBy(x => x)) + "|"
             + string.Join(",", env.Active.Select(r => (int)r).OrderBy(x => x));
         if (sig == _lastSig) return;
@@ -155,12 +184,16 @@ public class NatureRitualBandViewModel : ViewModelBase
                     _skillCache[s.Id] = s;
 
         Items.Clear();
+        NatureRitualData.BandGroup? lastGroup = null;
         foreach (var d in NatureRitualData.All)
         {
             bool isEquipped = equippedSet.Contains(d.Ritual);
             if (!isEquipped && !ShowAll) continue;            // mode « équipés seulement »
             if (!_skillCache.TryGetValue(d.DisplaySkillId, out var skill)) continue;
-            Items.Add(new NatureRitualIndicatorViewModel(d, skill, env, isEquipped));
+            // Séparateur devant le premier effet VISIBLE d'une nouvelle famille.
+            bool startsGroup = lastGroup is { } g && g != d.Group;
+            lastGroup = d.Group;
+            Items.Add(new NatureRitualIndicatorViewModel(d, skill, env, isEquipped, startsGroup));
         }
         OnPropertyChanged(nameof(HasItems));
     }

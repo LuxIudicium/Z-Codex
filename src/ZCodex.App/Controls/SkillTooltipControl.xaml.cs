@@ -284,6 +284,30 @@ public partial class SkillTooltipControl : UserControl
         set => SetValue(AdrenalineGainPerHitProperty, value);
     }
 
+    // Soothing (effet ennemi du bandeau d'équipe, lot 1b) : le gain TOTAL est divisé par deux.
+    // Fourni par le slot ; faux en catalogue.
+    public static readonly DependencyProperty AdrenalineSlowedProperty =
+        DependencyProperty.Register(nameof(AdrenalineSlowed), typeof(bool), typeof(SkillTooltipControl),
+            new PropertyMetadata(false, OnInputsChanged));
+
+    public bool AdrenalineSlowed
+    {
+        get => (bool)GetValue(AdrenalineSlowedProperty);
+        set => SetValue(AdrenalineSlowedProperty, value);
+    }
+
+    // Un effet du bandeau d'équipe pèse sur l'adrénaline → coups nécessaires en couleur rituel (ambre),
+    // même priorité que la ligne d'énergie. Fourni par le slot.
+    public static readonly DependencyProperty AdrenalineFromTeamProperty =
+        DependencyProperty.Register(nameof(AdrenalineFromTeam), typeof(bool), typeof(SkillTooltipControl),
+            new PropertyMetadata(false, OnInputsChanged));
+
+    public bool AdrenalineFromTeam
+    {
+        get => (bool)GetValue(AdrenalineFromTeamProperty);
+        set => SetValue(AdrenalineFromTeamProperty, value);
+    }
+
     // ── Coût en adrénaline affiché : « coups nécessaires (base) » si un effet actif le change ────
     public static readonly DependencyProperty AdrenalineTextProperty =
         DependencyProperty.Register(nameof(AdrenalineText), typeof(string), typeof(SkillTooltipControl),
@@ -481,15 +505,18 @@ public partial class SkillTooltipControl : UserControl
     }
 
     // Coût en adrénaline : coups nécessaires au gain par touche du perso (AdrenalineGain), affiché
-    // « modifié (base) » en couleur de boost de compétence (violet) quand un effet actif le change ;
-    // sinon le coût du jeu tel quel (catalogue compris : gain 100 par défaut).
+    // « modifié (base) » quand un effet actif le change — en couleur rituel (ambre) si un effet du
+    // bandeau d'équipe intervient, en couleur de boost de compétence (violet) sinon, même priorité
+    // que la ligne d'énergie ; sinon le coût du jeu tel quel (catalogue compris : gain 100 par défaut).
     private void UpdateAdrenaline()
     {
         int cost = Skill?.Adrenaline ?? 0;
-        int strikes = AdrenalineGain.StrikesNeeded(cost, AdrenalineGainPerHit);
-        AdrenalineText = strikes == cost
-            ? cost.ToString()
-            : $"{SkillProgression.MarkSkillBoost}{strikes}{SkillProgression.MarkSkillBoost} ({cost})";
+        int strikes = AdrenalineGain.StrikesNeeded(cost, AdrenalineGainPerHit, AdrenalineSlowed);
+        if (strikes == cost) { AdrenalineText = cost.ToString(); return; }
+        string shown = AdrenalineFromTeam
+            ? RitualMark(strikes.ToString())
+            : $"{SkillProgression.MarkSkillBoost}{strikes}{SkillProgression.MarkSkillBoost}";
+        AdrenalineText = $"{shown} ({cost})";
     }
 
     // En-tête : nom + ligne de type, résolus dans la langue courante (AppLanguage.IsFr).

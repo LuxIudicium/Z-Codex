@@ -99,7 +99,9 @@
                                                                                       EnchantEnchantingPct="{Binding EnchantEnchantingPct}"
                                                                                       EnchantExtenderPct="{Binding EnchantExtenderPct}"
                                                                                       EnchantTranquilityPct="{Binding EnchantTranquilityPct}"
-                                                                                      AdrenalineGainPerHit="{Binding AdrenalineGainPerHit}"/>
+                                                                                      AdrenalineGainPerHit="{Binding AdrenalineGainPerHit}"
+                                                                                      AdrenalineSlowed="{Binding AdrenalineSlowed}"
+                                                                                      AdrenalineFromTeam="{Binding AdrenalineFromTeam}"/>
                                                         </Border.ToolTip>
                                                         <Grid Width="40" Height="40">
                                                             <Image Source="{Binding Skill.IconPath, Converter={StaticResource UrlToImage}, ConverterParameter=64}"

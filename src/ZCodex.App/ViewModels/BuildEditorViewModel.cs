@@ -76,7 +76,16 @@ public class BuildEditorViewModel : ViewModelBase
             () => CharacterSlotViewModel.TranquilityPercentFor(NatureRituals.Active, new[] { Character }, NatureRituals.TranquilityRank);
         Character.NaturesRenewalPercentProvider =
             () => CharacterSlotViewModel.NaturesRenewalPercentFor(new[] { Character }, NatureRituals.NaturesRenewalRank);
-        NatureRituals.Changed += () => { Character.RefreshSkillTooltips(); RefreshNatureRitualBand(); };
+        // Effets d'adrénaline du bandeau (chantier infobulle, lot 1b) : même réduction au seul perso.
+        Character.TeamAdrenalineProvider = () => CharacterSlotViewModel.TeamAdrenalineFor(
+            NatureRituals.Active, new[] { Character }, NatureRituals.InfuriatingHeatRank, NatureRituals.MarkOfFuryRank);
+        // Le bandeau du perso suit aussi : Dark Fury enchante, ce qui éteint l'effet de Natural Temper.
+        NatureRituals.Changed += () =>
+        {
+            Character.RefreshSkillTooltips();
+            Character.RefreshAttributeBoostBand();
+            RefreshNatureRitualBand();
+        };
         NatureRituals.RankPreview += RefreshNatureRitualBand;   // badge immédiat, recalcul débouncé via Changed
 
         // Heroic Refrain (Lot D) : build simple = un seul perso, donc "diffusion d'équipe" se

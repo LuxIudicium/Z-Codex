@@ -45,8 +45,13 @@ public class TeamBuildViewModel : ViewModelBase, IRenamableTab
         NatureRituals.Changed += () =>
         {
             OnPropertyChanged(nameof(NatureRitualsSignature));
-            // Rituels = skills seulement (pas les attributs) → refresh léger sur tout l'arbre.
-            foreach (var n in EnumerateTree()) n.RefreshSkillTooltips();
+            // Rituels = skills seulement (pas les attributs) → refresh léger sur tout l'arbre. Le
+            // bandeau de chaque perso suit : Dark Fury enchante, ce qui éteint Natural Temper (lot 1b).
+            foreach (var n in EnumerateTree())
+            {
+                n.RefreshSkillTooltips();
+                n.RefreshAttributeBoostBand();
+            }
         };
         // Heroic Refrain (Lot D) : seule diffusion INTER-PERSO — Mutated couvre l'équipement/retrait
         // n'importe où dans l'arbre ET un changement de rang (Leadership) du porteur. Garde
@@ -66,11 +71,13 @@ public class TeamBuildViewModel : ViewModelBase, IRenamableTab
             }
         };
         // Weapon of Fury (chantier infobulle, lot 1a) suit le même chemin : son apparition ou sa
-        // disparition dans l'arbre change l'icône « recevoir » de chaque perso.
+        // disparition dans l'arbre change l'icône « recevoir » de chaque perso. Les effets
+        // d'adrénaline du bandeau (lot 1b) aussi : l'Expertise ou la Magie du sang de leur lanceur
+        // change les coups nécessaires dans les infobulles de TOUS les persos.
         Mutated += () =>
         {
             var (skill, bonus) = HeroicRefrain;
-            string sig = $"{skill?.Id}|{bonus}|{WeaponOfFury?.Id}";
+            string sig = $"{skill?.Id}|{bonus}|{WeaponOfFury?.Id}|{string.Join(";", TeamAdrenaline.Effects)}";
             if (sig == _heroicRefrainSig) return;
             _heroicRefrainSig = sig;
             _heroicRefrainTimer.Stop();
@@ -112,6 +119,12 @@ public class TeamBuildViewModel : ViewModelBase, IRenamableTab
     // Weapon of Fury (chantier infobulle, lot 1a) : compétence d'un porteur de l'arbre, proposée à
     // chaque perso (lanceur compris) ; null si personne ne l'équipe.
     public Skill? WeaponOfFury => CharacterSlotViewModel.WeaponOfFuryFor(EnumerateTree());
+
+    // Effets d'adrénaline du bandeau d'équipe (chantier infobulle, lot 1b) : rangs au lanceur le plus
+    // fort de l'arbre, ou rangs de simulation du bandeau.
+    public ZCodex.Core.Data.AdrenalineGain.TeamEffects TeamAdrenaline =>
+        CharacterSlotViewModel.TeamAdrenalineFor(NatureRituals.Active, EnumerateTree(),
+            NatureRituals.InfuriatingHeatRank, NatureRituals.MarkOfFuryRank);
 
     public Guid Id { get; set; } = Guid.NewGuid();
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

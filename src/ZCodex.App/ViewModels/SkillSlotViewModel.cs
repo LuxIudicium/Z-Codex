@@ -316,6 +316,14 @@ public class SkillSlotViewModel : ViewModelBase
     public int AdrenalineGainPerHit =>
         Owner is { } o && _skill is { Adrenaline: > 0 } ? o.AdrenalineGainPerHit : 100;
 
+    // Soothing actif (effet ennemi du bandeau d'équipe, lot 1b) : le gain total est divisé par deux.
+    public bool AdrenalineSlowed =>
+        Owner is { } o && _skill is { Adrenaline: > 0 } && o.AdrenalineSlowed;
+
+    // Un effet du bandeau d'équipe pèse sur l'adrénaline → couleur rituel (ambre) plutôt que violet.
+    public bool AdrenalineFromTeam =>
+        Owner is { } o && _skill is { Adrenaline: > 0 } && o.HasTeamAdrenalineEffect;
+
     // ── Durée d'enchantement (Lot D) : % applicables à CETTE compétence, fournis par le perso ──
     // L'arme « of Enchanting » et Tranquility ne touchent que les enchantements ; le prolongateur
     // personnel (Blessed Aura/Extend) gère lui-même sa cible (Monk/Derviche). L'infobulle compose.
@@ -348,6 +356,8 @@ public class SkillSlotViewModel : ViewModelBase
         OnPropertyChanged(nameof(EnchantExtenderPct));
         OnPropertyChanged(nameof(EnchantTranquilityPct));
         OnPropertyChanged(nameof(AdrenalineGainPerHit));
+        OnPropertyChanged(nameof(AdrenalineSlowed));
+        OnPropertyChanged(nameof(AdrenalineFromTeam));
     }
 
     private bool _hasViolation;

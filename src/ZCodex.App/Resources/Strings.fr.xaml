@@ -37,8 +37,8 @@
     <sys:String x:Key="S.Menu.ViewMechanicColumn">Afficher le filtre Mécaniques</sys:String>
     <sys:String x:Key="S.Menu.ViewArmorDamage">Afficher les dégâts selon l'armure</sys:String>
     <sys:String x:Key="S.Menu.ViewArmorDamageConfig">Dégâts selon l'armure...</sys:String>
-    <sys:String x:Key="S.Menu.ViewRitualBand">Afficher la barre des Rituels de la Nature</sys:String>
-    <sys:String x:Key="S.Menu.ViewAllRituals">Afficher tous les Rituels de la Nature</sys:String>
+    <sys:String x:Key="S.Menu.ViewRitualBand">Afficher la barre des effets d'équipe</sys:String>
+    <sys:String x:Key="S.Menu.ViewAllRituals">Afficher tous les effets d'équipe</sys:String>
     <sys:String x:Key="S.Menu.ViewIconSize">Taille des icônes</sys:String>
     <sys:String x:Key="S.Menu.IconLarge">Grande</sys:String>
     <sys:String x:Key="S.Menu.IconMedium">Moyenne</sys:String>
@@ -48,7 +48,7 @@
     <sys:String x:Key="S.Menu.ViewScreenshot">Prendre un screenshot...</sys:String>
     <sys:String x:Key="S.Menu.Selection">Sélection</sys:String>
     <sys:String x:Key="S.Menu.SelOpenBuild">Ouvrir le build sélectionné</sys:String>
-    <sys:String x:Key="S.Menu.SelRituals">Rituels de la Nature (énergie/recharge)</sys:String>
+    <sys:String x:Key="S.Menu.SelRituals">Effets d'équipe</sys:String>
     <sys:String x:Key="S.Menu.ExtrasUpdateSkills">Mettre à jour les compétences (wiki)</sys:String>
     <sys:String x:Key="S.Menu.ExtrasArmorCalc">Calculateur d'armure</sys:String>
     <sys:String x:Key="S.Menu.ExtrasPvx">Télécharger les builds PvX...</sys:String>
@@ -146,7 +146,7 @@
     <sys:String x:Key="S.Ed.SaveTpl">Enregistrer le modèle</sys:String>
     <sys:String x:Key="S.Ed.SaveTplTip">Enregistrer le build dans un fichier .txt (code de template GW1)</sys:String>
     <sys:String x:Key="S.Ed.SaveAsTxt">Enregistrer ce build comme template de compétences (.txt)</sys:String>
-    <sys:String x:Key="S.Ed.RitualsLabel">Rituels de la Nature :</sys:String>
+    <sys:String x:Key="S.Ed.RitualsLabel">Effets d'équipe :</sys:String>
     <sys:String x:Key="S.Ed.ConditionsLabel">Conditions :</sys:String>
 
     <!-- ── Barre du teambuild (bas) ───────────────────────────────────── -->

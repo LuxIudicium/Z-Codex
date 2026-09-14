@@ -188,15 +188,17 @@ public class CharacterSlotViewModel : ViewModelBase
     // Rang effectif d'un rituel à rang : le plus fort des PORTEUR(S) qui l'ont équipé (décision
     // Philippe : « le plus fort gagne »), ou null si personne ne l'équipe — l'appelant retombe
     // alors sur le rang de SIMULATION du bandeau. La reconnaissance passe par BySkillId, donc la
-    // variante « (PvP) » d'un rituel splitté compte comme sa jumelle PvE.
+    // variante « (PvP) » d'un rituel splitté compte comme sa jumelle PvE. Caractéristique propre à
+    // chaque effet : Survie (rituels d'origine), Expertise (Infuriating Heat), Magie du sang (Mark of Fury).
     private static int? WearerRank(
         NatureRitualData.Ritual ritual, IEnumerable<CharacterSlotViewModel> characters)
     {
+        string attribute = NatureRitualData.AttributeOf(ritual);
         int? best = null;
         foreach (var c in characters)
             foreach (var slot in c.SkillSlots)
                 if (slot.Skill is { } s && NatureRitualData.BySkillId(s.Id)?.Ritual == ritual)
-                    best = Math.Max(best ?? 0, c.AttributeLevel(NatureRitualData.RitualAttribute) ?? 0);
+                    best = Math.Max(best ?? 0, c.AttributeLevel(attribute) ?? 0);
         return best;
     }
 
@@ -461,9 +463,31 @@ public class CharacterSlotViewModel : ViewModelBase
 
     public Skill? WeaponOfFury => WeaponOfFuryProvider is { } p ? p() : OwnerBuild?.WeaponOfFury;
 
+    // Effets d'adrénaline du bandeau d'équipe (lot 1b) : Infuriating Heat, Dark Fury, Mark of Fury,
+    // Soothing. Environnement du teambuild propriétaire, ou (build simple) provider de l'éditeur.
+    public Func<AdrenalineGain.TeamEffects>? TeamAdrenalineProvider { get; set; }
+
+    public AdrenalineGain.TeamEffects TeamAdrenaline =>
+        TeamAdrenalineProvider?.Invoke() ?? OwnerBuild?.TeamAdrenaline ?? AdrenalineGain.TeamEffects.None;
+
+    // Effets pour un ensemble de persos : rang du lanceur le plus fort (Expertise pour Infuriating
+    // Heat, Magie du sang pour Mark of Fury), sinon rang de simulation du bandeau.
+    public static AdrenalineGain.TeamEffects TeamAdrenalineFor(
+        IReadOnlySet<NatureRitualData.Ritual> active, IEnumerable<CharacterSlotViewModel> characters,
+        int infuriatingHeatSimRank, int markOfFurySimRank)
+    {
+        var list = characters as IReadOnlyCollection<CharacterSlotViewModel> ?? characters.ToList();
+        int ih = active.Contains(NatureRitualData.Ritual.InfuriatingHeat)
+            ? WearerRank(NatureRitualData.Ritual.InfuriatingHeat, list) ?? infuriatingHeatSimRank : 0;
+        int mof = active.Contains(NatureRitualData.Ritual.MarkOfFury)
+            ? WearerRank(NatureRitualData.Ritual.MarkOfFury, list) ?? markOfFurySimRank : 0;
+        return NatureRitualData.AdrenalineTeamEffects(active, ih, mof);
+    }
+
     // Effets d'adrénaline actifs sur CE perso : accélérateurs personnels équipés ET allumés, Weapon
-    // of Fury reçue, mod « Furious » qui a proc. Focused Anger se lit au rang effectif de Leadership
-    // du perso — aucun cycle : le gain d'adrénaline ne nourrit aucune caractéristique.
+    // of Fury reçue, mod « Furious » qui a proc, effets du bandeau d'équipe. Focused Anger se lit au
+    // rang effectif de Leadership du perso — aucun cycle : le gain d'adrénaline ne nourrit aucune
+    // caractéristique.
     private IEnumerable<AdrenalineGain.Effect> ActiveAdrenalineEffects()
     {
         foreach (var slot in SkillSlots)
@@ -476,14 +500,22 @@ public class CharacterSlotViewModel : ViewModelBase
             yield return AdrenalineBoostData.EffectOf(wd, wof, 0);
         if (IsAttributeBoostActive(AdrenalineBoostData.FuriousModToggleId) && HasFuriousMod)
             yield return AdrenalineBoostData.FuriousModEffect;
+        foreach (var e in TeamAdrenaline.Effects)
+            yield return e;
     }
 
     // Gain par touche en centièmes de coup (100 = aucun effet), pour les coups nécessaires des
     // infobulles de compétences d'adrénaline.
     public int AdrenalineGainPerHit => AdrenalineGain.GainPerHit(ActiveAdrenalineEffects());
 
-    // Un effet actif enchante-t-il CE perso (Onslaught) ? Natural Temper est alors sans effet
-    // (décision Philippe 14/09/2026) — lu aussi par son icône pour le signaler.
+    // Soothing, lancé par l'ennemi, divise le gain d'adrénaline de CE perso (lot 1b).
+    public bool AdrenalineSlowed => TeamAdrenaline.Slowed;
+
+    // Un effet du bandeau d'équipe pèse-t-il sur l'adrénaline ? → coups nécessaires en ambre.
+    public bool HasTeamAdrenalineEffect => TeamAdrenaline.Any;
+
+    // Un effet actif enchante-t-il CE perso (Onslaught, Dark Fury) ? Natural Temper est alors sans
+    // effet (décision Philippe 14/09/2026) — lu aussi par son icône pour le signaler.
     public bool IsEnchantedByAdrenalineEffect => ActiveAdrenalineEffects().Any(e => e.Enchants);
 
     // Boost « override » actif (Lot C, Master of Magic) : remplace le niveau de base au lieu de s'y

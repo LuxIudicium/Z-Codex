@@ -39,7 +39,9 @@
                                       EnchantEnchantingPct="{Binding EnchantEnchantingPct}"
                                       EnchantExtenderPct="{Binding EnchantExtenderPct}"
                                       EnchantTranquilityPct="{Binding EnchantTranquilityPct}"
-                                      AdrenalineGainPerHit="{Binding AdrenalineGainPerHit}"/>
+                                      AdrenalineGainPerHit="{Binding AdrenalineGainPerHit}"
+                                      AdrenalineSlowed="{Binding AdrenalineSlowed}"
+                                      AdrenalineFromTeam="{Binding AdrenalineFromTeam}"/>
         </DataTemplate>
 
         <!-- Tooltip du catalogue de recherche : DataContext de la cellule = le Skill lui-même. -->
@@ -74,9 +76,11 @@
             </ItemsControl>
         </DataTemplate>
 
-        <!-- Bandeau des rituels de la nature ÉQUIPÉS (DataContext = NatureRitualBandViewModel) :
-             icône togglable (clic = active/désactive l'environnement), grisée = inactif, cadre vert
-             = actif. Se masque si aucun rituel équipé (HasItems). Partagé éditeur + teambuild. -->
+        <!-- Bandeau des effets d'équipe (DataContext = NatureRitualBandViewModel) : rituels de la
+             nature et effets d'adrénaline (Dark Fury, Mark of Fury, Soothing). Icône togglable (clic =
+             active/désactive l'environnement), grisée = inactif, cadre vert = actif (rouge pour un
+             effet ennemi), petit trait vertical entre deux familles. Se masque si aucun effet n'est
+             proposé (HasItems). Partagé éditeur + teambuild. -->
         <DataTemplate x:Key="NatureRitualBandTemplate">
             <StackPanel Orientation="Horizontal"
                         Visibility="{Binding HasItems, Converter={StaticResource BoolToVisibilityConverter}}">
@@ -88,58 +92,71 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border MouseLeftButtonDown="NatureRitualToggle_Click"
-                                    PreviewMouseWheel="NatureRitualRank_Wheel" Cursor="Hand"
-                                    Width="26" Height="26" Margin="0,0,4,0" CornerRadius="2"
-                                    BorderThickness="2" Background="Transparent"
-                                    ToolTipService.ShowDuration="30000">
-                                <!-- Tooltip = le VRAI tooltip de la compétence + note band-only (rang / clic). -->
-                                <Border.ToolTip>
-                                    <ToolTip MaxWidth="420" Padding="0">
-                                        <StackPanel>
-                                            <ctrl:SkillTooltipControl Skill="{Binding Skill}"
-                                                                      DescriptionOverride="{Binding DescriptionOverride}"
-                                                                      DisplayDescriptionOverride="{Binding DisplayDescriptionOverride}"
-                                                                      AttributeRank="{Binding AttributeRank}"/>
-                                            <TextBlock Text="{Binding ClickNote}" FontSize="10" FontStyle="Italic"
-                                                       Foreground="{DynamicResource TextSecondaryBrush}"
-                                                       TextWrapping="Wrap" Margin="6,2,6,4"/>
-                                        </StackPanel>
-                                    </ToolTip>
-                                </Border.ToolTip>
-                                <Border.Style>
-                                    <Style TargetType="Border">
-                                        <Setter Property="BorderBrush" Value="Transparent"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsActive}" Value="True">
-                                                <Setter Property="BorderBrush" Value="#43A047"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Border.Style>
-                                <Grid>
-                                    <Image Width="20" Height="20" Stretch="Uniform"
-                                           Source="{Binding IconPath, Converter={StaticResource UrlToImage}, ConverterParameter=64}"
-                                           RenderOptions.BitmapScalingMode="HighQuality">
-                                        <Image.Style>
-                                            <Style TargetType="Image">
-                                                <Setter Property="Opacity" Value="0.35"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsActive}" Value="True">
-                                                        <Setter Property="Opacity" Value="1"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Image.Style>
-                                    </Image>
-                                    <!-- Badge de rang (Roaring Winds seulement) : rang de simulation, molette pour changer. -->
-                                    <Border HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                                            Background="#CC000000" CornerRadius="2" Padding="1,0" Margin="0,0,-1,-1"
-                                            Visibility="{Binding HasRank, Converter={StaticResource BoolToVisibilityConverter}}">
-                                        <TextBlock Text="{Binding Rank}" FontSize="8" Foreground="White"/>
-                                    </Border>
-                                </Grid>
-                            </Border>
+                            <StackPanel Orientation="Horizontal">
+                                <!-- Séparateur de famille (rituels de la nature | Dark Fury | Mark of Fury | Soothing). -->
+                                <Border Width="1" Margin="2,4,6,4" Background="{DynamicResource TextMutedBrush}" Opacity="0.6"
+                                        Visibility="{Binding StartsGroup, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                <Border MouseLeftButtonDown="NatureRitualToggle_Click"
+                                        PreviewMouseWheel="NatureRitualRank_Wheel" Cursor="Hand"
+                                        Width="26" Height="26" Margin="0,0,4,0" CornerRadius="2"
+                                        BorderThickness="2" Background="Transparent"
+                                        ToolTipService.ShowDuration="30000">
+                                    <!-- Tooltip = le VRAI tooltip de la compétence + note band-only (effet ennemi / rang / clic). -->
+                                    <Border.ToolTip>
+                                        <ToolTip MaxWidth="420" Padding="0">
+                                            <StackPanel>
+                                                <ctrl:SkillTooltipControl Skill="{Binding Skill}"
+                                                                          DescriptionOverride="{Binding DescriptionOverride}"
+                                                                          DisplayDescriptionOverride="{Binding DisplayDescriptionOverride}"
+                                                                          AttributeRank="{Binding AttributeRank}"/>
+                                                <TextBlock Text="{Binding ClickNote}" FontSize="10" FontStyle="Italic"
+                                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                                           TextWrapping="Wrap" Margin="6,2,6,4"/>
+                                            </StackPanel>
+                                        </ToolTip>
+                                    </Border.ToolTip>
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="BorderBrush" Value="Transparent"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                    <Setter Property="BorderBrush" Value="#43A047"/>
+                                                </DataTrigger>
+                                                <!-- Effet ennemi (Soothing) : rouge. Déclaré APRÈS le vert pour l'emporter. -->
+                                                <MultiDataTrigger>
+                                                    <MultiDataTrigger.Conditions>
+                                                        <Condition Binding="{Binding IsActive}" Value="True"/>
+                                                        <Condition Binding="{Binding IsEnemyEffect}" Value="True"/>
+                                                    </MultiDataTrigger.Conditions>
+                                                    <Setter Property="BorderBrush" Value="#E53935"/>
+                                                </MultiDataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <Grid>
+                                        <Image Width="20" Height="20" Stretch="Uniform"
+                                               Source="{Binding IconPath, Converter={StaticResource UrlToImage}, ConverterParameter=64}"
+                                               RenderOptions.BitmapScalingMode="HighQuality">
+                                            <Image.Style>
+                                                <Style TargetType="Image">
+                                                    <Setter Property="Opacity" Value="0.35"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                            <Setter Property="Opacity" Value="1"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Image.Style>
+                                        </Image>
+                                        <!-- Badge de rang (effets à rang) : rang de simulation, molette pour changer. -->
+                                        <Border HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                                Background="#CC000000" CornerRadius="2" Padding="1,0" Margin="0,0,-1,-1"
+                                                Visibility="{Binding HasRank, Converter={StaticResource BoolToVisibilityConverter}}">
+                                            <TextBlock Text="{Binding Rank}" FontSize="8" Foreground="White"/>
+                                        </Border>
+                                    </Grid>
+                                </Border>
+                            </StackPanel>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
@@ -854,7 +871,9 @@
                                                                       EnchantEnchantingPct="{Binding EnchantEnchantingPct}"
                                                                       EnchantExtenderPct="{Binding EnchantExtenderPct}"
                                                                       EnchantTranquilityPct="{Binding EnchantTranquilityPct}"
-                                                                      AdrenalineGainPerHit="{Binding AdrenalineGainPerHit}"/>
+                                                                      AdrenalineGainPerHit="{Binding AdrenalineGainPerHit}"
+                                                                      AdrenalineSlowed="{Binding AdrenalineSlowed}"
+                                                                      AdrenalineFromTeam="{Binding AdrenalineFromTeam}"/>
                                         </ToolTip>
                                     </Border.ToolTip>
                                     <Border.ContextMenu>
@@ -1182,8 +1201,8 @@
                 <Separator/>
                 <!-- Items (Aucun + 12 flux) construits dynamiquement dans SelectionMenu_SubmenuOpened. -->
                 <MenuItem x:Name="FluxMenuItem" Header="Flux"/>
-                <!-- Rituels de la nature (énergie/recharge) : les 8 items cochables sont construits
-                     dynamiquement dans SelectionMenu_SubmenuOpened. Environnement global au build. -->
+                <!-- Effets d'équipe (rituels de la nature + effets d'adrénaline) : les items cochables
+                     sont construits dynamiquement dans SelectionMenu_SubmenuOpened. Environnement global au build. -->
                 <MenuItem x:Name="NatureRitualMenuItem" Header="{DynamicResource S.Menu.SelRituals}"/>
             </MenuItem>
             <!-- Cinq familles, séparées par un trait. Le menu reste À PLAT : tout ce qu'il contient

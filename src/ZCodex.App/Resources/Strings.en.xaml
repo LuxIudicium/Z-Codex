@@ -34,8 +34,8 @@
     <sys:String x:Key="S.Menu.ViewMechanicColumn">Show the Mechanics filter</sys:String>
     <sys:String x:Key="S.Menu.ViewArmorDamage">Show armor-based damage</sys:String>
     <sys:String x:Key="S.Menu.ViewArmorDamageConfig">Armor-based damage...</sys:String>
-    <sys:String x:Key="S.Menu.ViewRitualBand">Show Nature Rituals bar</sys:String>
-    <sys:String x:Key="S.Menu.ViewAllRituals">Show all Nature Rituals</sys:String>
+    <sys:String x:Key="S.Menu.ViewRitualBand">Show team effects bar</sys:String>
+    <sys:String x:Key="S.Menu.ViewAllRituals">Show all team effects</sys:String>
     <sys:String x:Key="S.Menu.ViewIconSize">Icon size</sys:String>
     <sys:String x:Key="S.Menu.IconLarge">Large</sys:String>
     <sys:String x:Key="S.Menu.IconMedium">Medium</sys:String>
@@ -45,7 +45,7 @@
     <sys:String x:Key="S.Menu.ViewScreenshot">Take a screenshot...</sys:String>
     <sys:String x:Key="S.Menu.Selection">Selection</sys:String>
     <sys:String x:Key="S.Menu.SelOpenBuild">Open selected build</sys:String>
-    <sys:String x:Key="S.Menu.SelRituals">Nature Rituals (energy/recharge)</sys:String>
+    <sys:String x:Key="S.Menu.SelRituals">Team effects</sys:String>
     <sys:String x:Key="S.Menu.ExtrasUpdateSkills">Update skill database (wiki)</sys:String>
     <sys:String x:Key="S.Menu.ExtrasArmorCalc">Armor calculator</sys:String>
     <sys:String x:Key="S.Menu.ExtrasPvx">Download PvX builds...</sys:String>
@@ -143,7 +143,7 @@
     <sys:String x:Key="S.Ed.SaveTpl">Save template</sys:String>
     <sys:String x:Key="S.Ed.SaveTplTip">Save the build to a .txt file (GW1 template code)</sys:String>
     <sys:String x:Key="S.Ed.SaveAsTxt">Save this build as a skill template (.txt)</sys:String>
-    <sys:String x:Key="S.Ed.RitualsLabel">Nature Rituals:</sys:String>
+    <sys:String x:Key="S.Ed.RitualsLabel">Team effects:</sys:String>
     <sys:String x:Key="S.Ed.ConditionsLabel">Conditions:</sys:String>
 
     <!-- ── Teambuild bottom bar ───────────────────────────────────────── -->
