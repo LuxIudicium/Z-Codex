@@ -65,10 +65,12 @@ public class TeamBuildViewModel : ViewModelBase, IRenamableTab
                 n.RefreshTooltips();
             }
         };
+        // Weapon of Fury (chantier infobulle, lot 1a) suit le même chemin : son apparition ou sa
+        // disparition dans l'arbre change l'icône « recevoir » de chaque perso.
         Mutated += () =>
         {
             var (skill, bonus) = HeroicRefrain;
-            string sig = $"{skill?.Id}|{bonus}";
+            string sig = $"{skill?.Id}|{bonus}|{WeaponOfFury?.Id}";
             if (sig == _heroicRefrainSig) return;
             _heroicRefrainSig = sig;
             _heroicRefrainTimer.Stop();
@@ -106,6 +108,10 @@ public class TeamBuildViewModel : ViewModelBase, IRenamableTab
     // Heroic Refrain (Lot D) : compétence trouvée + bonus résolu au rang du porteur le plus fort,
     // sur TOUT l'arbre (racines + variantes). (null, 0) si personne ne l'équipe.
     public (Skill? Skill, int Bonus) HeroicRefrain => CharacterSlotViewModel.HeroicRefrainFor(EnumerateTree());
+
+    // Weapon of Fury (chantier infobulle, lot 1a) : compétence d'un porteur de l'arbre, proposée à
+    // chaque perso (lanceur compris) ; null si personne ne l'équipe.
+    public Skill? WeaponOfFury => CharacterSlotViewModel.WeaponOfFuryFor(EnumerateTree());
 
     public Guid Id { get; set; } = Guid.NewGuid();
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

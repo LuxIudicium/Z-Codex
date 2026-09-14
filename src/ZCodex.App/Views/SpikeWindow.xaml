@@ -98,7 +98,8 @@
                                                                                       NaturesRenewalCastPct="{Binding NaturesRenewalCastPct}"
                                                                                       EnchantEnchantingPct="{Binding EnchantEnchantingPct}"
                                                                                       EnchantExtenderPct="{Binding EnchantExtenderPct}"
-                                                                                      EnchantTranquilityPct="{Binding EnchantTranquilityPct}"/>
+                                                                                      EnchantTranquilityPct="{Binding EnchantTranquilityPct}"
+                                                                                      AdrenalineGainPerHit="{Binding AdrenalineGainPerHit}"/>
                                                         </Border.ToolTip>
                                                         <Grid Width="40" Height="40">
                                                             <Image Source="{Binding Skill.IconPath, Converter={StaticResource UrlToImage}, ConverterParameter=64}"

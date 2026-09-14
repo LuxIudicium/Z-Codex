@@ -35,6 +35,7 @@ public static class AttributeBoostData
         new(1724, new[] { "Marksmanship" },                2),                        // Expert's Dexterity
         new(2959, new[] { "Marksmanship" },                1),                        // Expert's Dexterity (PvP)
         new(946,  new[] { "Wilderness Survival" },         null, ProgressionIndex: 1), // Trapper's Focus (scale via Expertise)
+        new(206,  new[] { "Water Magic" },                 1),                        // Armor of Frost (trou repéré au chantier infobulle, 14/09/2026)
 
         // Lot B — groupes d'attributs (cadrage validé Philippe, 19/07/2026).
         new(164,  ElementalAttributes, null, ProgressionIndex: 1), // Elemental Attunement (scale via Energy Storage)

@@ -311,6 +311,11 @@ public class SkillSlotViewModel : ViewModelBase
     // 50…83 en PvP (rang de Survie). L'activation du rituel est testée côté NatureRitualData.
     public int NaturesRenewalCastPct => Owner?.NaturesRenewalPercent ?? 100;
 
+    // Gain d'adrénaline par touche du perso (centièmes de coup, 100 = aucun effet), pour les coups
+    // nécessaires de l'infobulle. Calculé seulement sur une compétence d'adrénaline : 100 ailleurs.
+    public int AdrenalineGainPerHit =>
+        Owner is { } o && _skill is { Adrenaline: > 0 } ? o.AdrenalineGainPerHit : 100;
+
     // ── Durée d'enchantement (Lot D) : % applicables à CETTE compétence, fournis par le perso ──
     // L'arme « of Enchanting » et Tranquility ne touchent que les enchantements ; le prolongateur
     // personnel (Blessed Aura/Extend) gère lui-même sa cible (Monk/Derviche). L'infobulle compose.
@@ -342,6 +347,7 @@ public class SkillSlotViewModel : ViewModelBase
         OnPropertyChanged(nameof(EnchantEnchantingPct));
         OnPropertyChanged(nameof(EnchantExtenderPct));
         OnPropertyChanged(nameof(EnchantTranquilityPct));
+        OnPropertyChanged(nameof(AdrenalineGainPerHit));
     }
 
     private bool _hasViolation;

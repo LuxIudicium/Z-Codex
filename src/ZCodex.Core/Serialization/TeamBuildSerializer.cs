@@ -414,9 +414,12 @@ public static class TeamBuildSerializer
             // Ignore les SkillId inconnus (même politique que NatureRituals) : robuste si un fichier
             // futur référence un boost pas encore reconnu par cette version. Heroic Refrain (Lot D)
             // n'est PAS dans AttributeBoostData (sa résolution est inter-perso, pas auto-résolue par
-            // ce perso) → autorisé explicitement via son SkillId dédié.
+            // ce perso) → autorisé explicitement via son SkillId dédié. Les accélérateurs
+            // d'adrénaline (chantier infobulle, lot 1a) partagent cette liste : id de base de la
+            // compétence, 1749 pour Weapon of Fury reçue, id réservé négatif pour le mod « Furious ».
             ActiveAttributeBoosts = dto.ActiveAttributeBoosts
-                .Where(id => AttributeBoostData.BySkillId(id) != null || id == HeroicRefrainData.SkillId)
+                .Where(id => AttributeBoostData.BySkillId(id) != null || id == HeroicRefrainData.SkillId
+                             || AdrenalineBoostData.IsToggleId(id))
                 .Distinct().ToList(),
             Variants = dto.Variants.Select(v => CharFromDto(v, skillsById, unresolvedIds)).ToList(),
         };

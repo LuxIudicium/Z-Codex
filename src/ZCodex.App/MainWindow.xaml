@@ -38,7 +38,8 @@
                                       NaturesRenewalCastPct="{Binding NaturesRenewalCastPct}"
                                       EnchantEnchantingPct="{Binding EnchantEnchantingPct}"
                                       EnchantExtenderPct="{Binding EnchantExtenderPct}"
-                                      EnchantTranquilityPct="{Binding EnchantTranquilityPct}"/>
+                                      EnchantTranquilityPct="{Binding EnchantTranquilityPct}"
+                                      AdrenalineGainPerHit="{Binding AdrenalineGainPerHit}"/>
         </DataTemplate>
 
         <!-- Tooltip du catalogue de recherche : DataContext de la cellule = le Skill lui-même. -->
@@ -145,15 +146,19 @@
             </StackPanel>
         </DataTemplate>
 
-        <!-- Bandeau LOCAL des boosts d'attribut de compétences équipées (Lot A : Aura of the Lich,
-             Awaken the Blood, Masochism, Expert's Dexterity, Trapper's Focus). DataContext =
+        <!-- Bandeau LOCAL des effets propres à CE perso : boosts d'attribut de compétences équipées
+             (Lot A : Aura of the Lich, Awaken the Blood…), accélérateurs d'adrénaline (chantier
+             infobulle, lot 1a : "For Great Justice!", Berserker Stance…), effets reçus d'un allié
+             (Heroic Refrain, Weapon of Fury) et mod d'arme « Furious ». DataContext =
              CharacterSlotViewModel directement (pas un ViewModel de bandeau partagé — contrairement
-             aux rituels, l'effet est propre à CE perso). Icône togglable, cadre vert = actif. -->
+             aux rituels, l'effet est propre à CE perso). Icône togglable, cadre vert = actif.
+             WrapPanel : la colonne perso de la carte teambuild est figée à 110 px, une rangée
+             d'icônes trop longue y serait rognée à droite — elle passe à la ligne. -->
         <DataTemplate x:Key="AttributeBoostBandTemplate">
             <ItemsControl ItemsSource="{Binding AttributeBoostToggles}"
                           Visibility="{Binding HasAttributeBoostToggles, Converter={StaticResource BoolToVisibilityConverter}}">
                 <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+                    <ItemsPanelTemplate><WrapPanel Orientation="Horizontal"/></ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
@@ -161,11 +166,16 @@
                                 Width="18" Height="18" Margin="0,0,3,0" CornerRadius="2"
                                 BorderThickness="2" Background="Transparent"
                                 ToolTipService.ShowDuration="30000">
-                            <!-- Tooltip = le VRAI tooltip de la compétence + note band-only (clic). -->
+                            <!-- Tooltip = le VRAI tooltip de la compétence (ou, pour le mod « Furious »,
+                                 son texte) + note band-only (clic). -->
                             <Border.ToolTip>
                                 <ToolTip MaxWidth="420" Padding="0">
                                     <StackPanel>
-                                        <ctrl:SkillTooltipControl Skill="{Binding Skill}"/>
+                                        <ctrl:SkillTooltipControl Skill="{Binding Skill}"
+                                                                  Visibility="{Binding HasSkill, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                        <TextBlock Text="{Binding ModText}" FontSize="12" TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}" Margin="6,4,6,0"
+                                                   Visibility="{Binding HasSkill, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Invert}"/>
                                         <TextBlock Text="{Binding ClickNote}" FontSize="10" FontStyle="Italic"
                                                    Foreground="{DynamicResource TextSecondaryBrush}"
                                                    TextWrapping="Wrap" Margin="6,2,6,4"/>
@@ -182,11 +192,9 @@
                                     </Style.Triggers>
                                 </Style>
                             </Border.Style>
-                            <Image Width="14" Height="14" Stretch="Uniform"
-                                   Source="{Binding Skill.IconPath, Converter={StaticResource UrlToImage}, ConverterParameter=64}"
-                                   RenderOptions.BitmapScalingMode="HighQuality">
-                                <Image.Style>
-                                    <Style TargetType="Image">
+                            <Grid Width="14" Height="14">
+                                <Grid.Style>
+                                    <Style TargetType="Grid">
                                         <Setter Property="Opacity" Value="0.35"/>
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding IsActive}" Value="True">
@@ -194,8 +202,15 @@
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
-                                </Image.Style>
-                            </Image>
+                                </Grid.Style>
+                                <Image Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"
+                                       Source="{Binding Skill.IconPath, Converter={StaticResource UrlToImage}, ConverterParameter=64}"
+                                       Visibility="{Binding HasSkill, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                <!-- Mod d'arme « Furious » : pas d'icône de compétence → icône d'adrénaline. -->
+                                <Image Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"
+                                       Source="{Binding Source='adrenaline', Converter={StaticResource StatIcon}}"
+                                       Visibility="{Binding HasSkill, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Invert}"/>
+                            </Grid>
                         </Border>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
@@ -838,7 +853,8 @@
                                                                       NaturesRenewalCastPct="{Binding NaturesRenewalCastPct}"
                                                                       EnchantEnchantingPct="{Binding EnchantEnchantingPct}"
                                                                       EnchantExtenderPct="{Binding EnchantExtenderPct}"
-                                                                      EnchantTranquilityPct="{Binding EnchantTranquilityPct}"/>
+                                                                      EnchantTranquilityPct="{Binding EnchantTranquilityPct}"
+                                                                      AdrenalineGainPerHit="{Binding AdrenalineGainPerHit}"/>
                                         </ToolTip>
                                     </Border.ToolTip>
                                     <Border.ContextMenu>

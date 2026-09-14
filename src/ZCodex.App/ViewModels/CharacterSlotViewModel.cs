@@ -267,16 +267,19 @@ public class CharacterSlotViewModel : ViewModelBase
 
     // +20 % « of Enchanting » si le set d'armes ACTIF du perso porte ce mod (sinon 0). S'applique à
     // TOUT enchantement, indépendamment du toggle par perso (c'est de l'équipement, toujours actif).
-    public int EnchantingModPercent
+    public int EnchantingModPercent =>
+        ActiveWeaponSetHasMod(EnchantmentDuration.IsEnchantingMod) ? EnchantmentDuration.EnchantingModPercent : 0;
+
+    // Le set d'armes ACTIF porte-t-il un mod « Furious » ? → icône du mod dans le bandeau du perso
+    // (chantier infobulle, lot 1a ; allumée = le doublement d'adrénaline a proc).
+    public bool HasFuriousMod => ActiveWeaponSetHasMod(AdrenalineBoostData.IsFuriousMod);
+
+    private bool ActiveWeaponSetHasMod(Func<int, bool> isMod)
     {
-        get
-        {
-            var eq = _equipment;
-            if (eq is null || eq.WeaponSets.Count == 0) return 0;
-            int set = Math.Clamp(eq.ActiveSet, 0, eq.WeaponSets.Count - 1);
-            return eq.WeaponSets[set].Items.Any(i => i.ModifierIds.Any(EnchantmentDuration.IsEnchantingMod))
-                ? EnchantmentDuration.EnchantingModPercent : 0;
-        }
+        var eq = _equipment;
+        if (eq is null || eq.WeaponSets.Count == 0) return false;
+        int set = Math.Clamp(eq.ActiveSet, 0, eq.WeaponSets.Count - 1);
+        return eq.WeaponSets[set].Items.Any(i => i.ModifierIds.Any(isMod));
     }
 
     // Prolongateur PERSONNEL applicable à cette compétence (0 si toggle éteint ou skill hors cible) :
@@ -325,27 +328,41 @@ public class CharacterSlotViewModel : ViewModelBase
 
     // Bandeau local : une icône par compétence qualifiante ÉQUIPÉE (bascule indépendante par
     // compétence — un perso peut porter plusieurs boosts à la fois, ex. Aura of the Lich +
-    // Masochism sur un même Necro) + Heroic Refrain (Lot D) si diffusé par N'IMPORTE QUEL perso de
-    // l'équipe — y compris le lanceur lui-même : Heroic Refrain n'est délibérément PAS dans
-    // AttributeBoostData (sa résolution est inter-perso, pas auto-résolue par son propre porteur),
-    // donc le scan "équipée" ci-dessous ne le fait jamais remonter, même chez le lanceur.
+    // Masochism sur un même Necro), boost d'attribut ou accélérateur d'adrénaline personnel
+    // (chantier infobulle, lot 1a), dans l'ordre de la barre. Puis les effets reçus d'un allié,
+    // proposés si N'IMPORTE QUEL perso de l'équipe les porte — y compris le lanceur lui-même :
+    // Heroic Refrain (Lot D) et Weapon of Fury (lot 1a) ne sont délibérément PAS des boosts
+    // personnels (leur résolution est inter-perso), donc le scan "équipée" ne les fait jamais
+    // remonter, même chez le lanceur. Enfin le mod « Furious », si le set d'armes actif le porte.
     public IEnumerable<AttributeBoostIndicatorViewModel> AttributeBoostToggles
     {
         get
         {
             var items = SkillSlots.Select(s => s.Skill)
                 .Where(sk => sk != null)
-                .Select(sk => (Skill: sk!, Descriptor: AttributeBoostData.BySkillId(sk!.Id)))
-                .Where(t => t.Descriptor != null)
-                .Select(t => new AttributeBoostIndicatorViewModel(this, t.Skill, t.Descriptor));
+                .Select(sk => (Skill: sk!, ToggleId: PersonalToggleIdOf(sk!)))
+                .Where(t => t.ToggleId != null)
+                .Select(t => new AttributeBoostIndicatorViewModel(this, t.Skill, t.ToggleId!.Value, received: false));
 
             var (hrSkill, _) = HeroicRefrain;
             if (hrSkill != null)
-                items = items.Append(new AttributeBoostIndicatorViewModel(this, hrSkill, null));
+                items = items.Append(new AttributeBoostIndicatorViewModel(this, hrSkill, HeroicRefrainData.SkillId, received: true));
+            if (WeaponOfFury is { } wof)
+                items = items.Append(new AttributeBoostIndicatorViewModel(this, wof, AdrenalineBoostData.WeaponOfFurySkillId, received: true));
+            if (HasFuriousMod)
+                items = items.Append(new AttributeBoostIndicatorViewModel(this, null, AdrenalineBoostData.FuriousModToggleId, received: false));
 
             return items;
         }
     }
+
+    // Id d'icône d'une compétence personnelle togglable, null sinon : boost d'attribut (id de la
+    // compétence) ou accélérateur d'adrénaline « you » (id de base : une variante « (PvP) » partage
+    // l'icône de sa jumelle et reste allumée quand le catalogue change de mode).
+    private static int? PersonalToggleIdOf(Skill skill) =>
+        AttributeBoostData.BySkillId(skill.Id) is not null ? skill.Id
+        : AdrenalineBoostData.BySkillId(skill.Id) is { Scope: AdrenalineBoostScope.Self } d ? d.ToggleId
+        : null;
 
     public bool HasAttributeBoostToggles => AttributeBoostToggles.Any();
 
@@ -428,6 +445,46 @@ public class CharacterSlotViewModel : ViewModelBase
         if (!PrimaryAttributeRows.Concat(SecondaryAttributeRows).Any(r => r.Name == attributeName)) return 0;
         return HeroicRefrain.Bonus;
     }
+
+    // ── Accélérateurs d'adrénaline (chantier infobulle, lot 1a) ───────────────
+    // Même stockage que les boosts d'attribut (IsAttributeBoostActive/SetAttributeBoost) : id de
+    // base de la compétence, 1749 pour Weapon of Fury reçue, id réservé pour le mod « Furious ».
+
+    // Weapon of Fury (« target ally ») : patron Heroic Refrain, sans rang (+100 % fixe). Compétence
+    // d'un porteur de l'équipe (icône/tooltip du bandeau), null si personne ne l'équipe.
+    public static Skill? WeaponOfFuryFor(IEnumerable<CharacterSlotViewModel> characters) =>
+        characters.SelectMany(c => c.SkillSlots).Select(s => s.Skill)
+            .FirstOrDefault(sk => sk?.Id == AdrenalineBoostData.WeaponOfFurySkillId);
+
+    // Provider explicite pour le build simple (pas d'OwnerBuild → patron HeroicRefrainProvider).
+    public Func<Skill?>? WeaponOfFuryProvider { get; set; }
+
+    public Skill? WeaponOfFury => WeaponOfFuryProvider is { } p ? p() : OwnerBuild?.WeaponOfFury;
+
+    // Effets d'adrénaline actifs sur CE perso : accélérateurs personnels équipés ET allumés, Weapon
+    // of Fury reçue, mod « Furious » qui a proc. Focused Anger se lit au rang effectif de Leadership
+    // du perso — aucun cycle : le gain d'adrénaline ne nourrit aucune caractéristique.
+    private IEnumerable<AdrenalineGain.Effect> ActiveAdrenalineEffects()
+    {
+        foreach (var slot in SkillSlots)
+            if (slot.Skill is { } sk && AdrenalineBoostData.BySkillId(sk.Id) is { Scope: AdrenalineBoostScope.Self } d
+                && IsAttributeBoostActive(d.ToggleId))
+                yield return AdrenalineBoostData.EffectOf(d, sk,
+                    d.ScalingAttribute is { } attr ? AttributeLevel(attr) ?? 0 : 0);
+        if (IsAttributeBoostActive(AdrenalineBoostData.WeaponOfFurySkillId) && WeaponOfFury is { } wof
+            && AdrenalineBoostData.BySkillId(wof.Id) is { } wd)
+            yield return AdrenalineBoostData.EffectOf(wd, wof, 0);
+        if (IsAttributeBoostActive(AdrenalineBoostData.FuriousModToggleId) && HasFuriousMod)
+            yield return AdrenalineBoostData.FuriousModEffect;
+    }
+
+    // Gain par touche en centièmes de coup (100 = aucun effet), pour les coups nécessaires des
+    // infobulles de compétences d'adrénaline.
+    public int AdrenalineGainPerHit => AdrenalineGain.GainPerHit(ActiveAdrenalineEffects());
+
+    // Un effet actif enchante-t-il CE perso (Onslaught) ? Natural Temper est alors sans effet
+    // (décision Philippe 14/09/2026) — lu aussi par son icône pour le signaler.
+    public bool IsEnchantedByAdrenalineEffect => ActiveAdrenalineEffects().Any(e => e.Enchants);
 
     // Boost « override » actif (Lot C, Master of Magic) : remplace le niveau de base au lieu de s'y
     // additionner. Plusieurs sources actives (improbable) → la plus forte gagne. Null = aucun.
@@ -799,7 +856,17 @@ public class CharacterSlotViewModel : ViewModelBase
     public EquipmentBuild? Equipment
     {
         get => _equipment;
-        set { SetField(ref _equipment, value); OnPropertyChanged(nameof(HasEquipment)); OnPropertyChanged(nameof(EquipmentSummary)); }
+        set
+        {
+            SetField(ref _equipment, value);
+            OnPropertyChanged(nameof(HasEquipment));
+            OnPropertyChanged(nameof(EquipmentSummary));
+            // Les mods du set d'armes actif pèsent sur les infobulles (« of Enchanting », « Furious »)
+            // et l'icône « Furious » du bandeau apparaît ou disparaît avec eux.
+            OnPropertyChanged(nameof(AttributeBoostToggles));
+            OnPropertyChanged(nameof(HasAttributeBoostToggles));
+            RefreshSkillTooltips();
+        }
     }
 
     public bool HasEquipment => _equipment != null && !_equipment.IsEmpty;

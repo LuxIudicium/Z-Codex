@@ -272,6 +272,29 @@ public partial class SkillTooltipControl : UserControl
         set => SetValue(EnchantTranquilityPctProperty, value);
     }
 
+    // Gain d'adrénaline par touche du perso, en centièmes de coup (100 = aucun effet) : compétences
+    // actives qui l'accélèrent (chantier infobulle, lot 1). Fourni par le slot ; 100 en catalogue.
+    public static readonly DependencyProperty AdrenalineGainPerHitProperty =
+        DependencyProperty.Register(nameof(AdrenalineGainPerHit), typeof(int), typeof(SkillTooltipControl),
+            new PropertyMetadata(100, OnInputsChanged));
+
+    public int AdrenalineGainPerHit
+    {
+        get => (int)GetValue(AdrenalineGainPerHitProperty);
+        set => SetValue(AdrenalineGainPerHitProperty, value);
+    }
+
+    // ── Coût en adrénaline affiché : « coups nécessaires (base) » si un effet actif le change ────
+    public static readonly DependencyProperty AdrenalineTextProperty =
+        DependencyProperty.Register(nameof(AdrenalineText), typeof(string), typeof(SkillTooltipControl),
+            new PropertyMetadata(string.Empty));
+
+    public string AdrenalineText
+    {
+        get => (string)GetValue(AdrenalineTextProperty);
+        private set => SetValue(AdrenalineTextProperty, value);
+    }
+
     // ── Coût en énergie affiché : « réduit (base) » si l'Expertise l'abaisse, sinon base ────
     public static readonly DependencyProperty EnergyTextProperty =
         DependencyProperty.Register(nameof(EnergyText), typeof(string), typeof(SkillTooltipControl),
@@ -454,6 +477,19 @@ public partial class SkillTooltipControl : UserControl
         UpdateDuration();
         UpdateDamage();
         UpdateSummon();
+        UpdateAdrenaline();
+    }
+
+    // Coût en adrénaline : coups nécessaires au gain par touche du perso (AdrenalineGain), affiché
+    // « modifié (base) » en couleur de boost de compétence (violet) quand un effet actif le change ;
+    // sinon le coût du jeu tel quel (catalogue compris : gain 100 par défaut).
+    private void UpdateAdrenaline()
+    {
+        int cost = Skill?.Adrenaline ?? 0;
+        int strikes = AdrenalineGain.StrikesNeeded(cost, AdrenalineGainPerHit);
+        AdrenalineText = strikes == cost
+            ? cost.ToString()
+            : $"{SkillProgression.MarkSkillBoost}{strikes}{SkillProgression.MarkSkillBoost} ({cost})";
     }
 
     // En-tête : nom + ligne de type, résolus dans la langue courante (AppLanguage.IsFr).

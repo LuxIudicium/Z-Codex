@@ -44,12 +44,13 @@
             <DockPanel LastChildFill="True">
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
                             VerticalAlignment="Top" Margin="8,2,0,0">
-                    <!-- Adrénaline (coût exclusif de l'énergie) -->
+                    <!-- Adrénaline (coût exclusif de l'énergie) : coups nécessaires, « modifié (base) »
+                         quand une compétence active accélère le gain (cf. AdrenalineText) -->
                     <StackPanel Orientation="Horizontal" Margin="0,0,6,0"
                                 Visibility="{Binding Adrenaline, Converter={StaticResource PosInt}}">
                         <Image Source="{Binding Source='adrenaline', Converter={StaticResource StatIcon}}"
                                Width="14" Height="14" Margin="0,0,2,0"/>
-                        <TextBlock Text="{Binding Adrenaline}" FontSize="12"/>
+                        <TextBlock beh:SkillMarkup.Text="{Binding AdrenalineText, ElementName=Root}" FontSize="12"/>
                     </StackPanel>
                     <!-- Énergie (visibilité pilotée par le coût effectif, cf. EnergyVisibility) -->
                     <StackPanel Orientation="Horizontal" Margin="0,0,6,0"

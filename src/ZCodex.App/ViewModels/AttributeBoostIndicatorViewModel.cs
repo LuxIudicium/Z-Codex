@@ -1,39 +1,56 @@
-﻿using ZCodex.Core.Data;
+using ZCodex.Core.Data;
 using ZCodex.Core.Models;
 
 namespace ZCodex.App.ViewModels;
 
-// Une icône du bandeau local de boosts d'attribut : soit une compétence qualifiante équipée sur CE
-// perso (Lot A/B/C, Descriptor non null), soit Heroic Refrain diffusé par un COÉQUIPIER (Lot D,
-// Descriptor null — le perso ne l'équipe pas forcément lui-même). Togglable dans les deux cas (clic
-// = active/désactive le boost, ou reçoit/arrête de recevoir la diffusion). Cadre vert = actif, même
-// idiome que le bandeau des rituels de la nature — mais local au perso, pas à l'équipe.
+// Une icône du bandeau local de CE perso. Trois origines :
+//  • une compétence qualifiante équipée sur CE perso : boost d'attribut (Lot A/B/C) ou accélérateur
+//    d'adrénaline personnel (chantier infobulle, lot 1a) ;
+//  • un effet diffusé par un COÉQUIPIER et reçu à la demande (Heroic Refrain, Weapon of Fury) — le
+//    perso ne l'équipe pas forcément lui-même ;
+//  • le mod d'arme « Furious » du set actif (Skill null : ce n'est pas une compétence).
+// Togglable dans tous les cas (clic = active/désactive le boost, ou reçoit/arrête de recevoir la
+// diffusion). Cadre vert = actif, même idiome que le bandeau des rituels de la nature — mais local
+// au perso, pas à l'équipe.
 public class AttributeBoostIndicatorViewModel : ViewModelBase
 {
     private readonly CharacterSlotViewModel _owner;
 
-    public AttributeBoostIndicatorViewModel(CharacterSlotViewModel owner, Skill skill, AttributeBoostDescriptor? descriptor)
+    public AttributeBoostIndicatorViewModel(CharacterSlotViewModel owner, Skill? skill, int toggleId, bool received)
     {
         _owner = owner;
         Skill = skill;
-        Descriptor = descriptor;
-        bool active = owner.IsAttributeBoostActive(skill.Id);
-        // Diffusion reçue (Heroic Refrain d'un coéquipier) → « recevoir » ; boost propre → « activer ».
-        string on  = T(descriptor is null ? "S.Boost.Receive"        : "S.Boost.Activate");
-        string off = T(descriptor is null ? "S.Boost.StopReceiving"  : "S.Boost.Deactivate");
-        ClickNote = string.Format(T("S.Boost.ClickTo"), active ? off : on);
+        ToggleId = toggleId;
+        bool active = owner.IsAttributeBoostActive(toggleId);
+        // Diffusion reçue (Heroic Refrain, Weapon of Fury) → « recevoir » ; boost propre → « activer ».
+        string on  = T(received ? "S.Boost.Receive"       : "S.Boost.Activate");
+        string off = T(received ? "S.Boost.StopReceiving" : "S.Boost.Deactivate");
+        string click = string.Format(T("S.Boost.ClickTo"), active ? off : on);
+
+        // Note au-dessus de l'instruction de clic : le mod « Furious » s'allume quand il a proc ;
+        // Natural Temper ne fait rien tant qu'un effet actif enchante le perso (Onslaught).
+        string? note = skill is null ? T("S.Boost.ProcNote")
+            : AdrenalineBoostData.BySkillId(skill.Id) is { NeedsUnenchanted: true } && owner.IsEnchantedByAdrenalineEffect
+                ? T("S.Boost.NoEffectEnchanted")
+            : null;
+        ClickNote = note is null ? click : $"{note}\n{click}";
     }
 
     private static string T(string key) => ZCodex.App.LanguageManager.T(key);
 
-    public Skill Skill { get; }
-    public AttributeBoostDescriptor? Descriptor { get; }
+    // Null pour le mod d'arme « Furious » : le bandeau montre alors l'icône d'adrénaline et ModText.
+    public Skill? Skill { get; }
+    public bool HasSkill => Skill is not null;
+    // Infobulle du mod « Furious », à la place du tooltip de compétence.
+    public string ModText => HasSkill ? string.Empty : T("S.Boost.FuriousTip");
+    // Id sous lequel l'état est mémorisé chez le perso (cf. CharacterSlotViewModel.SetAttributeBoost).
+    public int ToggleId { get; }
     // Note band-only, affichée sous le vrai tooltip de la compétence.
     public string ClickNote { get; }
 
-    public bool IsActive => _owner.IsAttributeBoostActive(Skill.Id);
+    public bool IsActive => _owner.IsAttributeBoostActive(ToggleId);
 
-    // Le bandeau est reconstruit à chaque changement de barre de compétences, donc IsActive est
-    // relu à neuf — pas besoin de notifier ici.
-    public void Toggle() => _owner.SetAttributeBoost(Skill.Id, !IsActive);
+    // Le bandeau est reconstruit à chaque bascule et à chaque changement de barre de compétences,
+    // donc IsActive est relu à neuf — pas besoin de notifier ici.
+    public void Toggle() => _owner.SetAttributeBoost(ToggleId, !IsActive);
 }

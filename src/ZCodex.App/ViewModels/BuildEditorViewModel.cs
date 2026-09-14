@@ -82,6 +82,8 @@ public class BuildEditorViewModel : ViewModelBase
         // Heroic Refrain (Lot D) : build simple = un seul perso, donc "diffusion d'équipe" se
         // réduit à lui-même (auto-ciblage). Pas d'OwnerBuild → provider explicite, patron identique.
         Character.HeroicRefrainProvider = () => CharacterSlotViewModel.HeroicRefrainFor(new[] { Character });
+        // Weapon of Fury (chantier infobulle, lot 1a) : même réduction à l'auto-ciblage.
+        Character.WeaponOfFuryProvider = () => CharacterSlotViewModel.WeaponOfFuryFor(new[] { Character });
 
         // Nouveau build vierge : la PR est obligatoire dans l'éditeur (isQuery=false → le picker
         // n'offre pas « None » sur la PR). Pour qu'un code Any/SEC ne puisse JAMAIS être produit,
