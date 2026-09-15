@@ -308,6 +308,18 @@ public partial class SkillTooltipControl : UserControl
         set => SetValue(AdrenalineFromTeamProperty, value);
     }
 
+    // Réductions de coût des compétences actives du perso qui touchent cette compétence (chantier
+    // infobulle, lot 2 : Songkai, Divine Spirit, glyphes…). Fournies par le slot ; aucune en catalogue.
+    public static readonly DependencyProperty EnergyReductionProperty =
+        DependencyProperty.Register(nameof(EnergyReduction), typeof(EnergyReduction), typeof(SkillTooltipControl),
+            new PropertyMetadata(default(EnergyReduction), OnInputsChanged));
+
+    public EnergyReduction EnergyReduction
+    {
+        get => (EnergyReduction)GetValue(EnergyReductionProperty);
+        set => SetValue(EnergyReductionProperty, value);
+    }
+
     // ── Coût en adrénaline affiché : « coups nécessaires (base) » si un effet actif le change ────
     public static readonly DependencyProperty AdrenalineTextProperty =
         DependencyProperty.Register(nameof(AdrenalineText), typeof(string), typeof(SkillTooltipControl),
@@ -608,10 +620,11 @@ public partial class SkillTooltipControl : UserControl
     private static string RitualMark(string value) =>
         $"{SkillProgression.MarkRitual}{value}{SkillProgression.MarkRitual}";
 
-    // Coût en énergie affiché « modifié (base) ». Toute la cascade (Expertise, flux ET rituels de la
-    // nature) est calculée par NatureRitualData.EnergyCost — qui reproduit EXACTEMENT l'ancien
-    // comportement Expertise→flux quand aucun rituel n'est actif. La part modifiée est marquée en
-    // couleur rituel si un rituel l'a changée, sinon en couleur flux (comportement historique).
+    // Coût en énergie affiché « modifié (base) ». Toute la cascade (Expertise, flux, rituels de la
+    // nature ET réductions des compétences du perso, lot 2) est calculée par NatureRitualData.EnergyCost —
+    // qui reproduit EXACTEMENT l'ancien comportement quand rien n'est actif. La part modifiée est marquée en
+    // couleur rituel si un rituel l'a changée, sinon en couleur de boost de compétence (violet) si une
+    // compétence du perso l'a changée, sinon en couleur flux (comportement historique).
     private void UpdateEnergy()
     {
         int baseCost = Skill?.EnergyCost ?? 0;
@@ -636,12 +649,15 @@ public partial class SkillTooltipControl : UserControl
             return;
         }
 
-        var r = NatureRitualData.EnergyCost(baseCost, s, rituals, ExpertiseRank ?? 0, FluxEnergyPercent, RoaringWindsBonus);
-        // Visible dès que le coût effectif est non nul (couvre les bases 0 relevées par un rituel).
-        EnergyVisibility = r.Final > 0 ? Visibility.Visible : Visibility.Collapsed;
+        var r = NatureRitualData.EnergyCost(baseCost, s, rituals, ExpertiseRank ?? 0, FluxEnergyPercent, RoaringWindsBonus,
+                                            EnergyReduction);
+        // Visible dès que le coût effectif est non nul (couvre les bases 0 relevées par un rituel), ou que la
+        // base l'est : un coût ramené à 0 par une compétence (Way of the Empty Palm) s'affiche « 0 (5) ».
+        EnergyVisibility = r.Final > 0 || baseCost > 0 ? Visibility.Visible : Visibility.Collapsed;
         if (r.Final == baseCost) { EnergyText = baseCost.ToString(); return; }
 
         string shown = r.RitualChanged ? RitualMark(r.Final.ToString())
+                     : r.SkillChanged  ? $"{SkillProgression.MarkSkillBoost}{r.Final}{SkillProgression.MarkSkillBoost}"
                      : r.FluxLowered   ? $"{SkillProgression.MarkFlux}{r.Final}{SkillProgression.MarkFlux}"
                      :                    r.Final.ToString();
         EnergyText = $"{shown} ({baseCost})";
@@ -687,13 +703,17 @@ public partial class SkillTooltipControl : UserControl
         UpkeepText = newUp == baseUp ? $"-{baseUp}" : $"{RitualMark($"-{newUp}")} (-{baseUp})";
     }
 
-    // Overcast : Equinox ajoute 10 aux sorts à overcast. « modifié (base) ».
+    // Overcast : Equinox ajoute 10 aux sorts à overcast (couleur rituel) ; Glyph of Energy (lot 2) l'annule,
+    // celui d'Equinox compris (couleur de boost de compétence). « modifié (base) ».
     private void UpdateOvercast()
     {
         int baseOc = Skill?.Overcast ?? 0;
         if (baseOc <= 0) { OvercastText = string.Empty; return; }
-        int newOc = NatureRitualData.Overcast(baseOc, NatureRituals ?? EmptyRituals);
-        OvercastText = newOc == baseOc ? baseOc.ToString() : $"{RitualMark(newOc.ToString())} ({baseOc})";
+        bool removed = EnergyReduction.RemovesOvercast;
+        int newOc = NatureRitualData.Overcast(baseOc, NatureRituals ?? EmptyRituals, removed);
+        OvercastText = newOc == baseOc ? baseOc.ToString()
+                     : removed ? $"{SkillProgression.MarkSkillBoost}{newOc}{SkillProgression.MarkSkillBoost} ({baseOc})"
+                     : $"{RitualMark(newOc.ToString())} ({baseOc})";
     }
 
     // Durée d'enchantement (Lot D) : composée des modificateurs (arme « of Enchanting », prolongateur

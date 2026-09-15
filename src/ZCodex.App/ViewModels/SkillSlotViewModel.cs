@@ -324,6 +324,10 @@ public class SkillSlotViewModel : ViewModelBase
     public bool AdrenalineFromTeam =>
         Owner is { } o && _skill is { Adrenaline: > 0 } && o.HasTeamAdrenalineEffect;
 
+    // Réductions de coût d'énergie des compétences actives du perso qui touchent cette compétence (lot 2).
+    public EnergyReduction EnergyReduction =>
+        Owner is { } o && _skill is { } s ? o.EnergyReductionFor(s) : default;
+
     // ── Durée d'enchantement (Lot D) : % applicables à CETTE compétence, fournis par le perso ──
     // L'arme « of Enchanting » et Tranquility ne touchent que les enchantements ; le prolongateur
     // personnel (Blessed Aura/Extend) gère lui-même sa cible (Monk/Derviche). L'infobulle compose.
@@ -358,6 +362,7 @@ public class SkillSlotViewModel : ViewModelBase
         OnPropertyChanged(nameof(AdrenalineGainPerHit));
         OnPropertyChanged(nameof(AdrenalineSlowed));
         OnPropertyChanged(nameof(AdrenalineFromTeam));
+        OnPropertyChanged(nameof(EnergyReduction));
     }
 
     private bool _hasViolation;

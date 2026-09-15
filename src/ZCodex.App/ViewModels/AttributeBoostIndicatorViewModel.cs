@@ -27,11 +27,14 @@ public class AttributeBoostIndicatorViewModel : ViewModelBase
         string off = T(received ? "S.Boost.StopReceiving" : "S.Boost.Deactivate");
         string click = string.Format(T("S.Boost.ClickTo"), active ? off : on);
 
-        // Note au-dessus de l'instruction de clic : le mod « Furious » s'allume quand il a proc ;
-        // Natural Temper ne fait rien tant qu'un effet actif enchante le perso (Onslaught).
-        string? note = skill is null ? T("S.Boost.ProcNote")
+        // Note au-dessus de l'instruction de clic : le mod « Furious » et Jaundiced Gaze (effet de
+        // retrait, lot 2) s'allument quand ils ont proc ; Natural Temper ne fait rien tant qu'un effet actif
+        // enchante le perso (Onslaught) ; Selfless Spirit s'allume quand le sort vise un autre allié (lot 2).
+        string? note = skill is null || skill.Id == 763 ? T("S.Boost.ProcNote")
             : AdrenalineBoostData.BySkillId(skill.Id) is { NeedsUnenchanted: true } && owner.IsEnchantedByAdrenalineEffect
                 ? T("S.Boost.NoEffectEnchanted")
+            : skill.Id is EnergyCostBoostData.SelflessSpiritKurzickSkillId or EnergyCostBoostData.SelflessSpiritLuxonSkillId
+                ? T("S.Boost.OtherAllyNote")
             : null;
         ClickNote = note is null ? click : $"{note}\n{click}";
     }

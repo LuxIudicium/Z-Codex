@@ -179,6 +179,7 @@
     <sys:String x:Key="S.Boost.FuriousTip">“Furious” weapon upgrade: double adrenaline on hit (10% chance).</sys:String>
     <sys:String x:Key="S.Boost.ProcNote">On = the effect has triggered.</sys:String>
     <sys:String x:Key="S.Boost.NoEffectEnchanted">No effect: this character is under an active enchantment.</sys:String>
+    <sys:String x:Key="S.Boost.OtherAllyNote">On = the spell you cast targets another ally.</sys:String>
 
     <!-- ── Template search ────────────────────────────────────────────── -->
     <sys:String x:Key="S.Search.Title">Search skill templates</sys:String>

@@ -41,7 +41,8 @@
                                       EnchantTranquilityPct="{Binding EnchantTranquilityPct}"
                                       AdrenalineGainPerHit="{Binding AdrenalineGainPerHit}"
                                       AdrenalineSlowed="{Binding AdrenalineSlowed}"
-                                      AdrenalineFromTeam="{Binding AdrenalineFromTeam}"/>
+                                      AdrenalineFromTeam="{Binding AdrenalineFromTeam}"
+                                      EnergyReduction="{Binding EnergyReduction}"/>
         </DataTemplate>
 
         <!-- Tooltip du catalogue de recherche : DataContext de la cellule = le Skill lui-même. -->
@@ -873,7 +874,8 @@
                                                                       EnchantTranquilityPct="{Binding EnchantTranquilityPct}"
                                                                       AdrenalineGainPerHit="{Binding AdrenalineGainPerHit}"
                                                                       AdrenalineSlowed="{Binding AdrenalineSlowed}"
-                                                                      AdrenalineFromTeam="{Binding AdrenalineFromTeam}"/>
+                                                                      AdrenalineFromTeam="{Binding AdrenalineFromTeam}"
+                                                                      EnergyReduction="{Binding EnergyReduction}"/>
                                         </ToolTip>
                                     </Border.ToolTip>
                                     <Border.ContextMenu>

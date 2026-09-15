@@ -317,7 +317,12 @@ public class CharacterSlotViewModel : ViewModelBase
 
     public void SetAttributeBoost(int skillId, bool active)
     {
-        if (active ? _activeAttributeBoosts.Add(skillId) : _activeAttributeBoosts.Remove(skillId))
+        bool changed = active ? _activeAttributeBoosts.Add(skillId) : _activeAttributeBoosts.Remove(skillId);
+        // Un seul glyphe actif à la fois sur un perso (règle du jeu, Philippe 15/09/2026) : allumer un glyphe
+        // éteint les autres, qu'il remplace — comme une posture.
+        if (active && IsGlyphToggle(skillId))
+            changed |= _activeAttributeBoosts.RemoveWhere(id => id != skillId && IsGlyphToggle(id)) > 0;
+        if (changed)
         {
             NotifyTooltipsChanged();
             // AttributeBoostToggles construit des instances FRAÎCHES à chaque lecture (IsActive lu au
@@ -359,12 +364,18 @@ public class CharacterSlotViewModel : ViewModelBase
     }
 
     // Id d'icône d'une compétence personnelle togglable, null sinon : boost d'attribut (id de la
-    // compétence) ou accélérateur d'adrénaline « you » (id de base : une variante « (PvP) » partage
-    // l'icône de sa jumelle et reste allumée quand le catalogue change de mode).
+    // compétence), accélérateur d'adrénaline « you » ou réduction de coût d'énergie (lot 2) — id de base :
+    // une variante « (PvP) » partage l'icône de sa jumelle et reste allumée quand le catalogue change de
+    // mode. Une compétence présente dans plusieurs tables (Glyph of Energy) n'a qu'une icône.
     private static int? PersonalToggleIdOf(Skill skill) =>
         AttributeBoostData.BySkillId(skill.Id) is not null ? skill.Id
         : AdrenalineBoostData.BySkillId(skill.Id) is { Scope: AdrenalineBoostScope.Self } d ? d.ToggleId
+        : EnergyCostBoostData.BySkillId(skill.Id) is { } e ? e.ToggleId
         : null;
+
+    // L'icône est-elle celle d'un glyphe équipé sur ce perso ? (un seul glyphe actif à la fois)
+    private bool IsGlyphToggle(int toggleId) =>
+        SkillSlots.Any(s => s.Skill is { SkillType: "Glyph" } sk && PersonalToggleIdOf(sk) == toggleId);
 
     public bool HasAttributeBoostToggles => AttributeBoostToggles.Any();
 
@@ -517,6 +528,21 @@ public class CharacterSlotViewModel : ViewModelBase
     // Un effet actif enchante-t-il CE perso (Onslaught, Dark Fury) ? Natural Temper est alors sans
     // effet (décision Philippe 14/09/2026) — lu aussi par son icône pour le signaler.
     public bool IsEnchantedByAdrenalineEffect => ActiveAdrenalineEffects().Any(e => e.Enchants);
+
+    // ── Réductions de coût d'énergie (chantier infobulle, lot 2) ──────────────
+    // Même stockage que les boosts d'attribut (id de base de la compétence). Rang de la caractéristique
+    // d'échelle lu via AttributeLevel — aucun cycle : un coût d'énergie ne nourrit aucune caractéristique.
+
+    // Réductions actives du perso qui touchent cette compétence : compétences équipées ET allumées.
+    public EnergyReduction EnergyReductionFor(Skill target)
+    {
+        var active = new List<(EnergyCostBoostDescriptor, int)>();
+        foreach (var slot in SkillSlots)
+            if (slot.Skill is { } sk && EnergyCostBoostData.BySkillId(sk.Id) is { } d && IsAttributeBoostActive(d.ToggleId))
+                active.Add((d, EnergyCostBoostData.ValueOf(d, sk,
+                    d.ScalingAttribute is { } attr ? AttributeLevel(attr) ?? 0 : 0)));
+        return active.Count == 0 ? default : EnergyCostBoostData.ReductionFor(target, active);
+    }
 
     // Boost « override » actif (Lot C, Master of Magic) : remplace le niveau de base au lieu de s'y
     // additionner. Plusieurs sources actives (improbable) → la plus forte gagne. Null = aucun.
