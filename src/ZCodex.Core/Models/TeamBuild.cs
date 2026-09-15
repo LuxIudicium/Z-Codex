@@ -13,7 +13,6 @@ public class TeamBuild
     public int TranquilityRitualRank { get; set; } = 12; // v15 — rang de simulation de Tranquility (durée d'enchantement, utilisé quand non équipé)
     public int NaturesRenewalRitualRank { get; set; } = 12; // v20 — rang de simulation de Nature's Renewal (surcoût d'incantation, PvP seulement)
     public int InfuriatingHeatRitualRank { get; set; } = 12; // v21 — rang de simulation d'Infuriating Heat (gain d'adrénaline, PvP seulement)
-    public int MarkOfFuryRitualRank { get; set; } = 12; // v21 — rang de simulation de Mark of Fury (coups d'adrénaline par touche)
     // v18 — nombre d'attaques vampiriques comptées dans le spike, par valeur de vol de vie (3 = armes
     // à une main, 5 = à deux mains). GLOBAL et non par perso : le découpage donnerait jusqu'à 16
     // lignes pour un total identique. 0 = ligne affichée mais non comptée. Absent (≤ v17) → 1.

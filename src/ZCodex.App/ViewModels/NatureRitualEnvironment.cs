@@ -72,10 +72,12 @@ public class NatureRitualEnvironment
     public int InfuriatingHeatRank { get => _infuriatingHeatRank; set => SetRank(ref _infuriatingHeatRank, value); }
     public void LoadInfuriatingHeatRank(int rank) => _infuriatingHeatRank = ClampRank(rank);
 
-    // Rang de SIMULATION de Mark of Fury (coups d'adrénaline par touche, rang de Magie du sang).
-    private int _markOfFuryRank = 12;
-    public int MarkOfFuryRank { get => _markOfFuryRank; set => SetRank(ref _markOfFuryRank, value); }
-    public void LoadMarkOfFuryRank(int rank) => _markOfFuryRank = ClampRank(rank);
+    // Mark of Fury et Energizing Chorus n'ont PAS de rang de simulation (Philippe, 15/09/2026) : ils ne sont
+    // proposés que portés, au rang de leur porteur le plus fort.
+
+    // Effet porté par au moins un perso (ensemble tenu par SyncEquipped). Un effet « équipé seulement »
+    // (Dark Fury, Mark of Fury, Energizing Chorus) n'est proposé que dans ce cas, menu Sélection compris.
+    public bool IsEquipped(R ritual) => _equipped.Contains(ritual);
 
     // Synchronise l'ensemble ÉQUIPÉ et DÉSACTIVE les rituels qui viennent d'être retirés du build
     // (option B, décision Philippe : « extinction au retrait »). Un rituel activé sans jamais avoir

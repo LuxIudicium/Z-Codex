@@ -227,6 +227,18 @@ public partial class SkillTooltipControl : UserControl
         set => SetValue(RoaringWindsBonusProperty, value);
     }
 
+    // Points retirés aux cris et chants par Energizing Chorus, résolus au rang du lanceur (0 si inactif,
+    // lot 2b). Fourni par le slot.
+    public static readonly DependencyProperty EnergizingChorusReductionProperty =
+        DependencyProperty.Register(nameof(EnergizingChorusReduction), typeof(int), typeof(SkillTooltipControl),
+            new PropertyMetadata(0, OnInputsChanged));
+
+    public int EnergizingChorusReduction
+    {
+        get => (int)GetValue(EnergizingChorusReductionProperty);
+        set => SetValue(EnergizingChorusReductionProperty, value);
+    }
+
     // Surcoût d'incantation de Nature's Renewal, en % « plus long » : 100 = le ×2 du PvE (défaut),
     // 50…83 en PvP où l'effet suit le rang de Survie du lanceur. Fourni par le slot.
     public static readonly DependencyProperty NaturesRenewalCastPctProperty =
@@ -623,8 +635,8 @@ public partial class SkillTooltipControl : UserControl
     // Coût en énergie affiché « modifié (base) ». Toute la cascade (Expertise, flux, rituels de la
     // nature ET réductions des compétences du perso, lot 2) est calculée par NatureRitualData.EnergyCost —
     // qui reproduit EXACTEMENT l'ancien comportement quand rien n'est actif. La part modifiée est marquée en
-    // couleur rituel si un rituel l'a changée, sinon en couleur de boost de compétence (violet) si une
-    // compétence du perso l'a changée, sinon en couleur flux (comportement historique).
+    // couleur rituel si un effet du bandeau (rituel, Energizing Chorus) l'a changée, sinon en couleur de boost
+    // de compétence (violet) si une compétence du perso l'a changée, sinon en couleur flux (comportement historique).
     private void UpdateEnergy()
     {
         int baseCost = Skill?.EnergyCost ?? 0;
@@ -650,7 +662,7 @@ public partial class SkillTooltipControl : UserControl
         }
 
         var r = NatureRitualData.EnergyCost(baseCost, s, rituals, ExpertiseRank ?? 0, FluxEnergyPercent, RoaringWindsBonus,
-                                            EnergyReduction);
+                                            EnergyReduction, EnergizingChorusReduction);
         // Visible dès que le coût effectif est non nul (couvre les bases 0 relevées par un rituel), ou que la
         // base l'est : un coût ramené à 0 par une compétence (Way of the Empty Palm) s'affiche « 0 (5) ».
         EnergyVisibility = r.Final > 0 || baseCost > 0 ? Visibility.Visible : Visibility.Collapsed;

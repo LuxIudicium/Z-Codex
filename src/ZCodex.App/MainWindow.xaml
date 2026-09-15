@@ -35,6 +35,7 @@
                                       FluxCastPercent="{Binding FluxCastPercent}"
                                       NatureRituals="{Binding NatureRituals}"
                                       RoaringWindsBonus="{Binding RoaringWindsBonus}"
+                                      EnergizingChorusReduction="{Binding EnergizingChorusReduction}"
                                       NaturesRenewalCastPct="{Binding NaturesRenewalCastPct}"
                                       EnchantEnchantingPct="{Binding EnchantEnchantingPct}"
                                       EnchantExtenderPct="{Binding EnchantExtenderPct}"
@@ -149,7 +150,7 @@
                                                 </Style>
                                             </Image.Style>
                                         </Image>
-                                        <!-- Badge de rang (effets à rang) : rang de simulation, molette pour changer. -->
+                                        <!-- Badge de rang (effets à rang) : rang de simulation, molette pour changer ; Mark of Fury et Energizing Chorus : rang du porteur le plus fort. -->
                                         <Border HorizontalAlignment="Right" VerticalAlignment="Bottom"
                                                 Background="#CC000000" CornerRadius="2" Padding="1,0" Margin="0,0,-1,-1"
                                                 Visibility="{Binding HasRank, Converter={StaticResource BoolToVisibilityConverter}}">
@@ -868,6 +869,7 @@
                                                                       FluxCastPercent="{Binding FluxCastPercent}"
                                                                       NatureRituals="{Binding NatureRituals}"
                                                                       RoaringWindsBonus="{Binding RoaringWindsBonus}"
+                                                                      EnergizingChorusReduction="{Binding EnergizingChorusReduction}"
                                                                       NaturesRenewalCastPct="{Binding NaturesRenewalCastPct}"
                                                                       EnchantEnchantingPct="{Binding EnchantEnchantingPct}"
                                                                       EnchantExtenderPct="{Binding EnchantExtenderPct}"

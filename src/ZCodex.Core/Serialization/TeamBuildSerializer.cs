@@ -129,7 +129,8 @@ public static class TeamBuildSerializer
         public int TranquilityRank { get; set; } = 12;     // v15 — rang de simulation Tranquility (durée d'enchantement)
         public int NaturesRenewalRank { get; set; } = 12;  // v20 — rang de simulation Nature's Renewal (surcoût d'incantation, PvP)
         public int InfuriatingHeatRank { get; set; } = 12; // v21 — rang de simulation Infuriating Heat (gain d'adrénaline, PvP)
-        public int MarkOfFuryRank { get; set; } = 12;      // v21 — rang de simulation Mark of Fury (coups d'adrénaline par touche)
+        // v21 écrivait aussi markOfFuryRank (rang de simulation de Mark of Fury) : ignoré depuis le 15/09/2026, l'effet
+        // n'est plus proposé que porté, au rang de son porteur le plus fort.
         // v17 — mode de jeu à restaurer à l'ouverture ("All"/"PvE"/"PvP"). Chaîne vide ou valeur
         // inconnue = fichier ≤ v16 : aucun mode enregistré, le mode courant s'applique.
         public string GameMode { get; set; } = string.Empty;
@@ -265,7 +266,6 @@ public static class TeamBuildSerializer
         TranquilityRank = b.TranquilityRitualRank,
         NaturesRenewalRank = b.NaturesRenewalRitualRank,
         InfuriatingHeatRank = b.InfuriatingHeatRitualRank,
-        MarkOfFuryRank = b.MarkOfFuryRitualRank,
         GameMode = b.GameMode?.ToString() ?? string.Empty,   // v17 — "" = aucun mode enregistré
         VampiricHits3 = b.VampiricHits3,
         VampiricHits5 = b.VampiricHits5,
@@ -373,7 +373,6 @@ public static class TeamBuildSerializer
         TranquilityRitualRank = Math.Clamp(dto.TranquilityRank, 0, NatureRitualData.MaxRitualRank),
         NaturesRenewalRitualRank = Math.Clamp(dto.NaturesRenewalRank, 0, NatureRitualData.MaxRitualRank),
         InfuriatingHeatRitualRank = Math.Clamp(dto.InfuriatingHeatRank, 0, NatureRitualData.MaxRitualRank),
-        MarkOfFuryRitualRank = Math.Clamp(dto.MarkOfFuryRank, 0, NatureRitualData.MaxRitualRank),
         // v17 — valeur inconnue traitée comme absente (même politique que les autres champs) :
         // un fichier écrit par une version future ne doit pas imposer un mode incompréhensible.
         GameMode = Enum.TryParse<GameMode>(dto.GameMode, out var gm) ? gm : null,

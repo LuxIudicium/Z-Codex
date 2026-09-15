@@ -59,7 +59,6 @@ public static class TeamBuildSubset
             TranquilityRitualRank  = source.TranquilityRitualRank,
             NaturesRenewalRitualRank = source.NaturesRenewalRitualRank,
             InfuriatingHeatRitualRank = source.InfuriatingHeatRitualRank,
-            MarkOfFuryRitualRank   = source.MarkOfFuryRitualRank,
             GameMode               = source.GameMode,
             VampiricHits3          = source.VampiricHits3,
             VampiricHits5          = source.VampiricHits5,

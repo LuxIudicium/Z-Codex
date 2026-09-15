@@ -72,13 +72,15 @@ public class BuildEditorViewModel : ViewModelBase
         Character.ActiveNatureRitualsProvider = () => NatureRituals.Active;
         Character.RoaringWindsBonusProvider =
             () => CharacterSlotViewModel.RoaringWindsBonusFor(NatureRituals.Active, new[] { Character }, NatureRituals.RoaringWindsRank);
+        Character.EnergizingChorusReductionProvider =
+            () => CharacterSlotViewModel.EnergizingChorusReductionFor(NatureRituals.Active, new[] { Character });
         Character.TranquilityPercentProvider =
             () => CharacterSlotViewModel.TranquilityPercentFor(NatureRituals.Active, new[] { Character }, NatureRituals.TranquilityRank);
         Character.NaturesRenewalPercentProvider =
             () => CharacterSlotViewModel.NaturesRenewalPercentFor(new[] { Character }, NatureRituals.NaturesRenewalRank);
         // Effets d'adrénaline du bandeau (chantier infobulle, lot 1b) : même réduction au seul perso.
         Character.TeamAdrenalineProvider = () => CharacterSlotViewModel.TeamAdrenalineFor(
-            NatureRituals.Active, new[] { Character }, NatureRituals.InfuriatingHeatRank, NatureRituals.MarkOfFuryRank);
+            NatureRituals.Active, new[] { Character }, NatureRituals.InfuriatingHeatRank);
         // Le bandeau du perso suit aussi : Dark Fury enchante, ce qui éteint l'effet de Natural Temper.
         NatureRituals.Changed += () =>
         {
@@ -112,6 +114,10 @@ public class BuildEditorViewModel : ViewModelBase
                 SyncSkillsToProfessions();
                 RebuildCatalogTabs();
             }
+            // Un changement de caractéristique peut changer le rang affiché de Mark of Fury ou d'Energizing Chorus
+            // (rang du porteur) ; la garde de signature du bandeau écarte les rafales sans effet.
+            else if (e.PropertyName == nameof(CharacterSlotViewModel.AttributeSummary))
+                RefreshNatureRitualBand();
         };
         // "PvP only" masque l'onglet "PvE only" → reconstruire la barre quand cette visibilité bascule.
         // Le bandeau de conditions suit aussi le mode de jeu (le grisé = accessible dans ce mode).
@@ -155,7 +161,8 @@ public class BuildEditorViewModel : ViewModelBase
     {
         var equipped = Character.SkillSlots.Where(s => s.Skill != null).Select(s => s.Skill!).ToList();
         NatureRituals.SyncEquipped(NatureRitualBandViewModel.EquippedRituals(equipped)); // option B
-        NatureRitualBand.Refresh(equipped, Catalog.AllSkills, NatureRituals);
+        NatureRitualBand.Refresh(equipped, Catalog.AllSkills, NatureRituals,
+            r => CharacterSlotViewModel.WearerRank(r, new[] { Character }));
     }
 
     public string Title

@@ -1,34 +1,42 @@
-﻿using ZCodex.Core.Data;
+using ZCodex.Core.Data;
 using ZCodex.Core.Models;
 using System.Collections.ObjectModel;
 using R = ZCodex.Core.Data.NatureRitualData.Ritual;
 
 namespace ZCodex.App.ViewModels;
 
-// Une icône du bandeau d'équipe : un rituel de la nature ou un effet d'adrénaline (équipé, ou
-// n'importe lequel en mode « tous »), togglable (clic → active/désactive l'environnement). Grisée
-// = inactif, cadre vert = actif, rouge pour un effet ennemi (Soothing). Roaring Winds, Tranquility,
-// Mark of Fury et — en PvP seulement — Nature's Renewal et Infuriating Heat portent un rang
-// réglable (molette) ; les autres ont un effet fixe. La compétence reçue est déjà la variante du
-// mode de jeu courant (PvE ou « (PvP) »), cf. NatureRitualBandViewModel.Refresh.
+// Une icône du bandeau d'équipe : un esprit (rituel de la nature, Soothing) ou un effet porté par un perso
+// (Dark Fury, Mark of Fury, Energizing Chorus), togglable (clic → active/désactive l'environnement). Grisée
+// = inactif, cadre vert = actif, rouge pour un effet ennemi (Soothing). Roaring Winds, Tranquility et — en
+// PvP seulement — Nature's Renewal et Infuriating Heat portent un rang de simulation réglable (molette) ;
+// Mark of Fury et Energizing Chorus un badge au rang du porteur le plus fort, sans molette ; les autres ont
+// un effet fixe. La compétence reçue est déjà la variante du mode de jeu courant (PvE ou « (PvP) »), cf.
+// NatureRitualBandViewModel.Refresh.
 public class NatureRitualIndicatorViewModel : ViewModelBase
 {
     private readonly NatureRitualEnvironment _env;
+    // Rang du porteur le plus fort, pour un effet « équipé seulement » à rang (Mark of Fury, Energizing Chorus) ;
+    // null sinon.
+    private readonly int? _wearerRank;
 
     public NatureRitualIndicatorViewModel(
-        NatureRitualData.Descriptor d, Skill skill, NatureRitualEnvironment env, bool isEquipped, bool startsGroup)
+        NatureRitualData.Descriptor d, Skill skill, NatureRitualEnvironment env, bool isEquipped, bool startsGroup,
+        int? wearerRank = null)
     {
         _env = env;
+        _wearerRank = wearerRank;
         Ritual = d.Ritual;
         Skill = skill;
         IsEquipped = isEquipped;
         StartsGroup = startsGroup;
         IsEnemyEffect = d.IsEnemyEffect;
         HasRank = NatureRitualData.HasRank(d.Ritual);
+        // Effet « équipé seulement » : badge au rang du porteur le plus fort, pas de molette.
+        CanAdjustRank = HasRank && !d.EquippedOnly;
 
-        // Tooltip du bandeau résolu au RANG du rituel (Roaring Winds / Tranquility) : les plages
-        // de la description (« 20…44…50 % », « 1…4…5 more Energy ») deviennent la valeur au rang de
-        // simulation affiché (badge/molette). Les 6 autres rituels (sans rang) gardent leurs plages.
+        // Tooltip du bandeau résolu au RANG de l'effet (Roaring Winds / Tranquility…) : les plages
+        // de la description (« 20…44…50 % », « 1…4…5 more Energy ») deviennent la valeur au rang
+        // affiché (badge). Les effets sans rang gardent leurs plages.
         DescriptionOverride = HasRank
             ? SkillProgression.Resolve(SkillText.ConciseBody(skill.Description, skill.SkillType), skill.Progression, Rank)
             : null;
@@ -41,13 +49,14 @@ public class NatureRitualIndicatorViewModel : ViewModelBase
         // instruction de clic. La description/stats viennent du SkillTooltipControl.
         bool fr = AppLanguage.IsFr;
         string state = env.IsActive(d.Ritual) ? (fr ? "désactiver" : "deactivate") : (fr ? "activer" : "activate");
-        string rankNote = HasRank
-            ? (isEquipped
+        string rankNote = !HasRank ? string.Empty
+            : !CanAdjustRank
+                ? (fr ? "Rang du porteur le plus fort.\n" : "Highest carrier's rank.\n")
+            : isEquipped
                 ? (fr ? "Équipé → rang du porteur ; molette = rang de simulation.\n"
                       : "Equipped → wearer's rank; scroll = simulation rank.\n")
                 : (fr ? $"Rang de simulation : {Rank} (molette pour changer).\n"
-                      : $"Simulation rank: {Rank} (scroll to change).\n"))
-            : string.Empty;
+                      : $"Simulation rank: {Rank} (scroll to change).\n");
         // Sens de l'icône allumée quand il n'est pas évident : Soothing est subi (lancé par l'ennemi),
         // Mark of Fury ne profite qu'à qui frappe la cible marquée.
         string meaningNote = d.IsEnemyEffect
@@ -63,8 +72,8 @@ public class NatureRitualIndicatorViewModel : ViewModelBase
     // Effet lancé par l'ennemi (Soothing) → cadre rouge une fois allumé.
     public bool IsEnemyEffect { get; }
 
-    // Description résolue au rang (rituels à rang) alimentant le SkillTooltipControl du bandeau ;
-    // null pour les rituels sans rang → le contrôle affiche le corps concis avec ses plages.
+    // Description résolue au rang (effets à rang) alimentant le SkillTooltipControl du bandeau ;
+    // null pour les effets sans rang → le contrôle affiche le corps concis avec ses plages.
     public string? DescriptionOverride { get; }
     // Pendant FR de DescriptionOverride (affichage seul, jamais parsé).
     public string? DisplayDescriptionOverride { get; }
@@ -74,26 +83,30 @@ public class NatureRitualIndicatorViewModel : ViewModelBase
     public Skill Skill { get; }
     public string IconPath => Skill.IconPath;
     public bool IsEquipped { get; }
-    // Le rituel a-t-il un rang de Survie réglable DANS LE MODE COURANT (badge + molette) ? Tous
-    // lisent le même attribut mais gardent un rang de simulation SÉPARÉ (décision Philippe).
+    // L'effet a-t-il un rang DANS LE MODE COURANT (badge) ? Chaque esprit à rang garde un rang de
+    // simulation SÉPARÉ (décision Philippe).
     public bool HasRank { get; }
     // Note band-only (rang + « Cliquer pour activer/désactiver »), affichée sous le tooltip riche.
     public string ClickNote { get; }
 
     public bool IsActive => _env.IsActive(Ritual);
-    // Rang affiché (badge) sur l'icône : le rang de simulation courant du rituel concerné.
-    public int Rank => Ritual switch
+    // Le rang se règle-t-il à la molette ? Seulement pour un esprit à rang : un effet « équipé seulement »
+    // (Mark of Fury, Energizing Chorus) prend toujours le rang de son porteur le plus fort.
+    public bool CanAdjustRank { get; }
+
+    // Rang affiché (badge) sur l'icône : rang de simulation de l'esprit concerné, ou rang du porteur le plus
+    // fort pour un effet « équipé seulement » (0 si personne : il n'est alors pas affiché).
+    public int Rank => !CanAdjustRank ? _wearerRank ?? 0 : Ritual switch
     {
         R.Tranquility     => _env.TranquilityRank,
         R.NaturesRenewal  => _env.NaturesRenewalRank,
         R.InfuriatingHeat => _env.InfuriatingHeatRank,
-        R.MarkOfFury      => _env.MarkOfFuryRank,
         _                 => _env.RoaringWindsRank,
     };
 
     // Rang alimentant la mention de caractéristique du tooltip : suit DescriptionOverride ci-dessus
-    // (rang de simulation pour les 2 rituels à rang, plage pour les 6 autres — dont la description
-    // n'est pas résolue non plus).
+    // (rang affiché pour les effets à rang, plage pour les autres — dont la description n'est pas
+    // résolue non plus).
     public int? AttributeRank => HasRank ? Rank : null;
 
     // Le bandeau est reconstruit à chaque changement d'environnement, donc IsActive/Rank/tooltip
@@ -107,16 +120,16 @@ public class NatureRitualIndicatorViewModel : ViewModelBase
             case R.NaturesRenewal:  _env.NaturesRenewalRank  += delta; break;
             case R.RoaringWinds:    _env.RoaringWindsRank    += delta; break;
             case R.InfuriatingHeat: _env.InfuriatingHeatRank += delta; break;
-            case R.MarkOfFury:      _env.MarkOfFuryRank      += delta; break;
         }
     }
 }
 
 /// <summary>
-/// Bandeau des effets d'équipe (rituels de la nature + effets d'adrénaline du lot 1b), façon
-/// [[project_conditions_band]] mais clic = toggle de l'environnement. Mode « équipés seulement »
-/// (défaut) ou « tous » (<see cref="ShowAll"/>, préférence de vue globale). Agrège 1..n persos
-/// (build simple = 1 ; teambuild = racines).
+/// Bandeau des effets d'équipe (rituels de la nature + effets d'adrénaline du lot 1b + Energizing Chorus du
+/// lot 2b), façon [[project_conditions_band]] mais clic = toggle de l'environnement. Mode « équipés
+/// seulement » (défaut) ou « tous » (<see cref="ShowAll"/>, préférence de vue globale), qui n'ajoute que les
+/// esprits (rituels de la nature, Soothing) : Dark Fury, Mark of Fury et Energizing Chorus n'apparaissent
+/// que portés (décision Philippe, 15/09/2026). Agrège 1..n persos (build simple = 1 ; teambuild = racines).
 /// </summary>
 public class NatureRitualBandViewModel : ViewModelBase
 {
@@ -162,15 +175,23 @@ public class NatureRitualBandViewModel : ViewModelBase
     // on l'invalide pour que le prochain Refresh reconstruise dans la langue courante.
     public void InvalidateLanguage() => _lastSig = "";
 
-    public void Refresh(IEnumerable<Skill> equipped, IEnumerable<Skill> catalog, NatureRitualEnvironment env)
+    /// <param name="wearerRank">Rang du porteur le plus fort d'un effet (null si personne ne l'équipe) : badge des
+    /// effets « équipés seulement » (Mark of Fury, Energizing Chorus).</param>
+    public void Refresh(IEnumerable<Skill> equipped, IEnumerable<Skill> catalog, NatureRitualEnvironment env,
+                        Func<R, int?>? wearerRank = null)
     {
         var equippedList = equipped.ToList();
         var equippedSet = EquippedRituals(equippedList).ToHashSet();
+        // Rangs des porteurs des effets « équipés seulement » à rang : un changement d'ATTRIBUT ne concerne ce
+        // bandeau que par eux.
+        var wearerRanks = NatureRitualData.All
+            .Where(d => d.EquippedOnly && NatureRitualData.HasRank(d.Ritual))
+            .Select(d => wearerRank?.Invoke(d.Ritual));
         // Garde « inchangé » : ne reconstruit que si les entrées visibles changent (équipés, actifs,
-        // rangs, mode « tous », mode de jeu). Un changement d'ATTRIBUT ne concerne pas ce bandeau → skip.
+        // rangs, mode « tous », mode de jeu).
         // Le mode PvE/PvP en fait partie : il change l'icône et les chiffres des rituels splittés.
         string sig = $"{ShowAll}|{NatureRitualData.PvpVariants}|{env.RoaringWindsRank}|{env.TranquilityRank}|{env.NaturesRenewalRank}|"
-            + $"{env.InfuriatingHeatRank}|{env.MarkOfFuryRank}|"
+            + $"{env.InfuriatingHeatRank}|{string.Join(",", wearerRanks)}|"
             + string.Join(",", equippedSet.Select(r => (int)r).OrderBy(x => x)) + "|"
             + string.Join(",", env.Active.Select(r => (int)r).OrderBy(x => x));
         if (sig == _lastSig) return;
@@ -188,12 +209,15 @@ public class NatureRitualBandViewModel : ViewModelBase
         foreach (var d in NatureRitualData.All)
         {
             bool isEquipped = equippedSet.Contains(d.Ritual);
-            if (!isEquipped && !ShowAll) continue;            // mode « équipés seulement »
+            // Mode « équipés seulement » ; en mode « tous », seuls les esprits s'ajoutent : un effet « équipé
+            // seulement » (Dark Fury, Mark of Fury, Energizing Chorus — Philippe 15/09/2026) reste caché sans porteur.
+            if (!isEquipped && (!ShowAll || d.EquippedOnly)) continue;
             if (!_skillCache.TryGetValue(d.DisplaySkillId, out var skill)) continue;
             // Séparateur devant le premier effet VISIBLE d'une nouvelle famille.
             bool startsGroup = lastGroup is { } g && g != d.Group;
             lastGroup = d.Group;
-            Items.Add(new NatureRitualIndicatorViewModel(d, skill, env, isEquipped, startsGroup));
+            Items.Add(new NatureRitualIndicatorViewModel(d, skill, env, isEquipped, startsGroup,
+                d.EquippedOnly ? wearerRank?.Invoke(d.Ritual) : null));
         }
         OnPropertyChanged(nameof(HasItems));
     }

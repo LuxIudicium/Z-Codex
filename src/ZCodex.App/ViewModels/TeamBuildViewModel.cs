@@ -73,11 +73,12 @@ public class TeamBuildViewModel : ViewModelBase, IRenamableTab
         // Weapon of Fury (chantier infobulle, lot 1a) suit le même chemin : son apparition ou sa
         // disparition dans l'arbre change l'icône « recevoir » de chaque perso. Les effets
         // d'adrénaline du bandeau (lot 1b) aussi : l'Expertise ou la Magie du sang de leur lanceur
-        // change les coups nécessaires dans les infobulles de TOUS les persos.
+        // change les coups nécessaires dans les infobulles de TOUS les persos. Energizing Chorus (lot 2b)
+        // aussi : la Motivation de son lanceur change le coût des cris et chants de tous.
         Mutated += () =>
         {
             var (skill, bonus) = HeroicRefrain;
-            string sig = $"{skill?.Id}|{bonus}|{WeaponOfFury?.Id}|{string.Join(";", TeamAdrenaline.Effects)}";
+            string sig = $"{skill?.Id}|{bonus}|{WeaponOfFury?.Id}|{string.Join(";", TeamAdrenaline.Effects)}|{EnergizingChorusReduction}";
             if (sig == _heroicRefrainSig) return;
             _heroicRefrainSig = sig;
             _heroicRefrainTimer.Stop();
@@ -103,6 +104,11 @@ public class TeamBuildViewModel : ViewModelBase, IRenamableTab
     public int RoaringWindsBonus =>
         CharacterSlotViewModel.RoaringWindsBonusFor(NatureRituals.Active, EnumerateTree(), NatureRituals.RoaringWindsRank);
 
+    // Énergie retirée aux cris et chants par Energizing Chorus (lot 2b) : Motivation du porteur le plus fort ;
+    // 0 si personne ne l'équipe (pas de rang de simulation).
+    public int EnergizingChorusReduction =>
+        CharacterSlotViewModel.EnergizingChorusReductionFor(NatureRituals.Active, EnumerateTree());
+
     // % Tranquility (durée d'enchantement) : rang du porteur, ou rang de simulation si non équipé.
     public int TranquilityPercent =>
         CharacterSlotViewModel.TranquilityPercentFor(NatureRituals.Active, EnumerateTree(), NatureRituals.TranquilityRank);
@@ -123,8 +129,7 @@ public class TeamBuildViewModel : ViewModelBase, IRenamableTab
     // Effets d'adrénaline du bandeau d'équipe (chantier infobulle, lot 1b) : rangs au lanceur le plus
     // fort de l'arbre, ou rangs de simulation du bandeau.
     public ZCodex.Core.Data.AdrenalineGain.TeamEffects TeamAdrenaline =>
-        CharacterSlotViewModel.TeamAdrenalineFor(NatureRituals.Active, EnumerateTree(),
-            NatureRituals.InfuriatingHeatRank, NatureRituals.MarkOfFuryRank);
+        CharacterSlotViewModel.TeamAdrenalineFor(NatureRituals.Active, EnumerateTree(), NatureRituals.InfuriatingHeatRank);
 
     public Guid Id { get; set; } = Guid.NewGuid();
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

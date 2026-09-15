@@ -307,6 +307,8 @@ public class SkillSlotViewModel : ViewModelBase
     public IReadOnlySet<NatureRitualData.Ritual> NatureRituals =>
         Owner?.ActiveNatureRituals ?? CharacterSlotViewModel.NoRituals;
     public int RoaringWindsBonus => Owner?.RoaringWindsBonus ?? 0;
+    // Points retirés aux cris et chants par Energizing Chorus (effet d'équipe, lot 2b) ; 0 si inactif.
+    public int EnergizingChorusReduction => Owner?.EnergizingChorusReduction ?? 0;
     // Surcoût d'incantation de Nature's Renewal, en % « plus long » : 100 en PvE (le ×2 fixe),
     // 50…83 en PvP (rang de Survie). L'activation du rituel est testée côté NatureRitualData.
     public int NaturesRenewalCastPct => Owner?.NaturesRenewalPercent ?? 100;
@@ -355,6 +357,7 @@ public class SkillSlotViewModel : ViewModelBase
         OnPropertyChanged(nameof(FluxCastPercent));
         OnPropertyChanged(nameof(NatureRituals));
         OnPropertyChanged(nameof(RoaringWindsBonus));
+        OnPropertyChanged(nameof(EnergizingChorusReduction));
         OnPropertyChanged(nameof(NaturesRenewalCastPct));
         OnPropertyChanged(nameof(EnchantEnchantingPct));
         OnPropertyChanged(nameof(EnchantExtenderPct));

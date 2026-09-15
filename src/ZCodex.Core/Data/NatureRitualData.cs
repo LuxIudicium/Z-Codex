@@ -29,6 +29,8 @@ namespace ZCodex.Core.Data;
 /// sur l'adrénaline — Infuriating Heat (rituel de la nature), Dark Fury, Mark of Fury et Soothing
 /// (lancé par l'ennemi) —, rangés par famille (<see cref="BandGroup"/>). Leur calcul vit dans
 /// <see cref="AdrenalineTeamEffects"/> ; les fonctions énergie/recharge/cast les ignorent.
+/// Lot 2b : Energizing Chorus (famille « Chants ») retire de l'énergie aux cris et chants de l'équipe,
+/// au rang de Motivation du lanceur — son effet passe par <see cref="EnergyCost"/>.
 /// </summary>
 public static class NatureRitualData
 {
@@ -56,21 +58,27 @@ public static class NatureRitualData
         DarkFury,
         MarkOfFury,
         Soothing,
+        // Réduction d'énergie des cris et chants (lot 2b).
+        EnergizingChorus,
     }
 
     /// <summary>Famille d'un effet du bandeau : un petit séparateur s'intercale entre deux familles
     /// (bandeau et menu Sélection). <see cref="Enemy"/> = effet lancé par l'ennemi et subi par
     /// l'équipe (Soothing) : cadre rouge, et jamais « équipé » par un perso de l'équipe.</summary>
-    public enum BandGroup { NatureRitual, Enchantment, Hex, Enemy }
+    public enum BandGroup { NatureRitual, Enchantment, Hex, Chant, Enemy }
 
     /// <summary>Métadonnées d'un rituel : identité, mappage vers la compétence de la base, libellé
     /// bilingue (<see cref="DisplayTooltip"/> choisit selon <see cref="AppLanguage.IsFr"/>).
     /// <paramref name="PvpSkillId"/> = 0 quand le rituel n'a pas de variante « (PvP) » ; sinon les
-    /// libellés PvP prennent le relais en mode PvP (chiffres différents).</summary>
+    /// libellés PvP prennent le relais en mode PvP (chiffres différents). <paramref name="EquippedOnly"/> :
+    /// l'effet n'est proposé (bandeau, menu Sélection) que si un perso le porte, même en mode « tous », et son
+    /// rang éventuel est toujours celui du porteur le plus fort, sans rang de simulation. Tout ce qui n'est pas un
+    /// esprit : Dark Fury, Mark of Fury, Energizing Chorus (Philippe 15/09/2026) — les esprits (rituels de la nature,
+    /// Soothing) restent proposés à tout moment en mode « tous ».</summary>
     public sealed record Descriptor(
         Ritual Ritual, int SkillId, string Name, string TooltipFr, string TooltipEn,
         int PvpSkillId = 0, string? PvpTooltipFr = null, string? PvpTooltipEn = null,
-        BandGroup Group = BandGroup.NatureRitual)
+        BandGroup Group = BandGroup.NatureRitual, bool EquippedOnly = false)
     {
         /// <summary>Le rituel existe-t-il en deux versions aux chiffres différents ?</summary>
         public bool HasPvpVariant => PvpSkillId != 0;
@@ -121,10 +129,14 @@ public static class NatureRitualData
             PvpTooltipEn: "Adrenaline gain +33…66% (caster's Expertise rank)."),
         new(Ritual.DarkFury,         147,  "Dark Fury",         "Membres du groupe : +1 coup d'adrénaline par attaque réussie (enchantement).",
             "Party members: +1 strike of adrenaline per hit (enchantment).",
-            Group: BandGroup.Enchantment),
+            Group: BandGroup.Enchantment, EquippedOnly: true),
         new(Ritual.MarkOfFury,       1360, "Mark of Fury",      "Alliés qui frappent la cible : +0…2 coups d'adrénaline (rang de Magie du sang du lanceur).",
             "Allies hitting the target: +0…2 strikes of adrenaline (caster's Blood Magic rank).",
-            Group: BandGroup.Hex),
+            Group: BandGroup.Hex, EquippedOnly: true),
+        // Réduction d'énergie (lot 2b), SkillId relevé dans la base réelle le 15/09/2026 ; pas de variante « (PvP) ».
+        new(Ritual.EnergizingChorus, 1569, "Energizing Chorus", "Alliés à portée de voix : prochain cri ou chant −3…7 énergie (rang de Motivation du lanceur).",
+            "Allies within earshot: next shout or chant −3…7 Energy (caster's Motivation rank).",
+            Group: BandGroup.Chant, EquippedOnly: true),
         new(Ritual.Soothing,         1266, "Soothing",          "Effet ennemi : l'équipe gagne l'adrénaline deux fois moins vite.",
             "Enemy effect: the team builds adrenaline half as fast.",
             PvpSkillId: 3009,
@@ -164,9 +176,11 @@ public static class NatureRitualData
     /// <param name="fluxPct">Réduction énergie de flux (0/20/25).</param>
     /// <param name="roaringWindsBonus">Bonus Roaring Winds résolu au rang du lanceur (0 si N/A).</param>
     /// <param name="reduction">Réductions des compétences actives du perso qui touchent cette skill (lot 2).</param>
+    /// <param name="energizingChorusReduction">Points retirés par Energizing Chorus, résolus au rang du lanceur (0 si N/A, lot 2b).</param>
     public static EnergyResult EnergyCost(
         int baseCost, Skill skill, IReadOnlySet<Ritual> active,
-        int expertiseRank, int fluxPct, int roaringWindsBonus, EnergyReduction reduction = default)
+        int expertiseRank, int fluxPct, int roaringWindsBonus, EnergyReduction reduction = default,
+        int energizingChorusReduction = 0)
     {
         bool ew = active.Contains(Ritual.EnergizingWind);
         bool qz = active.Contains(Ritual.QuickeningZephyr);
@@ -185,16 +199,25 @@ public static class NatureRitualData
         int flats = (qs ? (IsAttack(skill) ? 2 : 1) : 0)
                   + (rw ? roaringWindsBonus : 0);
 
-        int final = Cascade(reduction, out int preFlux, out int afterFlux);
-        int withoutSkills = reduction.LowersCost ? Cascade(default, out _, out _) : final;
+        // Energizing Chorus (lot 2b) : points retirés aux cris et chants avec ceux des compétences du perso, donc
+        // avant l'Expertise et sans minimum propre ; les surcoûts Roaring Winds / Quicksand s'ajoutent après
+        // (décisions Philippe du 15/09/2026 : cri à 5 + Chorus 12 + Roaring Winds 12 = 4 ; Call of Haste 10,
+        // Expertise 12 + Chorus 12 = 2). Effet du bandeau : il colore comme un rituel, jamais en violet.
+        bool ec = active.Contains(Ritual.EnergizingChorus) && IsChantOrShout(skill) && energizingChorusReduction > 0;
+        var team = ec ? new EnergyReduction(Flat: energizingChorusReduction) : default;
+        var all = ec ? reduction with { Flat = reduction.Flat + energizingChorusReduction } : reduction;
+
+        int final = Cascade(all, out int preFlux, out int afterFlux);
+        int withoutSkills = reduction.LowersCost ? Cascade(team, out _, out _) : final;
 
         return new EnergyResult(
             baseCost, final,
             FluxLowered: fluxPct > 0 && afterFlux < preFlux,
-            RitualChanged: final != baseCost && (ew || qz || pe || qs || rw),
+            RitualChanged: final != baseCost && (ew || qz || pe || qs || rw || ec),
             SkillChanged: final != withoutSkills);
 
-        // Ordre : base → % du coût de base → Energizing Wind → points retirés → Expertise × QZ → flux → flats.
+        // Ordre : base → % du coût de base → Energizing Wind → points retirés (compétences du perso + Energizing
+        // Chorus) → Expertise × QZ → flux → flats.
         int Cascade(EnergyReduction red, out int pre, out int after)
         {
             // Primal Echoes fixe le coût d'entrée des signets à 10 (base 0 sinon) ; Way of the Empty Palm
@@ -269,15 +292,16 @@ public static class NatureRitualData
 
     // ── Roaring Winds : bonus « +X more Energy » dépendant du rang ────────────
     // Effets dont le modificateur scale avec un attribut : Roaring Winds, Tranquility, Mark of Fury,
-    // et — en PvP seulement — Nature's Renewal et Infuriating Heat.
+    // Energizing Chorus, et — en PvP seulement — Nature's Renewal et Infuriating Heat.
 
     /// <summary>Caractéristique qui fixe le rang d'un effet à rang (rang du/des lanceur(s) équipé(s)) :
     /// Survie en pleine nature pour les rituels d'origine, Expertise pour Infuriating Heat, Magie du
-    /// sang pour Mark of Fury.</summary>
+    /// sang pour Mark of Fury, Motivation pour Energizing Chorus.</summary>
     public static string AttributeOf(Ritual ritual) => ritual switch
     {
-        Ritual.InfuriatingHeat => "Expertise",
-        Ritual.MarkOfFury      => "Blood Magic",
+        Ritual.InfuriatingHeat  => "Expertise",
+        Ritual.MarkOfFury       => "Blood Magic",
+        Ritual.EnergizingChorus => "Motivation",
         _                      => "Wilderness Survival",
     };
 
@@ -393,12 +417,23 @@ public static class NatureRitualData
         return new(effects, Slowed: active.Contains(Ritual.Soothing));
     }
 
+    // ── Energizing Chorus : énergie retirée aux cris et chants (chantier infobulle, lot 2b) ──
+    // « The next shout or chant costs 3…6…7 less Energy for allies within earshot », progression[0] de la
+    // skill 1569 au rang de Motivation du lanceur (DB réelle) : 3 (rang 0) → 6 (12) → 7 (15) → 8 (20).
+    // Pas de variante « (PvP) ». Placement dans la cascade : cf. EnergyCost.
+    private static readonly int[] EnergizingChorusByRank =
+        { 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 8, 8, 8, 8 };
+
+    /// <summary>Points d'énergie retirés par Energizing Chorus au rang de Motivation (clampé 0..20).</summary>
+    public static int EnergizingChorusReductionAtRank(int rank) =>
+        EnergizingChorusByRank[Math.Clamp(rank, 0, EnergizingChorusByRank.Length - 1)];
+
     /// <summary>L'effet a-t-il un rang réglable DANS LE MODE COURANT ? Nature's Renewal et Infuriating
-    /// Heat n'en ont un qu'en PvP (en PvE leur effet est fixe) ; Roaring Winds, Tranquility et Mark of
-    /// Fury en ont un dans les deux.</summary>
+    /// Heat n'en ont un qu'en PvP (en PvE leur effet est fixe) ; Roaring Winds, Tranquility, Mark of
+    /// Fury et Energizing Chorus en ont un dans les deux.</summary>
     public static bool HasRank(Ritual ritual) => ritual switch
     {
-        Ritual.RoaringWinds or Ritual.Tranquility or Ritual.MarkOfFury => true,
+        Ritual.RoaringWinds or Ritual.Tranquility or Ritual.MarkOfFury or Ritual.EnergizingChorus => true,
         Ritual.NaturesRenewal or Ritual.InfuriatingHeat                => PvpVariants,
         _                                                              => false,
     };

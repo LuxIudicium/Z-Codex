@@ -185,12 +185,14 @@ public class CharacterSlotViewModel : ViewModelBase
     public int RoaringWindsBonus =>
         RoaringWindsBonusProvider?.Invoke() ?? OwnerBuild?.RoaringWindsBonus ?? 0;
 
-    // Rang effectif d'un rituel à rang : le plus fort des PORTEUR(S) qui l'ont équipé (décision
-    // Philippe : « le plus fort gagne »), ou null si personne ne l'équipe — l'appelant retombe
-    // alors sur le rang de SIMULATION du bandeau. La reconnaissance passe par BySkillId, donc la
-    // variante « (PvP) » d'un rituel splitté compte comme sa jumelle PvE. Caractéristique propre à
-    // chaque effet : Survie (rituels d'origine), Expertise (Infuriating Heat), Magie du sang (Mark of Fury).
-    private static int? WearerRank(
+    // Rang effectif d'un effet à rang : le plus fort des PORTEUR(S) qui l'ont équipé (décision
+    // Philippe : « le plus fort gagne »), ou null si personne ne l'équipe — pour un esprit, l'appelant
+    // retombe alors sur le rang de SIMULATION du bandeau ; un effet « équipé seulement » (Mark of Fury,
+    // Energizing Chorus) n'en a pas. La reconnaissance passe par BySkillId, donc la variante « (PvP) »
+    // d'un rituel splitté compte comme sa jumelle PvE. Caractéristique propre à chaque effet : Survie
+    // (rituels d'origine), Expertise (Infuriating Heat), Magie du sang (Mark of Fury), Motivation
+    // (Energizing Chorus). Public : le bandeau en tire le badge des effets « équipés seulement ».
+    public static int? WearerRank(
         NatureRitualData.Ritual ritual, IEnumerable<CharacterSlotViewModel> characters)
     {
         string attribute = NatureRitualData.AttributeOf(ritual);
@@ -210,6 +212,23 @@ public class CharacterSlotViewModel : ViewModelBase
         return NatureRitualData.RoaringWindsBonusAtRank(
             WearerRank(NatureRitualData.Ritual.RoaringWinds, characters) ?? simRank);
     }
+
+    // ── Energizing Chorus : énergie retirée aux cris et chants (chantier infobulle, lot 2b) ──
+    // Pas de rang de simulation (Philippe, 15/09/2026) : l'effet n'existe que s'il est équipé, au rang de
+    // Motivation le plus haut de ses porteurs.
+
+    public Func<int>? EnergizingChorusReductionProvider { get; set; }
+    // Points retirés au prochain cri ou chant de ce perso (0 si Energizing Chorus est inactif).
+    public int EnergizingChorusReduction =>
+        EnergizingChorusReductionProvider?.Invoke() ?? OwnerBuild?.EnergizingChorusReduction ?? 0;
+
+    // Points retirés pour un ensemble de persos : 0 si l'effet est éteint ou si personne ne le porte.
+    public static int EnergizingChorusReductionFor(
+        IReadOnlySet<NatureRitualData.Ritual> active, IEnumerable<CharacterSlotViewModel> characters) =>
+        active.Contains(NatureRitualData.Ritual.EnergizingChorus)
+        && WearerRank(NatureRitualData.Ritual.EnergizingChorus, characters) is { } rank
+            ? NatureRitualData.EnergizingChorusReductionAtRank(rank)
+            : 0;
 
     // ── Tranquility : durée d'enchantement (Lot D) ────────────────────────────
 
@@ -481,18 +500,27 @@ public class CharacterSlotViewModel : ViewModelBase
     public AdrenalineGain.TeamEffects TeamAdrenaline =>
         TeamAdrenalineProvider?.Invoke() ?? OwnerBuild?.TeamAdrenaline ?? AdrenalineGain.TeamEffects.None;
 
-    // Effets pour un ensemble de persos : rang du lanceur le plus fort (Expertise pour Infuriating
-    // Heat, Magie du sang pour Mark of Fury), sinon rang de simulation du bandeau.
+    // Effets pour un ensemble de persos : rang du lanceur le plus fort (Expertise pour Infuriating Heat, sinon
+    // rang de simulation du bandeau ; Magie du sang pour Mark of Fury). Dark Fury et Mark of Fury ne sont
+    // proposés que portés (Philippe, 15/09/2026) : sans porteur — fichier enregistré avant cette règle —, ils
+    // n'agissent pas, faute d'icône pour les éteindre.
     public static AdrenalineGain.TeamEffects TeamAdrenalineFor(
         IReadOnlySet<NatureRitualData.Ritual> active, IEnumerable<CharacterSlotViewModel> characters,
-        int infuriatingHeatSimRank, int markOfFurySimRank)
+        int infuriatingHeatSimRank)
     {
         var list = characters as IReadOnlyCollection<CharacterSlotViewModel> ?? characters.ToList();
         int ih = active.Contains(NatureRitualData.Ritual.InfuriatingHeat)
             ? WearerRank(NatureRitualData.Ritual.InfuriatingHeat, list) ?? infuriatingHeatSimRank : 0;
-        int mof = active.Contains(NatureRitualData.Ritual.MarkOfFury)
-            ? WearerRank(NatureRitualData.Ritual.MarkOfFury, list) ?? markOfFurySimRank : 0;
-        return NatureRitualData.AdrenalineTeamEffects(active, ih, mof);
+        int? mof = active.Contains(NatureRitualData.Ritual.MarkOfFury)
+            ? WearerRank(NatureRitualData.Ritual.MarkOfFury, list) : null;
+        bool Unworn(NatureRitualData.Ritual r) => r switch
+        {
+            NatureRitualData.Ritual.DarkFury   => WearerRank(r, list) is null,
+            NatureRitualData.Ritual.MarkOfFury => mof is null,
+            _                                  => false,
+        };
+        IReadOnlySet<NatureRitualData.Ritual> worn = active.Any(Unworn) ? active.Where(r => !Unworn(r)).ToHashSet() : active;
+        return NatureRitualData.AdrenalineTeamEffects(worn, ih, mof ?? 0);
     }
 
     // Effets d'adrénaline actifs sur CE perso : accélérateurs personnels équipés ET allumés, Weapon

@@ -402,7 +402,10 @@ public class MainViewModel : ViewModelBase
         var equipped = tb.Characters.SelectMany(c => c.SkillSlots)
             .Where(s => s.Skill != null).Select(s => s.Skill!).ToList();
         tb.NatureRituals.SyncEquipped(NatureRitualBandViewModel.EquippedRituals(equipped)); // option B : extinction au retrait
-        TeamNatureRitualBand.Refresh(equipped, SkillPanel.AllSkills, tb.NatureRituals);
+        // Badge des effets « équipés seulement » (Mark of Fury, Energizing Chorus) : même arbre que le calcul
+        // des infobulles (variantes comprises).
+        TeamNatureRitualBand.Refresh(equipped, SkillPanel.AllSkills, tb.NatureRituals,
+            r => CharacterSlotViewModel.WearerRank(r, tb.EnumerateTree()));
     }
 
     // Vue active. Le tab d'un build n'est visuellement actif que dans la vue TeamBuild.
