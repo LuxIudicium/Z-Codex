@@ -43,7 +43,10 @@
                                       AdrenalineGainPerHit="{Binding AdrenalineGainPerHit}"
                                       AdrenalineSlowed="{Binding AdrenalineSlowed}"
                                       AdrenalineFromTeam="{Binding AdrenalineFromTeam}"
-                                      EnergyReduction="{Binding EnergyReduction}"/>
+                                      EnergyReduction="{Binding EnergyReduction}"
+                                      SkillSpeed="{Binding SkillSpeed}"
+                                      FastCastingRank="{Binding FastCastingRank}"
+                                      AdrenalineStrikesGiven="{Binding AdrenalineStrikesGiven}"/>
         </DataTemplate>
 
         <!-- Tooltip du catalogue de recherche : DataContext de la cellule = le Skill lui-même. -->
@@ -877,7 +880,10 @@
                                                                       AdrenalineGainPerHit="{Binding AdrenalineGainPerHit}"
                                                                       AdrenalineSlowed="{Binding AdrenalineSlowed}"
                                                                       AdrenalineFromTeam="{Binding AdrenalineFromTeam}"
-                                                                      EnergyReduction="{Binding EnergyReduction}"/>
+                                                                      EnergyReduction="{Binding EnergyReduction}"
+                                                                      SkillSpeed="{Binding SkillSpeed}"
+                                                                      FastCastingRank="{Binding FastCastingRank}"
+                                                                      AdrenalineStrikesGiven="{Binding AdrenalineStrikesGiven}"/>
                                         </ToolTip>
                                     </Border.ToolTip>
                                     <Border.ContextMenu>

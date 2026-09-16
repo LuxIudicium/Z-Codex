@@ -69,6 +69,14 @@ public static class AdrenalineBoostData
 
     public static AdrenalineGain.Effect FuriousModEffect => new(MultiplierPct: FuriousModPercent);
 
+    /// <summary>Rage of the Ntouka (lot 3) : donne 1…6…7 coups d'adrénaline à l'utilisation, au rang de Force du perso.
+    /// Ces coups se RETRANCHENT des coups nécessaires affichés (décision Philippe du 16/09/2026), en plus des 3 secondes
+    /// de recharge qu'elle ajoute aux compétences d'adrénaline.</summary>
+    public const int RageOfTheNtoukaSkillId = 1408;
+
+    public static int StrikesGranted(Skill source, int strengthRank) =>
+        SkillProgression.IntAt(source.Progression is { Length: > 0 } p ? p[0] : null, strengthRank) ?? 0;
+
     /// <summary>Vrai si ce mod d'arme est un « Furious ». Détecté par l'ancre wiki du mod, comme
     /// <see cref="EnchantmentDuration.IsEnchantingMod"/>.</summary>
     public static bool IsFuriousMod(int modId) =>

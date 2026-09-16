@@ -180,6 +180,8 @@
     <sys:String x:Key="S.Boost.ProcNote">On = the effect has triggered.</sys:String>
     <sys:String x:Key="S.Boost.NoEffectEnchanted">No effect: this character is under an active enchantment.</sys:String>
     <sys:String x:Key="S.Boost.OtherAllyNote">On = the spell you cast targets another ally.</sys:String>
+    <sys:String x:Key="S.Boost.SpiritNote">On = a spirit is within earshot.</sys:String>
+    <sys:String x:Key="S.Boost.SelfEnchantmentNote">On = the enchantment is cast on this character.</sys:String>
 
     <!-- ── Template search ────────────────────────────────────────────── -->
     <sys:String x:Key="S.Search.Title">Search skill templates</sys:String>

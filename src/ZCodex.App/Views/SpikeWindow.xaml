@@ -103,7 +103,10 @@
                                                                                       AdrenalineGainPerHit="{Binding AdrenalineGainPerHit}"
                                                                                       AdrenalineSlowed="{Binding AdrenalineSlowed}"
                                                                                       AdrenalineFromTeam="{Binding AdrenalineFromTeam}"
-                                                                                      EnergyReduction="{Binding EnergyReduction}"/>
+                                                                                      EnergyReduction="{Binding EnergyReduction}"
+                                                                                      SkillSpeed="{Binding SkillSpeed}"
+                                                                                      FastCastingRank="{Binding FastCastingRank}"
+                                                                                      AdrenalineStrikesGiven="{Binding AdrenalineStrikesGiven}"/>
                                                         </Border.ToolTip>
                                                         <Grid Width="40" Height="40">
                                                             <Image Source="{Binding Skill.IconPath, Converter={StaticResource UrlToImage}, ConverterParameter=64}"

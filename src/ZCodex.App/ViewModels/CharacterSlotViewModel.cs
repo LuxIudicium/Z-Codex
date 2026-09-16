@@ -337,10 +337,10 @@ public class CharacterSlotViewModel : ViewModelBase
     public void SetAttributeBoost(int skillId, bool active)
     {
         bool changed = active ? _activeAttributeBoosts.Add(skillId) : _activeAttributeBoosts.Remove(skillId);
-        // Un seul glyphe actif à la fois sur un perso (règle du jeu, Philippe 15/09/2026) : allumer un glyphe
-        // éteint les autres, qu'il remplace — comme une posture.
-        if (active && IsGlyphToggle(skillId))
-            changed |= _activeAttributeBoosts.RemoveWhere(id => id != skillId && IsGlyphToggle(id)) > 0;
+        // Un seul effet par famille sur un perso (règle du jeu ; glyphes le 15/09/2026, puis postures, préparations, sorts
+        // d'arme, formes et sorts d'objet au cadrage du lot 3) : allumer une icône éteint celles de sa famille.
+        if (active && ExclusiveFamilyOf(skillId) is { } family)
+            changed |= _activeAttributeBoosts.RemoveWhere(id => id != skillId && ExclusiveFamilyOf(id) == family) > 0;
         if (changed)
         {
             NotifyTooltipsChanged();
@@ -375,6 +375,8 @@ public class CharacterSlotViewModel : ViewModelBase
                 items = items.Append(new AttributeBoostIndicatorViewModel(this, hrSkill, HeroicRefrainData.SkillId, received: true));
             if (WeaponOfFury is { } wof)
                 items = items.Append(new AttributeBoostIndicatorViewModel(this, wof, AdrenalineBoostData.WeaponOfFurySkillId, received: true));
+            if (WeaponOfQuickening is { } woq)
+                items = items.Append(new AttributeBoostIndicatorViewModel(this, woq, SkillSpeedBoostData.WeaponOfQuickeningSkillId, received: true));
             if (HasFuriousMod)
                 items = items.Append(new AttributeBoostIndicatorViewModel(this, null, AdrenalineBoostData.FuriousModToggleId, received: false));
 
@@ -383,18 +385,30 @@ public class CharacterSlotViewModel : ViewModelBase
     }
 
     // Id d'icône d'une compétence personnelle togglable, null sinon : boost d'attribut (id de la
-    // compétence), accélérateur d'adrénaline « you » ou réduction de coût d'énergie (lot 2) — id de base :
-    // une variante « (PvP) » partage l'icône de sa jumelle et reste allumée quand le catalogue change de
-    // mode. Une compétence présente dans plusieurs tables (Glyph of Energy) n'a qu'une icône.
+    // compétence), accélérateur d'adrénaline « you », réduction de coût d'énergie (lot 2) ou effet de recharge et
+    // d'incantation (lot 3) — id de base : une variante « (PvP) » partage l'icône de sa jumelle et reste allumée quand
+    // le catalogue change de mode. Une compétence présente dans plusieurs tables (Glyph of Energy) n'a qu'une icône.
     private static int? PersonalToggleIdOf(Skill skill) =>
         AttributeBoostData.BySkillId(skill.Id) is not null ? skill.Id
         : AdrenalineBoostData.BySkillId(skill.Id) is { Scope: AdrenalineBoostScope.Self } d ? d.ToggleId
         : EnergyCostBoostData.BySkillId(skill.Id) is { } e ? e.ToggleId
+        : SkillSpeedBoostData.BySkillId(skill.Id) is { Received: false } v ? v.ToggleId
         : null;
 
-    // L'icône est-elle celle d'un glyphe équipé sur ce perso ? (un seul glyphe actif à la fois)
-    private bool IsGlyphToggle(int toggleId) =>
-        SkillSlots.Any(s => s.Skill is { SkillType: "Glyph" } sk && PersonalToggleIdOf(sk) == toggleId);
+    // Familles dont un perso ne porte qu'un effet à la fois (wiki *Effect stacking* : « one stance, one preparation, one
+    // glyph, one weapon spell, and one form at a time », plus un seul objet tenu). Null = icône hors de ces familles.
+    private static readonly HashSet<string> ExclusiveSkillTypes = new(StringComparer.Ordinal)
+        { "Glyph", "Stance", "Preparation", "Form", "Item Spell", "Weapon Spell" };
+
+    private string? ExclusiveFamilyOf(int toggleId)
+    {
+        // Sorts d'arme reçus d'un allié : leur compétence n'est pas forcément sur la barre de CE perso.
+        if (toggleId is AdrenalineBoostData.WeaponOfFurySkillId or SkillSpeedBoostData.WeaponOfQuickeningSkillId)
+            return "Weapon Spell";
+        return SkillSlots.Select(s => s.Skill)
+            .FirstOrDefault(sk => sk is not null && ExclusiveSkillTypes.Contains(sk.SkillType) && PersonalToggleIdOf(sk) == toggleId)
+            ?.SkillType;
+    }
 
     public bool HasAttributeBoostToggles => AttributeBoostToggles.Any();
 
@@ -493,6 +507,15 @@ public class CharacterSlotViewModel : ViewModelBase
 
     public Skill? WeaponOfFury => WeaponOfFuryProvider is { } p ? p() : OwnerBuild?.WeaponOfFury;
 
+    // Weapon of Quickening (lot 3, « target = allies » sur le wiki) : même patron que Weapon of Fury, sans rang (−33 % fixe).
+    public static Skill? WeaponOfQuickeningFor(IEnumerable<CharacterSlotViewModel> characters) =>
+        characters.SelectMany(c => c.SkillSlots).Select(s => s.Skill)
+            .FirstOrDefault(sk => sk?.Id == SkillSpeedBoostData.WeaponOfQuickeningSkillId);
+
+    public Func<Skill?>? WeaponOfQuickeningProvider { get; set; }
+
+    public Skill? WeaponOfQuickening => WeaponOfQuickeningProvider is { } p ? p() : OwnerBuild?.WeaponOfQuickening;
+
     // Effets d'adrénaline du bandeau d'équipe (lot 1b) : Infuriating Heat, Dark Fury, Mark of Fury,
     // Soothing. Environnement du teambuild propriétaire, ou (build simple) provider de l'éditeur.
     public Func<AdrenalineGain.TeamEffects>? TeamAdrenalineProvider { get; set; }
@@ -570,6 +593,25 @@ public class CharacterSlotViewModel : ViewModelBase
                 active.Add((d, EnergyCostBoostData.ValueOf(d, sk,
                     d.ScalingAttribute is { } attr ? AttributeLevel(attr) ?? 0 : 0)));
         return active.Count == 0 ? default : EnergyCostBoostData.ReductionFor(target, active);
+    }
+
+    // ── Recharge et incantation (chantier infobulle, lot 3) ───────────────────
+    // Même stockage que les boosts d'attribut (id de base de la compétence, 1268 pour Weapon of Quickening reçue). Rang lu
+    // via AttributeLevel (une recharge ne nourrit aucune caractéristique), sauf Ritual Lord : son propre bonus ne compte pas.
+
+    // Effets actifs du perso qui touchent cette compétence : compétences équipées ET allumées, Weapon of Quickening reçue.
+    public SkillSpeed SkillSpeedFor(Skill target)
+    {
+        var active = new List<(SkillSpeedBoostDescriptor, Skill, int)>();
+        foreach (var slot in SkillSlots)
+            if (slot.Skill is { } sk && SkillSpeedBoostData.BySkillId(sk.Id) is { Received: false } d && IsAttributeBoostActive(d.ToggleId))
+                active.Add((d, sk, d.ScalingAttribute is not { } attr ? 0
+                    : d.RawRank ? FindAttributeRow(attr)?.EffectiveLevel ?? 0
+                    : AttributeLevel(attr) ?? 0));
+        if (IsAttributeBoostActive(SkillSpeedBoostData.WeaponOfQuickeningSkillId) && WeaponOfQuickening is { } woq
+            && SkillSpeedBoostData.BySkillId(woq.Id) is { } wd)
+            active.Add((wd, woq, 0));
+        return active.Count == 0 ? default : SkillSpeedBoostData.SpeedFor(target, active);
     }
 
     // Boost « override » actif (Lot C, Master of Magic) : remplace le niveau de base au lieu de s'y
@@ -656,6 +698,19 @@ public class CharacterSlotViewModel : ViewModelBase
     private bool JackActive => ActiveFlux == Flux.JackOfAllTrades && MeetsJackOfAllTrades;
     public int FluxDamagePercent => JackActive ? 15 : 0;
     public int FluxCastPercent   => JackActive ? 25 : 0;
+
+    // Fast Casting (lot 3, retouche du 16/09/2026) : caractéristique TOUJOURS active, donc sans icône — l'infobulle en tient
+    // compte pour l'incantation des sorts et des sceaux, et (en PvE) la recharge des sorts d'Envoûteur. 0 si le perso ne l'a
+    // pas. Même chemin que l'Expertise (AttributeLevel), donc le mod « of the Mesmer » est déjà couvert.
+    public int FastCastingRank => AttributeLevel("Fast Casting") ?? 0;
+
+    // Coups d'adrénaline donnés par Rage of the Ntouka quand son icône est allumée (rang de Force) : ils se retranchent des
+    // coups nécessaires de TOUTES les compétences d'adrénaline (un gain d'adrénaline les remplit toutes). 0 sinon.
+    public int AdrenalineStrikesGiven =>
+        IsAttributeBoostActive(AdrenalineBoostData.RageOfTheNtoukaSkillId)
+        && FindEquippedSkill(AdrenalineBoostData.RageOfTheNtoukaSkillId) is { } rotn
+            ? AdrenalineBoostData.StrikesGranted(rotn, AttributeLevel("Strength") ?? 0)
+            : 0;
 
     // Niveau effectif du perso dans l'attribut PRIMAIRE de `prof` : la ligne éditable
     // (attribut primaire de la profession primaire) si elle existe, sinon 0 (attribut

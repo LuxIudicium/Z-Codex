@@ -183,6 +183,8 @@
     <sys:String x:Key="S.Boost.ProcNote">Allumée = l'effet s'est déclenché.</sys:String>
     <sys:String x:Key="S.Boost.NoEffectEnchanted">Sans effet : ce personnage est sous un enchantement actif.</sys:String>
     <sys:String x:Key="S.Boost.OtherAllyNote">Allumée = le sort lancé vise un autre allié.</sys:String>
+    <sys:String x:Key="S.Boost.SpiritNote">Allumée = un esprit est à portée de voix.</sys:String>
+    <sys:String x:Key="S.Boost.SelfEnchantmentNote">Allumée = l'enchantement est lancé sur ce personnage.</sys:String>
 
     <!-- ── Recherche de templates ─────────────────────────────────────── -->
     <sys:String x:Key="S.Search.Title">Rechercher des templates de compétences</sys:String>

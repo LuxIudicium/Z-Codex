@@ -330,6 +330,18 @@ public class SkillSlotViewModel : ViewModelBase
     public EnergyReduction EnergyReduction =>
         Owner is { } o && _skill is { } s ? o.EnergyReductionFor(s) : default;
 
+    // Effets des compétences actives du perso sur la recharge et l'incantation de cette compétence (lot 3).
+    public SkillSpeed SkillSpeed =>
+        Owner is { } o && _skill is { } s ? o.SkillSpeedFor(s) : default;
+
+    // Rang de Fast Casting du perso (0 s'il ne l'a pas) : incantation des sorts et sceaux, et recharge des sorts
+    // d'Envoûteur en PvE. Caractéristique toujours active, sans icône.
+    public int FastCastingRank => Owner?.FastCastingRank ?? 0;
+
+    // Coups d'adrénaline donnés par Rage of the Ntouka (0 hors compétence d'adrénaline, ou icône éteinte).
+    public int AdrenalineStrikesGiven =>
+        Owner is { } o && _skill is { Adrenaline: > 0 } ? o.AdrenalineStrikesGiven : 0;
+
     // ── Durée d'enchantement (Lot D) : % applicables à CETTE compétence, fournis par le perso ──
     // L'arme « of Enchanting » et Tranquility ne touchent que les enchantements ; le prolongateur
     // personnel (Blessed Aura/Extend) gère lui-même sa cible (Monk/Derviche). L'infobulle compose.
@@ -366,6 +378,9 @@ public class SkillSlotViewModel : ViewModelBase
         OnPropertyChanged(nameof(AdrenalineSlowed));
         OnPropertyChanged(nameof(AdrenalineFromTeam));
         OnPropertyChanged(nameof(EnergyReduction));
+        OnPropertyChanged(nameof(SkillSpeed));
+        OnPropertyChanged(nameof(FastCastingRank));
+        OnPropertyChanged(nameof(AdrenalineStrikesGiven));
     }
 
     private bool _hasViolation;

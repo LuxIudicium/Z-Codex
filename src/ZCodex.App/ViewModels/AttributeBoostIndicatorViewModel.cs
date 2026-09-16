@@ -29,12 +29,15 @@ public class AttributeBoostIndicatorViewModel : ViewModelBase
 
         // Note au-dessus de l'instruction de clic : le mod « Furious » et Jaundiced Gaze (effet de
         // retrait, lot 2) s'allument quand ils ont proc ; Natural Temper ne fait rien tant qu'un effet actif
-        // enchante le perso (Onslaught) ; Selfless Spirit s'allume quand le sort vise un autre allié (lot 2).
+        // enchante le perso (Onslaught) ; Selfless Spirit s'allume quand le sort vise un autre allié (lot 2) ; Ghostly Haste
+        // quand un esprit est à portée, Signet of Mystic Speed quand l'enchantement vise ce perso (lot 3).
         string? note = skill is null || skill.Id == 763 ? T("S.Boost.ProcNote")
             : AdrenalineBoostData.BySkillId(skill.Id) is { NeedsUnenchanted: true } && owner.IsEnchantedByAdrenalineEffect
                 ? T("S.Boost.NoEffectEnchanted")
             : skill.Id is EnergyCostBoostData.SelflessSpiritKurzickSkillId or EnergyCostBoostData.SelflessSpiritLuxonSkillId
                 ? T("S.Boost.OtherAllyNote")
+            : skill.Id == SkillSpeedBoostData.GhostlyHasteSkillId ? T("S.Boost.SpiritNote")
+            : skill.Id == SkillSpeedBoostData.SignetOfMysticSpeedSkillId ? T("S.Boost.SelfEnchantmentNote")
             : null;
         ClickNote = note is null ? click : $"{note}\n{click}";
     }

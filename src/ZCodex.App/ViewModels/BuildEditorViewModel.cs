@@ -95,6 +95,8 @@ public class BuildEditorViewModel : ViewModelBase
         Character.HeroicRefrainProvider = () => CharacterSlotViewModel.HeroicRefrainFor(new[] { Character });
         // Weapon of Fury (chantier infobulle, lot 1a) : même réduction à l'auto-ciblage.
         Character.WeaponOfFuryProvider = () => CharacterSlotViewModel.WeaponOfFuryFor(new[] { Character });
+        // Weapon of Quickening (lot 3) : idem.
+        Character.WeaponOfQuickeningProvider = () => CharacterSlotViewModel.WeaponOfQuickeningFor(new[] { Character });
 
         // Nouveau build vierge : la PR est obligatoire dans l'éditeur (isQuery=false → le picker
         // n'offre pas « None » sur la PR). Pour qu'un code Any/SEC ne puisse JAMAIS être produit,

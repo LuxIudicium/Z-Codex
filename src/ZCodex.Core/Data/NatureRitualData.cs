@@ -251,28 +251,112 @@ public static class NatureRitualData
         }
     }
 
-    /// <summary>Recharge modifiée. QZ ×0,5 (plus rapide), EW ×1,25 (plus lente), half-even.
-    /// EW+QZ = optimiste : QZ ignore l'augmentation d'EW → ×0,5 seul.</summary>
-    public static float Recharge(float baseRecharge, IReadOnlySet<Ritual> active)
+    /// <summary>Recharge ou incantation affichée, et ce qui l'a changée (couleur de l'infobulle) : un effet du bandeau,
+    /// une compétence du perso (lot 3), le flux.</summary>
+    public readonly record struct SpeedResult(float Final, bool RitualChanged, bool SkillChanged, bool FluxChanged);
+
+    // Plafond commun de la recharge et de l'incantation (chantier infobulle, lot 3, décisions Philippe du 15/09/2026) :
+    // les effets se multiplient, mais le résultat ne descend jamais sous 50 % de la base, sauf si un effet SEUL fait
+    // mieux — il s'applique alors à sa propre valeur (Meteor Shower, 60 s : QZ + Serpent's Quickness = 30 ; Over the
+    // Limit rang 12 + Serpent's Quickness = 17).
+    private static decimal Capped(decimal kept, int strongestPct) =>
+        Math.Max(kept, Math.Min(0.5m, (100 - Math.Clamp(strongestPct, 0, 100)) / 100m));
+
+    /// <summary>Fast Casting : l'incantation des sorts et sceaux est multipliée par 0,955^rang (wiki *Fast Casting* :
+    /// « 0.955^Rank = ½^(Rank/15) »). La caractéristique passe outre les plafonds et ne colore rien dans l'infobulle,
+    /// comme l'Expertise sur l'énergie.</summary>
+    private static decimal FastCastingCastFactor(int rank)
     {
-        if (baseRecharge <= 0f) return baseRecharge;
-        bool ew = active.Contains(Ritual.EnergizingWind);
-        bool qz = active.Contains(Ritual.QuickeningZephyr);
-        if (qz) return RoundEven(baseRecharge * 0.5);   // QZ (l'emporte sur EW en optimiste)
-        if (ew) return RoundEven(baseRecharge * 1.25);
-        return baseRecharge;
+        decimal f = 1m;
+        for (int i = 0; i < Math.Clamp(rank, 0, 20); i++) f *= 0.955m;
+        return f;
     }
 
-    /// <summary>Temps d'incantation : Nature's Renewal allonge celui des enchantements et hex.
-    /// <paramref name="naturesRenewalPct"/> = surcoût « plus long » en % — 100 en PvE (×2, fixe),
-    /// 50…83 en PvP où l'effet dépend du rang de Survie du lanceur.
-    /// (Le flux Jack of All Trades ×0,75 est appliqué séparément par l'infobulle.)</summary>
-    public static float CastTime(float baseCast, Skill skill, IReadOnlySet<Ritual> active, int naturesRenewalPct = 100)
+    /// <summary>Fast Casting touche l'incantation des sorts et des sceaux du perso ; une compétence qui n'est PAS
+    /// d'Envoûteur n'en profite que si son incantation de base atteint 2 s (texte du jeu).</summary>
+    public static bool FastCastingAffectsCast(Skill skill, float baseCast) =>
+        (EnergyCostBoostData.IsSpell(skill) || IsSignet(skill))
+        && (skill.Profession == Profession.Mesmer || baseCast >= 2f);
+
+    /// <summary>Fast Casting réduit AUSSI la recharge des sorts d'Envoûteur, de 3 % par rang, en PvE seulement.</summary>
+    public static bool FastCastingAffectsRecharge(Skill? skill) =>
+        !PvpVariants && skill is { Profession: Profession.Mesmer } s && EnergyCostBoostData.IsSpell(s);
+
+    /// <summary>Recharge modifiée : QZ ×0,5 (l'emporte sur EW : optimiste), EW ×1,25, réductions des compétences du perso
+    /// (<paramref name="speed"/>, lot 3) multipliées avec eux dans le plafond de 50 % ; Fast Casting (sorts d'Envoûteur, PvE)
+    /// s'applique par-dessus, hors plafond ; arrondi au pair ; puis les secondes ajoutées (Glyph of Sacrifice, Auspicious
+    /// Incantation, Rage of the Ntouka), jamais réduites (wiki *Recharge time* : Meteor Shower + Glyph of Sacrifice +
+    /// Serpent's Quickness = 70). Recharge instantanée = 0. Le blocage des attaques par Deadly Paradox
+    /// (<see cref="SkillSpeed.RechargeBlock"/>) n'entre PAS dans la valeur : l'infobulle l'affiche « 10+recharge ».</summary>
+    public static SpeedResult Recharge(float baseRecharge, Skill? skill, IReadOnlySet<Ritual> active,
+        SkillSpeed speed = default, int fastCastingRank = 0)
     {
-        if (baseCast <= 0f) return baseCast;
-        if (active.Contains(Ritual.NaturesRenewal) && (IsEnchantment(skill) || IsHex(skill)))
-            return baseCast * (1f + Math.Max(naturesRenewalPct, 0) / 100f);
-        return baseCast;
+        bool qz = active.Contains(Ritual.QuickeningZephyr);
+        bool ew = active.Contains(Ritual.EnergizingWind);
+        decimal fc = fastCastingRank > 0 && FastCastingAffectsRecharge(skill)
+            ? (100 - 3 * Math.Clamp(fastCastingRank, 0, 20)) / 100m
+            : 1m;
+        float final = Compute(speed, qz || ew, fc);
+        return new(final,
+            RitualChanged: (qz || ew) && final != Compute(speed, false, fc),
+            SkillChanged: speed.ChangesRecharge
+                          && (speed.RechargeBlock > 0 || final != Compute(default, qz || ew, fc)),
+            FluxChanged: false);
+
+        float Compute(SkillSpeed s, bool rituals, decimal fcFactor)
+        {
+            if (s.RechargeInstant) return 0f;
+            decimal kept = (1m - s.RechargeCut) * (!rituals ? 1m : qz ? 0.5m : ew ? 1.25m : 1m);
+            int strongest = rituals && qz ? Math.Max(s.RechargeStrongest, 50) : s.RechargeStrongest;
+            decimal factor = Capped(kept, strongest) * fcFactor;
+            // Arrondi au pair (convention GW1 énergie/recharge), SAUF quand Fast Casting intervient : sa table du wiki
+            // arrondit au plus proche en montant (base 30 au rang 15 → 17, pas 16).
+            var rounding = fcFactor != 1m ? MidpointRounding.AwayFromZero : MidpointRounding.ToEven;
+            decimal value = factor == 1m || baseRecharge <= 0f
+                ? (decimal)baseRecharge
+                : Math.Round((decimal)baseRecharge * factor, rounding);
+            return (float)(value + s.RechargeAdded);
+        }
+    }
+
+    /// <summary>Temps d'incantation modifié (lot 3) : Jaundiced Gaze retire ses secondes d'abord (« applies before
+    /// Nature's Renewal », wiki), puis TOUS les effets se multiplient — compétences du perso, flux Jack of All Trades
+    /// (<paramref name="fluxPct"/>), Nature's Renewal (<paramref name="naturesRenewalPct"/> « plus long » : 100 en PvE,
+    /// 50…83 en PvP selon le rang de Survie du lanceur) — dans le plafond de 50 % du temps normal (tests en jeu de
+    /// Philippe, 15/09/2026 ; seul Fast Casting le dépasse, hors périmètre) ; enfin Glyph of Sacrifice ramène à ¼ s et une
+    /// incantation instantanée à 0. Les attaques ne reçoivent aucun effet de compétence (<see cref="SkillSpeedBoostData.SpeedFor"/>).</summary>
+    public static SpeedResult CastTime(float baseCast, Skill skill, IReadOnlySet<Ritual> active,
+        int naturesRenewalPct = 100, int fluxPct = 0, SkillSpeed speed = default, int fastCastingRank = 0)
+    {
+        if (baseCast <= 0f) return new(baseCast, false, false, false);
+        bool nr = active.Contains(Ritual.NaturesRenewal) && (IsEnchantment(skill) || IsHex(skill));
+        decimal fc = fastCastingRank > 0 && FastCastingAffectsCast(skill, baseCast)
+            ? FastCastingCastFactor(fastCastingRank)
+            : 1m;
+        float final = Compute(speed, nr, fluxPct, fc);
+        return new(final,
+            RitualChanged: nr && final != Compute(speed, false, fluxPct, fc),
+            SkillChanged: speed.ChangesCast && final != Compute(default, nr, fluxPct, fc),
+            FluxChanged: fluxPct > 0 && final != Compute(speed, nr, 0, fc));
+
+        float Compute(SkillSpeed s, bool withNr, int flux, decimal fcFactor)
+        {
+            decimal v = Math.Max(0m, (decimal)baseCast - s.CastFlat);
+            decimal kept = (1m - s.CastCut)
+                         * (flux > 0 ? (100 - flux) / 100m : 1m)
+                         * (withNr ? 1m + Math.Max(naturesRenewalPct, 0) / 100m : 1m);
+            if (kept != 1m) v *= Math.Min(Capped(kept, Math.Max(s.CastStrongest, flux)), 2.5m);
+            // Vitesse d'attaque (IAS, ajout du 16/09/2026) : « attaquer X % plus vite » retire X % de la DURÉE de l'attaque
+            // (wiki *Attack speed*), donc de son temps d'activation — hors du plafond d'incantation, qui ne vise pas les
+            // attaques ; le plafond propre à la vitesse d'attaque (33 % de durée en moins) est appliqué par SpeedFor.
+            if (s.AttackSpeedCut > 0m) v *= 1m - s.AttackSpeedCut;
+            // Fast Casting ne compte dans aucun plafond (wiki *Effect stacking*).
+            v *= fcFactor;
+            if (s.CastQuarter) v = Math.Min(v, 0.25m);
+            if (s.CastInstant) v = 0m;
+            // Le jeu calcule en pleine précision et arrondit à la milliseconde (wiki *Fast Casting*).
+            return (float)Math.Round(v, 3, MidpointRounding.AwayFromZero);
+        }
     }
 
     /// <summary>Énergie d'entretien (upkeep) : Nature's Renewal la double pour les enchantements.</summary>

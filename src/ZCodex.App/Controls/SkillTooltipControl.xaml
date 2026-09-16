@@ -89,7 +89,7 @@
                     </StackPanel>
                     <!-- Recharge -->
                     <StackPanel Orientation="Horizontal"
-                                Visibility="{Binding Recharge, Converter={StaticResource PosFloat}}">
+                                Visibility="{Binding RechargeVisibility, ElementName=Root}">
                         <Image Source="{Binding Source='recharge', Converter={StaticResource StatIcon}}"
                                Width="14" Height="14" Margin="0,0,2,0"/>
                         <TextBlock beh:SkillMarkup.Text="{Binding RechargeText, ElementName=Root}" FontSize="12"/>

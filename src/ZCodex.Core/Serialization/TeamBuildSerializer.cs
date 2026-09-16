@@ -422,10 +422,12 @@ public static class TeamBuildSerializer
             // ce perso) → autorisé explicitement via son SkillId dédié. Les accélérateurs
             // d'adrénaline (chantier infobulle, lot 1a) partagent cette liste : id de base de la
             // compétence, 1749 pour Weapon of Fury reçue, id réservé négatif pour le mod « Furious ».
-            // Les réductions de coût d'énergie (lot 2) aussi : id de base de la compétence.
+            // Les réductions de coût d'énergie (lot 2) aussi : id de base de la compétence. Et les effets de recharge et
+            // d'incantation (lot 3), 1268 pour Weapon of Quickening reçue.
             ActiveAttributeBoosts = dto.ActiveAttributeBoosts
                 .Where(id => AttributeBoostData.BySkillId(id) != null || id == HeroicRefrainData.SkillId
-                             || AdrenalineBoostData.IsToggleId(id) || EnergyCostBoostData.IsToggleId(id))
+                             || AdrenalineBoostData.IsToggleId(id) || EnergyCostBoostData.IsToggleId(id)
+                             || SkillSpeedBoostData.IsToggleId(id))
                 .Distinct().ToList(),
             Variants = dto.Variants.Select(v => CharFromDto(v, skillsById, unresolvedIds)).ToList(),
         };

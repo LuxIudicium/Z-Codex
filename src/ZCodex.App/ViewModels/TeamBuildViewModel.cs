@@ -74,11 +74,12 @@ public class TeamBuildViewModel : ViewModelBase, IRenamableTab
         // disparition dans l'arbre change l'icône « recevoir » de chaque perso. Les effets
         // d'adrénaline du bandeau (lot 1b) aussi : l'Expertise ou la Magie du sang de leur lanceur
         // change les coups nécessaires dans les infobulles de TOUS les persos. Energizing Chorus (lot 2b)
-        // aussi : la Motivation de son lanceur change le coût des cris et chants de tous.
+        // aussi : la Motivation de son lanceur change le coût des cris et chants de tous. Weapon of Quickening (lot 3) suit
+        // le chemin de Weapon of Fury.
         Mutated += () =>
         {
             var (skill, bonus) = HeroicRefrain;
-            string sig = $"{skill?.Id}|{bonus}|{WeaponOfFury?.Id}|{string.Join(";", TeamAdrenaline.Effects)}|{EnergizingChorusReduction}";
+            string sig = $"{skill?.Id}|{bonus}|{WeaponOfFury?.Id}|{WeaponOfQuickening?.Id}|{string.Join(";", TeamAdrenaline.Effects)}|{EnergizingChorusReduction}";
             if (sig == _heroicRefrainSig) return;
             _heroicRefrainSig = sig;
             _heroicRefrainTimer.Stop();
@@ -125,6 +126,9 @@ public class TeamBuildViewModel : ViewModelBase, IRenamableTab
     // Weapon of Fury (chantier infobulle, lot 1a) : compétence d'un porteur de l'arbre, proposée à
     // chaque perso (lanceur compris) ; null si personne ne l'équipe.
     public Skill? WeaponOfFury => CharacterSlotViewModel.WeaponOfFuryFor(EnumerateTree());
+
+    // Weapon of Quickening (lot 3) : même diffusion que Weapon of Fury.
+    public Skill? WeaponOfQuickening => CharacterSlotViewModel.WeaponOfQuickeningFor(EnumerateTree());
 
     // Effets d'adrénaline du bandeau d'équipe (chantier infobulle, lot 1b) : rangs au lanceur le plus
     // fort de l'arbre, ou rangs de simulation du bandeau.

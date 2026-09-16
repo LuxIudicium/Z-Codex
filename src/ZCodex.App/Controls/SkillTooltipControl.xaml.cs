@@ -332,6 +332,53 @@ public partial class SkillTooltipControl : UserControl
         set => SetValue(EnergyReductionProperty, value);
     }
 
+    // Effets des compétences actives du perso sur la recharge et l'incantation de cette compétence (chantier infobulle,
+    // lot 3 : Serpent's Quickness, glyphes, Weapon of Quickening reçue…). Fournis par le slot ; aucun en catalogue.
+    public static readonly DependencyProperty SkillSpeedProperty =
+        DependencyProperty.Register(nameof(SkillSpeed), typeof(SkillSpeed), typeof(SkillTooltipControl),
+            new PropertyMetadata(default(SkillSpeed), OnInputsChanged));
+
+    public SkillSpeed SkillSpeed
+    {
+        get => (SkillSpeed)GetValue(SkillSpeedProperty);
+        set => SetValue(SkillSpeedProperty, value);
+    }
+
+    // Rang de Fast Casting du perso (0 en catalogue, ou si le perso ne l'a pas) : incantation des sorts et sceaux, recharge
+    // des sorts d'Envoûteur en PvE. Caractéristique toujours active : elle ne colore rien, comme l'Expertise.
+    public static readonly DependencyProperty FastCastingRankProperty =
+        DependencyProperty.Register(nameof(FastCastingRank), typeof(int), typeof(SkillTooltipControl),
+            new PropertyMetadata(0, OnInputsChanged));
+
+    public int FastCastingRank
+    {
+        get => (int)GetValue(FastCastingRankProperty);
+        set => SetValue(FastCastingRankProperty, value);
+    }
+
+    // Coups d'adrénaline donnés par Rage of the Ntouka (lot 3) : ils se retranchent des coups nécessaires affichés.
+    public static readonly DependencyProperty AdrenalineStrikesGivenProperty =
+        DependencyProperty.Register(nameof(AdrenalineStrikesGiven), typeof(int), typeof(SkillTooltipControl),
+            new PropertyMetadata(0, OnInputsChanged));
+
+    public int AdrenalineStrikesGiven
+    {
+        get => (int)GetValue(AdrenalineStrikesGivenProperty);
+        set => SetValue(AdrenalineStrikesGivenProperty, value);
+    }
+
+    // Visibilité de la ligne de recharge : pilotée par la recharge EFFECTIVE, pour afficher « 3 (0) » quand Rage of the
+    // Ntouka ajoute ses secondes à une compétence d'adrénaline sans recharge (patron EnergyVisibility).
+    public static readonly DependencyProperty RechargeVisibilityProperty =
+        DependencyProperty.Register(nameof(RechargeVisibility), typeof(Visibility), typeof(SkillTooltipControl),
+            new PropertyMetadata(Visibility.Collapsed));
+
+    public Visibility RechargeVisibility
+    {
+        get => (Visibility)GetValue(RechargeVisibilityProperty);
+        private set => SetValue(RechargeVisibilityProperty, value);
+    }
+
     // ── Coût en adrénaline affiché : « coups nécessaires (base) » si un effet actif le change ────
     public static readonly DependencyProperty AdrenalineTextProperty =
         DependencyProperty.Register(nameof(AdrenalineText), typeof(string), typeof(SkillTooltipControl),
@@ -536,6 +583,9 @@ public partial class SkillTooltipControl : UserControl
     {
         int cost = Skill?.Adrenaline ?? 0;
         int strikes = AdrenalineGain.StrikesNeeded(cost, AdrenalineGainPerHit, AdrenalineSlowed);
+        // Rage of the Ntouka donne des coups d'adrénaline à TOUTES les compétences d'adrénaline (un gain les remplit
+        // toutes) : ils se retranchent des coups nécessaires, sans descendre sous 0 (décision Philippe du 16/09/2026).
+        if (AdrenalineStrikesGiven > 0) strikes = Math.Max(0, strikes - AdrenalineStrikesGiven);
         if (strikes == cost) { AdrenalineText = cost.ToString(); return; }
         string shown = AdrenalineFromTeam
             ? RitualMark(strikes.ToString())
@@ -675,35 +725,51 @@ public partial class SkillTooltipControl : UserControl
         EnergyText = $"{shown} ({baseCost})";
     }
 
-    // Temps d'activation : Nature's Renewal allonge le cast des enchantements/hex (couleur rituel)
-    // — ×2 en PvE, +50…83 % en PvP selon le rang du lanceur ; le flux Jack of All Trades le réduit
-    // de 25 % (couleur flux). Les deux se combinent (× puis ×).
+    // Temps d'activation : toute la composition (Jaundiced Gaze, compétences du perso, flux Jack of All Trades, Nature's
+    // Renewal, plafond de 50 %, incantation instantanée) est calculée par NatureRitualData.CastTime — identique à l'ancien
+    // calcul quand aucune compétence n'agit. Couleur : rituel (ambre) si Nature's Renewal l'a changé, sinon boost de
+    // compétence (violet) si une compétence du perso l'a changé (lot 3), sinon flux.
     private void UpdateCast()
     {
         float baseCast = Skill?.CastTime ?? 0f;
         if (baseCast <= 0f || Skill is not { } s) { CastText = baseCast > 0f ? baseCast.ToString("0.##") : string.Empty; return; }
 
-        var rituals = NatureRituals ?? EmptyRituals;
-        float ncast = NatureRitualData.CastTime(baseCast, s, rituals, NaturesRenewalCastPct);
-        bool ritual = Math.Abs(ncast - baseCast) > 0.001f;
+        var r = NatureRitualData.CastTime(baseCast, s, NatureRituals ?? EmptyRituals, NaturesRenewalCastPct, FluxCastPercent,
+                                          SkillSpeed, FastCastingRank);
+        if (Math.Abs(r.Final - baseCast) < 0.001f) { CastText = baseCast.ToString("0.##"); return; }
 
-        int pct = FluxCastPercent;
-        float val = pct > 0 ? ncast * (100 - pct) / 100f : ncast;
-        if (Math.Abs(val - baseCast) < 0.001f) { CastText = baseCast.ToString("0.##"); return; }
-
-        char mark = ritual ? SkillProgression.MarkRitual : SkillProgression.MarkFlux;
-        CastText = $"{mark}{val.ToString("0.##")}{mark} ({baseCast.ToString("0.##")})";
+        // Fast Casting ne colore rien (caractéristique toujours active, comme l'Expertise sur l'énergie) : si rien d'autre
+        // n'a joué, la valeur s'affiche sans marque.
+        string shown = r.RitualChanged ? RitualMark(r.Final.ToString("0.##"))
+                     : r.SkillChanged  ? $"{SkillProgression.MarkSkillBoost}{r.Final.ToString("0.##")}{SkillProgression.MarkSkillBoost}"
+                     : r.FluxChanged   ? $"{SkillProgression.MarkFlux}{r.Final.ToString("0.##")}{SkillProgression.MarkFlux}"
+                     :                    r.Final.ToString("0.##");
+        CastText = $"{shown} ({baseCast.ToString("0.##")})";
     }
 
-    // Recharge : Quickening Zephyr ×0,5, Energizing Wind ×1,25 (half-even). « modifié (base) ».
+    // Recharge : Quickening Zephyr ×0,5, Energizing Wind ×1,25 et compétences du perso (lot 3), « modifiée (base) » — ambre
+    // si un rituel l'a changée, violet si seule une compétence du perso. Ligne visible dès que la recharge effective est non
+    // nulle (Rage of the Ntouka sur une compétence d'adrénaline sans recharge : « 3 (0) »).
     private void UpdateRecharge()
     {
         float baseR = Skill?.Recharge ?? 0f;
-        if (baseR <= 0f) { RechargeText = string.Empty; return; }
-        float newR = NatureRitualData.Recharge(baseR, NatureRituals ?? EmptyRituals);
-        RechargeText = Math.Abs(newR - baseR) < 0.001f
-            ? baseR.ToString("0.##")
-            : $"{RitualMark(newR.ToString("0.##"))} ({baseR.ToString("0.##")})";
+        var speed = SkillSpeed;
+        var r = NatureRitualData.Recharge(baseR, Skill, NatureRituals ?? EmptyRituals, speed, FastCastingRank);
+        RechargeVisibility = r.Final > 0f || baseR > 0f || speed.RechargeBlock > 0 ? Visibility.Visible : Visibility.Collapsed;
+        if (RechargeVisibility != Visibility.Visible) { RechargeText = string.Empty; return; }
+        if (speed.RechargeBlock == 0 && Math.Abs(r.Final - baseR) < 0.001f) { RechargeText = baseR.ToString("0.##"); return; }
+
+        // Deadly Paradox bloque TOUTES les attaques pendant 10 s : « +10, recharge » (format demandé par Philippe le
+        // 16/09/2026 — Critical Chop « +10, 15 (15) », Black Lotus Strike « +10, 4 (6) »). Ces secondes ne sont réduites
+        // par rien, et s'affichent que la recharge bouge ou non.
+        string value = speed.RechargeBlock > 0
+            ? $"+{speed.RechargeBlock}, {r.Final.ToString("0.##")}"
+            : r.Final.ToString("0.##");
+        // Fast Casting seul ne colore rien (caractéristique toujours active, patron de l'Expertise sur l'énergie).
+        string shown = r.RitualChanged ? RitualMark(value)
+                     : r.SkillChanged  ? $"{SkillProgression.MarkSkillBoost}{value}{SkillProgression.MarkSkillBoost}"
+                     :                    value;
+        RechargeText = $"{shown} ({baseR.ToString("0.##")})";
     }
 
     // Upkeep (entretien) : Nature's Renewal double celui des enchantements. Affiché « -N » (pip).
