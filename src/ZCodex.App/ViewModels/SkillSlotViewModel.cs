@@ -355,6 +355,11 @@ public class SkillSlotViewModel : ViewModelBase
     public int EnchantTranquilityPct =>
         Owner is { } o && _skill is { } s && NatureRitualData.IsEnchantment(s) ? o.TranquilityPercent : 0;
 
+    // ── Durée propre rallongée (lot 4a) : % applicable à CETTE compétence (0 = aucun allongeur allumé qui la vise).
+    // L'infobulle lit la durée dans la description résolue et nomme la famille elle-même.
+    public int DurationBoostPct =>
+        Owner is { } o && _skill is { } s ? o.DurationBoostFor(s) : 0;
+
     // Permet au perso de pousser une mise à jour live de l'infobulle (footer + description).
     public void RaiseTooltipChanged()
     {
@@ -378,6 +383,7 @@ public class SkillSlotViewModel : ViewModelBase
         OnPropertyChanged(nameof(EnchantEnchantingPct));
         OnPropertyChanged(nameof(EnchantExtenderPct));
         OnPropertyChanged(nameof(EnchantTranquilityPct));
+        OnPropertyChanged(nameof(DurationBoostPct));
         OnPropertyChanged(nameof(AdrenalineGainPerHit));
         OnPropertyChanged(nameof(AdrenalineSlowed));
         OnPropertyChanged(nameof(AdrenalineFromTeam));

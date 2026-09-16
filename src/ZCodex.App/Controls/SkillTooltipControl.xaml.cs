@@ -356,6 +356,17 @@ public partial class SkillTooltipControl : UserControl
         set => SetValue(SkillSpeedProperty, value);
     }
 
+    // Rallonge de durée propre en % (lot 4a) : 0 en catalogue, ou si aucun allongeur allumé ne vise cette compétence.
+    public static readonly DependencyProperty DurationBoostPctProperty =
+        DependencyProperty.Register(nameof(DurationBoostPct), typeof(int), typeof(SkillTooltipControl),
+            new PropertyMetadata(0, OnInputsChanged));
+
+    public int DurationBoostPct
+    {
+        get => (int)GetValue(DurationBoostPctProperty);
+        set => SetValue(DurationBoostPctProperty, value);
+    }
+
     // Rang de Fast Casting du perso (0 en catalogue, ou si le perso ne l'a pas) : incantation des sorts et sceaux, recharge
     // des sorts d'Envoûteur en PvE. Caractéristique toujours active : elle ne colore rien, comme l'Expertise.
     public static readonly DependencyProperty FastCastingRankProperty =
@@ -806,22 +817,51 @@ public partial class SkillTooltipControl : UserControl
                      : $"{RitualMark(newOc.ToString())} ({baseOc})";
     }
 
-    // Durée d'enchantement (Lot D) : composée des modificateurs (arme « of Enchanting », prolongateur
-    // personnel Blessed Aura/Extend, Tranquility) via EnchantmentDuration.Compose. Ligne affichée
-    // SEULEMENT en contexte build (description résolue), pour un enchantement à durée parenthésée, et
-    // quand un modificateur agit vraiment. Valeur « modifié (base) » en couleur rituel (ambre).
+    // Durée effective, une seule ligne — la famille de la compétence décide laquelle et NOMME la durée touchée
+    // (décision Philippe du 16/09/2026 : « on spécifiera à chaque fois la durée affectée »). Affichée SEULEMENT en
+    // contexte build (description résolue) et quand un effet actif change vraiment le chiffre ; le résultat seul,
+    // sans la base, comme la maquette de Philippe.
+    //  • Enchantements (Lot D, inchangé) : arme « of Enchanting », prolongateur personnel Blessed Aura/Extend,
+    //    Tranquility, composés par EnchantmentDuration.Compose — couleur rituel (ambre) d'origine.
+    //  • Poses, préparations, maléfices, cris et chants (lot 4a) : rallonge des allongeurs allumés sur la carte du
+    //    perso — couleur de boost de compétence (violet), comme les lots 1 à 3, puisque la source est personnelle.
     private void UpdateDuration()
     {
         DurationText = string.Empty;
         DurationVisibility = Visibility.Collapsed;
         if (Skill is not { } s || DescriptionOverride is not { } resolved) return;   // catalogue → rien
-        if (!NatureRitualData.IsEnchantment(s)) return;
-        if (EnchantmentDuration.Seconds(resolved) is not { } baseSec) return;         // maintenu / sans durée
-        var r = EnchantmentDuration.Compose(baseSec, EnchantEnchantingPct, EnchantExtenderPct, EnchantTranquilityPct);
-        if (!r.Changed) return;                                                        // aucun modificateur actif
-        DurationText = $"{L("Durée d'enchantement effective", "Effective enchantment duration")} : {RitualMark(r.Final.ToString())} s";
+
+        var family = SkillDurationBoostData.FamilyOf(s);
+        if (family == DurationFamily.Enchantment)
+        {
+            if (EnchantmentDuration.Seconds(resolved) is not { } baseSec) return;     // maintenu / sans durée
+            var r = EnchantmentDuration.Compose(baseSec, EnchantEnchantingPct, EnchantExtenderPct, EnchantTranquilityPct);
+            if (!r.Changed) return;                                                    // aucun modificateur actif
+            DurationText = $"{L("Durée d'enchantement effective", "Effective enchantment duration")} : {RitualMark(r.Final.ToString())} s";
+            DurationVisibility = Visibility.Visible;
+            return;
+        }
+
+        if (family == DurationFamily.None || DurationBoostPct <= 0) return;
+        if (SkillDurationBoostData.OwnSeconds(resolved) is not { } own) return;        // aucune durée propre annoncée
+        int final = SkillDurationBoostData.Extend(own, DurationBoostPct);
+        if (final == own) return;                                                      // rallonge trop faible pour bouger l'entier
+        DurationText = $"{DurationFamilyLabel(family)} : "
+                     + $"{SkillProgression.MarkSkillBoost}{final}{SkillProgression.MarkSkillBoost} s";
         DurationVisibility = Visibility.Visible;
     }
+
+    // Libellé qui NOMME la durée touchée. Mots du client français du jeu (« pose », « préparation », « maléfice »,
+    // « cri », « chant »), cf. [[reference_fr_client_fait_foi]].
+    private static string DurationFamilyLabel(DurationFamily family) => family switch
+    {
+        DurationFamily.Stance      => L("Durée de pose effective",        "Effective stance duration"),
+        DurationFamily.Preparation => L("Durée de préparation effective", "Effective preparation duration"),
+        DurationFamily.Hex         => L("Durée de maléfice effective",    "Effective hex duration"),
+        DurationFamily.Shout       => L("Durée de cri effective",         "Effective shout duration"),
+        DurationFamily.Chant       => L("Durée de chant effective",       "Effective chant duration"),
+        _                          => string.Empty,
+    };
 
     private void UpdateFooter()
     {

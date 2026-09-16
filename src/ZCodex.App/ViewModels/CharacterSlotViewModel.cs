@@ -35,6 +35,7 @@ public class CharacterSlotViewModel : ViewModelBase
                     // L'icône de toggle « prolongateurs de durée » apparaît/disparaît selon la
                     // présence de Blessed Aura / Extend Enchantments dans la barre.
                     OnPropertyChanged(nameof(HasDurationBooster));
+                    OnPropertyChanged(nameof(DurationBoosterSkill));
                     // Le bandeau des boosts d'attribut (Lot A) suit les compétences qualifiantes
                     // équipées (Aura of the Lich, Awaken the Blood...).
                     OnPropertyChanged(nameof(AttributeBoostToggles));
@@ -296,9 +297,14 @@ public class CharacterSlotViewModel : ViewModelBase
 
     // Le perso porte-t-il un prolongateur (Blessed Aura / Extend Enchantments) → l'icône de toggle
     // apparaît. Re-notifié quand une skill change (cf. constructeur).
-    public bool HasDurationBooster =>
-        SkillSlots.Any(s => s.Skill?.Id is EnchantmentDuration.BlessedAuraSkillId
-                                        or EnchantmentDuration.ExtendEnchantmentsSkillId);
+    public bool HasDurationBooster => DurationBoosterSkill is not null;
+
+    // La compétence qui porte le toggle, pour afficher SON icône plutôt qu'un glyphe d'horloge (demande de
+    // Philippe du 16/09/2026). Un perso ne peut en porter qu'une en pratique ; la 1re de la barre gagne.
+    public Skill? DurationBoosterSkill =>
+        SkillSlots.Select(s => s.Skill)
+                  .FirstOrDefault(sk => sk?.Id is EnchantmentDuration.BlessedAuraSkillId
+                                                or EnchantmentDuration.ExtendEnchantmentsSkillId);
 
     // Toggle « prolongateurs de durée » de ce perso (Blessed Aura maintenu / Extend appliqué au
     // prochain enchantement). Off → aucun effet ; on → durées Monk/Derviche rallongées (ambre) dans
@@ -412,13 +418,15 @@ public class CharacterSlotViewModel : ViewModelBase
 
     // Id d'icône d'une compétence personnelle togglable, null sinon : boost d'attribut (id de la
     // compétence), accélérateur d'adrénaline « you », réduction de coût d'énergie (lot 2) ou effet de recharge et
-    // d'incantation (lot 3) — id de base : une variante « (PvP) » partage l'icône de sa jumelle et reste allumée quand
-    // le catalogue change de mode. Une compétence présente dans plusieurs tables (Glyph of Energy) n'a qu'une icône.
+    // d'incantation (lot 3) ou allongeur de durée (lot 4a) — id de base : une variante « (PvP) » partage l'icône de sa
+    // jumelle et reste allumée quand le catalogue change de mode. Une compétence présente dans plusieurs tables (Glyph of
+    // Energy, mais aussi Pose de pratique et Lingwah, dans deux lots chacune) n'a qu'une icône.
     private static int? PersonalToggleIdOf(Skill skill) =>
         AttributeBoostData.BySkillId(skill.Id) is not null ? skill.Id
         : AdrenalineBoostData.BySkillId(skill.Id) is { Scope: AdrenalineBoostScope.Self } d ? d.ToggleId
         : EnergyCostBoostData.BySkillId(skill.Id) is { } e ? e.ToggleId
         : SkillSpeedBoostData.BySkillId(skill.Id) is { Received: false } v ? v.ToggleId
+        : SkillDurationBoostData.BySkillId(skill.Id) is { } u ? u.ToggleId
         : null;
 
     // Familles dont un perso ne porte qu'un effet à la fois (wiki *Effect stacking* : « one stance, one preparation, one
@@ -638,6 +646,20 @@ public class CharacterSlotViewModel : ViewModelBase
             && SkillSpeedBoostData.BySkillId(woq.Id) is { } wd)
             active.Add((wd, woq, 0));
         return active.Count == 0 ? default : SkillSpeedBoostData.SpeedFor(target, active);
+    }
+
+    // ── Allongeurs de durée propre (chantier infobulle, lot 4a) ───────────────
+
+    /// <summary>Pourcentage de rallonge (0 = aucun) que les allongeurs ALLUMÉS de ce perso appliquent à la durée propre
+    /// de <paramref name="target"/>. Même collecte que SkillSpeedFor : la compétence équipée porte la progression, le
+    /// rang vient de sa caractéristique d'échelle.</summary>
+    public int DurationBoostFor(Skill target)
+    {
+        var active = new List<(SkillDurationBoostDescriptor, Skill, int)>();
+        foreach (var slot in SkillSlots)
+            if (slot.Skill is { } sk && SkillDurationBoostData.BySkillId(sk.Id) is { } d && IsAttributeBoostActive(d.ToggleId))
+                active.Add((d, sk, d.ScalingAttribute is { } attr ? AttributeLevel(attr) ?? 0 : 0));
+        return active.Count == 0 ? 0 : SkillDurationBoostData.PercentFor(target, active);
     }
 
     // Boost « override » actif (Lot C, Master of Magic) : remplace le niveau de base au lieu de s'y

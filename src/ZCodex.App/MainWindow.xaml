@@ -47,7 +47,8 @@
                                       EnergyReduction="{Binding EnergyReduction}"
                                       SkillSpeed="{Binding SkillSpeed}"
                                       FastCastingRank="{Binding FastCastingRank}"
-                                      AdrenalineStrikesGiven="{Binding AdrenalineStrikesGiven}"/>
+                                      AdrenalineStrikesGiven="{Binding AdrenalineStrikesGiven}"
+                                      DurationBoostPct="{Binding DurationBoostPct}"/>
         </DataTemplate>
 
         <!-- Tooltip du catalogue de recherche : DataContext de la cellule = le Skill lui-même. -->
@@ -803,16 +804,35 @@
                              (ambre) dans les infobulles. Même idiome ★/☆ (2 TextBlocks superposés). -->
                         <StackPanel Orientation="Horizontal" Margin="0,3,0,0"
                                     Visibility="{Binding HasDurationBooster, Converter={StaticResource BoolToVisibilityConverter}}">
-                            <TextBlock Text="&#xE121;" FontFamily="Segoe MDL2 Assets" FontSize="13" Cursor="Hand"
-                                       VerticalAlignment="Center" Foreground="{DynamicResource RitualVariableBrush}"
-                                       ToolTip="{DynamicResource S.Row.BoostersOnTip}"
-                                       MouseLeftButtonUp="DurationBoosters_Click"
-                                       Visibility="{Binding DurationBoostersEnabled, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                            <TextBlock Text="&#xE121;" FontFamily="Segoe MDL2 Assets" FontSize="13" Cursor="Hand"
-                                       VerticalAlignment="Center" Foreground="{DynamicResource IconMutedBrush}"
-                                       ToolTip="{DynamicResource S.Row.BoostersOffTip}"
-                                       MouseLeftButtonUp="DurationBoosters_Click"
-                                       Visibility="{Binding DurationBoostersEnabled, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Invert}"/>
+                            <Border MouseLeftButtonUp="DurationBoosters_Click" Cursor="Hand"
+                                    Width="18" Height="18" CornerRadius="2" BorderThickness="2" Background="Transparent">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="BorderBrush" Value="Transparent"/>
+                                        <Setter Property="ToolTip" Value="{DynamicResource S.Row.BoostersOffTip}"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding DurationBoostersEnabled}" Value="True">
+                                                <Setter Property="BorderBrush" Value="#43A047"/>
+                                                <Setter Property="ToolTip" Value="{DynamicResource S.Row.BoostersOnTip}"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <Grid Width="14" Height="14">
+                                    <Grid.Style>
+                                        <Style TargetType="Grid">
+                                            <Setter Property="Opacity" Value="0.35"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding DurationBoostersEnabled}" Value="True">
+                                                    <Setter Property="Opacity" Value="1"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Grid.Style>
+                                    <Image Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"
+                                           Source="{Binding DurationBoosterSkill.IconPath, Converter={StaticResource UrlToImage}, ConverterParameter=64}"/>
+                                </Grid>
+                            </Border>
                         </StackPanel>
                         <!-- Bandeau local des boosts d'attribut (Lot A) — se masque de lui-même si
                              aucune compétence qualifiante équipée (HasAttributeBoostToggles). -->
@@ -885,7 +905,8 @@
                                                                       EnergyReduction="{Binding EnergyReduction}"
                                                                       SkillSpeed="{Binding SkillSpeed}"
                                                                       FastCastingRank="{Binding FastCastingRank}"
-                                                                      AdrenalineStrikesGiven="{Binding AdrenalineStrikesGiven}"/>
+                                                                      AdrenalineStrikesGiven="{Binding AdrenalineStrikesGiven}"
+                                                                      DurationBoostPct="{Binding DurationBoostPct}"/>
                                         </ToolTip>
                                     </Border.ToolTip>
                                     <Border.ContextMenu>
@@ -2412,16 +2433,35 @@
                                              DataContext local = Character → binding direct. -->
                                         <StackPanel Orientation="Horizontal" Margin="2,4,0,0"
                                                     Visibility="{Binding HasDurationBooster, Converter={StaticResource BoolToVisibilityConverter}}">
-                                            <TextBlock Text="&#xE121;" FontFamily="Segoe MDL2 Assets" FontSize="14" Cursor="Hand"
-                                                       VerticalAlignment="Center" Foreground="{DynamicResource RitualVariableBrush}"
-                                                       ToolTip="{DynamicResource S.Row.BoostersOnTip}"
-                                                       MouseLeftButtonUp="DurationBoosters_Click"
-                                                       Visibility="{Binding DurationBoostersEnabled, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                                            <TextBlock Text="&#xE121;" FontFamily="Segoe MDL2 Assets" FontSize="14" Cursor="Hand"
-                                                       VerticalAlignment="Center" Foreground="{DynamicResource IconMutedBrush}"
-                                                       ToolTip="{DynamicResource S.Row.BoostersOffTip}"
-                                                       MouseLeftButtonUp="DurationBoosters_Click"
-                                                       Visibility="{Binding DurationBoostersEnabled, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Invert}"/>
+                                            <Border MouseLeftButtonUp="DurationBoosters_Click" Cursor="Hand"
+                                                    Width="20" Height="20" CornerRadius="2" BorderThickness="2" Background="Transparent">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="BorderBrush" Value="Transparent"/>
+                                                        <Setter Property="ToolTip" Value="{DynamicResource S.Row.BoostersOffTip}"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding DurationBoostersEnabled}" Value="True">
+                                                                <Setter Property="BorderBrush" Value="#43A047"/>
+                                                                <Setter Property="ToolTip" Value="{DynamicResource S.Row.BoostersOnTip}"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                <Grid Width="16" Height="16">
+                                                    <Grid.Style>
+                                                        <Style TargetType="Grid">
+                                                            <Setter Property="Opacity" Value="0.35"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding DurationBoostersEnabled}" Value="True">
+                                                                    <Setter Property="Opacity" Value="1"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Grid.Style>
+                                                    <Image Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"
+                                                           Source="{Binding DurationBoosterSkill.IconPath, Converter={StaticResource UrlToImage}, ConverterParameter=64}"/>
+                                                </Grid>
+                                            </Border>
                                             <TextBlock Text="{DynamicResource S.Row.Boosters}" FontSize="10"
                                                        Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" Margin="5,0,0,0"/>
                                         </StackPanel>
