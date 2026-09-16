@@ -230,6 +230,32 @@ public class CharacterSlotViewModel : ViewModelBase
             ? NatureRitualData.EnergizingChorusReductionAtRank(rank)
             : 0;
 
+    // ── Sorts de protection du bandeau : incantation et recharge (chantier infobulle, lot 3b) ──
+    // Mêmes règles qu'Energizing Chorus : aucun ne joue sans porteur, aucun rang de simulation. Time Ward prend
+    // le rang d'Incantation rapide de son porteur le plus fort ; l'Étendard de sagesse n'a pas de rang du tout
+    // (sa réduction vaut toujours 50 %, son rang de titre ne change que la durée et la chance).
+
+    public Func<NatureRitualData.TeamSpeed>? TeamSpeedProvider { get; set; }
+
+    public NatureRitualData.TeamSpeed TeamSpeed =>
+        TeamSpeedProvider?.Invoke() ?? OwnerBuild?.TeamSpeed ?? default;
+
+    public static NatureRitualData.TeamSpeed TeamSpeedFor(
+        IReadOnlySet<NatureRitualData.Ritual> active, IEnumerable<CharacterSlotViewModel> characters)
+    {
+        // WearerRank parcourt la liste : on la matérialise (l'arbre d'un team build est un itérateur).
+        var list = characters as IReadOnlyList<CharacterSlotViewModel> ?? characters.ToList();
+        int timeWard = active.Contains(NatureRitualData.Ritual.TimeWard)
+                       && WearerRank(NatureRitualData.Ritual.TimeWard, list) is { } rank
+            ? NatureRitualData.TimeWardPercentAtRank(rank)
+            : 0;
+        // Aucun rang à résoudre : seul « quelqu'un la porte-t-il ? » compte (WearerRank rend 0, pas null, dès
+        // qu'un perso l'équipe).
+        bool ebon = active.Contains(NatureRitualData.Ritual.EbonBattleStandard)
+                    && WearerRank(NatureRitualData.Ritual.EbonBattleStandard, list) is not null;
+        return new(timeWard, ebon);
+    }
+
     // ── Tranquility : durée d'enchantement (Lot D) ────────────────────────────
 
     public Func<int>? TranquilityPercentProvider { get; set; }

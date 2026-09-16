@@ -1,4 +1,4 @@
-using ZCodex.Core.Data;
+﻿using ZCodex.Core.Data;
 using ZCodex.Core.Models;
 using System.Collections.ObjectModel;
 using R = ZCodex.Core.Data.NatureRitualData.Ritual;
@@ -6,11 +6,11 @@ using R = ZCodex.Core.Data.NatureRitualData.Ritual;
 namespace ZCodex.App.ViewModels;
 
 // Une icône du bandeau d'équipe : un esprit (rituel de la nature, Soothing) ou un effet porté par un perso
-// (Dark Fury, Mark of Fury, Energizing Chorus), togglable (clic → active/désactive l'environnement). Grisée
-// = inactif, cadre vert = actif, rouge pour un effet ennemi (Soothing). Roaring Winds, Tranquility et — en
-// PvP seulement — Nature's Renewal et Infuriating Heat portent un rang de simulation réglable (molette) ;
-// Mark of Fury et Energizing Chorus un badge au rang du porteur le plus fort, sans molette ; les autres ont
-// un effet fixe. La compétence reçue est déjà la variante du mode de jeu courant (PvE ou « (PvP) »), cf.
+// (tout ce qui n'est pas un esprit : Dark Fury, Mark of Fury, Energizing Chorus, les sorts de protection…),
+// togglable (clic → active/désactive l'environnement). Grisée = inactif, cadre vert = actif, rouge pour un
+// effet ennemi (Soothing). Un esprit non équipé dont l'effet dépend d'un rang porte un rang de simulation
+// réglable (molette) ; un effet « équipé seulement » porte un badge au rang de son porteur le plus fort,
+// sans molette ; les autres ont un effet fixe. La compétence reçue est déjà la variante du mode de jeu courant (PvE ou « (PvP) »), cf.
 // NatureRitualBandViewModel.Refresh.
 public class NatureRitualIndicatorViewModel : ViewModelBase
 {
@@ -63,6 +63,11 @@ public class NatureRitualIndicatorViewModel : ViewModelBase
             ? (fr ? "Effet ennemi subi par l'équipe.\n" : "Enemy effect suffered by the team.\n")
             : d.Ritual == R.MarkOfFury
                 ? (fr ? "Allumée = on frappe la cible marquée.\n" : "On = hitting the marked target.\n")
+            : d.Ritual == R.TimeWard
+                ? (fr ? "Allumée = l'équipe se tient dans la zone.\n" : "On = the team stands in the ward.\n")
+            : d.Ritual == R.EbonBattleStandard
+                ? (fr ? "Allumée = l'équipe est dans la zone et la chance a joué.\n"
+                      : "On = the team stands in the ward and the chance triggered.\n")
                 : string.Empty;
         ClickNote = fr ? $"{meaningNote}{rankNote}Cliquer pour {state}" : $"{meaningNote}{rankNote}Click to {state}";
     }
@@ -126,10 +131,10 @@ public class NatureRitualIndicatorViewModel : ViewModelBase
 
 /// <summary>
 /// Bandeau des effets d'équipe (rituels de la nature + effets d'adrénaline du lot 1b + Energizing Chorus du
-/// lot 2b), façon [[project_conditions_band]] mais clic = toggle de l'environnement. Mode « équipés
-/// seulement » (défaut) ou « tous » (<see cref="ShowAll"/>, préférence de vue globale), qui n'ajoute que les
-/// esprits (rituels de la nature, Soothing) : Dark Fury, Mark of Fury et Energizing Chorus n'apparaissent
-/// que portés (décision Philippe, 15/09/2026). Agrège 1..n persos (build simple = 1 ; teambuild = racines).
+/// lot 2b, sorts de protection du lot 3b), façon [[project_conditions_band]] mais clic = toggle de l'environnement. Mode
+/// « équipés seulement » (défaut) ou « tous » (<see cref="ShowAll"/>, préférence de vue globale), qui n'ajoute
+/// que les esprits (rituels de la nature, Soothing) : tout effet qui n'en est pas un n'apparaît que porté
+/// (décision Philippe, 15/09/2026). Agrège 1..n persos (build simple = 1 ; teambuild = racines).
 /// </summary>
 public class NatureRitualBandViewModel : ViewModelBase
 {

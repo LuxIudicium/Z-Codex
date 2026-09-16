@@ -74,6 +74,9 @@ public class BuildEditorViewModel : ViewModelBase
             () => CharacterSlotViewModel.RoaringWindsBonusFor(NatureRituals.Active, new[] { Character }, NatureRituals.RoaringWindsRank);
         Character.EnergizingChorusReductionProvider =
             () => CharacterSlotViewModel.EnergizingChorusReductionFor(NatureRituals.Active, new[] { Character });
+        // Sorts de protection du bandeau (lot 3b) : un build simple = un seul porteur possible, son propre perso.
+        Character.TeamSpeedProvider =
+            () => CharacterSlotViewModel.TeamSpeedFor(NatureRituals.Active, new[] { Character });
         Character.TranquilityPercentProvider =
             () => CharacterSlotViewModel.TranquilityPercentFor(NatureRituals.Active, new[] { Character }, NatureRituals.TranquilityRank);
         Character.NaturesRenewalPercentProvider =

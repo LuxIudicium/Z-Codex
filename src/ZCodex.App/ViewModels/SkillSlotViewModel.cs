@@ -309,6 +309,9 @@ public class SkillSlotViewModel : ViewModelBase
     public int RoaringWindsBonus => Owner?.RoaringWindsBonus ?? 0;
     // Points retirés aux cris et chants par Energizing Chorus (effet d'équipe, lot 2b) ; 0 si inactif.
     public int EnergizingChorusReduction => Owner?.EnergizingChorusReduction ?? 0;
+    // Sorts de protection du bandeau (lot 3b) : Time Ward (% au rang de son porteur) et Ebon Battle Standard of
+    // Wisdom (−50 % sur les sorts) ; vide s'ils sont éteints ou que personne ne les porte.
+    public NatureRitualData.TeamSpeed TeamSpeed => Owner?.TeamSpeed ?? default;
     // Surcoût d'incantation de Nature's Renewal, en % « plus long » : 100 en PvE (le ×2 fixe),
     // 50…83 en PvP (rang de Survie). L'activation du rituel est testée côté NatureRitualData.
     public int NaturesRenewalCastPct => Owner?.NaturesRenewalPercent ?? 100;
@@ -370,6 +373,7 @@ public class SkillSlotViewModel : ViewModelBase
         OnPropertyChanged(nameof(NatureRituals));
         OnPropertyChanged(nameof(RoaringWindsBonus));
         OnPropertyChanged(nameof(EnergizingChorusReduction));
+        OnPropertyChanged(nameof(TeamSpeed));
         OnPropertyChanged(nameof(NaturesRenewalCastPct));
         OnPropertyChanged(nameof(EnchantEnchantingPct));
         OnPropertyChanged(nameof(EnchantExtenderPct));

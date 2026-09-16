@@ -96,6 +96,7 @@
                                                                                       NatureRituals="{Binding NatureRituals}"
                                                                                       RoaringWindsBonus="{Binding RoaringWindsBonus}"
                                                                                       EnergizingChorusReduction="{Binding EnergizingChorusReduction}"
+                                                                                      TeamSpeed="{Binding TeamSpeed}"
                                                                                       NaturesRenewalCastPct="{Binding NaturesRenewalCastPct}"
                                                                                       EnchantEnchantingPct="{Binding EnchantEnchantingPct}"
                                                                                       EnchantExtenderPct="{Binding EnchantExtenderPct}"

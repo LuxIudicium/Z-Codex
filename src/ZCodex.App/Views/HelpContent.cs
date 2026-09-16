@@ -33,8 +33,8 @@ public static class HelpContent
 {
     // Version du CONTENU de l'aide (indépendante de la version applicative de l'À propos) :
     // à incrémenter et redater à chaque mise à jour.
-    public const string VersionFr = "Aide v20 — 15/09/2026";
-    public const string VersionEn = "Help v20 — 2026-09-15";
+    public const string VersionFr = "Aide v21 — 16/09/2026";
+    public const string VersionEn = "Help v21 — 2026-09-16";
 
     public static string Version => AppLanguage.IsFr ? VersionFr : VersionEn;
 
@@ -138,12 +138,12 @@ public static class HelpContent
               "Settings for that table: up to 8 AL columns (0–200, “+” button, empty field = column removed), character level (1–20) and target level (1–40, critical hit rate)."),
             R("Affichage" + M + "Afficher la barre des effets d'équipe",
               "View" + M + "Show team effects bar",
-              "Affiche ou masque le bandeau d'icônes des effets d'équipe — Rituels de la Nature, Dark Fury, Mark of Fury, Energizing Chorus, Soothing (éditeur et team build).",
-              "Shows or hides the team effects icon bar — Nature Rituals, Dark Fury, Mark of Fury, Energizing Chorus, Soothing (editor and team build)."),
+              "Affiche ou masque le bandeau d'icônes des effets d'équipe (éditeur et team build).",
+              "Shows or hides the team effects icon bar (editor and team build)."),
             R("Affichage" + M + "Afficher tous les effets d'équipe",
               "View" + M + "Show all team effects",
-              "Ajoute au bandeau les esprits qu'aucun personnage n'a équipés : les 9 Rituels de la Nature et Soothing. Dark Fury, Mark of Fury et Energizing Chorus n'apparaissent que si un personnage les porte.",
-              "Adds to the bar the spirits no character has equipped: the 9 Nature Rituals and Soothing. Dark Fury, Mark of Fury and Energizing Chorus only appear when a character carries them."),
+              "Ajoute au bandeau les esprits qu'aucun personnage n'a équipés. Les effets qui ne sont pas des esprits n'apparaissent que si un personnage les porte.",
+              "Adds to the bar the spirits no character has equipped. Effects that are not spirits only appear when a character carries them."),
             R("Affichage" + M + "Taille des icônes" + M + "Grande / Moyenne / Petite",
               "View" + M + "Icon size" + M + "Large / Medium / Small",
               "Taille des slots de compétences : 64, 52 ou 40 px — gain de place à l'écran.",
@@ -391,14 +391,14 @@ public static class HelpContent
               "Montre le flux actif ; clic pour l'activer ou le désactiver. Grise = inactif. Le flux est enregistré avec le team build.",
               "Shows the active flux; click to activate or deactivate it. Greyed = inactive. The flux is saved with the team build."),
             R("Bandeau des effets d'équipe", "Team effects bar",
-              "Une icône par effet porté par l'équipe ; « Afficher tous » ajoute les esprits non équipés (Rituels de la Nature et Soothing). Clic = activer/désactiver. Cadre vert = actif. Un petit trait sépare les familles : Rituels de la Nature, puis Dark Fury, Mark of Fury, Energizing Chorus et Soothing. Dark Fury, Mark of Fury et Energizing Chorus n'apparaissent que si un personnage les porte ; Mark of Fury et Energizing Chorus prennent le rang le plus haut de leurs porteurs (Magie du sang, Motivation). Energizing Chorus retire de l'énergie au prochain cri ou chant de toute l'équipe (infobulle en ambre). Tranquility, Nature's Renewal et Infuriating Heat suivent le mode PvE/PvP du catalogue : en PvP, l'icône et les chiffres sont ceux de la variante « (PvP) », plus faible.",
-              "One icon per effect carried by the team; “Show all” adds the unequipped spirits (Nature Rituals and Soothing). Click = toggle. Green frame = active. A thin line separates the families: Nature Rituals, then Dark Fury, Mark of Fury, Energizing Chorus and Soothing. Dark Fury, Mark of Fury and Energizing Chorus only appear when a character carries them; Mark of Fury and Energizing Chorus take their carriers' highest rank (Blood Magic, Motivation). Energizing Chorus lowers the Energy cost of the whole team's next shout or chant (amber tooltip). Tranquility, Nature's Renewal and Infuriating Heat follow the catalogue's PvE/PvP mode: in PvP the icon and the numbers are those of the weaker “(PvP)” variant."),
-            R("Effets d'adrénaline du bandeau", "Adrenaline effects in the bar",
-              "Infuriating Heat, Dark Fury et Mark of Fury accélèrent l'adrénaline de toute l'équipe ; Soothing, lancé par l'ennemi (cadre rouge), la fait monter deux fois moins vite. Soothing est proposé dès qu'un personnage porte une compétence d'adrénaline. L'infobulle d'une compétence d'adrénaline affiche alors les coups nécessaires en ambre, la valeur de base entre parenthèses.",
-              "Infuriating Heat, Dark Fury and Mark of Fury speed up adrenaline for the whole team; Soothing, cast by the enemy (red frame), makes it build twice as slowly. Soothing is offered as soon as a character carries an adrenaline skill. An adrenaline skill's tooltip then shows the strikes needed in amber, with the base value in parentheses."),
+              "Une icône par effet d'équipe actif ; « Afficher tous » ajoute les esprits que personne n'a équipés. Clic = activer/désactiver. Cadre vert = actif, cadre rouge = effet lancé par l'ennemi et subi par l'équipe. Un petit trait sépare les familles. Un effet qui n'est pas un esprit n'apparaît que si un personnage le porte, et prend alors le rang le plus fort de ses porteurs (badge sur l'icône). Les effets qui existent en version « (PvP) » suivent le mode du catalogue : en PvP, l'icône et les chiffres sont ceux de cette variante, plus faible.",
+              "One icon per active team effect; “Show all” adds the spirits nobody has equipped. Click = toggle. Green frame = active, red frame = effect cast by the enemy and suffered by the team. A thin line separates the families. An effect that is not a spirit only appears when a character carries it, and then takes its carriers' highest rank (badge on the icon). Effects that come in a “(PvP)” version follow the catalogue's mode: in PvP the icon and the numbers are those of that weaker variant."),
+            R("Ce que le bandeau change dans les infobulles", "What the bar changes in tooltips",
+              "Un effet actif recalcule les valeurs qu'il touche dans les infobulles des compétences — coups d'adrénaline nécessaires, énergie, incantation, recharge : la valeur modifiée s'affiche en ambre, la valeur de base entre parenthèses. Ces effets se cumulent avec ceux des compétences du personnage. Un effet ennemi (cadre rouge) est proposé dès qu'un personnage porte une compétence qu'il pénalise.",
+              "An active effect recomputes the values it changes in skill tooltips — strikes of adrenaline needed, Energy, activation, recharge: the modified value is shown in amber, the base value in parentheses. These effects stack with the character's own skills. An enemy effect (red frame) is offered as soon as a character carries a skill it penalises."),
             R("Molette sur une icône à badge de rang", "Wheel on an icon with a rank badge",
-              "Règle le rang simulé (badge sur l'icône) quand aucun personnage équipé ne l'impose. Si un porteur l'a équipé, c'est son rang le plus fort qui gagne. Concerne Roaring Winds et Tranquility, Nature's Renewal et Infuriating Heat en mode PvP (leur effet y dépend du rang ; Expertise pour Infuriating Heat).",
-              "Sets the simulated rank (badge on the icon) when no equipped character dictates it. If a carrier has it equipped, their highest rank wins. Applies to Roaring Winds and Tranquility, and to Nature's Renewal and Infuriating Heat in PvP mode (their effect is rank-dependent there; Expertise for Infuriating Heat)."),
+              "Règle le rang simulé (badge sur l'icône) des esprits que personne n'a équipés et dont l'effet dépend d'un rang. Si un personnage porte l'effet, c'est son rang le plus fort qui gagne et la molette n'a plus d'effet.",
+              "Sets the simulated rank (badge on the icon) for the spirits nobody has equipped whose effect depends on a rank. If a character carries the effect, their highest rank wins and the wheel does nothing."),
             R("Icône horloge (personnage)", "Clock icon (character)",
               "Active les prolongateurs de durée d'enchantement du personnage (Blessed Aura / Extend Enchantments). Se combine avec le mod d'arme « of Enchanting » et Tranquility.",
               "Enables the character's enchantment duration extenders (Blessed Aura / Extend Enchantments). Combines with the “of Enchanting” weapon mod and Tranquility."),

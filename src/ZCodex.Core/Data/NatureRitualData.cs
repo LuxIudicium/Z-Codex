@@ -60,12 +60,16 @@ public static class NatureRitualData
         Soothing,
         // Réduction d'énergie des cris et chants (lot 2b).
         EnergizingChorus,
+        // Sorts de protection qui accélèrent incantation et recharge (lot 3b) : affichés EN DERNIER dans le
+        // bandeau, après Soothing (décision Philippe du 16/09/2026).
+        TimeWard,
+        EbonBattleStandard,
     }
 
     /// <summary>Famille d'un effet du bandeau : un petit séparateur s'intercale entre deux familles
     /// (bandeau et menu Sélection). <see cref="Enemy"/> = effet lancé par l'ennemi et subi par
     /// l'équipe (Soothing) : cadre rouge, et jamais « équipé » par un perso de l'équipe.</summary>
-    public enum BandGroup { NatureRitual, Enchantment, Hex, Chant, Enemy }
+    public enum BandGroup { NatureRitual, Enchantment, Hex, Chant, Enemy, Ward }
 
     /// <summary>Métadonnées d'un rituel : identité, mappage vers la compétence de la base, libellé
     /// bilingue (<see cref="DisplayTooltip"/> choisit selon <see cref="AppLanguage.IsFr"/>).
@@ -143,6 +147,18 @@ public static class NatureRitualData
             PvpTooltipFr: "Effet ennemi : l'équipe gagne l'adrénaline deux fois moins vite.",
             PvpTooltipEn: "Enemy effect: the team builds adrenaline half as fast.",
             Group: BandGroup.Enemy),
+        // Sorts de protection (lot 3b), ids relevés dans la base réelle le 16/09/2026 : pas de variante « (PvP) »,
+        // PvE only, et « équipés seulement » comme tout effet du bandeau qui n'est pas un esprit. Time Ward porte un
+        // badge au rang d'Incantation rapide de son porteur ; l'Étendard n'en a pas (son rang ne change que la durée
+        // et la chance).
+        new(Ritual.TimeWard,           3422, "Time Ward",
+            "Alliés dans la zone : incantation des sorts et recharge de toutes les compétences −15…20 % (rang d'Incantation rapide du lanceur).",
+            "Allies in the ward: spells cast and all skills recharge 15…20% faster (caster's Fast Casting rank).",
+            Group: BandGroup.Ward, EquippedOnly: true),
+        new(Ritual.EbonBattleStandard, 2232, "Ebon Battle Standard of Wisdom",
+            "Alliés dans la zone : recharge des sorts −50 % (44…60 % de chance selon le rang).",
+            "Allies in the ward: spells recharge 50% faster (44…60% chance by rank).",
+            Group: BandGroup.Ward, EquippedOnly: true),
     ];
 
     /// <summary>Rituel portant ce SkillId, variante « (PvP) » COMPRISE : les deux ids mènent à la
@@ -255,6 +271,16 @@ public static class NatureRitualData
     /// une compétence du perso (lot 3), le flux.</summary>
     public readonly record struct SpeedResult(float Final, bool RitualChanged, bool SkillChanged, bool FluxChanged);
 
+    /// <summary>Sorts de protection du BANDEAU d'équipe qui accélèrent l'équipe (lot 3b) :
+    /// <paramref name="TimeWardPercent"/> résolu au rang d'Incantation rapide du porteur le plus fort (0 = éteint ou
+    /// personne ne le porte) et <paramref name="EbonBattleStandard"/> (−50 % fixes sur les sorts). Ils rejoignent le
+    /// produit des compétences du perso et son plafond de 50 %, mais colorent l'infobulle en AMBRE, comme tout effet
+    /// du bandeau. Un sort de protection s'applique AUSSI À LUI-MÊME : l'icône allumée dit qu'il est déjà posé sur le
+    /// terrain, et le jeu vérifie le bonus de recharge à la FIN de l'incantation, celui d'incantation à son DÉBUT —
+    /// donc relancer Time Ward dans un Time Ward existant profite des deux (Philippe, 16/09/2026). Seul le tout
+    /// premier lancer, sans rien au sol, n'en profite pas : la simulation, elle, suppose l'effet actif.</summary>
+    public readonly record struct TeamSpeed(int TimeWardPercent = 0, bool EbonBattleStandard = false);
+
     // Plafond commun de la recharge et de l'incantation (chantier infobulle, lot 3, décisions Philippe du 15/09/2026) :
     // les effets se multiplient, mais le résultat ne descend jamais sous 50 % de la base, sauf si un effet SEUL fait
     // mieux — il s'applique alors à sa propre valeur (Meteor Shower, 60 s : QZ + Serpent's Quickness = 30 ; Over the
@@ -289,25 +315,35 @@ public static class NatureRitualData
     /// Serpent's Quickness = 70). Recharge instantanée = 0. Le blocage des attaques par Deadly Paradox
     /// (<see cref="SkillSpeed.RechargeBlock"/>) n'entre PAS dans la valeur : l'infobulle l'affiche « 10+recharge ».</summary>
     public static SpeedResult Recharge(float baseRecharge, Skill? skill, IReadOnlySet<Ritual> active,
-        SkillSpeed speed = default, int fastCastingRank = 0)
+        SkillSpeed speed = default, int fastCastingRank = 0, TeamSpeed team = default)
     {
         bool qz = active.Contains(Ritual.QuickeningZephyr);
         bool ew = active.Contains(Ritual.EnergizingWind);
         decimal fc = fastCastingRank > 0 && FastCastingAffectsRecharge(skill)
             ? (100 - 3 * Math.Clamp(fastCastingRank, 0, 20)) / 100m
             : 1m;
-        float final = Compute(speed, qz || ew, fc);
+        // Sorts de protection du bandeau (lot 3b) : Time Ward accélère la recharge de TOUTES les compétences,
+        // l'Étendard celle des seuls sorts — leur PROPRE recharge comprise, puisque l'icône allumée dit qu'un premier
+        // exemplaire est déjà au sol (cf. TeamSpeed).
+        int tw = active.Contains(Ritual.TimeWard) ? Math.Clamp(team.TimeWardPercent, 0, 100) : 0;
+        int eb = active.Contains(Ritual.EbonBattleStandard) && team.EbonBattleStandard
+                 && skill is { } spell && EnergyCostBoostData.IsSpell(spell)
+            ? EbonBattleStandardPercent
+            : 0;
+        float final = Compute(speed, qz || ew, fc, tw, eb);
         return new(final,
-            RitualChanged: (qz || ew) && final != Compute(speed, false, fc),
+            RitualChanged: (qz || ew || tw > 0 || eb > 0) && final != Compute(speed, false, fc, 0, 0),
             SkillChanged: speed.ChangesRecharge
-                          && (speed.RechargeBlock > 0 || final != Compute(default, qz || ew, fc)),
+                          && (speed.RechargeBlock > 0 || final != Compute(default, qz || ew, fc, tw, eb)),
             FluxChanged: false);
 
-        float Compute(SkillSpeed s, bool rituals, decimal fcFactor)
+        float Compute(SkillSpeed s, bool rituals, decimal fcFactor, int twPct, int ebPct)
         {
             if (s.RechargeInstant) return 0f;
-            decimal kept = (1m - s.RechargeCut) * (!rituals ? 1m : qz ? 0.5m : ew ? 1.25m : 1m);
-            int strongest = rituals && qz ? Math.Max(s.RechargeStrongest, 50) : s.RechargeStrongest;
+            decimal kept = (1m - s.RechargeCut) * ((100 - twPct) / 100m) * ((100 - ebPct) / 100m)
+                         * (!rituals ? 1m : qz ? 0.5m : ew ? 1.25m : 1m);
+            int strongest = Math.Max(s.RechargeStrongest, Math.Max(twPct, ebPct));
+            if (rituals && qz) strongest = Math.Max(strongest, 50);
             decimal factor = Capped(kept, strongest) * fcFactor;
             // Arrondi au pair (convention GW1 énergie/recharge), SAUF quand Fast Casting intervient : sa table du wiki
             // arrondit au plus proche en montant (base 30 au rang 15 → 17, pas 16).
@@ -326,26 +362,33 @@ public static class NatureRitualData
     /// Philippe, 15/09/2026 ; seul Fast Casting le dépasse, hors périmètre) ; enfin Glyph of Sacrifice ramène à ¼ s et une
     /// incantation instantanée à 0. Les attaques ne reçoivent aucun effet de compétence (<see cref="SkillSpeedBoostData.SpeedFor"/>).</summary>
     public static SpeedResult CastTime(float baseCast, Skill skill, IReadOnlySet<Ritual> active,
-        int naturesRenewalPct = 100, int fluxPct = 0, SkillSpeed speed = default, int fastCastingRank = 0)
+        int naturesRenewalPct = 100, int fluxPct = 0, SkillSpeed speed = default, int fastCastingRank = 0,
+        TeamSpeed team = default)
     {
         if (baseCast <= 0f) return new(baseCast, false, false, false);
         bool nr = active.Contains(Ritual.NaturesRenewal) && (IsEnchantment(skill) || IsHex(skill));
         decimal fc = fastCastingRank > 0 && FastCastingAffectsCast(skill, baseCast)
             ? FastCastingCastFactor(fastCastingRank)
             : 1m;
-        float final = Compute(speed, nr, fluxPct, fc);
+        // Time Ward (lot 3b) : l'incantation des SORTS seulement — ni attaque, ni sceau, ni rituel d'asservissement —
+        // la sienne comprise (un Time Ward déjà posé accélère le suivant). L'Étendard ne touche pas l'incantation.
+        int tw = active.Contains(Ritual.TimeWard) && EnergyCostBoostData.IsSpell(skill)
+            ? Math.Clamp(team.TimeWardPercent, 0, 100)
+            : 0;
+        float final = Compute(speed, nr, fluxPct, fc, tw);
         return new(final,
-            RitualChanged: nr && final != Compute(speed, false, fluxPct, fc),
-            SkillChanged: speed.ChangesCast && final != Compute(default, nr, fluxPct, fc),
-            FluxChanged: fluxPct > 0 && final != Compute(speed, nr, 0, fc));
+            RitualChanged: (nr || tw > 0) && final != Compute(speed, false, fluxPct, fc, 0),
+            SkillChanged: speed.ChangesCast && final != Compute(default, nr, fluxPct, fc, tw),
+            FluxChanged: fluxPct > 0 && final != Compute(speed, nr, 0, fc, tw));
 
-        float Compute(SkillSpeed s, bool withNr, int flux, decimal fcFactor)
+        float Compute(SkillSpeed s, bool withNr, int flux, decimal fcFactor, int twPct)
         {
             decimal v = Math.Max(0m, (decimal)baseCast - s.CastFlat);
             decimal kept = (1m - s.CastCut)
+                         * ((100 - twPct) / 100m)
                          * (flux > 0 ? (100 - flux) / 100m : 1m)
                          * (withNr ? 1m + Math.Max(naturesRenewalPct, 0) / 100m : 1m);
-            if (kept != 1m) v *= Math.Min(Capped(kept, Math.Max(s.CastStrongest, flux)), 2.5m);
+            if (kept != 1m) v *= Math.Min(Capped(kept, Math.Max(s.CastStrongest, Math.Max(flux, twPct))), 2.5m);
             // Vitesse d'attaque (IAS, ajout du 16/09/2026) : « attaquer X % plus vite » retire X % de la DURÉE de l'attaque
             // (wiki *Attack speed*), donc de son temps d'activation — hors du plafond d'incantation, qui ne vise pas les
             // attaques ; le plafond propre à la vitesse d'attaque (33 % de durée en moins) est appliqué par SpeedFor.
@@ -386,6 +429,7 @@ public static class NatureRitualData
         Ritual.InfuriatingHeat  => "Expertise",
         Ritual.MarkOfFury       => "Blood Magic",
         Ritual.EnergizingChorus => "Motivation",
+        Ritual.TimeWard         => "Fast Casting",
         _                      => "Wilderness Survival",
     };
 
@@ -512,12 +556,33 @@ public static class NatureRitualData
     public static int EnergizingChorusReductionAtRank(int rank) =>
         EnergizingChorusByRank[Math.Clamp(rank, 0, EnergizingChorusByRank.Length - 1)];
 
+    // ── Sorts de protection du bandeau (lot 3b) ──────────────────────────────
+
+    public const int TimeWardSkillId = 3422;
+    public const int EbonBattleStandardSkillId = 2232;
+
+    // Time Ward : « Allies in this ward cast spells 15…19…20% faster and recharge skills 15…19…20% faster »,
+    // progression[1] (incantation) et progression[2] (recharge) de la skill 3422 — IDENTIQUES — au rang
+    // d'Incantation rapide du lanceur. Ancres 0/12/15 = 15/19/20.
+    private static readonly int[] TimeWardByRank =
+        { 15, 15, 16, 16, 16, 17, 17, 17, 18, 18, 18, 19, 19, 19, 20, 20, 20, 21, 21, 21, 22 };
+
+    /// <summary>Réduction Time Ward (%) au rang d'Incantation rapide (clampé 0..20).</summary>
+    public static int TimeWardPercentAtRank(int rank) =>
+        TimeWardByRank[Math.Clamp(rank, 0, TimeWardByRank.Length - 1)];
+
+    /// <summary>Ebon Battle Standard of Wisdom : la recharge des sorts est TOUJOURS réduite de 50 %. Son rang
+    /// (titre Avant-garde d'Ebon) ne change que la durée et la chance (44…60 %) — icône allumée = la chance a joué
+    /// (décision du 14/09/2026), donc aucun badge de rang (Philippe, 16/09/2026).</summary>
+    public const int EbonBattleStandardPercent = 50;
+
     /// <summary>L'effet a-t-il un rang réglable DANS LE MODE COURANT ? Nature's Renewal et Infuriating
     /// Heat n'en ont un qu'en PvP (en PvE leur effet est fixe) ; Roaring Winds, Tranquility, Mark of
     /// Fury et Energizing Chorus en ont un dans les deux.</summary>
     public static bool HasRank(Ritual ritual) => ritual switch
     {
-        Ritual.RoaringWinds or Ritual.Tranquility or Ritual.MarkOfFury or Ritual.EnergizingChorus => true,
+        Ritual.RoaringWinds or Ritual.Tranquility or Ritual.MarkOfFury or Ritual.EnergizingChorus
+            or Ritual.TimeWard                                         => true,
         Ritual.NaturesRenewal or Ritual.InfuriatingHeat                => PvpVariants,
         _                                                              => false,
     };

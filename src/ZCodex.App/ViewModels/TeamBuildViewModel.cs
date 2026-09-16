@@ -79,7 +79,7 @@ public class TeamBuildViewModel : ViewModelBase, IRenamableTab
         Mutated += () =>
         {
             var (skill, bonus) = HeroicRefrain;
-            string sig = $"{skill?.Id}|{bonus}|{WeaponOfFury?.Id}|{WeaponOfQuickening?.Id}|{string.Join(";", TeamAdrenaline.Effects)}|{EnergizingChorusReduction}";
+            string sig = $"{skill?.Id}|{bonus}|{WeaponOfFury?.Id}|{WeaponOfQuickening?.Id}|{string.Join(";", TeamAdrenaline.Effects)}|{EnergizingChorusReduction}|{TeamSpeed}";
             if (sig == _heroicRefrainSig) return;
             _heroicRefrainSig = sig;
             _heroicRefrainTimer.Stop();
@@ -109,6 +109,11 @@ public class TeamBuildViewModel : ViewModelBase, IRenamableTab
     // 0 si personne ne l'équipe (pas de rang de simulation).
     public int EnergizingChorusReduction =>
         CharacterSlotViewModel.EnergizingChorusReductionFor(NatureRituals.Active, EnumerateTree());
+
+    // Sorts de protection du bandeau (lot 3b) : Time Ward au rang d'Incantation rapide de son porteur le plus
+    // fort, Ebon Battle Standard of Wisdom à −50 % fixes ; rien du tout sans porteur (pas de rang de simulation).
+    public ZCodex.Core.Data.NatureRitualData.TeamSpeed TeamSpeed =>
+        CharacterSlotViewModel.TeamSpeedFor(NatureRituals.Active, EnumerateTree());
 
     // % Tranquility (durée d'enchantement) : rang du porteur, ou rang de simulation si non équipé.
     public int TranquilityPercent =>

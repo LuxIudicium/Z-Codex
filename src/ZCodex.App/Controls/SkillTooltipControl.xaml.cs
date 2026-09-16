@@ -239,6 +239,18 @@ public partial class SkillTooltipControl : UserControl
         set => SetValue(EnergizingChorusReductionProperty, value);
     }
 
+    // Sorts de protection du bandeau d'équipe (lot 3b) : Time Ward résolue au rang de son porteur, Ebon Battle
+    // Standard of Wisdom à −50 % fixes. Fournis par le slot, comme Energizing Chorus.
+    public static readonly DependencyProperty TeamSpeedProperty =
+        DependencyProperty.Register(nameof(TeamSpeed), typeof(NatureRitualData.TeamSpeed), typeof(SkillTooltipControl),
+            new PropertyMetadata(default(NatureRitualData.TeamSpeed), OnInputsChanged));
+
+    public NatureRitualData.TeamSpeed TeamSpeed
+    {
+        get => (NatureRitualData.TeamSpeed)GetValue(TeamSpeedProperty);
+        set => SetValue(TeamSpeedProperty, value);
+    }
+
     // Surcoût d'incantation de Nature's Renewal, en % « plus long » : 100 = le ×2 du PvE (défaut),
     // 50…83 en PvP où l'effet suit le rang de Survie du lanceur. Fourni par le slot.
     public static readonly DependencyProperty NaturesRenewalCastPctProperty =
@@ -735,7 +747,7 @@ public partial class SkillTooltipControl : UserControl
         if (baseCast <= 0f || Skill is not { } s) { CastText = baseCast > 0f ? baseCast.ToString("0.##") : string.Empty; return; }
 
         var r = NatureRitualData.CastTime(baseCast, s, NatureRituals ?? EmptyRituals, NaturesRenewalCastPct, FluxCastPercent,
-                                          SkillSpeed, FastCastingRank);
+                                          SkillSpeed, FastCastingRank, TeamSpeed);
         if (Math.Abs(r.Final - baseCast) < 0.001f) { CastText = baseCast.ToString("0.##"); return; }
 
         // Fast Casting ne colore rien (caractéristique toujours active, comme l'Expertise sur l'énergie) : si rien d'autre
@@ -754,7 +766,7 @@ public partial class SkillTooltipControl : UserControl
     {
         float baseR = Skill?.Recharge ?? 0f;
         var speed = SkillSpeed;
-        var r = NatureRitualData.Recharge(baseR, Skill, NatureRituals ?? EmptyRituals, speed, FastCastingRank);
+        var r = NatureRitualData.Recharge(baseR, Skill, NatureRituals ?? EmptyRituals, speed, FastCastingRank, TeamSpeed);
         RechargeVisibility = r.Final > 0f || baseR > 0f || speed.RechargeBlock > 0 ? Visibility.Visible : Visibility.Collapsed;
         if (RechargeVisibility != Visibility.Visible) { RechargeText = string.Empty; return; }
         if (speed.RechargeBlock == 0 && Math.Abs(r.Final - baseR) < 0.001f) { RechargeText = baseR.ToString("0.##"); return; }
