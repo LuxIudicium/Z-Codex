@@ -75,11 +75,14 @@ public class TeamBuildViewModel : ViewModelBase, IRenamableTab
         // d'adrénaline du bandeau (lot 1b) aussi : l'Expertise ou la Magie du sang de leur lanceur
         // change les coups nécessaires dans les infobulles de TOUS les persos. Energizing Chorus (lot 2b)
         // aussi : la Motivation de son lanceur change le coût des cris et chants de tous. Weapon of Quickening (lot 3) suit
-        // le chemin de Weapon of Fury.
+        // le chemin de Weapon of Fury, et Sundering Weapon (lot 4b) aussi — avec son RANG, qui change la durée
+        // d'armure brisée annoncée chez tous ses receveurs.
         Mutated += () =>
         {
             var (skill, bonus) = HeroicRefrain;
-            string sig = $"{skill?.Id}|{bonus}|{WeaponOfFury?.Id}|{WeaponOfQuickening?.Id}|{string.Join(";", TeamAdrenaline.Effects)}|{EnergizingChorusReduction}|{TeamSpeed}";
+            string sig = $"{skill?.Id}|{bonus}|{WeaponOfFury?.Id}|{WeaponOfQuickening?.Id}|{SunderingWeapon}"
+                       + $"|{JudgesInsight?.Id}|{string.Join(";", TeamAdrenaline.Effects)}"
+                       + $"|{EnergizingChorusReduction}|{TeamSpeed}";
             if (sig == _heroicRefrainSig) return;
             _heroicRefrainSig = sig;
             _heroicRefrainTimer.Stop();
@@ -134,6 +137,12 @@ public class TeamBuildViewModel : ViewModelBase, IRenamableTab
 
     // Weapon of Quickening (lot 3) : même diffusion que Weapon of Fury.
     public Skill? WeaponOfQuickening => CharacterSlotViewModel.WeaponOfQuickeningFor(EnumerateTree());
+
+    // Sundering Weapon (lot 4b) : même diffusion, plus le Communion du porteur le plus fort de l'arbre.
+    public (Skill? Skill, int Rank) SunderingWeapon => CharacterSlotViewModel.SunderingWeaponFor(EnumerateTree());
+
+    // Clairvoyance du juge (lot 4b) : même diffusion que Weapon of Fury, sans rang.
+    public Skill? JudgesInsight => CharacterSlotViewModel.JudgesInsightFor(EnumerateTree());
 
     // Effets d'adrénaline du bandeau d'équipe (chantier infobulle, lot 1b) : rangs au lanceur le plus
     // fort de l'arbre, ou rangs de simulation du bandeau.

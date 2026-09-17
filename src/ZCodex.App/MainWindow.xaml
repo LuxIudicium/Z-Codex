@@ -48,7 +48,8 @@
                                       SkillSpeed="{Binding SkillSpeed}"
                                       FastCastingRank="{Binding FastCastingRank}"
                                       AdrenalineStrikesGiven="{Binding AdrenalineStrikesGiven}"
-                                      DurationBoostPct="{Binding DurationBoostPct}"/>
+                                      DurationBoostPct="{Binding DurationBoostPct}"
+                                      ConditionDurations="{Binding ConditionDurations}"/>
         </DataTemplate>
 
         <!-- Tooltip du catalogue de recherche : DataContext de la cellule = le Skill lui-même. -->
@@ -906,7 +907,8 @@
                                                                       SkillSpeed="{Binding SkillSpeed}"
                                                                       FastCastingRank="{Binding FastCastingRank}"
                                                                       AdrenalineStrikesGiven="{Binding AdrenalineStrikesGiven}"
-                                                                      DurationBoostPct="{Binding DurationBoostPct}"/>
+                                                                      DurationBoostPct="{Binding DurationBoostPct}"
+                                                                      ConditionDurations="{Binding ConditionDurations}"/>
                                         </ToolTip>
                                     </Border.ToolTip>
                                     <Border.ContextMenu>

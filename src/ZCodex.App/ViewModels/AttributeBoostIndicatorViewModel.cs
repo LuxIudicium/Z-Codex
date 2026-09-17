@@ -27,13 +27,19 @@ public class AttributeBoostIndicatorViewModel : ViewModelBase
         string off = T(received ? "S.Boost.StopReceiving" : "S.Boost.Deactivate");
         string click = string.Format(T("S.Boost.ClickTo"), active ? off : on);
 
-        // Note au-dessus de l'instruction de clic : le mod « Furious » et Jaundiced Gaze (effet de
-        // retrait, lot 2) s'allument quand ils ont proc ; Natural Temper ne fait rien tant qu'un effet actif
-        // enchante le perso (Onslaught) ; Selfless Spirit s'allume quand le sort vise un autre allié (lot 2) ; Ghostly Haste
+        // Note au-dessus de l'instruction de clic : le mod « Furious », Jaundiced Gaze (effet de
+        // retrait, lot 2) et Glass Arrows (saignement sur coup bloqué, lot 4b) s'allument quand ils ont proc ;
+        // Natural Temper ne fait rien tant qu'un effet actif
+        // enchante le perso (Onslaught) ; le Sceau de l'Archer non plus tant que le set d'armes actif ne porte pas
+        // d'arc, ni l'Application de poison tant qu'un effet convertit les dégâts d'attaque du perso (lot 4b) ; Selfless Spirit s'allume quand le sort vise un autre allié (lot 2) ; Ghostly Haste
         // quand un esprit est à portée, Signet of Mystic Speed quand l'enchantement vise ce perso (lot 3).
-        string? note = skill is null || skill.Id == 763 ? T("S.Boost.ProcNote")
+        string? note = skill is null || skill.Id is 763 or 1199 or 3145 ? T("S.Boost.ProcNote")
             : AdrenalineBoostData.BySkillId(skill.Id) is { NeedsUnenchanted: true } && owner.IsEnchantedByAdrenalineEffect
                 ? T("S.Boost.NoEffectEnchanted")
+            : skill.Id == ConditionDurationData.ArcherSignetSkillId && owner.ArcherSignetWithoutBow
+                ? T("S.Boost.NoEffectWithoutBow")
+            : ConditionDurationData.BySkillId(skill.Id) is { RequiresPhysical: true } && owner.AttacksNoLongerPhysical
+                ? T("S.Boost.NoEffectNonPhysical")
             : skill.Id is EnergyCostBoostData.SelflessSpiritKurzickSkillId or EnergyCostBoostData.SelflessSpiritLuxonSkillId
                 ? T("S.Boost.OtherAllyNote")
             : skill.Id == SkillSpeedBoostData.GhostlyHasteSkillId ? T("S.Boost.SpiritNote")

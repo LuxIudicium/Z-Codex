@@ -100,6 +100,10 @@ public class BuildEditorViewModel : ViewModelBase
         Character.WeaponOfFuryProvider = () => CharacterSlotViewModel.WeaponOfFuryFor(new[] { Character });
         // Weapon of Quickening (lot 3) : idem.
         Character.WeaponOfQuickeningProvider = () => CharacterSlotViewModel.WeaponOfQuickeningFor(new[] { Character });
+        // Sundering Weapon (lot 4b) : idem.
+        Character.SunderingWeaponProvider = () => CharacterSlotViewModel.SunderingWeaponFor(new[] { Character });
+        // Clairvoyance du juge (lot 4b) : idem.
+        Character.JudgesInsightProvider = () => CharacterSlotViewModel.JudgesInsightFor(new[] { Character });
 
         // Nouveau build vierge : la PR est obligatoire dans l'éditeur (isQuery=false → le picker
         // n'offre pas « None » sur la PR). Pour qu'un code Any/SEC ne puisse JAMAIS être produit,

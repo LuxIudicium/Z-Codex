@@ -327,12 +327,28 @@ public class CharacterSlotViewModel : ViewModelBase
     // (chantier infobulle, lot 1a ; allumée = le doublement d'adrénaline a proc).
     public bool HasFuriousMod => ActiveWeaponSetHasMod(AdrenalineBoostData.IsFuriousMod);
 
-    private bool ActiveWeaponSetHasMod(Func<int, bool> isMod)
+    private bool ActiveWeaponSetHasMod(Func<int, bool> isMod) => ActiveWeaponSetModIds().Any(isMod);
+
+    private IEnumerable<int> ActiveWeaponSetModIds() =>
+        ActiveWeaponSetItems().SelectMany(i => i.ModifierIds);
+
+    private IEnumerable<EquipmentItem> ActiveWeaponSetItems()
     {
         var eq = _equipment;
-        if (eq is null || eq.WeaponSets.Count == 0) return false;
-        int set = Math.Clamp(eq.ActiveSet, 0, eq.WeaponSets.Count - 1);
-        return eq.WeaponSets[set].Items.Any(i => i.ModifierIds.Any(isMod));
+        if (eq is null || eq.WeaponSets.Count == 0) return [];
+        return eq.WeaponSets[Math.Clamp(eq.ActiveSet, 0, eq.WeaponSets.Count - 1)].Items;
+    }
+
+    // Type de l'arme de MAIN du set d'armes actif (None = aucune arme renseignée). Il décide le périmètre des
+    // ajouteurs de condition à arme libre et la présence de l'arc qu'exige le Sceau de l'Archer (lot 4b).
+    private WeaponKind ActiveWeaponKind()
+    {
+        foreach (var item in ActiveWeaponSetItems())
+            if (item.Slot == GwEquipmentInfo.SlotWeapon
+                && GwEquipmentInfo.Items.TryGetValue(item.ItemId, out var info)
+                && info.Weapon != WeaponKind.None)
+                return info.Weapon;
+        return WeaponKind.None;
     }
 
     // Prolongateur PERSONNEL applicable à cette compétence (0 si toggle éteint ou skill hors cible) :
@@ -409,6 +425,10 @@ public class CharacterSlotViewModel : ViewModelBase
                 items = items.Append(new AttributeBoostIndicatorViewModel(this, wof, AdrenalineBoostData.WeaponOfFurySkillId, received: true));
             if (WeaponOfQuickening is { } woq)
                 items = items.Append(new AttributeBoostIndicatorViewModel(this, woq, SkillSpeedBoostData.WeaponOfQuickeningSkillId, received: true));
+            if (SunderingWeapon.Skill is { } sw)
+                items = items.Append(new AttributeBoostIndicatorViewModel(this, sw, ConditionDurationData.SunderingWeaponSkillId, received: true));
+            if (JudgesInsight is { } ji)
+                items = items.Append(new AttributeBoostIndicatorViewModel(this, ji, ConditionDurationData.JudgesInsightSkillId, received: true));
             if (HasFuriousMod)
                 items = items.Append(new AttributeBoostIndicatorViewModel(this, null, AdrenalineBoostData.FuriousModToggleId, received: false));
 
@@ -427,6 +447,9 @@ public class CharacterSlotViewModel : ViewModelBase
         : EnergyCostBoostData.BySkillId(skill.Id) is { } e ? e.ToggleId
         : SkillSpeedBoostData.BySkillId(skill.Id) is { Received: false } v ? v.ToggleId
         : SkillDurationBoostData.BySkillId(skill.Id) is { } u ? u.ToggleId
+        : ConditionDurationData.BySkillId(skill.Id) is { Received: false } c ? c.ToggleId
+        : ConditionDurationData.ConverterBySkillId(skill.Id) is { Received: false } k ? k.ToggleId
+        : skill.Id == ConditionDurationData.ArcherSignetSkillId ? skill.Id
         : null;
 
     // Familles dont un perso ne porte qu'un effet à la fois (wiki *Effect stacking* : « one stance, one preparation, one
@@ -437,7 +460,8 @@ public class CharacterSlotViewModel : ViewModelBase
     private string? ExclusiveFamilyOf(int toggleId)
     {
         // Sorts d'arme reçus d'un allié : leur compétence n'est pas forcément sur la barre de CE perso.
-        if (toggleId is AdrenalineBoostData.WeaponOfFurySkillId or SkillSpeedBoostData.WeaponOfQuickeningSkillId)
+        if (toggleId is AdrenalineBoostData.WeaponOfFurySkillId or SkillSpeedBoostData.WeaponOfQuickeningSkillId
+                     or ConditionDurationData.SunderingWeaponSkillId)
             return "Weapon Spell";
         return SkillSlots.Select(s => s.Skill)
             .FirstOrDefault(sk => sk is not null && ExclusiveSkillTypes.Contains(sk.SkillType) && PersonalToggleIdOf(sk) == toggleId)
@@ -550,6 +574,37 @@ public class CharacterSlotViewModel : ViewModelBase
 
     public Skill? WeaponOfQuickening => WeaponOfQuickeningProvider is { } p ? p() : OwnerBuild?.WeaponOfQuickening;
 
+    // Sundering Weapon (lot 4b, « target ally ») : même patron, mais AVEC un rang — la durée d'armure brisée
+    // qu'elle ajoute suit le Communion du LANCEUR, donc le plus fort de ses porteurs (« le plus fort gagne »).
+    public static (Skill? Skill, int Rank) SunderingWeaponFor(IEnumerable<CharacterSlotViewModel> characters)
+    {
+        Skill? found = null;
+        int best = 0;
+        foreach (var c in characters)
+            foreach (var slot in c.SkillSlots)
+                if (slot.Skill is { } sk && sk.Id == ConditionDurationData.SunderingWeaponSkillId)
+                {
+                    found ??= sk;
+                    best = Math.Max(best, c.AttributeLevel(ConditionDurationData.SunderingWeaponAttribute) ?? 0);
+                }
+        return (found, best);
+    }
+
+    public Func<(Skill? Skill, int Rank)>? SunderingWeaponProvider { get; set; }
+
+    public (Skill? Skill, int Rank) SunderingWeapon =>
+        SunderingWeaponProvider is { } p ? p() : OwnerBuild?.SunderingWeapon ?? (null, 0);
+
+    // Clairvoyance du juge (lot 4b, « target ally ») : patron Weapon of Fury, sans rang — elle convertit les
+    // attaques du receveur en sacré, ce qui suspend l'Application de poison.
+    public static Skill? JudgesInsightFor(IEnumerable<CharacterSlotViewModel> characters) =>
+        characters.SelectMany(c => c.SkillSlots).Select(s => s.Skill)
+            .FirstOrDefault(sk => sk?.Id == ConditionDurationData.JudgesInsightSkillId);
+
+    public Func<Skill?>? JudgesInsightProvider { get; set; }
+
+    public Skill? JudgesInsight => JudgesInsightProvider is { } p ? p() : OwnerBuild?.JudgesInsight;
+
     // Effets d'adrénaline du bandeau d'équipe (lot 1b) : Infuriating Heat, Dark Fury, Mark of Fury,
     // Soothing. Environnement du teambuild propriétaire, ou (build simple) provider de l'éditeur.
     public Func<AdrenalineGain.TeamEffects>? TeamAdrenalineProvider { get; set; }
@@ -660,6 +715,91 @@ public class CharacterSlotViewModel : ViewModelBase
             if (slot.Skill is { } sk && SkillDurationBoostData.BySkillId(sk.Id) is { } d && IsAttributeBoostActive(d.ToggleId))
                 active.Add((d, sk, d.ScalingAttribute is { } attr ? AttributeLevel(attr) ?? 0 : 0));
         return active.Count == 0 ? 0 : SkillDurationBoostData.PercentFor(target, active);
+    }
+
+    // ── Durées de conditions (chantier infobulle, lot 4b) ─────────────────────
+
+    /// <summary>Ce que les effets actifs de ce perso font aux conditions de <paramref name="target"/> :
+    /// conditions AJOUTÉES à ses attaques (Apply Poison, Sharpen Daggers…, Sundering Weapon reçue) et
+    /// allongeurs applicables (Sceau de l'Archer allumé arc en main, préfixes d'arme du set actif). Ces
+    /// derniers ne dépendent PAS de la compétence : le sceau allonge toute condition qu'elle applique.</summary>
+    public ConditionDurations ConditionDurationsFor(Skill target)
+    {
+        var equipped = ActiveWeaponKind();
+
+        List<ConditionInfliction.Inflicted>? added = null;
+        foreach (var slot in SkillSlots)
+            if (slot.Skill is { } sk && ConditionDurationData.BySkillId(sk.Id) is { Received: false } d
+                && IsAttributeBoostActive(d.ToggleId) && ConditionDurationData.AddsTo(d, sk, target, equipped)
+                && !(d.RequiresPhysical && AttackConverted(target, equipped)))
+                (added ??= []).AddRange(ConditionInfliction.For(sk, AttributeLevel(d.ScalingAttribute) ?? 0));
+
+        if (IsAttributeBoostActive(ConditionDurationData.SunderingWeaponSkillId)
+            && SunderingWeapon is { Skill: { } sw } received
+            && ConditionDurationData.BySkillId(sw.Id) is { } wd
+            && ConditionDurationData.AddsTo(wd, sw, target, equipped))
+            (added ??= []).AddRange(ConditionInfliction.For(sw, received.Rank));
+
+        int all = FindEquippedSkill(ConditionDurationData.ArcherSignetSkillId) is not null
+                  && IsAttributeBoostActive(ConditionDurationData.ArcherSignetSkillId)
+                  && ConditionDurationData.BowWielded(equipped)
+            ? ConditionDurationData.ArcherSignetPercent : 0;
+
+        return new ConditionDurations(added, all, ConditionDurationData.ModConditionsOf(ActiveWeaponSetModIds()));
+    }
+
+    /// <summary>Le set d'armes actif porte une arme RENSEIGNÉE qui n'est pas un arc → le Sceau de l'Archer
+    /// n'allonge rien, et sa note d'icône le dit (même idiome que Natural Temper sous enchantement). Aucune arme
+    /// renseignée : on fait confiance à l'icône, donc pas de note.</summary>
+    public bool ArcherSignetWithoutBow =>
+        !ConditionDurationData.BowWielded(ActiveWeaponKind());
+
+    /// <summary>Les dégâts de <paramref name="target"/> sont-ils convertis en autre chose que du physique ?
+    /// Quatre sources (toutes validées par Philippe le 16/09/2026) : une compétence du perso allumée (forme,
+    /// enchantement éclair, Flèches enflammées, Briseur de pierre), la Clairvoyance du juge reçue d'un allié, un
+    /// esprit du bandeau (Grand brasier sur tout le physique, Brasier sur les flèches) et un mod d'arme
+    /// élémentaire du set actif — ce dernier ne convertit QUE les attaques de l'arme qui le porte.</summary>
+    private bool AttackConverted(Skill target, WeaponKind equipped)
+    {
+        foreach (var slot in SkillSlots)
+            if (slot.Skill is { } sk && ConditionDurationData.ConverterBySkillId(sk.Id) is { Received: false } k
+                && IsAttributeBoostActive(k.ToggleId)
+                && ConditionDurationData.Converts(k.Weapon, target, equipped))
+                return true;
+
+        if (IsAttributeBoostActive(ConditionDurationData.JudgesInsightSkillId) && JudgesInsight is not null
+            && ConditionDurationData.Converts(ConditionWeaponScope.Physical, target, equipped))
+            return true;
+
+        var rituals = ActiveNatureRituals;
+        if (rituals.Contains(NatureRitualData.Ritual.GreaterConflagration)
+            && ConditionDurationData.Converts(ConditionWeaponScope.Physical, target, equipped))
+            return true;
+        if (rituals.Contains(NatureRitualData.Ritual.Conflagration)
+            && ConditionDurationData.Converts(ConditionWeaponScope.Bow, target, equipped))
+            return true;
+
+        return ActiveWeaponSetModIds().Any(ConditionDurationData.IsElementalMod)
+               && ConditionDurationData.UsesEquippedWeapon(target, equipped);
+    }
+
+    /// <summary>Un effet actif convertit-il TOUTES les attaques de ce perso ? Alors l'Application de poison
+    /// n'empoisonne plus rien, et sa note d'icône le dit — sans annuler la préparation elle-même (Philippe,
+    /// 16/09/2026 : « ça annule simplement ses effets jusqu'à ce que ses conditions soient à nouveau réunies »).
+    /// Les convertisseurs PARTIELS (Avatar de Grenth à la faux, Brasier sur les flèches, mod élémentaire d'une
+    /// seule arme) n'allument pas la note : la ligne disparaît là où il faut, et nulle part ailleurs.</summary>
+    public bool AttacksNoLongerPhysical
+    {
+        get
+        {
+            foreach (var slot in SkillSlots)
+                if (slot.Skill is { } sk
+                    && ConditionDurationData.ConverterBySkillId(sk.Id) is { Received: false, Weapon: ConditionWeaponScope.Physical } k
+                    && IsAttributeBoostActive(k.ToggleId))
+                    return true;
+            return (IsAttributeBoostActive(ConditionDurationData.JudgesInsightSkillId) && JudgesInsight is not null)
+                   || ActiveNatureRituals.Contains(NatureRitualData.Ritual.GreaterConflagration);
+        }
     }
 
     // Boost « override » actif (Lot C, Master of Magic) : remplace le niveau de base au lieu de s'y

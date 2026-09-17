@@ -182,6 +182,8 @@
     <sys:String x:Key="S.Boost.OtherAllyNote">On = the spell you cast targets another ally.</sys:String>
     <sys:String x:Key="S.Boost.SpiritNote">On = a spirit is within earshot.</sys:String>
     <sys:String x:Key="S.Boost.SelfEnchantmentNote">On = the enchantment is cast on this character.</sys:String>
+    <sys:String x:Key="S.Boost.NoEffectWithoutBow">No effect: the active weapon set has no bow.</sys:String>
+    <sys:String x:Key="S.Boost.NoEffectNonPhysical">No effect: this character's attacks no longer deal physical damage.</sys:String>
 
     <!-- ── Template search ────────────────────────────────────────────── -->
     <sys:String x:Key="S.Search.Title">Search skill templates</sys:String>

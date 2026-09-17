@@ -60,7 +60,12 @@ public static class ConditionInfliction
     private const int ParenLookahead = 80;
 
     /// <summary>Conditions infligées à la cible + durée de base au rang (ordre canonique, max 3).</summary>
-    public static IReadOnlyList<Inflicted> For(Skill skill, int rank)
+    public static IReadOnlyList<Inflicted> For(Skill skill, int rank) =>
+        ForResolved(skill, ReferenceAttack.ResolveDescription(skill, rank));
+
+    /// <summary>Même chose à partir d'une description DÉJÀ résolue — l'infobulle d'un build en tient une
+    /// (même pipeline, mêmes marqueurs), inutile de la recalculer.</summary>
+    public static IReadOnlyList<Inflicted> ForResolved(Skill skill, string desc)
     {
         var targets = skill.Conditions
             .Where(c => !GwConditionData.IsSelf(c))
@@ -68,7 +73,6 @@ public static class ConditionInfliction
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         if (targets.Count == 0) return [];
 
-        string desc = ReferenceAttack.ResolveDescription(skill, rank);
         var result = new List<Inflicted>();
         foreach (var (name, form) in Forms)
         {

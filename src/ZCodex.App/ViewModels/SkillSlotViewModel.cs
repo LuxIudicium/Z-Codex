@@ -360,6 +360,11 @@ public class SkillSlotViewModel : ViewModelBase
     public int DurationBoostPct =>
         Owner is { } o && _skill is { } s ? o.DurationBoostFor(s) : 0;
 
+    // ── Durées de conditions (lot 4b) : conditions AJOUTÉES aux attaques de CETTE compétence par un effet
+    // actif, et allongeurs de durée de condition du perso. L'infobulle fusionne avec les conditions propres.
+    public ConditionDurations ConditionDurations =>
+        Owner is { } o && _skill is { } s ? o.ConditionDurationsFor(s) : default;
+
     // Permet au perso de pousser une mise à jour live de l'infobulle (footer + description).
     public void RaiseTooltipChanged()
     {
@@ -384,6 +389,7 @@ public class SkillSlotViewModel : ViewModelBase
         OnPropertyChanged(nameof(EnchantExtenderPct));
         OnPropertyChanged(nameof(EnchantTranquilityPct));
         OnPropertyChanged(nameof(DurationBoostPct));
+        OnPropertyChanged(nameof(ConditionDurations));
         OnPropertyChanged(nameof(AdrenalineGainPerHit));
         OnPropertyChanged(nameof(AdrenalineSlowed));
         OnPropertyChanged(nameof(AdrenalineFromTeam));

@@ -52,6 +52,10 @@ public static class NatureRitualData
         NaturesRenewal,
         Equinox,
         Tranquility,
+        // Convertisseurs du type de dégâts (lot 4b) : ils ne changent aucun chiffre d'infobulle, mais des
+        // attaques converties ne sont plus physiques — l'Application de poison cesse alors d'empoisonner.
+        GreaterConflagration,
+        Conflagration,
         // Effets d'adrénaline du bandeau d'équipe (lot 1b). Infuriating Heat est un rituel de la
         // nature ; les trois autres n'en sont pas, mais partagent le bandeau et sa persistance.
         InfuriatingHeat,
@@ -125,6 +129,16 @@ public static class NatureRitualData
             PvpSkillId: 3460,
             PvpTooltipFr: "Les enchantements expirent 10…30 % plus vite.",
             PvpTooltipEn: "Enchantments expire 10…30% faster."),
+        // Convertisseurs du type de dégâts (lot 4b), ids relevés dans la base réelle le 16/09/2026 : deux esprits,
+        // donc proposés à tout moment comme les autres rituels de la nature ; aucun rang (la conversion est
+        // binaire), aucune variante « (PvP) ». Hiver est volontairement DEHORS : il convertit l'élémentaire en
+        // froid, il ne touche jamais le physique.
+        new(Ritual.GreaterConflagration, 465, "Greater Conflagration",
+            "Créatures à portée : les dégâts physiques deviennent des dégâts de feu.",
+            "Creatures in range: physical damage becomes fire damage."),
+        new(Ritual.Conflagration,        466, "Conflagration",
+            "Créatures à portée : les flèches infligent des dégâts de feu.",
+            "Creatures in range: arrows deal fire damage."),
         // Effets d'adrénaline (lot 1b), SkillId relevés dans la base réelle le 14/09/2026.
         new(Ritual.InfuriatingHeat,  1730, "Infuriating Heat",  "Adrénaline gagnée ×2.",
             "Adrenaline gain ×2.",
