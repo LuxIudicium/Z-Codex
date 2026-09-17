@@ -2024,9 +2024,9 @@ public partial class MainWindow : Window
         _vm.IsBuildEditorActive ? _vm.ActiveBuild?.NatureRituals :
         null;
 
-    // (Re)construit le sous-menu Sélection > Effets d'équipe : les 13 effets du bandeau (rituels de la
-    // nature, effets d'adrénaline, Energizing Chorus), cochés selon l'état du contexte actif, séparés par famille
-    // comme dans le bandeau. Désactivé si aucun teambuild/build n'est affiché.
+    // (Re)construit le sous-menu Sélection > Effets d'équipe : tous les effets du bandeau, cochés selon l'état
+    // du contexte actif, séparés par famille comme dans le bandeau. Le sous-menu suit NatureRitualData.All :
+    // un effet ajouté au bandeau y entre sans rien toucher ici. Désactivé si aucun teambuild/build n'est affiché.
     // Nom affiché d'un rituel = DisplayName de sa compétence (les rituels SONT des skills → nom FR
     // déjà en base, résolu par SkillId) ; repli sur le nom EN du descripteur si absent du catalogue.
     // DisplaySkillId, pas SkillId : en PvP les 2 rituels splittés affichent leur variante « (PvP) ».
@@ -3838,6 +3838,7 @@ public partial class MainWindow : Window
         vm.NatureRituals.LoadTranquilityRank(model.TranquilityRitualRank);
         vm.NatureRituals.LoadNaturesRenewalRank(model.NaturesRenewalRitualRank);
         vm.NatureRituals.LoadInfuriatingHeatRank(model.InfuriatingHeatRitualRank);
+        vm.NatureRituals.LoadBramblesRank(model.BramblesRitualRank);
         vm.VampiricHits3 = Math.Clamp(model.VampiricHits3, 0, 25);
         vm.VampiricHits5 = Math.Clamp(model.VampiricHits5, 0, 25);
         vm.Tags.Clear();
@@ -3946,6 +3947,7 @@ public partial class MainWindow : Window
         TranquilityRitualRank = vm.NatureRituals.TranquilityRank,
         NaturesRenewalRitualRank = vm.NatureRituals.NaturesRenewalRank,
         InfuriatingHeatRitualRank = vm.NatureRituals.InfuriatingHeatRank,
+        BramblesRitualRank = vm.NatureRituals.BramblesRank,
         VampiricHits3 = vm.VampiricHits3,
         VampiricHits5 = vm.VampiricHits5,
         Characters = vm.Characters.Select(CharToModel).ToList(),

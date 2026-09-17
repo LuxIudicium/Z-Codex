@@ -76,13 +76,17 @@ public class TeamBuildViewModel : ViewModelBase, IRenamableTab
         // change les coups nécessaires dans les infobulles de TOUS les persos. Energizing Chorus (lot 2b)
         // aussi : la Motivation de son lanceur change le coût des cris et chants de tous. Weapon of Quickening (lot 3) suit
         // le chemin de Weapon of Fury, et Sundering Weapon (lot 4b) aussi — avec son RANG, qui change la durée
-        // d'armure brisée annoncée chez tous ses receveurs.
+        // d'armure brisée annoncée chez tous ses receveurs. ⚠ Toute diffusion ABSENTE de cette signature
+        // n'apparaît pas chez les AUTRES persos tant que rien d'autre ne bouge : c'est ce qui manquait à l'Arme
+        // du Grand Nain (lot 4c), signalé par Philippe le 17/09. Ici on demande « quelqu'un la porte-t-il ? »
+        // (sans receveur) : c'est l'apparition de la diffusion dans l'arbre qui doit réveiller les bandeaux.
         Mutated += () =>
         {
             var (skill, bonus) = HeroicRefrain;
             string sig = $"{skill?.Id}|{bonus}|{WeaponOfFury?.Id}|{WeaponOfQuickening?.Id}|{SunderingWeapon}"
                        + $"|{JudgesInsight?.Id}|{string.Join(";", TeamAdrenaline.Effects)}"
-                       + $"|{EnergizingChorusReduction}|{TeamSpeed}";
+                       + $"|{EnergizingChorusReduction}|{TeamSpeed}"
+                       + $"|{CharacterSlotViewModel.GreatDwarfWeaponFor(EnumerateTree())?.Id}";
             if (sig == _heroicRefrainSig) return;
             _heroicRefrainSig = sig;
             _heroicRefrainTimer.Stop();
@@ -143,6 +147,16 @@ public class TeamBuildViewModel : ViewModelBase, IRenamableTab
 
     // Clairvoyance du juge (lot 4b) : même diffusion que Weapon of Fury, sans rang.
     public Skill? JudgesInsight => CharacterSlotViewModel.JudgesInsightFor(EnumerateTree());
+
+    // Arme du Grand Nain (lot 4c) : même diffusion, sans rang, mais « Cannot self-target » — le perso qui la
+    // porte ne peut pas se la lancer, donc il est exclu du balayage qui la lui proposerait.
+    public Skill? GreatDwarfWeaponFor(CharacterSlotViewModel receiver) =>
+        CharacterSlotViewModel.GreatDwarfWeaponFor(EnumerateTree(), receiver);
+
+    // Saignement de Ronces (lot 4c) : Survie du porteur le plus fort, ou rang de simulation du bandeau ;
+    // 0 si l'esprit n'est pas posé.
+    public int BramblesBleedSeconds =>
+        CharacterSlotViewModel.BramblesBleedFor(NatureRituals.Active, EnumerateTree(), NatureRituals.BramblesRank);
 
     // Effets d'adrénaline du bandeau d'équipe (chantier infobulle, lot 1b) : rangs au lanceur le plus
     // fort de l'arbre, ou rangs de simulation du bandeau.

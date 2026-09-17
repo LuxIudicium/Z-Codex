@@ -214,6 +214,21 @@ public class CharacterSlotViewModel : ViewModelBase
             WearerRank(NatureRitualData.Ritual.RoaringWinds, characters) ?? simRank);
     }
 
+    // Saignement de Ronces (chantier infobulle, lot 4c) : durée en secondes posée sur toute créature assommée
+    // à portée, 0 si l'esprit est éteint. Même patron que Roaring Winds — rang de Survie du porteur le plus
+    // fort, sinon rang de simulation du bandeau.
+    public static int BramblesBleedFor(
+        IReadOnlySet<NatureRitualData.Ritual> active, IEnumerable<CharacterSlotViewModel> characters, int simRank)
+    {
+        if (!active.Contains(NatureRitualData.Ritual.Brambles)) return 0;
+        return NatureRitualData.BramblesBleedAtRank(
+            WearerRank(NatureRitualData.Ritual.Brambles, characters) ?? simRank);
+    }
+
+    public Func<int>? BramblesBleedProvider { get; set; }
+
+    public int BramblesBleedSeconds => BramblesBleedProvider?.Invoke() ?? OwnerBuild?.BramblesBleedSeconds ?? 0;
+
     // ── Energizing Chorus : énergie retirée aux cris et chants (chantier infobulle, lot 2b) ──
     // Pas de rang de simulation (Philippe, 15/09/2026) : l'effet n'existe que s'il est équipé, au rang de
     // Motivation le plus haut de ses porteurs.
@@ -323,6 +338,13 @@ public class CharacterSlotViewModel : ViewModelBase
     public int EnchantingModPercent =>
         ActiveWeaponSetHasMod(EnchantmentDuration.IsEnchantingMod) ? EnchantmentDuration.EnchantingModPercent : 0;
 
+    // L'ARMURE du perso porte-t-elle l'insigne Poing-de-fer ? → ses assommements durent 1 s de plus (lot 4c).
+    // Détecté tout seul, sans icône, comme le mod « of Enchanting » (décision Q7 du lot 4) : un insigne n'a ni
+    // charge ni chance. L'armure est partagée par les 4 sets d'armes, donc le set actif n'entre pas en compte ;
+    // deux pièces insignées ne cumulent pas (le jeu plafonne à 3 s de toute façon).
+    public bool HasStonefistInsignia =>
+        _equipment?.Armor.SelectMany(i => i.ModifierIds).Contains(KnockdownData.StonefistModId) == true;
+
     // Le set d'armes ACTIF porte-t-il un mod « Furious » ? → icône du mod dans le bandeau du perso
     // (chantier infobulle, lot 1a ; allumée = le doublement d'adrénaline a proc).
     public bool HasFuriousMod => ActiveWeaponSetHasMod(AdrenalineBoostData.IsFuriousMod);
@@ -429,6 +451,8 @@ public class CharacterSlotViewModel : ViewModelBase
                 items = items.Append(new AttributeBoostIndicatorViewModel(this, sw, ConditionDurationData.SunderingWeaponSkillId, received: true));
             if (JudgesInsight is { } ji)
                 items = items.Append(new AttributeBoostIndicatorViewModel(this, ji, ConditionDurationData.JudgesInsightSkillId, received: true));
+            if (GreatDwarfWeapon is { } gdw)
+                items = items.Append(new AttributeBoostIndicatorViewModel(this, gdw, KnockdownData.GreatDwarfWeaponSkillId, received: true));
             if (HasFuriousMod)
                 items = items.Append(new AttributeBoostIndicatorViewModel(this, null, AdrenalineBoostData.FuriousModToggleId, received: false));
 
@@ -461,7 +485,7 @@ public class CharacterSlotViewModel : ViewModelBase
     {
         // Sorts d'arme reçus d'un allié : leur compétence n'est pas forcément sur la barre de CE perso.
         if (toggleId is AdrenalineBoostData.WeaponOfFurySkillId or SkillSpeedBoostData.WeaponOfQuickeningSkillId
-                     or ConditionDurationData.SunderingWeaponSkillId)
+                     or ConditionDurationData.SunderingWeaponSkillId or KnockdownData.GreatDwarfWeaponSkillId)
             return "Weapon Spell";
         return SkillSlots.Select(s => s.Skill)
             .FirstOrDefault(sk => sk is not null && ExclusiveSkillTypes.Contains(sk.SkillType) && PersonalToggleIdOf(sk) == toggleId)
@@ -605,6 +629,22 @@ public class CharacterSlotViewModel : ViewModelBase
 
     public Skill? JudgesInsight => JudgesInsightProvider is { } p ? p() : OwnerBuild?.JudgesInsight;
 
+    // Arme du Grand Nain (lot 4c) : patron Clairvoyance du juge, sans rang — seul compte le fait qu'elle donne
+    // une chance d'assommer (icône allumée = la chance a joué, idiome du chantier).
+    // ⚠ C'est la SEULE des cinq diffusions à dire « Cannot self-target » : son porteur ne peut JAMAIS la
+    // recevoir. <paramref name="receiver"/> est donc exclu du balayage — un perso seul qui la porte n'a pas
+    // d'icône du tout, et dans une équipe où deux persos la portent, chacun la reçoit de l'autre.
+    public static Skill? GreatDwarfWeaponFor(
+        IEnumerable<CharacterSlotViewModel> characters, CharacterSlotViewModel? receiver = null) =>
+        characters.Where(c => !ReferenceEquals(c, receiver))
+            .SelectMany(c => c.SkillSlots).Select(s => s.Skill)
+            .FirstOrDefault(sk => sk?.Id == KnockdownData.GreatDwarfWeaponSkillId);
+
+    public Func<CharacterSlotViewModel, Skill?>? GreatDwarfWeaponProvider { get; set; }
+
+    public Skill? GreatDwarfWeapon =>
+        GreatDwarfWeaponProvider is { } p ? p(this) : OwnerBuild?.GreatDwarfWeaponFor(this);
+
     // Effets d'adrénaline du bandeau d'équipe (lot 1b) : Infuriating Heat, Dark Fury, Mark of Fury,
     // Soothing. Environnement du teambuild propriétaire, ou (build simple) provider de l'éditeur.
     public Func<AdrenalineGain.TeamEffects>? TeamAdrenalineProvider { get; set; }
@@ -747,6 +787,22 @@ public class CharacterSlotViewModel : ViewModelBase
 
         return new ConditionDurations(added, all, ConditionDurationData.ModConditionsOf(ActiveWeaponSetModIds()));
     }
+
+    // ── Assommement (chantier infobulle, lot 4c) ──────────────────────────────
+
+    /// <summary>Ce que les effets actifs font aux assommements de ce perso : l'insigne Poing-de-fer de son
+    /// armure (+1 s), Lien terrestre au bandeau (plancher 3 s), le saignement de Ronces posé sur toute créature
+    /// assommée, et l'Arme du Grand Nain reçue, qui donne une chance d'assommer à TOUTES ses attaques d'arme.
+    /// AUCUN ne dépend de la compétence visée — c'est <see cref="KnockdownData.Lines"/> qui décide, depuis sa
+    /// description, ce qui s'écrit vraiment : d'où une propriété par PERSO, et non par compétence.
+    /// La Force sert à la seule Brise-échine, dont les 4 s exigent Force 8.</summary>
+    public KnockdownEffects KnockdownEffects => new(
+        Stonefist: HasStonefistInsignia,
+        Earthbind: ActiveNatureRituals.Contains(NatureRitualData.Ritual.Earthbind),
+        BleedSeconds: BramblesBleedSeconds,
+        StrengthRank: AttributeLevel("Strength") ?? 0,
+        GreatDwarfWeapon: IsAttributeBoostActive(KnockdownData.GreatDwarfWeaponSkillId)
+                          && GreatDwarfWeapon is not null);
 
     /// <summary>Le set d'armes actif porte une arme RENSEIGNÉE qui n'est pas un arc → le Sceau de l'Archer
     /// n'allonge rien, et sa note d'icône le dit (même idiome que Natural Temper sous enchantement). Aucune arme

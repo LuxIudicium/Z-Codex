@@ -42,6 +42,12 @@ public static class SkillProgression
     /// <see cref="MarkChars"/>).</summary>
     public const char MarkOverride = (char)6;
 
+    /// <summary>Marqueur (BEL, U+0007) entourant un texte d'AVERTISSEMENT d'infobulle → SkillMarkup le
+    /// rend en rouge. Posé sur les effets à double tranchant, qui frappent notre propre personnage :
+    /// Ronces fait saigner tout ce qui est assommé dans sa portée, nous compris (lot 4c). N'apparaît
+    /// JAMAIS dans une description (absent de <see cref="MarkChars"/>).</summary>
+    public const char MarkWarning = (char)7;
+
     /// <summary>Les deux marqueurs de valeur résolue (normal + flux), à placer dans une classe
     /// regex <c>[…]</c> par tout parseur de description résolue (SkillDamage, WeaponStrike…) pour
     /// détecter une valeur quel que soit son marquage.</summary>

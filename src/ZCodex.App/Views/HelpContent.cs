@@ -33,8 +33,8 @@ public static class HelpContent
 {
     // Version du CONTENU de l'aide (indépendante de la version applicative de l'À propos) :
     // à incrémenter et redater à chaque mise à jour.
-    public const string VersionFr = "Aide v21 — 16/09/2026";
-    public const string VersionEn = "Help v21 — 2026-09-16";
+    public const string VersionFr = "Aide v22 — 17/09/2026";
+    public const string VersionEn = "Help v22 — 2026-09-17";
 
     public static string Version => AppLanguage.IsFr ? VersionFr : VersionEn;
 
@@ -142,8 +142,8 @@ public static class HelpContent
               "Shows or hides the team effects icon bar (editor and team build)."),
             R("Affichage" + M + "Afficher tous les effets d'équipe",
               "View" + M + "Show all team effects",
-              "Ajoute au bandeau les esprits qu'aucun personnage n'a équipés. Les effets qui ne sont pas des esprits n'apparaissent que si un personnage les porte.",
-              "Adds to the bar the spirits no character has equipped. Effects that are not spirits only appear when a character carries them."),
+              "Ajoute au bandeau les esprits qu'aucun personnage n'a équipés. Certains effets n'apparaissent que si un personnage les porte.",
+              "Adds to the bar the spirits no character has equipped. Some effects only appear when a character carries them."),
             R("Affichage" + M + "Taille des icônes" + M + "Grande / Moyenne / Petite",
               "View" + M + "Icon size" + M + "Large / Medium / Small",
               "Taille des slots de compétences : 64, 52 ou 40 px — gain de place à l'écran.",
@@ -302,8 +302,12 @@ public static class HelpContent
               "L'Expertise du Rôdeur abaisse le coût en énergie des attaques, compétences de toucher et rituels : la valeur de base reste lisible entre parenthèses.",
               "Ranger Expertise lowers the energy cost of attacks, touch skills and rituals: the base value stays readable in parentheses."),
             R("Valeurs en ambre", "Amber values",
-              "Un Rituel de la Nature actif modifie l'énergie, la recharge, l'activation, l'entretien ou la surchauffe. La ligne « Durée d'enchantement effective » suit la même couleur, comme les coups d'adrénaline nécessaires quand un effet du bandeau d'équipe intervient.",
-              "An active Nature Ritual changes energy, recharge, activation, upkeep or overcast. The “effective enchantment duration” line uses the same color, as do the adrenaline strikes needed when a team effect is involved."),
+              "Un Rituel de la Nature actif modifie l'énergie, la recharge, l'activation, l'entretien ou la surchauffe. Toute ligne que produit un effet du bandeau d'équipe suit la même couleur : durées effectives, coups d'adrénaline nécessaires.",
+              "An active Nature Ritual changes energy, recharge, activation, upkeep or overcast. Every line produced by a team effect uses the same color: effective durations, strikes of adrenaline needed."),
+
+            R("Lignes en rouge", "Red lines",
+              "Un effet d'équipe à double tranchant, qui frappe aussi vos personnages, l'annonce en rouge dans l'infobulle de la compétence concernée.",
+              "A double-edged team effect, one that also hits your own characters, says so in red in the tooltip of the skill concerned."),
             R("Table de dégâts", "Damage table",
               "Si « Afficher les dégâts selon l'armure » est activé : dégâts par niveau d'armure, pénétration comprise. Pour les attaques d'arme : plage totale (arme customisée, rang de maîtrise) et coup critique avec son taux.",
               "If “Show armor-based damage” is on: damage per armor level, penetration included. For weapon attacks: full range (customized weapon, mastery rank) and critical hit with its rate."),
@@ -391,8 +395,8 @@ public static class HelpContent
               "Montre le flux actif ; clic pour l'activer ou le désactiver. Grise = inactif. Le flux est enregistré avec le team build.",
               "Shows the active flux; click to activate or deactivate it. Greyed = inactive. The flux is saved with the team build."),
             R("Bandeau des effets d'équipe", "Team effects bar",
-              "Une icône par effet d'équipe actif ; « Afficher tous » ajoute les esprits que personne n'a équipés. Clic = activer/désactiver. Cadre vert = actif, cadre rouge = effet lancé par l'ennemi et subi par l'équipe. Un petit trait sépare les familles. Un effet qui n'est pas un esprit n'apparaît que si un personnage le porte, et prend alors le rang le plus fort de ses porteurs (badge sur l'icône). Les effets qui existent en version « (PvP) » suivent le mode du catalogue : en PvP, l'icône et les chiffres sont ceux de cette variante, plus faible.",
-              "One icon per active team effect; “Show all” adds the spirits nobody has equipped. Click = toggle. Green frame = active, red frame = effect cast by the enemy and suffered by the team. A thin line separates the families. An effect that is not a spirit only appears when a character carries it, and then takes its carriers' highest rank (badge on the icon). Effects that come in a “(PvP)” version follow the catalogue's mode: in PvP the icon and the numbers are those of that weaker variant."),
+              "Une icône par effet d'équipe actif ; « Afficher tous » ajoute les esprits que personne n'a équipés. Clic = activer/désactiver. Cadre vert = actif, cadre rouge = effet lancé par l'ennemi et subi par l'équipe. Un petit trait sépare les familles. Certains effets n'apparaissent que si un personnage les porte, et prennent alors le rang le plus fort de leurs porteurs (badge sur l'icône). Les effets qui existent en version « (PvP) » suivent le mode du catalogue : en PvP, l'icône et les chiffres sont ceux de cette variante, plus faible.",
+              "One icon per active team effect; “Show all” adds the spirits nobody has equipped. Click = toggle. Green frame = active, red frame = effect cast by the enemy and suffered by the team. A thin line separates the families. Some effects only appear when a character carries them, and then take their carriers' highest rank (badge on the icon). Effects that come in a “(PvP)” version follow the catalogue's mode: in PvP the icon and the numbers are those of that weaker variant."),
             R("Ce que le bandeau change dans les infobulles", "What the bar changes in tooltips",
               "Un effet actif recalcule les valeurs qu'il touche dans les infobulles des compétences — coups d'adrénaline nécessaires, énergie, incantation, recharge : la valeur modifiée s'affiche en ambre, la valeur de base entre parenthèses. Ces effets se cumulent avec ceux des compétences du personnage. Un effet ennemi (cadre rouge) est proposé dès qu'un personnage porte une compétence qu'il pénalise.",
               "An active effect recomputes the values it changes in skill tooltips — strikes of adrenaline needed, Energy, activation, recharge: the modified value is shown in amber, the base value in parentheses. These effects stack with the character's own skills. An enemy effect (red frame) is offered as soon as a character carries a skill it penalises."),

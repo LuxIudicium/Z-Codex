@@ -113,7 +113,7 @@ public static class TeamBuildSerializer
 
     private sealed class Pn3Dto
     {
-        public int Version { get; set; } = 21; // v21 = rangs de simulation Infuriating Heat (PvP) et Mark of Fury ; Infuriating Heat, Dark Fury, Mark of Fury et Soothing rejoignent la liste NatureRituals sans nouveau champ, comme les icônes d'adrénaline du perso (lot 1a du chantier infobulle) la liste ActiveAttributeBoosts ; v20 = rang de simulation Nature's Renewal (son surcoût d'incantation dépend du rang en PvP) ; v19 = compteur de projectiles du spike (sorts multi-projectiles) ; v18 = mods d'arme du spike (fractionnement / vampirique / arc corne) + compteurs d'attaques vampiriques ; v17 = mode de jeu PvE/PvP enregistré avec le build ; v16 = boosts d'attribut de compétences équipées par perso ; v15 = rang de simulation Tranquility + toggle prolongateurs de durée par perso ; v14 = rang de simulation Roaring Winds ; v13 = rituels de la nature actifs ; v12 = PV lanceur Grenth's Balance ; v11 = buffs d'arme spike ; v10 = seuil spike ; v9 = part conditionnelle spike ; v8 = procs spike ; v7 = flux ; v6 = roster Spike ; v5 = genre du perso
+        public int Version { get; set; } = 22; // v22 = rang de simulation Ronces (durée du saignement posé sur les créatures assommées, lot 4c du chantier infobulle) ; Ronces et Lien terrestre rejoignent la liste NatureRituals sans nouveau champ ; v21 = rangs de simulation Infuriating Heat (PvP) et Mark of Fury ; Infuriating Heat, Dark Fury, Mark of Fury et Soothing rejoignent la liste NatureRituals sans nouveau champ, comme les icônes d'adrénaline du perso (lot 1a du chantier infobulle) la liste ActiveAttributeBoosts ; v20 = rang de simulation Nature's Renewal (son surcoût d'incantation dépend du rang en PvP) ; v19 = compteur de projectiles du spike (sorts multi-projectiles) ; v18 = mods d'arme du spike (fractionnement / vampirique / arc corne) + compteurs d'attaques vampiriques ; v17 = mode de jeu PvE/PvP enregistré avec le build ; v16 = boosts d'attribut de compétences équipées par perso ; v15 = rang de simulation Tranquility + toggle prolongateurs de durée par perso ; v14 = rang de simulation Roaring Winds ; v13 = rituels de la nature actifs ; v12 = PV lanceur Grenth's Balance ; v11 = buffs d'arme spike ; v10 = seuil spike ; v9 = part conditionnelle spike ; v8 = procs spike ; v7 = flux ; v6 = roster Spike ; v5 = genre du perso
         public Guid Id { get; set; }
         public string Name { get; set; } = string.Empty;
         public List<string> Tags { get; set; } = [];
@@ -129,6 +129,7 @@ public static class TeamBuildSerializer
         public int TranquilityRank { get; set; } = 12;     // v15 — rang de simulation Tranquility (durée d'enchantement)
         public int NaturesRenewalRank { get; set; } = 12;  // v20 — rang de simulation Nature's Renewal (surcoût d'incantation, PvP)
         public int InfuriatingHeatRank { get; set; } = 12; // v21 — rang de simulation Infuriating Heat (gain d'adrénaline, PvP)
+        public int BramblesRank { get; set; } = 12;        // v22 — rang de simulation Ronces (saignement des assommés)
         // v21 écrivait aussi markOfFuryRank (rang de simulation de Mark of Fury) : ignoré depuis le 15/09/2026, l'effet
         // n'est plus proposé que porté, au rang de son porteur le plus fort.
         // v17 — mode de jeu à restaurer à l'ouverture ("All"/"PvE"/"PvP"). Chaîne vide ou valeur
@@ -266,6 +267,7 @@ public static class TeamBuildSerializer
         TranquilityRank = b.TranquilityRitualRank,
         NaturesRenewalRank = b.NaturesRenewalRitualRank,
         InfuriatingHeatRank = b.InfuriatingHeatRitualRank,
+        BramblesRank = b.BramblesRitualRank,
         GameMode = b.GameMode?.ToString() ?? string.Empty,   // v17 — "" = aucun mode enregistré
         VampiricHits3 = b.VampiricHits3,
         VampiricHits5 = b.VampiricHits5,
@@ -373,6 +375,7 @@ public static class TeamBuildSerializer
         TranquilityRitualRank = Math.Clamp(dto.TranquilityRank, 0, NatureRitualData.MaxRitualRank),
         NaturesRenewalRitualRank = Math.Clamp(dto.NaturesRenewalRank, 0, NatureRitualData.MaxRitualRank),
         InfuriatingHeatRitualRank = Math.Clamp(dto.InfuriatingHeatRank, 0, NatureRitualData.MaxRitualRank),
+        BramblesRitualRank = Math.Clamp(dto.BramblesRank, 0, NatureRitualData.MaxRitualRank),
         // v17 — valeur inconnue traitée comme absente (même politique que les autres champs) :
         // un fichier écrit par une version future ne doit pas imposer un mode incompréhensible.
         GameMode = Enum.TryParse<GameMode>(dto.GameMode, out var gm) ? gm : null,
@@ -425,11 +428,13 @@ public static class TeamBuildSerializer
             // Les réductions de coût d'énergie (lot 2) aussi : id de base de la compétence. Et les effets de recharge et
             // d'incantation (lot 3), 1268 pour Weapon of Quickening reçue. Et les allongeurs de durée (lot 4a),
             // puis les ajouteurs de condition et le Sceau de l'Archer (lot 4b), 2148 pour Sundering Weapon reçue.
+            // Enfin 2219 pour l'Arme du Grand Nain reçue (lot 4c), qui donne une chance d'assommer aux attaques.
             ActiveAttributeBoosts = dto.ActiveAttributeBoosts
                 .Where(id => AttributeBoostData.BySkillId(id) != null || id == HeroicRefrainData.SkillId
                              || AdrenalineBoostData.IsToggleId(id) || EnergyCostBoostData.IsToggleId(id)
                              || SkillSpeedBoostData.IsToggleId(id) || SkillDurationBoostData.IsToggleId(id)
-                             || ConditionDurationData.IsToggleId(id))
+                             || ConditionDurationData.IsToggleId(id)
+                             || id == KnockdownData.GreatDwarfWeaponSkillId)
                 .Distinct().ToList(),
             Variants = dto.Variants.Select(v => CharFromDto(v, skillsById, unresolvedIds)).ToList(),
         };

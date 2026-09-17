@@ -104,6 +104,13 @@ public class BuildEditorViewModel : ViewModelBase
         Character.SunderingWeaponProvider = () => CharacterSlotViewModel.SunderingWeaponFor(new[] { Character });
         // Clairvoyance du juge (lot 4b) : idem.
         Character.JudgesInsightProvider = () => CharacterSlotViewModel.JudgesInsightFor(new[] { Character });
+        // Arme du Grand Nain (lot 4c) : PAS d'auto-ciblage ici — « Cannot self-target ». Un build simple n'a
+        // qu'un perso, donc elle ne peut venir de personne : aucune icône, même s'il la porte.
+        Character.GreatDwarfWeaponProvider = receiver =>
+            CharacterSlotViewModel.GreatDwarfWeaponFor(new[] { Character }, receiver);
+        // Saignement de Ronces (lot 4c) : un seul perso, donc porteur éventuel = lui, sinon rang de simulation.
+        Character.BramblesBleedProvider = () => CharacterSlotViewModel.BramblesBleedFor(
+            NatureRituals.Active, new[] { Character }, NatureRituals.BramblesRank);
 
         // Nouveau build vierge : la PR est obligatoire dans l'éditeur (isQuery=false → le picker
         // n'offre pas « None » sur la PR). Pour qu'un code Any/SEC ne puisse JAMAIS être produit,

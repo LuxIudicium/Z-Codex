@@ -109,7 +109,8 @@
                                                                                       FastCastingRank="{Binding FastCastingRank}"
                                                                                       AdrenalineStrikesGiven="{Binding AdrenalineStrikesGiven}"
                                                                                       DurationBoostPct="{Binding DurationBoostPct}"
-                                                                                      ConditionDurations="{Binding ConditionDurations}"/>
+                                                                                      ConditionDurations="{Binding ConditionDurations}"
+                                      Knockdown="{Binding Knockdown}"/>
                                                         </Border.ToolTip>
                                                         <Grid Width="40" Height="40">
                                                             <Image Source="{Binding Skill.IconPath, Converter={StaticResource UrlToImage}, ConverterParameter=64}"

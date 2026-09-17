@@ -56,6 +56,12 @@ public static class NatureRitualData
         // attaques converties ne sont plus physiques — l'Application de poison cesse alors d'empoisonner.
         GreaterConflagration,
         Conflagration,
+        // Assommement (lot 4c) : Ronces est un rituel de la nature comme les autres — proposé à tout moment,
+        // avec son rang de simulation (son saignement suit Survie en pleine nature). Lien terrestre est un
+        // esprit d'ASSERVISSEMENT (Ritualiste) : « porté seulement » (décision Q6 du lot 4), sans rang — son
+        // plancher de 3 s est fixe.
+        Brambles,
+        Earthbind,
         // Effets d'adrénaline du bandeau d'équipe (lot 1b). Infuriating Heat est un rituel de la
         // nature ; les trois autres n'en sont pas, mais partagent le bandeau et sa persistance.
         InfuriatingHeat,
@@ -73,7 +79,7 @@ public static class NatureRitualData
     /// <summary>Famille d'un effet du bandeau : un petit séparateur s'intercale entre deux familles
     /// (bandeau et menu Sélection). <see cref="Enemy"/> = effet lancé par l'ennemi et subi par
     /// l'équipe (Soothing) : cadre rouge, et jamais « équipé » par un perso de l'équipe.</summary>
-    public enum BandGroup { NatureRitual, Enchantment, Hex, Chant, Enemy, Ward }
+    public enum BandGroup { NatureRitual, BindingRitual, Enchantment, Hex, Chant, Enemy, Ward }
 
     /// <summary>Métadonnées d'un rituel : identité, mappage vers la compétence de la base, libellé
     /// bilingue (<see cref="DisplayTooltip"/> choisit selon <see cref="AppLanguage.IsFr"/>).
@@ -139,6 +145,24 @@ public static class NatureRitualData
         new(Ritual.Conflagration,        466, "Conflagration",
             "Créatures à portée : les flèches infligent des dégâts de feu.",
             "Creatures in range: arrows deal fire damage."),
+        // Assommement (lot 4c), ids relevés dans la base réelle le 17/09/2026. Ronces est un rituel de la nature :
+        // proposé à tout moment, avec rang de simulation (son saignement suit Survie en pleine nature).
+        // ⚠ Il ne fait PAS la différence entre un ennemi et nous — « Knocked-down creatures », donc nos propres
+        // persos assommés saignent aussi. Ce n'est pas pour autant un effet ENNEMI (c'est nous qui le posons) :
+        // cadre normal, et l'avertissement vit sur les 3 compétences qui s'assomment elles-mêmes.
+        new(Ritual.Brambles,  KnockdownData.BramblesSkillId, "Brambles",
+            "Créatures assommées à portée : saignement 5…17…20 s (rang du lanceur).",
+            "Knocked-down creatures in range: Bleeding 5…17…20s (caster's rank)."),
+        // Lien terrestre : esprit d'ASSERVISSEMENT (Ritualiste, Communion) et non rituel de la nature — famille à
+        // part dans le bandeau, et « porté seulement » (décision Q6 du lot 4). Aucun rang : le plancher de 3 s ne
+        // dépend pas de la Communion du lanceur. Ne vise QUE les ennemis (« non-spirit foes within range »).
+        new(Ritual.Earthbind, KnockdownData.EarthbindSkillId, "Earthbind",
+            "Ennemis assommés à portée : assommement d'au moins 3 s.",
+            "Knocked-down foes in range: knockdown lasts at least 3s.",
+            PvpSkillId: KnockdownData.EarthbindPvpSkillId,
+            PvpTooltipFr: "Ennemis assommés à portée : assommement d'au moins 3 s.",
+            PvpTooltipEn: "Knocked-down foes in range: knockdown lasts at least 3s.",
+            Group: BandGroup.BindingRitual, EquippedOnly: true),
         // Effets d'adrénaline (lot 1b), SkillId relevés dans la base réelle le 14/09/2026.
         new(Ritual.InfuriatingHeat,  1730, "Infuriating Heat",  "Adrénaline gagnée ×2.",
             "Adrenaline gain ×2.",
@@ -570,6 +594,21 @@ public static class NatureRitualData
     public static int EnergizingChorusReductionAtRank(int rank) =>
         EnergizingChorusByRank[Math.Clamp(rank, 0, EnergizingChorusByRank.Length - 1)];
 
+    // ── Ronces : saignement des créatures assommées (chantier infobulle, lot 4c) ──
+    // « Knocked-down creatures […] begin Bleeding (5…17…20 seconds) », progression[1] de la skill 947 au rang de
+    // Survie en pleine nature du lanceur (DB réelle) : 5 (rang 0) → 17 (12) → 20 (15) → 25 (20).
+    private static readonly int[] BramblesBleedByRank =
+        { 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25 };
+
+    /// <summary>Durée du saignement de Ronces au rang de Survie (clampé 0..20).</summary>
+    public static int BramblesBleedAtRank(int rank) =>
+        BramblesBleedByRank[Math.Clamp(rank, 0, BramblesBleedByRank.Length - 1)];
+
+    /// <summary>Variante par résolution de la progression scrapée (référence de test) : garde le harnais honnête
+    /// en croisant la table ci-dessus contre la base réelle, comme pour Roaring Winds.</summary>
+    public static int BramblesBleedResolved(Skill brambles, int casterRank) =>
+        SkillProgression.IntAt(brambles.Progression is { Length: > 1 } p ? p[1] : null, casterRank) ?? 0;
+
     // ── Sorts de protection du bandeau (lot 3b) ──────────────────────────────
 
     public const int TimeWardSkillId = 3422;
@@ -596,7 +635,7 @@ public static class NatureRitualData
     public static bool HasRank(Ritual ritual) => ritual switch
     {
         Ritual.RoaringWinds or Ritual.Tranquility or Ritual.MarkOfFury or Ritual.EnergizingChorus
-            or Ritual.TimeWard                                         => true,
+            or Ritual.TimeWard or Ritual.Brambles                      => true,
         Ritual.NaturesRenewal or Ritual.InfuriatingHeat                => PvpVariants,
         _                                                              => false,
     };

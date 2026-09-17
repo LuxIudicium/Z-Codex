@@ -106,6 +106,7 @@ public class NatureRitualIndicatorViewModel : ViewModelBase
         R.Tranquility     => _env.TranquilityRank,
         R.NaturesRenewal  => _env.NaturesRenewalRank,
         R.InfuriatingHeat => _env.InfuriatingHeatRank,
+        R.Brambles        => _env.BramblesRank,
         _                 => _env.RoaringWindsRank,
     };
 
@@ -125,6 +126,7 @@ public class NatureRitualIndicatorViewModel : ViewModelBase
             case R.NaturesRenewal:  _env.NaturesRenewalRank  += delta; break;
             case R.RoaringWinds:    _env.RoaringWindsRank    += delta; break;
             case R.InfuriatingHeat: _env.InfuriatingHeatRank += delta; break;
+            case R.Brambles:        _env.BramblesRank        += delta; break;
         }
     }
 }
@@ -196,7 +198,7 @@ public class NatureRitualBandViewModel : ViewModelBase
         // rangs, mode « tous », mode de jeu).
         // Le mode PvE/PvP en fait partie : il change l'icône et les chiffres des rituels splittés.
         string sig = $"{ShowAll}|{NatureRitualData.PvpVariants}|{env.RoaringWindsRank}|{env.TranquilityRank}|{env.NaturesRenewalRank}|"
-            + $"{env.InfuriatingHeatRank}|{string.Join(",", wearerRanks)}|"
+            + $"{env.InfuriatingHeatRank}|{env.BramblesRank}|{string.Join(",", wearerRanks)}|"
             + string.Join(",", equippedSet.Select(r => (int)r).OrderBy(x => x)) + "|"
             + string.Join(",", env.Active.Select(r => (int)r).OrderBy(x => x));
         if (sig == _lastSig) return;

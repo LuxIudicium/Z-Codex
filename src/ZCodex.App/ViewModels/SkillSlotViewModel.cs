@@ -365,6 +365,11 @@ public class SkillSlotViewModel : ViewModelBase
     public ConditionDurations ConditionDurations =>
         Owner is { } o && _skill is { } s ? o.ConditionDurationsFor(s) : default;
 
+    // ── Assommement (lot 4c) : effets actifs sur les assommements de CE perso (insigne Poing-de-fer, Lien
+    // terrestre, saignement de Ronces, Arme du Grand Nain reçue). L'infobulle lit la description résolue pour
+    // savoir si cette compétence-ci assomme, et si un effet y change vraiment quelque chose.
+    public KnockdownEffects Knockdown => Owner?.KnockdownEffects ?? default;
+
     // Permet au perso de pousser une mise à jour live de l'infobulle (footer + description).
     public void RaiseTooltipChanged()
     {
@@ -390,6 +395,7 @@ public class SkillSlotViewModel : ViewModelBase
         OnPropertyChanged(nameof(EnchantTranquilityPct));
         OnPropertyChanged(nameof(DurationBoostPct));
         OnPropertyChanged(nameof(ConditionDurations));
+        OnPropertyChanged(nameof(Knockdown));
         OnPropertyChanged(nameof(AdrenalineGainPerHit));
         OnPropertyChanged(nameof(AdrenalineSlowed));
         OnPropertyChanged(nameof(AdrenalineFromTeam));

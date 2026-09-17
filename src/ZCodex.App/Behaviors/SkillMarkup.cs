@@ -19,7 +19,8 @@ public static class SkillMarkup
     // (groupe 2, couleur flux), valeur relevée par la Puissance de l'invocation (groupe 3, bleu
     // clair), valeur modifiée par un rituel de la nature (groupe 4, couleur rituel), bonus de
     // compétence équipée active (groupe 5, violet), attribut FIXÉ par une compétence override
-    // (groupe 6, ambre), OU une plage "n...n[...n]" (vert).
+    // (groupe 6, ambre), avertissement d'effet à double tranchant (groupe 7, rouge), OU une plage
+    // "n...n[...n]" (vert).
     private static readonly Regex HighlightRegex = new(
         $@"{SkillProgression.Mark}([^{SkillProgression.Mark}]*){SkillProgression.Mark}"
         + $@"|{SkillProgression.MarkFlux}([^{SkillProgression.MarkFlux}]*){SkillProgression.MarkFlux}"
@@ -27,6 +28,7 @@ public static class SkillMarkup
         + $@"|{SkillProgression.MarkRitual}([^{SkillProgression.MarkRitual}]*){SkillProgression.MarkRitual}"
         + $@"|{SkillProgression.MarkSkillBoost}([^{SkillProgression.MarkSkillBoost}]*){SkillProgression.MarkSkillBoost}"
         + $@"|{SkillProgression.MarkOverride}([^{SkillProgression.MarkOverride}]*){SkillProgression.MarkOverride}"
+        + $@"|{SkillProgression.MarkWarning}([^{SkillProgression.MarkWarning}]*){SkillProgression.MarkWarning}"
         + @"|\d+(?:\.\.\.\d+)+",
         RegexOptions.Compiled);
 
@@ -93,7 +95,9 @@ public static class SkillMarkup
             // (couleur flux) ; groupe 3 = valeur relevée par l'invocation (bleu clair) ; groupe 4 =
             // valeur modifiée par un rituel de la nature (couleur rituel) ; groupe 5 = bonus de
             // compétence équipée active (violet) ; groupe 6 = attribut FIXÉ par une compétence
-            // override (ambre, même couleur que le rituel) ; sinon = plage telle quelle (vert).
+            // override (ambre, même couleur que le rituel) ; groupe 7 = avertissement d'effet à double
+            // tranchant (rouge : Ronces fait saigner notre propre perso assommé) ; sinon = plage telle
+            // quelle (vert).
             string shown, brush;
             if (m.Groups[1].Success)      { shown = m.Groups[1].Value; brush = "SkillVariableBrush"; }
             else if (m.Groups[2].Success) { shown = m.Groups[2].Value; brush = "FluxVariableBrush"; }
@@ -101,6 +105,7 @@ public static class SkillMarkup
             else if (m.Groups[4].Success) { shown = m.Groups[4].Value; brush = "RitualVariableBrush"; }
             else if (m.Groups[5].Success) { shown = m.Groups[5].Value; brush = "SkillBoostVariableBrush"; }
             else if (m.Groups[6].Success) { shown = m.Groups[6].Value; brush = "RitualVariableBrush"; }
+            else if (m.Groups[7].Success) { shown = m.Groups[7].Value; brush = "ErrorTextBrush"; }
             else                          { shown = m.Value;           brush = "SkillVariableBrush"; }
             var run = new Run(shown) { FontWeight = FontWeights.Bold };
             run.SetResourceReference(TextElement.ForegroundProperty, brush);

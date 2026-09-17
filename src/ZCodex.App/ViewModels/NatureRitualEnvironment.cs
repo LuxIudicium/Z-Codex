@@ -72,6 +72,13 @@ public class NatureRitualEnvironment
     public int InfuriatingHeatRank { get => _infuriatingHeatRank; set => SetRank(ref _infuriatingHeatRank, value); }
     public void LoadInfuriatingHeatRank(int rank) => _infuriatingHeatRank = ClampRank(rank);
 
+    // Rang de SIMULATION de Ronces (durée du saignement posé sur les créatures assommées, lot 4c) — même patron
+    // que Roaring Winds : c'est un esprit, donc proposé à tout moment, et son effet dépend du rang.
+    private int _bramblesRank = 12;
+    public int BramblesRank { get => _bramblesRank; set => SetRank(ref _bramblesRank, value); }
+    public void LoadBramblesRank(int rank) => _bramblesRank = ClampRank(rank);
+
+    // Lien terrestre n'a PAS de rang : son plancher de 3 s est fixe, quelle que soit la Communion du lanceur.
     // Mark of Fury et Energizing Chorus n'ont PAS de rang de simulation (Philippe, 15/09/2026) : ils ne sont
     // proposés que portés, au rang de leur porteur le plus fort.
 

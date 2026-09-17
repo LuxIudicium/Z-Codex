@@ -379,6 +379,18 @@ public partial class SkillTooltipControl : UserControl
         set => SetValue(ConditionDurationsProperty, value);
     }
 
+    // Effets du perso sur les ASSOMMEMENTS (lot 4c) : insigne Poing-de-fer de son armure, Lien terrestre au
+    // bandeau, saignement de Ronces, Arme du Grand Nain reçue. Aucun en catalogue.
+    public static readonly DependencyProperty KnockdownProperty =
+        DependencyProperty.Register(nameof(Knockdown), typeof(KnockdownEffects), typeof(SkillTooltipControl),
+            new PropertyMetadata(default(KnockdownEffects), OnInputsChanged));
+
+    public KnockdownEffects Knockdown
+    {
+        get => (KnockdownEffects)GetValue(KnockdownProperty);
+        set => SetValue(KnockdownProperty, value);
+    }
+
     // Rang de Fast Casting du perso (0 en catalogue, ou si le perso ne l'a pas) : incantation des sorts et sceaux, recharge
     // des sorts d'Envoûteur en PvE. Caractéristique toujours active : elle ne colore rien, comme l'Expertise.
     public static readonly DependencyProperty FastCastingRankProperty =
@@ -850,6 +862,14 @@ public partial class SkillTooltipControl : UserControl
         foreach (var line in ConditionDurationData.Lines(s, resolved, ConditionDurations))
             lines.Add($"{ConditionDurationLabel(line.Condition)} : "
                       + $"{SkillProgression.MarkSkillBoost}{line.Seconds}{SkillProgression.MarkSkillBoost} s");
+        var knockdown = KnockdownData.Lines(s, resolved, Knockdown);
+        // La ligne de l'ennemi se nomme « Assommement DE LA CIBLE » dès qu'une ligne « Votre assommement »
+        // l'accompagne (maquette de Philippe du 17/09) : sur Grappin, les deux apparaissent et il faut pouvoir
+        // les distinguer. Partout ailleurs, « Assommement » tout court suffit — libellé validé au cadrage (Q3).
+        bool namesTarget = knockdown.Any(l => l.Kind
+            is KnockdownLineKind.SelfStonefistBonus or KnockdownLineKind.SelfNotExtended);
+        foreach (var line in knockdown)
+            lines.Add(KnockdownLineText(line, namesTarget));
 
         if (lines.Count == 0) return;
         DurationText = string.Join("\n", lines);
@@ -886,6 +906,40 @@ public partial class SkillTooltipControl : UserControl
         string de = "aeiouyàâéèêîïôûù".Contains(name[0]) ? "d'" : "de ";
         return $"Durée {de}{name} effective";
     }
+
+    // Lignes d'assommement (lot 4c). On n'affiche JAMAIS la durée résolue d'un assommement, seulement l'EFFET
+    // (décision Philippe du 16/09/2026) : « +1 s » pour l'insigne Poing-de-fer, « au moins 3 s » pour Lien
+    // terrestre. Le saignement de Ronces, lui, est une condition posée par l'esprit : même forme que les lignes
+    // du lot 4b, mais sans aucun allongeur. ⚠ Le saignement que Ronces inflige à NOTRE perso — il fait saigner
+    // tout ce qui est assommé, y compris sur un auto-assommement — part en ROUGE : c'est l'effet à double
+    // tranchant, il ne doit pas se lire comme un gain.
+    private static string KnockdownLineText(KnockdownLine line, bool namesTarget) => line.Kind switch
+    {
+        KnockdownLineKind.StonefistBonus =>
+            $"{KnockdownLabel(namesTarget)} : "
+            + $"{SkillProgression.MarkSkillBoost}+{line.Seconds}{SkillProgression.MarkSkillBoost} s",
+        KnockdownLineKind.EarthbindFloor =>
+            $"{KnockdownLabel(namesTarget)} : "
+            + $"{RitualMark(L($"au moins {line.Seconds} s", $"at least {line.Seconds}s"))}",
+        KnockdownLineKind.SelfStonefistBonus =>
+            Warn(L($"Votre assommement : +{line.Seconds} s", $"Your knockdown: +{line.Seconds}s")),
+        KnockdownLineKind.SelfNotExtended =>
+            Warn(L("Votre assommement : non rallongé", "Your knockdown: not extended")),
+        KnockdownLineKind.SelfBleeding =>
+            Warn(L($"Vous saignez aussi : {line.Seconds} s", $"You bleed too: {line.Seconds}s")),
+        _ =>
+            $"{ConditionDurationLabel(KnockdownData.BramblesCondition)} : "
+            + $"{RitualMark(line.Seconds.ToString())} s",
+    };
+
+    // « Assommement » seul, ou « Assommement de la cible » quand la ligne « Votre assommement » l'accompagne.
+    private static string KnockdownLabel(bool namesTarget) => namesTarget
+        ? L("Assommement de la cible", "Target's knockdown")
+        : L("Assommement", "Knockdown");
+
+    // Ligne d'avertissement ENTIÈREMENT en rouge : elle parle de notre propre personnage, pas de l'ennemi.
+    private static string Warn(string text) =>
+        $"{SkillProgression.MarkWarning}{text}{SkillProgression.MarkWarning}";
 
     // Libellé qui NOMME la durée touchée. Mots du client français du jeu (« pose », « préparation », « maléfice »,
     // « cri », « chant »), cf. [[reference_fr_client_fait_foi]].

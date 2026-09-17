@@ -1,4 +1,4 @@
-using ZCodex.Core.Models;
+﻿using ZCodex.Core.Models;
 
 namespace ZCodex.Core.Sync;
 
@@ -59,6 +59,7 @@ public static class TeamBuildSubset
             TranquilityRitualRank  = source.TranquilityRitualRank,
             NaturesRenewalRitualRank = source.NaturesRenewalRitualRank,
             InfuriatingHeatRitualRank = source.InfuriatingHeatRitualRank,
+            BramblesRitualRank = source.BramblesRitualRank,
             GameMode               = source.GameMode,
             VampiricHits3          = source.VampiricHits3,
             VampiricHits5          = source.VampiricHits5,
