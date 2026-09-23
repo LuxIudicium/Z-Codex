@@ -29,6 +29,7 @@ public static class SkillMarkup
         + $@"|{SkillProgression.MarkSkillBoost}([^{SkillProgression.MarkSkillBoost}]*){SkillProgression.MarkSkillBoost}"
         + $@"|{SkillProgression.MarkOverride}([^{SkillProgression.MarkOverride}]*){SkillProgression.MarkOverride}"
         + $@"|{SkillProgression.MarkWarning}([^{SkillProgression.MarkWarning}]*){SkillProgression.MarkWarning}"
+        + $@"|{SkillProgression.MarkSubst}([^{SkillProgression.MarkSubst}]*){SkillProgression.MarkSubst}"
         + @"|\d+(?:\.\.\.\d+)+",
         RegexOptions.Compiled);
 
@@ -96,8 +97,9 @@ public static class SkillMarkup
             // valeur modifiée par un rituel de la nature (couleur rituel) ; groupe 5 = bonus de
             // compétence équipée active (violet) ; groupe 6 = attribut FIXÉ par une compétence
             // override (ambre, même couleur que le rituel) ; groupe 7 = avertissement d'effet à double
-            // tranchant (rouge : Ronces fait saigner notre propre perso assommé) ; sinon = plage telle
-            // quelle (vert).
+            // tranchant (rouge : Ronces fait saigner notre propre perso assommé) ; groupe 8 = valeur
+            // résolue sur une caractéristique SUBSTITUÉE (rose : Sceau des illusions, Célérité
+            // symbolique — lot 5) ; sinon = plage telle quelle (vert).
             string shown, brush;
             if (m.Groups[1].Success)      { shown = m.Groups[1].Value; brush = "SkillVariableBrush"; }
             else if (m.Groups[2].Success) { shown = m.Groups[2].Value; brush = "FluxVariableBrush"; }
@@ -106,6 +108,7 @@ public static class SkillMarkup
             else if (m.Groups[5].Success) { shown = m.Groups[5].Value; brush = "SkillBoostVariableBrush"; }
             else if (m.Groups[6].Success) { shown = m.Groups[6].Value; brush = "RitualVariableBrush"; }
             else if (m.Groups[7].Success) { shown = m.Groups[7].Value; brush = "ErrorTextBrush"; }
+            else if (m.Groups[8].Success) { shown = m.Groups[8].Value; brush = "SubstVariableBrush"; }
             else                          { shown = m.Value;           brush = "SkillVariableBrush"; }
             var run = new Run(shown) { FontWeight = FontWeights.Bold };
             run.SetResourceReference(TextElement.ForegroundProperty, brush);

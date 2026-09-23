@@ -33,8 +33,8 @@ public static class HelpContent
 {
     // Version du CONTENU de l'aide (indépendante de la version applicative de l'À propos) :
     // à incrémenter et redater à chaque mise à jour.
-    public const string VersionFr = "Aide v22 — 17/09/2026";
-    public const string VersionEn = "Help v22 — 2026-09-17";
+    public const string VersionFr = "Aide v23 — 23/09/2026";
+    public const string VersionEn = "Help v23 — 2026-09-23";
 
     public static string Version => AppLanguage.IsFr ? VersionFr : VersionEn;
 
@@ -308,6 +308,9 @@ public static class HelpContent
             R("Lignes en rouge", "Red lines",
               "Un effet d'équipe à double tranchant, qui frappe aussi vos personnages, l'annonce en rouge dans l'infobulle de la compétence concernée.",
               "A double-edged team effect, one that also hits your own characters, says so in red in the tooltip of the skill concerned."),
+            R("Valeurs en rose", "Pink values",
+              "Une compétence active peut faire lire à d'autres compétences une caractéristique qui n'est pas la leur (Sceau des illusions, Célérité symbolique). Leurs valeurs s'affichent alors en rose, et la mention de fin d'infobulle nomme les deux caractéristiques : celle qui est réellement lue, puis celle qu'elle remplace.",
+              "An active skill can make other skills read an attribute that is not their own (Signet of Illusions, Symbolic Celerity). Their values then show in pink, and the attribute line at the end of the tooltip names both attributes: the one actually read, then the one it replaces."),
             R("Table de dégâts", "Damage table",
               "Si « Afficher les dégâts selon l'armure » est activé : dégâts par niveau d'armure, pénétration comprise. Pour les attaques d'arme : plage totale (arme customisée, rang de maîtrise) et coup critique avec son taux.",
               "If “Show armor-based damage” is on: damage per armor level, penetration included. For weapon attacks: full range (customized weapon, mastery rank) and critical hit with its rate."),

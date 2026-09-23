@@ -257,8 +257,17 @@ public class SkillSlotViewModel : ViewModelBase
     // Rang du perso dans la caractéristique de CETTE compétence, pour la mention de fin
     // d'infobulle. C'est le rang qui a servi à résoudre Description (même appel) : les deux restent
     // donc cohérents, y compris quand il est null (caractéristique hors du build → plage des deux
-    // côtés).
-    public int? AttributeRank => Owner is { } o && _skill is { } s ? o.AttributeLevel(s.Attribute) : null;
+    // côtés). Sous substitution (lot 5), c'est le rang de la caractéristique de REMPLACEMENT, à 0
+    // quand le perso n'a pas cette ligne — même règle que ResolveDescription.
+    public int? AttributeRank => Owner is { } o && _skill is { } s
+        ? (SubstitutedAttribute is { } sub ? o.AttributeLevel(sub) ?? 0 : o.AttributeLevel(s.Attribute))
+        : null;
+
+    // Caractéristique imposée à cette compétence par le Sceau des illusions ou la Célérité
+    // symbolique équipés et allumés sur ce perso (lot 5). Null = aucune substitution ; l'infobulle
+    // affiche alors sa mention de caractéristique habituelle.
+    public string? SubstitutedAttribute =>
+        Owner is { } o && _skill is { } s ? o.SubstitutedAttributeFor(s) : null;
 
     // Rang effectif de la maîtrise de l'ARME du type d'attaque (ex : Précision pour un Bow Attack
     // lié à Expertise — c'est la réquisition de l'arme qui scale les dégâts). Null = pas une
@@ -377,6 +386,7 @@ public class SkillSlotViewModel : ViewModelBase
         OnPropertyChanged(nameof(Description));
         OnPropertyChanged(nameof(DisplayDescription));
         OnPropertyChanged(nameof(AttributeRank));
+        OnPropertyChanged(nameof(SubstitutedAttribute));
         OnPropertyChanged(nameof(WeaponMasteryRank));
         OnPropertyChanged(nameof(StrengthRank));
         OnPropertyChanged(nameof(CriticalStrikesRank));

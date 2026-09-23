@@ -51,6 +51,7 @@
     <SolidColorBrush x:Key="SummonVariableBrush"    Color="#5FC8F0"/>
     <SolidColorBrush x:Key="RitualVariableBrush"    Color="#E0A64D"/>
     <SolidColorBrush x:Key="SkillBoostVariableBrush" Color="#C084FC"/>
+    <SolidColorBrush x:Key="SubstVariableBrush"      Color="#FF4FC3"/>
 
     <!-- Chrome des contrôles natifs (Themes/Controls.xaml) -->
     <SolidColorBrush x:Key="ButtonBackgroundBrush"        Color="#3A3A3E"/>

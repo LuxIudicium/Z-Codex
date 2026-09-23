@@ -48,10 +48,20 @@ public static class SkillProgression
     /// JAMAIS dans une description (absent de <see cref="MarkChars"/>).</summary>
     public const char MarkWarning = (char)7;
 
-    /// <summary>Les deux marqueurs de valeur résolue (normal + flux), à placer dans une classe
-    /// regex <c>[…]</c> par tout parseur de description résolue (SkillDamage, WeaponStrike…) pour
-    /// détecter une valeur quel que soit son marquage.</summary>
-    public const string MarkChars = "";
+    /// <summary>Marqueur (BS, U+0008) entourant une valeur resolue sur une caracteristique
+    /// SUBSTITUEE par une competence active (Sceau des illusions, Celerite symbolique, lot 5) :
+    /// SkillMarkup la rend en rose. /!\ Contrairement aux marqueurs 3 a 7, celui-ci apparait bel
+    /// et bien DANS une description resolue : il DOIT donc rester dans <see cref="MarkChars"/>,
+    /// faute de quoi les sept parseurs qui lisent la description resolue (degats, conditions,
+    /// enchantements, assommement, invocation, durees, rituels) cessent de voir ses valeurs.</summary>
+    public const char MarkSubst = (char)8;
+
+    /// <summary>Les TROIS marqueurs de valeur résolue (normal + flux + substitution), à placer dans
+    /// une classe regex <c>[…]</c> par tout parseur de description résolue (SkillDamage,
+    /// WeaponStrike…) pour détecter une valeur quel que soit son marquage. ⚠ Tout nouveau marqueur
+    /// posé DANS une description doit être ajouté ici, sinon ces parseurs cessent de voir ses
+    /// valeurs — sans erreur ni build rouge.</summary>
+    public const string MarkChars = "\u0001\u0002\u0008";
 
     /// <summary>
     /// Remplace chaque plage <c>a...b...c</c> de la description par <c>progression[v][rank]</c>,
@@ -59,14 +69,18 @@ public static class SkillProgression
     /// pas de progression, ou plage non appariée → laissés inchangés (plage verte).
     /// <paramref name="fluxBoosted"/> = le rang inclut un bonus de flux → valeurs marquées
     /// distinctement (toute la description scale sur le même attribut, donc marquage uniforme).
+    /// <paramref name="substituted"/> = le rang est celui d'une AUTRE caractéristique, imposée par
+    /// une compétence active (lot 5) → valeurs marquées en rose, priorité sur le flux.
     /// </summary>
-    public static string Resolve(string description, string[][]? progression, int? rank, bool fluxBoosted = false, bool frAnchors = false)
+    public static string Resolve(string description, string[][]? progression, int? rank, bool fluxBoosted = false, bool frAnchors = false, bool substituted = false)
     {
         if (string.IsNullOrEmpty(description) || progression is null || progression.Length == 0 || rank is null)
             return description;
 
         int r = rank.Value;
-        char mark = fluxBoosted ? MarkFlux : Mark;
+        // La substitution prime sur le flux : c'est l'information neuve, et le rang substitue
+        // n'est plus celui que le flux a releve.
+        char mark = substituted ? MarkSubst : fluxBoosted ? MarkFlux : Mark;
         return RangeRegex.Replace(description, m =>
         {
             var parts = m.Value.Split("...");

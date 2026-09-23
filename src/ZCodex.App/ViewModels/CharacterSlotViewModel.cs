@@ -462,7 +462,8 @@ public class CharacterSlotViewModel : ViewModelBase
 
     // Id d'icône d'une compétence personnelle togglable, null sinon : boost d'attribut (id de la
     // compétence), accélérateur d'adrénaline « you », réduction de coût d'énergie (lot 2) ou effet de recharge et
-    // d'incantation (lot 3) ou allongeur de durée (lot 4a) — id de base : une variante « (PvP) » partage l'icône de sa
+    // d'incantation (lot 3), allongeur de durée (lot 4a) ou compétence de substitution de caractéristique (lot 5)
+    // — id de base : une variante « (PvP) » partage l'icône de sa
     // jumelle et reste allumée quand le catalogue change de mode. Une compétence présente dans plusieurs tables (Glyph of
     // Energy, mais aussi Pose de pratique et Lingwah, dans deux lots chacune) n'a qu'une icône.
     private static int? PersonalToggleIdOf(Skill skill) =>
@@ -474,6 +475,7 @@ public class CharacterSlotViewModel : ViewModelBase
         : ConditionDurationData.BySkillId(skill.Id) is { Received: false } c ? c.ToggleId
         : ConditionDurationData.ConverterBySkillId(skill.Id) is { Received: false } k ? k.ToggleId
         : skill.Id == ConditionDurationData.ArcherSignetSkillId ? skill.Id
+        : AttributeSubstitutionData.BySkillId(skill.Id) is not null ? skill.Id
         : null;
 
     // Familles dont un perso ne porte qu'un effet à la fois (wiki *Effect stacking* : « one stance, one preparation, one
@@ -521,9 +523,12 @@ public class CharacterSlotViewModel : ViewModelBase
                 ? PrimaryAttributeRows.Concat(SecondaryAttributeRows).Any(r => r.Name == attributeName)
                 : d.TargetAttributes.Contains(attributeName);
             if (!targeted) continue;
+            // Caractéristique substituée (lot 5) : le bonus se lit sur elle, sinon la ligne d'attribut
+            // afficherait un autre chiffre que l'infobulle de la compétence qui le donne. Aucun cycle
+            // possible — SubstitutedAttributeFor ne lit aucun rang, et la lecture reste DIRECTE.
             int value = d.FixedValue ?? SkillProgression.IntAt(
                 sk.Progression is { } p && d.ProgressionIndex < p.Length ? p[d.ProgressionIndex] : null,
-                FindAttributeRow(sk.Attribute)?.EffectiveLevel ?? 0) ?? 0;
+                FindAttributeRow(SubstitutedAttributeFor(sk) ?? sk.Attribute)?.EffectiveLevel ?? 0) ?? 0;
             yield return (d, value);
         }
     }
@@ -1042,16 +1047,44 @@ public class CharacterSlotViewModel : ViewModelBase
         return rowLevel;
     }
 
+    // ── Caractéristique de substitution (lot 5) ──────────────────────────────────────────────
+    // Caractéristique imposée à CETTE compétence par une compétence de substitution équipée ET
+    // allumée sur ce perso (Sceau des illusions → Magie d'illusion sur les sorts hors Illusion ;
+    // Célérité symbolique → Incantation rapide sur les sceaux), ou null. Les deux périmètres sont
+    // DISJOINTS, donc la première trouvée est la bonne : aucun arbitrage à faire.
+    public string? SubstitutedAttributeFor(Skill skill)
+    {
+        foreach (var slot in SkillSlots)
+        {
+            if (slot.Skill is not { } sk || AttributeSubstitutionData.BySkillId(sk.Id) is not { } d) continue;
+            if (IsAttributeBoostActive(d.SkillId) && d.Affects(skill)) return d.Attribute;
+        }
+        return null;
+    }
+
+    // Rang auquel résoudre les chiffres de CETTE compétence, et la caractéristique substituée qui
+    // l'a donné (null = pas de substitution, rang de la caractéristique propre).
+    // ⚠ Sous substitution, une caractéristique SANS ligne chez ce perso vaut 0 et non « inconnue » :
+    // Incantation rapide est la caractéristique PRIMAIRE du Mesmer, donc un E/Me qui porte la
+    // Célérité symbolique est réellement à 0 en jeu et ses sceaux tombent au minimum. Décision de
+    // Philippe du 17/09/2026 (Q3b) : on résout à 0, on n'affiche pas une plage.
+    private (int? Rank, string? Substituted) EffectiveRank(Skill skill)
+        => SubstitutedAttributeFor(skill) is { } attr
+            ? (AttributeLevel(attr) ?? 0, attr)
+            : (AttributeLevel(skill.Attribute), null);
+
     // Description de la skill : phrase de type retirée + variables résolues au rang de l'attribut
-    // de la skill (Skill.Attribute). Plages non résolues (pas de progression scrapée, ou attribut
-    // non édité) laissées en notation de plage verte.
+    // de la skill (Skill.Attribute), ou de la caractéristique substituée (lot 5). Plages non
+    // résolues (pas de progression scrapée, ou attribut non édité) laissées en notation de plage verte.
     public string ResolveDescription(Skill skill)
     {
         var body = SkillText.ConciseBody(skill.Description, skill.SkillType);
-        // Un flux qui relève l'attribut de la skill → valeurs marquées dans la couleur du flux
-        // (toute la description scale sur ce seul attribut : marquage uniforme).
-        bool fluxBoosted = FluxAttributeBonus(skill.Attribute) > 0;
-        return SkillProgression.Resolve(body, skill.Progression, AttributeLevel(skill.Attribute), fluxBoosted);
+        var (rank, subst) = EffectiveRank(skill);
+        // Un flux qui relève l'attribut RÉELLEMENT lu → valeurs marquées dans la couleur du flux
+        // (toute la description scale sur ce seul attribut : marquage uniforme). La substitution
+        // prime sur ce marquage, cf. SkillProgression.Resolve.
+        bool fluxBoosted = FluxAttributeBonus(subst ?? skill.Attribute) > 0;
+        return SkillProgression.Resolve(body, skill.Progression, rank, fluxBoosted, substituted: subst is not null);
     }
 
     // Description AFFICHÉE en mode FR : le texte gwiki résolu au même rang (ancres 0/15).
@@ -1070,9 +1103,10 @@ public class CharacterSlotViewModel : ViewModelBase
         // être identique dans les deux contextes, sinon l'infobulle avertirait « affiché en
         // anglais » tout en montrant du français.
         if (skill.DescriptionFallback != Skill.FrFallback.None) return null;
-        bool fluxBoosted = FluxAttributeBonus(skill.Attribute) > 0;
+        var (rank, subst) = EffectiveRank(skill);
+        bool fluxBoosted = FluxAttributeBonus(subst ?? skill.Attribute) > 0;
         return SkillProgression.Resolve(skill.DescriptionFr, skill.Progression,
-            AttributeLevel(skill.Attribute), fluxBoosted, frAnchors: true);
+            rank, fluxBoosted, frAnchors: true, substituted: subst is not null);
     }
 
     // Pousse la mise à jour live des infobulles (footer + description) vers tous les slots,

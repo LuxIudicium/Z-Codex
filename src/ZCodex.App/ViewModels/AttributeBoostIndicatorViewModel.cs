@@ -33,7 +33,9 @@ public class AttributeBoostIndicatorViewModel : ViewModelBase
         // Natural Temper ne fait rien tant qu'un effet actif
         // enchante le perso (Onslaught) ; le Sceau de l'Archer non plus tant que le set d'armes actif ne porte pas
         // d'arc, ni l'Application de poison tant qu'un effet convertit les dégâts d'attaque du perso (lot 4b) ; Selfless Spirit s'allume quand le sort vise un autre allié (lot 2) ; Ghostly Haste
-        // quand un esprit est à portée, Signet of Mystic Speed quand l'enchantement vise ce perso (lot 3).
+        // quand un esprit est à portée, Signet of Mystic Speed quand l'enchantement vise ce perso (lot 3) ;
+        // la Célérité symbolique (lot 5) prévient quand Incantation rapide vaut 0 — allumée, elle FAIT BAISSER
+        // les sceaux du perso, ce qui est le vrai comportement du jeu mais surprend sans un mot d'explication.
         string? note = skill is null || skill.Id is 763 or 1199 or 3145
                        || skill.Id == KnockdownData.GreatDwarfWeaponSkillId ? T("S.Boost.ProcNote")
             : AdrenalineBoostData.BySkillId(skill.Id) is { NeedsUnenchanted: true } && owner.IsEnchantedByAdrenalineEffect
@@ -44,6 +46,8 @@ public class AttributeBoostIndicatorViewModel : ViewModelBase
                 ? T("S.Boost.NoEffectNonPhysical")
             : skill.Id is EnergyCostBoostData.SelflessSpiritKurzickSkillId or EnergyCostBoostData.SelflessSpiritLuxonSkillId
                 ? T("S.Boost.OtherAllyNote")
+            : skill.Id == AttributeSubstitutionData.SymbolicCeleritySkillId && owner.FastCastingRank == 0
+                ? T("S.Boost.ZeroFastCasting")
             : skill.Id == SkillSpeedBoostData.GhostlyHasteSkillId ? T("S.Boost.SpiritNote")
             : skill.Id == SkillSpeedBoostData.SignetOfMysticSpeedSkillId ? T("S.Boost.SelfEnchantmentNote")
             : null;

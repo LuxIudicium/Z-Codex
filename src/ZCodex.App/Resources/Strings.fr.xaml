@@ -187,6 +187,7 @@
     <sys:String x:Key="S.Boost.SelfEnchantmentNote">Allumée = l'enchantement est lancé sur ce personnage.</sys:String>
     <sys:String x:Key="S.Boost.NoEffectWithoutBow">Sans effet : le set d'armes actif ne porte pas d'arc.</sys:String>
     <sys:String x:Key="S.Boost.NoEffectNonPhysical">Sans effet : les attaques de ce personnage n'infligent plus de dégâts physiques.</sys:String>
+    <sys:String x:Key="S.Boost.ZeroFastCasting">Incantation rapide vaut 0 sur ce personnage (le Mesmer n'est pas sa profession primaire) : ses sceaux tombent au rang 0.</sys:String>
 
     <!-- ── Recherche de templates ─────────────────────────────────────── -->
     <sys:String x:Key="S.Search.Title">Rechercher des templates de compétences</sys:String>

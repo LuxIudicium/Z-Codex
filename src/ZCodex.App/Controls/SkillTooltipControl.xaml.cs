@@ -549,6 +549,18 @@ public partial class SkillTooltipControl : UserControl
         set => SetValue(AttributeRankProperty, value);
     }
 
+    // Caractéristique de REMPLACEMENT imposée par une compétence active (lot 5), ou null. Non nulle,
+    // la mention de fin nomme les deux : « (Caract. : 16 Magie d'illusion au lieu de Magie de feu) ».
+    public static readonly DependencyProperty SubstitutedAttributeProperty =
+        DependencyProperty.Register(nameof(SubstitutedAttribute), typeof(string), typeof(SkillTooltipControl),
+            new PropertyMetadata(null, OnInputsChanged));
+
+    public string? SubstitutedAttribute
+    {
+        get => (string?)GetValue(SubstitutedAttributeProperty);
+        set => SetValue(SubstitutedAttributeProperty, value);
+    }
+
     public static readonly DependencyProperty AttributeLineProperty =
         DependencyProperty.Register(nameof(AttributeLine), typeof(string), typeof(SkillTooltipControl),
             new PropertyMetadata(string.Empty));
@@ -990,6 +1002,16 @@ public partial class SkillTooltipControl : UserControl
         if (GwAttributeData.IsNoAttribute(s.Attribute))
         {
             AttributeLine = $"({label}{L("Aucune", "None")})";
+            return;
+        }
+
+        // Substitution (lot 5) : la mention nomme les DEUX caractéristiques, la lue puis la
+        // remplacée — sans elle, un chiffre rose sortirait de nulle part. Le rang fourni est déjà
+        // celui de la caractéristique de remplacement (SkillSlotViewModel.AttributeRank).
+        if (SubstitutedAttribute is { Length: > 0 } sub)
+        {
+            AttributeLine = $"({label}{AttributeRank?.ToString() ?? "0"} {GwAttributeData.DisplayName(sub)}"
+                          + $"{L(" au lieu de ", " instead of ")}{GwAttributeData.DisplayName(s.Attribute)})";
             return;
         }
 

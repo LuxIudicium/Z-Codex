@@ -428,13 +428,15 @@ public static class TeamBuildSerializer
             // Les réductions de coût d'énergie (lot 2) aussi : id de base de la compétence. Et les effets de recharge et
             // d'incantation (lot 3), 1268 pour Weapon of Quickening reçue. Et les allongeurs de durée (lot 4a),
             // puis les ajouteurs de condition et le Sceau de l'Archer (lot 4b), 2148 pour Sundering Weapon reçue.
-            // Enfin 2219 pour l'Arme du Grand Nain reçue (lot 4c), qui donne une chance d'assommer aux attaques.
+            // Puis 2219 pour l'Arme du Grand Nain reçue (lot 4c), qui donne une chance d'assommer aux attaques.
+            // Enfin les deux compétences de substitution de caractéristique (lot 5) : id de la compétence.
             ActiveAttributeBoosts = dto.ActiveAttributeBoosts
                 .Where(id => AttributeBoostData.BySkillId(id) != null || id == HeroicRefrainData.SkillId
                              || AdrenalineBoostData.IsToggleId(id) || EnergyCostBoostData.IsToggleId(id)
                              || SkillSpeedBoostData.IsToggleId(id) || SkillDurationBoostData.IsToggleId(id)
                              || ConditionDurationData.IsToggleId(id)
-                             || id == KnockdownData.GreatDwarfWeaponSkillId)
+                             || id == KnockdownData.GreatDwarfWeaponSkillId
+                             || AttributeSubstitutionData.IsToggleId(id))
                 .Distinct().ToList(),
             Variants = dto.Variants.Select(v => CharFromDto(v, skillsById, unresolvedIds)).ToList(),
         };
