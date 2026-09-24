@@ -118,6 +118,8 @@ public static class DamageBoostData
     public const int ConjureFrostSkillId     = 207;
     public const int ConjureLightningSkillId = 221;
     public const int IgniteArrowsSkillId     = 431;
+    public const int ReadTheWindSkillId      = 432;
+    public const int ChokingGasSkillId       = 434;
     public const int FeralAggressionSkillId  = 2142;
     public const int GhostlyMightSkillId     = 1742;
     public const int GhostlyMightPvpSkillId  = 2966;
@@ -147,6 +149,14 @@ public static class DamageBoostData
         new(3145, DamageBoostScope.BowAttacks, DamageBoostKind.Damage, Index: 1, BaseSkillId: 1199),    // Flèches de verre (PvP)
         new(2145, DamageBoostScope.BowAttacks, DamageBoostKind.Damage, Index: 1),                       // Concentration experte
         new(429,  DamageBoostScope.BowAttacks, DamageBoostKind.Damage, Index: 1),                       // Flèches de Melandru (cible enchantée : Q9)
+        // ⚠ Ces deux-là avaient été MANQUÉES par le recensement du § 6.2, parce qu'elles annoncent leur bonus
+        // dans une phrase NUE (« +3…9…10 damage. ») et non « your arrows deal +X ». Trouvées le 24/09/2026 en
+        // balayant la famille « préparation » en entier, sur demande de Philippe.
+        new(ReadTheWindSkillId, DamageBoostScope.BowAttacks, DamageBoostKind.Damage, Index: 0),         // Lecture du vent
+        new(ChokingGasSkillId,  DamageBoostScope.BowAttacks, DamageBoostKind.Damage, Index: 1),         // Gaz suffocant (l'index 0 est sa durée)
+        // ⚠ Lecture du vent (PvP) (2969) n'est VOLONTAIREMENT pas ici : sa variante a PERDU les dégâts, il ne
+        // lui reste que la vitesse de projectile. Cas d'école de la divergence des variantes « (PvP) » — lui
+        // donner un BaseSkillId lui collerait une icône qui ne ferait rien.
         // Preneur d'Âmes : « Attacks deal +X damage » = les attaques du LANCEUR seul (glossaire G1).
         // ⚠ L'index 2 porte le SACRIFICE, aux chiffres identiques : sonde obligatoire.
         new(3423, DamageBoostScope.Attacks,     DamageBoostKind.Damage, Index: 1),                       // Preneur d'Âmes (PvE)
