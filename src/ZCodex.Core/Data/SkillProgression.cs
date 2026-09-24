@@ -56,12 +56,24 @@ public static class SkillProgression
     /// enchantements, assommement, invocation, durees, rituels) cessent de voir ses valeurs.</summary>
     public const char MarkSubst = (char)8;
 
-    /// <summary>Les TROIS marqueurs de valeur résolue (normal + flux + substitution), à placer dans
+    /// <summary>Marqueur (SO, U+000E) entourant une valeur de description RELEVÉE PAR UN EFFET ACTIF
+    /// (lot 6a : Agression barbare sur les attaques du familier, Sceau de puissance spectrale sur les
+    /// attaques des esprits) : SkillMarkup la rend en VIOLET, la couleur que l'application donne déjà
+    /// aux bonus de compétence équipée active (<see cref="MarkSkillBoost"/>). Comme
+    /// <see cref="MarkSubst"/>, il apparaît DANS une description résolue et DOIT donc rester dans
+    /// <see cref="MarkChars"/> — sans quoi les sept parseurs de description cessent de voir la valeur
+    /// relevée (la ligne « ignore l'armure » de l'infobulle montrerait la valeur de base).
+    /// ⚠ Pourquoi U+000E et pas le premier code libre : U+0009 à U+000D (\t \n \v \f \r) sont TOUS
+    /// matchés par <c>\s</c> en .NET, donc un marqueur pris là-dedans ferait matcher les regex en
+    /// <c>{Value}\s+damage</c> sur le marqueur lui-même.</summary>
+    public const char MarkEffect = (char)14;
+
+    /// <summary>Les QUATRE marqueurs de valeur résolue (normal + flux + substitution + effet actif), à placer dans
     /// une classe regex <c>[…]</c> par tout parseur de description résolue (SkillDamage,
     /// WeaponStrike…) pour détecter une valeur quel que soit son marquage. ⚠ Tout nouveau marqueur
     /// posé DANS une description doit être ajouté ici, sinon ces parseurs cessent de voir ses
     /// valeurs — sans erreur ni build rouge.</summary>
-    public const string MarkChars = "\u0001\u0002\u0008";
+    public const string MarkChars = "\u0001\u0002\u0008\u000E";
 
     /// <summary>
     /// Remplace chaque plage <c>a...b...c</c> de la description par <c>progression[v][rank]</c>,
@@ -71,8 +83,15 @@ public static class SkillProgression
     /// distinctement (toute la description scale sur le même attribut, donc marquage uniforme).
     /// <paramref name="substituted"/> = le rang est celui d'une AUTRE caractéristique, imposée par
     /// une compétence active (lot 5) → valeurs marquées en rose, priorité sur le flux.
+    /// <paramref name="bonusColumn"/> / <paramref name="bonus"/> (lot 6a) = un effet actif relève de
+    /// <paramref name="bonus"/> la valeur de cette colonne de progression : la PREMIÈRE occurrence de
+    /// la colonne dans le texte porte la valeur relevée, marquée <see cref="MarkEffect"/> ; les
+    /// suivantes restent à la valeur de base (le second paquet d'un Coup brutal est conditionnel,
+    /// décision § 6.6 du plan). Fonctionne à l'identique sur le texte EN et le texte FR : les deux
+    /// résolvent depuis la MÊME colonne.
     /// </summary>
-    public static string Resolve(string description, string[][]? progression, int? rank, bool fluxBoosted = false, bool frAnchors = false, bool substituted = false)
+    public static string Resolve(string description, string[][]? progression, int? rank, bool fluxBoosted = false, bool frAnchors = false, bool substituted = false,
+                                 int bonusColumn = -1, int bonus = 0)
     {
         if (string.IsNullOrEmpty(description) || progression is null || progression.Length == 0 || rank is null)
             return description;
@@ -81,14 +100,33 @@ public static class SkillProgression
         // La substitution prime sur le flux : c'est l'information neuve, et le rang substitue
         // n'est plus celui que le flux a releve.
         char mark = substituted ? MarkSubst : fluxBoosted ? MarkFlux : Mark;
+        var boosted = bonus != 0 && bonusColumn >= 0 && bonusColumn < progression.Length
+            ? progression[bonusColumn] : null;
+        bool bumped = false;
         return RangeRegex.Replace(description, m =>
         {
             var parts = m.Value.Split("...");
             var v = MatchVariable(progression, parts, frAnchors);
             if (v is null || v.Length == 0) return m.Value;
             int idx = Math.Clamp(r, 0, v.Length - 1);
+            if (!bumped && ReferenceEquals(v, boosted) && int.TryParse(v[idx], out int b))
+            {
+                bumped = true;
+                return $"{MarkEffect}{b + bonus}{MarkEffect}";
+            }
             return $"{mark}{v[idx]}{mark}";
         });
+    }
+
+    /// <summary>Index de la colonne de progression dont les ancres apparient la plage
+    /// <paramref name="range"/> (« 5...17...20 »), ou −1. Même appariement que
+    /// <see cref="Resolve"/>, donc la colonne rendue est bien celle qui résoudra cette plage —
+    /// c'est ce qui permet de désigner le paquet à relever (lot 6a) sans jamais deviner un index.</summary>
+    public static int ColumnOf(string[][]? progression, string? range, bool frAnchors = false)
+    {
+        if (progression is null || string.IsNullOrEmpty(range)) return -1;
+        var v = MatchVariable(progression, range.Split("..."), frAnchors);
+        return v is null ? -1 : Array.IndexOf(progression, v);
     }
 
     // Variable dont les ancres correspondent aux parts de la plage. Wiki EN : rang 0 =

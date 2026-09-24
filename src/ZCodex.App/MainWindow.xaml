@@ -51,7 +51,8 @@
                                       AdrenalineStrikesGiven="{Binding AdrenalineStrikesGiven}"
                                       DurationBoostPct="{Binding DurationBoostPct}"
                                       ConditionDurations="{Binding ConditionDurations}"
-                                      Knockdown="{Binding Knockdown}"/>
+                                      Knockdown="{Binding Knockdown}"
+                                      DamageBoosts="{Binding DamageBoosts}"/>
         </DataTemplate>
 
         <!-- Tooltip du catalogue de recherche : DataContext de la cellule = le Skill lui-même. -->
@@ -233,10 +234,17 @@
                                 <Image Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"
                                        Source="{Binding Skill.IconPath, Converter={StaticResource UrlToImage}, ConverterParameter=64}"
                                        Visibility="{Binding HasSkill, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                                <!-- Mod d'arme « Furious » : pas d'icône de compétence → icône d'adrénaline. -->
+                                <!-- Mod d'arme : pas d'icône de compétence → icône de la statistique
+                                     concernée (adrénaline pour « Furieux »), ou un glyphe quand cette
+                                     statistique n'a pas d'icône (pénétration d'armure du mod
+                                     « de fractionnement »). -->
                                 <Image Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"
-                                       Source="{Binding Source='adrenaline', Converter={StaticResource StatIcon}}"
-                                       Visibility="{Binding HasSkill, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Invert}"/>
+                                       Source="{Binding ModIcon, Converter={StaticResource StatIcon}}"
+                                       Visibility="{Binding HasModIcon, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                <TextBlock Text="{Binding ModGlyph}" FontSize="11" FontWeight="Bold"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           Foreground="{DynamicResource TextPrimaryBrush}"
+                                           Visibility="{Binding HasModGlyph, Converter={StaticResource BoolToVisibilityConverter}}"/>
                             </Grid>
                         </Border>
                     </DataTemplate>
@@ -912,7 +920,8 @@
                                                                       AdrenalineStrikesGiven="{Binding AdrenalineStrikesGiven}"
                                                                       DurationBoostPct="{Binding DurationBoostPct}"
                                                                       ConditionDurations="{Binding ConditionDurations}"
-                                      Knockdown="{Binding Knockdown}"/>
+                                                                      Knockdown="{Binding Knockdown}"
+                                                                      DamageBoosts="{Binding DamageBoosts}"/>
                                         </ToolTip>
                                     </Border.ToolTip>
                                     <Border.ContextMenu>

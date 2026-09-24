@@ -455,6 +455,8 @@ public class CharacterSlotViewModel : ViewModelBase
                 items = items.Append(new AttributeBoostIndicatorViewModel(this, gdw, KnockdownData.GreatDwarfWeaponSkillId, received: true));
             if (HasFuriousMod)
                 items = items.Append(new AttributeBoostIndicatorViewModel(this, null, AdrenalineBoostData.FuriousModToggleId, received: false));
+            if (HasSunderingMod)
+                items = items.Append(new AttributeBoostIndicatorViewModel(this, null, DamageBoostData.SunderingModToggleId, received: false));
 
             return items;
         }
@@ -476,6 +478,7 @@ public class CharacterSlotViewModel : ViewModelBase
         : ConditionDurationData.ConverterBySkillId(skill.Id) is { Received: false } k ? k.ToggleId
         : skill.Id == ConditionDurationData.ArcherSignetSkillId ? skill.Id
         : AttributeSubstitutionData.BySkillId(skill.Id) is not null ? skill.Id
+        : DamageBoostData.BySkillId(skill.Id) is { } b ? b.ToggleId
         : null;
 
     // Familles dont un perso ne porte qu'un effet à la fois (wiki *Effect stacking* : « one stance, one preparation, one
@@ -489,6 +492,9 @@ public class CharacterSlotViewModel : ViewModelBase
         if (toggleId is AdrenalineBoostData.WeaponOfFurySkillId or SkillSpeedBoostData.WeaponOfQuickeningSkillId
                      or ConditionDurationData.SunderingWeaponSkillId or KnockdownData.GreatDwarfWeaponSkillId)
             return "Weapon Spell";
+        // Les effets qui exigent un TYPE D'ARME (3 conjurations + Aura de poussière d'ébène) : une arme
+        // n'inflige qu'un type de dégâts à la fois, donc au plus un d'entre eux peut agir (lot 6a).
+        if (DamageBoostData.ExclusiveElementFamily(toggleId) is { } element) return element;
         return SkillSlots.Select(s => s.Skill)
             .FirstOrDefault(sk => sk is not null && ExclusiveSkillTypes.Contains(sk.SkillType) && PersonalToggleIdOf(sk) == toggleId)
             ?.SkillType;
@@ -863,6 +869,155 @@ public class CharacterSlotViewModel : ViewModelBase
         }
     }
 
+    // ── Bonus de dégâts et de critique (chantier infobulle, lot 6a) ───────────
+    // Même stockage que les autres icônes du bandeau local. Aucun cycle possible : un bonus de dégâts ne
+    // nourrit aucune caractéristique, donc le rang se lit par AttributeLevel (et la substitution du lot 5
+    // s'y applique gratuitement, comme le veut le § 6.5 du plan).
+
+    /// <summary>Ce que les effets ALLUMÉS de ce perso font aux dégâts de <paramref name="target"/> : les
+    /// paquets de la ligne « bonus d'effets », les points de critique de « Craignez-moi ! », et la
+    /// pénétration d'armure (de BASE pour les deux sorts d'objet Ritualiste, en BONUS pour le mod d'arme
+    /// « de fractionnement »). Les deux effets qui relèvent un chiffre DANS LE TEXTE (familier, esprits)
+    /// n'entrent PAS ici : ils passent par <see cref="TextDamageBonusFor"/>.</summary>
+    public DamageBoosts DamageBoostsFor(Skill target)
+    {
+        var equipped = ActiveWeaponKind();
+        string? element = EffectiveElementFor(target, equipped);
+
+        List<DamageBoostPacket>? packets = null;
+        int critical = 0, basePenetration = 0;
+        bool elementTaken = false;
+
+        foreach (var slot in SkillSlots)
+        {
+            if (slot.Skill is not { } sk || DamageBoostData.BySkillId(sk.Id) is not { } d) continue;
+            if (d.Kind == DamageBoostKind.TextDamage) continue;
+            if (!IsAttributeBoostActive(d.ToggleId) || !DamageBoostData.Affects(d, sk, target, equipped)) continue;
+            // Seule entorse du chantier à « icône allumée = ça marche » : une conjuration ne s'applique
+            // que si le type de dégâts effectif est le sien — mais uniquement quand l'application le SAIT
+            // (cf. § 6.1 du plan et DamageBoostData.ElementSatisfied).
+            if (!DamageBoostData.ElementSatisfied(d.RequiresElement, element)) continue;
+            // Une arme n'inflige qu'un type de dégâts à la fois : au plus UN effet à exigence d'élément
+            // peut agir. L'exclusivité des icônes (ExclusiveFamilyOf) l'empêche déjà à l'allumage ; ce
+            // garde-fou couvre les fichiers enregistrés AVANT cette règle, qui peuvent en porter deux.
+            if (d.RequiresElement is not null)
+            {
+                if (elementTaken) continue;
+                elementTaken = true;
+            }
+            int value = ValueOfBoost(d, sk);
+            if (value <= 0) continue;
+            switch (d.Kind)
+            {
+                case DamageBoostKind.Damage:
+                    (packets ??= []).Add(new DamageBoostPacket(value, d.DamageType, d.IsBonus));
+                    break;
+                // Les chances de critique s'ADDITIONNENT (Q7 : « s'ajoute tel quel au taux affiché ») ;
+                // seul l'affichage plafonne à 100 %. La pénétration de BASE, elle, ne se cumule jamais :
+                // seul le plus fort compte (Q8).
+                case DamageBoostKind.CriticalChance:  critical += value; break;
+                case DamageBoostKind.BasePenetration: basePenetration = Math.Max(basePenetration, value); break;
+            }
+        }
+
+        return new DamageBoosts(packets, critical, basePenetration, SunderingModPercentFor(target, equipped));
+    }
+
+    // Valeur d'un effet au rang de SA PROPRE caractéristique (substitution du lot 5 comprise). Rang null =
+    // caractéristique hors du build : la description de l'effet reste alors en plage verte, donc son bonus
+    // n'a pas de chiffre non plus — on ne lui donne PAS la valeur du rang 0.
+    private int ValueOfBoost(DamageBoostDescriptor descriptor, Skill source)
+    {
+        if (descriptor.Fixed > 0) return descriptor.Fixed;
+        int? rank = AttributeLevel(SubstitutedAttributeFor(source) ?? source.Attribute);
+        return rank is null ? 0 : DamageBoostData.ValueOf(descriptor, source, rank.Value);
+    }
+
+    /// <summary>Points de pénétration d'armure en BONUS apportés par le mod d'arme « de fractionnement » du
+    /// set actif (icône allumée = les 20 % de chance ont joué, idiome du chantier). Il ne vaut que pour les
+    /// attaques de l'arme qui le porte — 0 partout ailleurs.</summary>
+    private int SunderingModPercentFor(Skill target, WeaponKind equipped)
+    {
+        if (!IsAttributeBoostActive(DamageBoostData.SunderingModToggleId)
+            || !ConditionDurationData.UsesEquippedWeapon(target, equipped)) return 0;
+        int best = 0;
+        foreach (int id in ActiveWeaponSetModIds())
+            best = Math.Max(best, ConditionDurationData.PenetrationModPercent(id));
+        return best;
+    }
+
+    /// <summary>Le set d'armes ACTIF porte-t-il un mod « de fractionnement » ? → icône du mod dans le bandeau.</summary>
+    public bool HasSunderingMod => ActiveWeaponSetModIds().Any(id => ConditionDurationData.PenetrationModPercent(id) > 0);
+
+    /// <summary>Bonus qu'un effet actif ajoute au chiffre de dégâts écrit DANS la description de
+    /// <paramref name="target"/> (Q12) : Agression barbare sur les 16 attaques de familier, Sceau de
+    /// puissance spectrale sur les attaques des esprits. Rend la colonne de progression à relever et le
+    /// bonus ; colonne −1 = rien à relever.</summary>
+    public (int Column, int Bonus) TextDamageBonusFor(Skill target)
+    {
+        foreach (var slot in SkillSlots)
+        {
+            if (slot.Skill is not { } sk || DamageBoostData.BySkillId(sk.Id) is not { Kind: DamageBoostKind.TextDamage } d)
+                continue;
+            if (!IsAttributeBoostActive(d.ToggleId) || !DamageBoostData.Affects(d, sk, target, WeaponKind.None)) continue;
+            int bonus = ValueOfBoost(d, sk);
+            if (bonus <= 0) continue;
+            int column = DamageBoostData.TextBonusColumn(d.Scope, target);
+            if (column >= 0) return (column, bonus);
+        }
+        return (-1, 0);
+    }
+
+    /// <summary>Type de dégâts effectif des attaques de <paramref name="target"/> : la chaîne de conversion
+    /// du § 6.1 est dans le Core (<see cref="DamageBoostData.EffectiveElement"/>), ce perso n'en fournit
+    /// que l'état courant.</summary>
+    private string? EffectiveElementFor(Skill target, WeaponKind equipped) =>
+        DamageBoostData.EffectiveElement(ConversionState(target), target, equipped);
+
+    private DamageBoostData.ConversionState ConversionState(Skill target)
+    {
+        List<DamageConverterDescriptor>? lit = null;
+        foreach (var slot in SkillSlots)
+            if (slot.Skill is { } sk && ConditionDurationData.ConverterBySkillId(sk.Id) is { Received: false } k
+                && IsAttributeBoostActive(k.ToggleId)
+                // ⚠ Tir de barrage et Volée retirent les préparations avant de frapper : les Flèches
+                // enflammées n'y convertissent donc RIEN, et c'est le mod d'arme qui décide du type.
+                && !DamageBoostData.PreparationLost(sk, target))
+                (lit ??= []).Add(k);
+
+        string? mod = null;
+        foreach (int id in ActiveWeaponSetModIds())
+            if (ConditionDurationData.ElementalModType(id) is { } modElement)
+            {
+                mod = modElement;
+                break;
+            }
+
+        var rituals = ActiveNatureRituals;
+        return new DamageBoostData.ConversionState(
+            LitConverters: lit,
+            ElementalMod: mod,
+            JudgesInsight: IsAttributeBoostActive(ConditionDurationData.JudgesInsightSkillId) && JudgesInsight is not null,
+            GreaterConflagration: rituals.Contains(NatureRitualData.Ritual.GreaterConflagration),
+            Conflagration: rituals.Contains(NatureRitualData.Ritual.Conflagration),
+            StoneStriker: IsAttributeBoostActive(ConditionDurationData.StoneStrikerSkillId)
+                          && FindEquippedSkill(ConditionDurationData.StoneStrikerSkillId) is not null);
+    }
+
+    /// <summary>Une conjuration (ou l'Aura de poussière d'ébène) est-elle allumée alors que l'arme n'inflige
+    /// pas son type de dégâts ? → note d'icône, sinon son absence de tout effet passe pour un bug. Rend le
+    /// type exigé, null s'il n'y a rien à signaler. Jugée sur une attaque de RÉFÉRENCE à l'arme du set
+    /// actif : c'est une note de BANDEAU, elle ne connaît pas la compétence survolée.</summary>
+    public string? BoostElementMismatch(Skill skill)
+    {
+        if (DamageBoostData.BySkillId(skill.Id) is not { RequiresElement: { } required }) return null;
+        var reference = SkillSlots.Select(s => s.Skill)
+            .FirstOrDefault(sk => sk is not null && WeaponStrike.IsWeaponAttack(sk));
+        if (reference is null) return null;
+        string? element = EffectiveElementFor(reference, ActiveWeaponKind());
+        return element is not null && element != required ? required : null;
+    }
+
     // Boost « override » actif (Lot C, Master of Magic) : remplace le niveau de base au lieu de s'y
     // additionner. Plusieurs sources actives (improbable) → la plus forte gagne. Null = aucun.
     private int? AttributeOverrideValue(string? attributeName)
@@ -1084,7 +1239,12 @@ public class CharacterSlotViewModel : ViewModelBase
         // (toute la description scale sur ce seul attribut : marquage uniforme). La substitution
         // prime sur ce marquage, cf. SkillProgression.Resolve.
         bool fluxBoosted = FluxAttributeBonus(subst ?? skill.Attribute) > 0;
-        return SkillProgression.Resolve(body, skill.Progression, rank, fluxBoosted, substituted: subst is not null);
+        // Chiffre relevé dans le texte par un effet actif (lot 6a, Q12) : le marqueur posé ici est dans
+        // MarkChars, donc les parseurs de description le voient — la ligne « ignore l'armure » de
+        // l'infobulle suit toute seule la valeur relevée.
+        var (column, bonus) = TextDamageBonusFor(skill);
+        return SkillProgression.Resolve(body, skill.Progression, rank, fluxBoosted, substituted: subst is not null,
+                                        bonusColumn: column, bonus: bonus);
     }
 
     // Description AFFICHÉE en mode FR : le texte gwiki résolu au même rang (ancres 0/15).
@@ -1105,8 +1265,12 @@ public class CharacterSlotViewModel : ViewModelBase
         if (skill.DescriptionFallback != Skill.FrFallback.None) return null;
         var (rank, subst) = EffectiveRank(skill);
         bool fluxBoosted = FluxAttributeBonus(subst ?? skill.Attribute) > 0;
+        // Le texte FR résout depuis les MÊMES colonnes de progression : la colonne à relever, elle, se
+        // déduit de la clause ANGLAISE (texte canonique), donc elle vaut pour les deux langues.
+        var (column, bonus) = TextDamageBonusFor(skill);
         return SkillProgression.Resolve(skill.DescriptionFr, skill.Progression,
-            rank, fluxBoosted, frAnchors: true, substituted: subst is not null);
+            rank, fluxBoosted, frAnchors: true, substituted: subst is not null,
+            bonusColumn: column, bonus: bonus);
     }
 
     // Pousse la mise à jour live des infobulles (footer + description) vers tous les slots,

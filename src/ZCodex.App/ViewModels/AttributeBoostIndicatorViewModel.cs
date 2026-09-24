@@ -8,7 +8,8 @@ namespace ZCodex.App.ViewModels;
 //    d'adrénaline personnel (chantier infobulle, lot 1a) ;
 //  • un effet diffusé par un COÉQUIPIER et reçu à la demande (Heroic Refrain, Weapon of Fury) — le
 //    perso ne l'équipe pas forcément lui-même ;
-//  • le mod d'arme « Furious » du set actif (Skill null : ce n'est pas une compétence).
+//  • un mod d'arme du set actif (Skill null : ce n'est pas une compétence) — « Furieux » (lot 1a) ou
+//    « de fractionnement » (lot 6a).
 // Togglable dans tous les cas (clic = active/désactive le boost, ou reçoit/arrête de recevoir la
 // diffusion). Cadre vert = actif, même idiome que le bandeau des rituels de la nature — mais local
 // au perso, pas à l'équipe.
@@ -38,6 +39,13 @@ public class AttributeBoostIndicatorViewModel : ViewModelBase
         // les sceaux du perso, ce qui est le vrai comportement du jeu mais surprend sans un mot d'explication.
         string? note = skill is null || skill.Id is 763 or 1199 or 3145
                        || skill.Id == KnockdownData.GreatDwarfWeaponSkillId ? T("S.Boost.ProcNote")
+            // Conjuration (ou Aura de poussière d'ébène) allumée alors que l'arme n'inflige pas son type de
+            // dégâts : sans ce mot, son absence totale d'effet passe pour un bug (lot 6a, § 6.1).
+            : owner.BoostElementMismatch(skill) is { } required
+                ? string.Format(T("S.Boost.NoEffectWrongElement"), SkillDamage.DisplayType(required))
+            // Sceau de puissance spectrale en PvP : mécanique divergente de sa jumelle — un seul esprit en
+            // profite en jeu, l'infobulle l'affiche sur tous (décision du 24/09/2026).
+            : skill.Id == DamageBoostData.GhostlyMightPvpSkillId ? T("S.Boost.SingleSpiritNote")
             : AdrenalineBoostData.BySkillId(skill.Id) is { NeedsUnenchanted: true } && owner.IsEnchantedByAdrenalineEffect
                 ? T("S.Boost.NoEffectEnchanted")
             : skill.Id == ConditionDurationData.ArcherSignetSkillId && owner.ArcherSignetWithoutBow
@@ -56,11 +64,22 @@ public class AttributeBoostIndicatorViewModel : ViewModelBase
 
     private static string T(string key) => ZCodex.App.LanguageManager.T(key);
 
-    // Null pour le mod d'arme « Furious » : le bandeau montre alors l'icône d'adrénaline et ModText.
+    // Null pour un mod d'ARME (« Furieux » du lot 1a, « de fractionnement » du lot 6a) : le bandeau montre
+    // alors l'icône de la statistique concernée et ModText.
     public Skill? Skill { get; }
     public bool HasSkill => Skill is not null;
-    // Infobulle du mod « Furious », à la place du tooltip de compétence.
-    public string ModText => HasSkill ? string.Empty : T("S.Boost.FuriousTip");
+    // Infobulle du mod d'arme, à la place du tooltip de compétence.
+    public string ModText => HasSkill ? string.Empty
+        : T(ToggleId == DamageBoostData.SunderingModToggleId ? "S.Boost.SunderingTip" : "S.Boost.FuriousTip");
+
+    private bool IsSunderingMod => !HasSkill && ToggleId == DamageBoostData.SunderingModToggleId;
+
+    // Icône de statistique tenant lieu d'icône de compétence pour un mod d'arme. La pénétration d'armure
+    // n'en a aucune dans le jeu de 11 icônes de stats : le bandeau affiche alors ModGlyph.
+    public bool HasModIcon  => !HasSkill && !IsSunderingMod;
+    public string ModIcon   => HasModIcon ? "adrenaline" : string.Empty;
+    public bool HasModGlyph => IsSunderingMod;
+    public string ModGlyph  => IsSunderingMod ? "%" : string.Empty;
     // Id sous lequel l'état est mémorisé chez le perso (cf. CharacterSlotViewModel.SetAttributeBoost).
     public int ToggleId { get; }
     // Note band-only, affichée sous le vrai tooltip de la compétence.

@@ -7,9 +7,11 @@ namespace ZCodex.Core.Data;
 /// Armes visées par un effet qui touche les attaques du perso (chantier infobulle, lot 4b). « Vos attaques
 /// physiques » (Apply Poison) et « vos flèches » (Barbed Arrows) sont deux périmètres DIFFÉRENTS — décision de
 /// Philippe du 16/09/2026. Sert aussi bien aux ajouteurs de condition qu'aux convertisseurs de type de dégâts
-/// (Avatar de Grenth ne convertit que les attaques à la <see cref="Scythe"/>).
+/// (Avatar de Grenth ne convertit que les attaques à la <see cref="Scythe"/>) et, depuis le lot 6a, aux
+/// bonus de dégâts. <see cref="Melee"/> = le « in melee » du glossaire G2 (lot 6a) : les 5 armes de corps
+/// à corps, plus la lance sur la SEULE Frappe du javelot (« This attack has melee range »).
 /// </summary>
-public enum ConditionWeaponScope { Physical, Bow, Daggers, Scythe }
+public enum ConditionWeaponScope { Physical, Bow, Daggers, Scythe, Melee }
 
 /// <summary>
 /// Compétence qui AJOUTE une condition aux attaques du perso (Apply Poison, Sharpen Daggers…), togglée par
@@ -35,9 +37,11 @@ public sealed record ConditionAdderDescriptor(
 /// n'empoisonne plus tant qu'elle est allumée — « ça n'annule pas la préparation, ça suspend ses effets »
 /// (Philippe, 16/09/2026). <paramref name="Weapon"/> = les attaques réellement converties : tout le physique,
 /// ou seulement les flèches (Flèches enflammées), ou seulement la faux (Avatar de Grenth).
+/// <paramref name="Element"/> = le type de dégâts qui SORT de la conversion (lot 6a) : c'est lui qui décide
+/// si une conjuration s'applique encore (chaîne du § 6.1 du plan).
 /// </summary>
 public sealed record DamageConverterDescriptor(
-    int SkillId, ConditionWeaponScope Weapon = ConditionWeaponScope.Physical,
+    int SkillId, string Element, ConditionWeaponScope Weapon = ConditionWeaponScope.Physical,
     bool Received = false, int BaseSkillId = 0)
 {
     public int ToggleId => BaseSkillId != 0 ? BaseSkillId : SkillId;
@@ -119,22 +123,26 @@ public static class ConditionDurationData
     // Fortune, Mark of Protection…), qui portent sur les dégâts REÇUS.
     public static readonly IReadOnlyList<DamageConverterDescriptor> Converters = new DamageConverterDescriptor[]
     {
-        new(433,  ConditionWeaponScope.Bow),        // Flèches enflammées : feu (préparation — déjà exclusive avec Apply Poison)
-        new(1371),                                  // Briseur de pierre : terre
-        new(1493),                                  // Doigts de Grenth : froid
-        new(1497),                                  // Manteau de poussière : terre
-        new(3347, BaseSkillId: 1497),               // Manteau de poussière (PvP)
-        new(1498),                                  // Force stupéfiante : terre
-        new(1507),                                  // Cœur de la Flamme sacrée : sacré
-        new(1518),                                  // Avatar de Balthazar : sacré
-        new(1519),                                  // Avatar de Dwayna : sacré
-        new(3270, BaseSkillId: 1519),               // Avatar de Dwayna (PvP)
-        new(1520, ConditionWeaponScope.Scythe),     // Avatar de Grenth : ténèbres, ATTAQUES À LA FAUX seulement
-        new(1521),                                  // Avatar de Lyssa : chaos
-        new(1522),                                  // Avatar de Melandru : terre
-        new(3271, BaseSkillId: 1522),               // Avatar de Melandru (PvP)
-        new(JudgesInsightSkillId, Received: true),  // Clairvoyance du juge (reçue) : sacré
+        new(433,  "fire",  ConditionWeaponScope.Bow),    // Flèches enflammées (préparation — déjà exclusive avec Apply Poison)
+        new(StoneStrikerSkillId, "earth"),               // Briseur de pierre
+        new(1493, "cold"),                               // Doigts de Grenth
+        new(1497, "earth"),                              // Manteau de poussière
+        new(3347, "earth", BaseSkillId: 1497),           // Manteau de poussière (PvP)
+        new(1498, "earth"),                              // Force stupéfiante
+        new(1507, "holy"),                               // Cœur de la Flamme sacrée
+        new(1518, "holy"),                               // Avatar de Balthazar
+        new(1519, "holy"),                               // Avatar de Dwayna
+        new(3270, "holy", BaseSkillId: 1519),            // Avatar de Dwayna (PvP)
+        new(1520, "dark", ConditionWeaponScope.Scythe),  // Avatar de Grenth : ATTAQUES À LA FAUX seulement
+        new(1521, "chaos"),                              // Avatar de Lyssa
+        new(1522, "earth"),                              // Avatar de Melandru
+        new(3271, "earth", BaseSkillId: 1522),           // Avatar de Melandru (PvP)
+        new(JudgesInsightSkillId, "holy", Received: true), // Clairvoyance du juge (reçue)
     };
+
+    /// <summary>Briseur de pierre : le SEUL convertisseur qui a toujours le dernier mot sur la chaîne de
+    /// conversion — terre, quels que soient les esprits posés (règle de Philippe du 16/09/2026, § 6.1).</summary>
+    public const int StoneStrikerSkillId = 1371;
 
     private static readonly Dictionary<int, ConditionAdderDescriptor> _bySkillId = All.ToDictionary(d => d.SkillId);
     private static readonly Dictionary<int, DamageConverterDescriptor> _converterBySkillId =
@@ -181,15 +189,37 @@ public static class ConditionDurationData
     // Ils CONVERTISSENT le type de dégâts de l'arme qui les porte : les 28 entrées « <élément> damage » de la
     // table générée (4 éléments × 7 armes martiales), lues et non recopiées, comme les préfixes « +33 % ».
     private static readonly Regex ElementalRegex = new(
-        @"^(?:Fire|Cold|Earth|Lightning)\s+damage$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        @"^(Fire|Cold|Earth|Lightning)\s+damage$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-    private static readonly IReadOnlySet<int> _elementalModIds =
+    private static readonly IReadOnlyDictionary<int, string> _elementalModTypes =
         GwEquipmentModDetails.ByModId
-            .Where(kv => ElementalRegex.IsMatch(kv.Value.Description))
-            .Select(kv => kv.Key).ToHashSet();
+            .Select(kv => (kv.Key, Match: ElementalRegex.Match(kv.Value.Description)))
+            .Where(t => t.Match.Success)
+            .ToDictionary(t => t.Key, t => t.Match.Groups[1].Value.ToLowerInvariant());
 
     /// <summary>Mod qui rend l'arme élémentaire (donc NON physique).</summary>
-    public static bool IsElementalMod(int modId) => _elementalModIds.Contains(modId);
+    public static bool IsElementalMod(int modId) => _elementalModTypes.ContainsKey(modId);
+
+    /// <summary>Type de dégâts qu'un mod élémentaire donne à l'arme qui le porte (« fire », « cold »,
+    /// « earth », « lightning »), null s'il n'est pas élémentaire. Le lot 4b n'avait besoin que du
+    /// « oui/non » ; la chaîne de conversion du lot 6a a besoin de l'ÉLÉMENT (§ 6.1).</summary>
+    public static string? ElementalModType(int modId) => _elementalModTypes.GetValueOrDefault(modId);
+
+    // ── Mod d'arme « de fractionnement » (Sundering) ──────────────────────────
+    // +20 % de pénétration d'armure en BONUS (chance 20 %), sur les 7 armes martiales — lu dans la table
+    // générée comme les autres mods. ⚠ NE PAS confondre avec les deux sorts d'arme homonymes du § 6.4 du
+    // plan : Arme de fractionnement (2148, pénétration de BASE) et Arme à fragmentation (792, écartée).
+    private static readonly Regex ArmorPenetrationModRegex = new(
+        @"^Armor penetration \+(\d+)%", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    private static readonly IReadOnlyDictionary<int, int> _penetrationModIds =
+        GwEquipmentModDetails.ByModId
+            .Select(kv => (kv.Key, Match: ArmorPenetrationModRegex.Match(kv.Value.Description)))
+            .Where(t => t.Match.Success)
+            .ToDictionary(t => t.Key, t => int.Parse(t.Match.Groups[1].Value));
+
+    /// <summary>Pénétration d'armure en BONUS qu'apporte ce mod d'arme (0 s'il n'en apporte pas).</summary>
+    public static int PenetrationModPercent(int modId) => _penetrationModIds.GetValueOrDefault(modId);
 
     // ── Attaques qui RETIRENT les préparations ────────────────────────────────
     // Barrage (395) et Volée (2144) : « All your preparations are removed ». La préparation saute AVANT que les
@@ -257,6 +287,12 @@ public static class ConditionDurationData
     public static bool Converts(ConditionWeaponScope scope, Skill target, WeaponKind equipped) =>
         InScope(scope, target, equipped);
 
+    /// <summary>Périmètre d'arme d'un effet, partagé par tous les lots : <paramref name="target"/> est-elle une
+    /// attaque de l'arme visée par <paramref name="scope"/> ? Les bonus de dégâts du lot 6a le réutilisent tel
+    /// quel — « vos flèches », « en mêlée » et « vos attaques » ne sont pas re-codés ailleurs.</summary>
+    public static bool InWeaponScope(ConditionWeaponScope scope, Skill target, WeaponKind equipped) =>
+        InScope(scope, target, equipped);
+
     /// <summary><paramref name="target"/> se lance-t-elle avec l'ARME du set actif ? Un mod élémentaire convertit
     /// les dégâts de l'arme qui le porte, pas ceux des autres : une corde Fiery ne rend pas une attaque à l'épée
     /// élémentaire.</summary>
@@ -273,9 +309,19 @@ public static class ConditionDurationData
             ConditionWeaponScope.Bow     => kind == WeaponKind.Bow,
             ConditionWeaponScope.Daggers => kind == WeaponKind.Daggers,
             ConditionWeaponScope.Scythe  => kind == WeaponKind.Scythe,
+            // « en mêlée » (glossaire G2) : les 5 armes de corps à corps, plus la lance sur la seule
+            // Frappe du javelot, qui est bien un « Spear Melee Attack ». Sans arme renseignée, une
+            // « Melee Attack » à arme libre reste de la mêlée — ses 5 armes possibles le sont toutes.
+            ConditionWeaponScope.Melee   => IsMeleeKind(kind)
+                                            || target.SkillType == "Spear Melee Attack"
+                                            || (kind == WeaponKind.None && target.SkillType == "Melee Attack"),
             _ => IsPhysical(kind) || (kind == WeaponKind.None && target.SkillType == "Melee Attack"),
         };
     }
+
+    private static bool IsMeleeKind(WeaponKind kind) =>
+        kind is WeaponKind.Axe or WeaponKind.Sword or WeaponKind.Hammer
+             or WeaponKind.Daggers or WeaponKind.Scythe;
 
     // ── Lignes d'infobulle ─────────────────────────────────────────────────────
 

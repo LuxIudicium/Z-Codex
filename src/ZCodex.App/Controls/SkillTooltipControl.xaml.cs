@@ -391,6 +391,18 @@ public partial class SkillTooltipControl : UserControl
         set => SetValue(KnockdownProperty, value);
     }
 
+    // Effets du perso sur les DÉGÂTS de cette compétence (lot 6a) : paquets de la ligne « bonus d'effets »,
+    // points de critique de « Craignez-moi ! », pénétration d'armure de base et en bonus. Aucun en catalogue.
+    public static readonly DependencyProperty DamageBoostsProperty =
+        DependencyProperty.Register(nameof(DamageBoosts), typeof(DamageBoosts), typeof(SkillTooltipControl),
+            new PropertyMetadata(default(DamageBoosts), OnInputsChanged));
+
+    public DamageBoosts DamageBoosts
+    {
+        get => (DamageBoosts)GetValue(DamageBoostsProperty);
+        set => SetValue(DamageBoostsProperty, value);
+    }
+
     // Rang de Fast Casting du perso (0 en catalogue, ou si le perso ne l'a pas) : incantation des sorts et sceaux, recharge
     // des sorts d'Envoûteur en PvE. Caractéristique toujours active : elle ne colore rien, comme l'Expertise.
     public static readonly DependencyProperty FastCastingRankProperty =
@@ -1079,12 +1091,19 @@ public partial class SkillTooltipControl : UserControl
         bool weaponTable = weapon is not null && WeaponMasteryRank is not null && !mods.NoWeaponDamage;
         if (WeaponStrike.IsWeaponAttack(skill))
             ignoring.RemoveAll(r => r.IsBonus);
-        if (!weaponTable && respecting.Count == 0 && ignoring.Count == 0) return;
+        // Un effet actif suffit à ouvrir la section : sur une attaque sans aucun paquet soumis à
+        // l'armure, la ligne « bonus d'effets » est parfois la seule chose à montrer.
+        var boosts = DamageBoosts;
+        if (!weaponTable && respecting.Count == 0 && ignoring.Count == 0 && !boosts.Any) return;
 
         // Pénétration naturelle (rang de Force, non null seulement pour une attaque d'arme) :
         // en MAX avec celle de la description, jamais cumulée — wiki/Strength : « to attack
-        // skills that don't already have a higher amount of armor penetration ».
-        int penetration = Math.Max(analysis.ArmorPenetration, StrengthRank ?? 0);
+        // skills that don't already have a higher amount of armor penetration ». Les effets actifs
+        // suivent la même règle : pénétration de BASE en MAX (Q8), pénétration en BONUS cumulée
+        // par-dessus (mod d'arme « de fractionnement »).
+        int basePenetration = Math.Max(Math.Max(analysis.ArmorPenetration, StrengthRank ?? 0), boosts.BasePenetration);
+        int penetration = basePenetration + boosts.BonusPenetration;
+        bool penetrationFromEffect = penetration > Math.Max(analysis.ArmorPenetration, StrengthRank ?? 0);
 
         // Flux Jack of All Trades : +15 % sur TOUS les dégâts affichés (décision Philippe : nombres
         // recalculés en couleur normale, boost signalé par une note colorée dans le titre).
@@ -1096,8 +1115,13 @@ public partial class SkillTooltipControl : UserControl
             titleText += $" — {weapon!.DisplayName} {weapon.Min}–{weapon.Max}";
             if (bonus > 0) titleText += $" +{bonus}";
         }
+        // Le titre garde le « +X » propre de la compétence : il n'absorbe PAS les bonus d'effets, qui ont
+        // leur propre ligne (Q2 de la maquette). La pénétration, elle, est bien un total — marquée quand un
+        // effet actif y a contribué, sinon le chiffre semble sortir de nulle part.
         if (penetration > 0 && (weaponTable || respecting.Count > 0))
-            titleText += $" — {L("pénétration", "penetration")} {penetration}%";
+            titleText += penetrationFromEffect
+                ? $" — {L("pénétration", "penetration")} {SkillProgression.MarkEffect}{penetration}%{SkillProgression.MarkEffect}"
+                : $" — {L("pénétration", "penetration")} {penetration}%";
         if (fluxDmg > 0)
             titleText += $" · {SkillProgression.MarkFlux}+{fluxDmg} % Flux{SkillProgression.MarkFlux}";
         // TextBlock sans Text (SkillMarkup remplit les Inlines) → colore la note « +15 % Flux »,
@@ -1109,11 +1133,11 @@ public partial class SkillTooltipControl : UserControl
 
         int level = ArmorDamageDisplay.CharacterLevel;
         int targetLevel = ArmorDamageDisplay.TargetLevel;
-        if (weaponTable || respecting.Count > 0)
+        if (weaponTable || respecting.Count > 0 || boosts.Packets is { Count: > 0 })
         {
             var damageGrid = BuildDamageGrid(respecting, penetration,
                 weaponTable ? weapon : null, WeaponMasteryRank ?? 0, bonus, mods, level, targetLevel,
-                CriticalStrikesRank ?? 0, fluxDmg);
+                CriticalStrikesRank ?? 0, fluxDmg, boosts);
             // Au-delà de ~7 colonnes d'AL la table déborde du MaxWidth de 380 et WPF rogne les
             // colonnes de droite : on élargit la racine à la largeur mesurée de la table.
             damageGrid.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
@@ -1149,15 +1173,19 @@ public partial class SkillTooltipControl : UserControl
 
     private static Grid BuildDamageGrid(List<SkillDamage.Row> rows, int penetration,
         WeaponStrike.Weapon? weapon, int masteryRank, int bonus, WeaponStrike.AttackMods mods,
-        int level, int targetLevel, int criticalStrikesRank, int fluxDamagePercent)
+        int level, int targetLevel, int criticalStrikesRank, int fluxDamagePercent, DamageBoosts boosts)
     {
         var columns = ArmorDamageDisplay.Columns();
         int weaponRows = weapon is null ? 0 : mods.AlwaysCritical ? 1 : 2;
+        // Ligne « bonus d'effets » (option B de la maquette) : SÉPARÉE des paquets propres de la
+        // compétence, une colonne par AL comme les autres — les paquets qui ignorent l'armure y
+        // donnent le même chiffre partout, celui des Flèches de feu varie.
+        int boostRows = boosts.Packets is { Count: > 0 } ? 1 : 0;
         var grid = new Grid { Margin = new Thickness(0, 1, 0, 1) };
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         for (int c = 0; c < columns.Count; c++)
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto, MinWidth = 34 });
-        for (int r = 0; r <= weaponRows + rows.Count; r++)
+        for (int r = 0; r <= weaponRows + rows.Count + boostRows; r++)
             grid.RowDefinitions.Add(new RowDefinition());
 
         AddCell(grid, 0, 0, "AL", "TextFaintBrush", bold: true);
@@ -1171,9 +1199,11 @@ public partial class SkillTooltipControl : UserControl
             if (!mods.AlwaysCritical) AddCell(grid, 1, 0, L("total", "total"), "TextSecondaryBrush");
             // Taux de critique d'Izzy contre le niveau de cible custom (+ Critical Strikes du
             // perso) — pas pour « always a critical hit » (Keen Chop) où il est forcé par la skill.
+            // Un effet actif (« Craignez-moi ! ») s'y AJOUTE tel quel, plafonné à 100 % : au-delà,
+            // « ça revient au même que 100 % » (Q7). Les DÉGÂTS du critique, eux, ne changent pas.
             AddCell(grid, critRow, 0, mods.AlwaysCritical ? L("critique", "critical")
-                : $"{L("critique", "critical")} ({100 * WeaponStrike.CriticalChance(masteryRank, level, targetLevel, criticalStrikesRank):0}%)",
-                "TextSecondaryBrush");
+                : $"{L("critique", "critical")} ({CriticalLabel(masteryRank, level, targetLevel, criticalStrikesRank, boosts.CriticalPercent)}%)",
+                "TextSecondaryBrush", markup: boosts.CriticalPercent > 0);
             for (int c = 0; c < columns.Count; c++)
             {
                 if (!mods.AlwaysCritical)
@@ -1196,12 +1226,33 @@ public partial class SkillTooltipControl : UserControl
                         Boost(SkillDamage.DamageAt(rows[r].Value, columns[c].Al, penetration, level), fluxDamagePercent).ToString(),
                         "TextPrimaryBrush");
         }
+
+        if (boostRows > 0)
+        {
+            int row = weaponRows + rows.Count + 1;
+            AddCell(grid, row, 0, L("bonus d'effets", "effect bonus"), "TextSecondaryBrush");
+            for (int c = 0; c < columns.Count; c++)
+                AddCell(grid, row, c + 1,
+                        $"{SkillProgression.MarkEffect}+{Boost(boosts.TotalAt(columns[c].Al, penetration, level), fluxDamagePercent)}{SkillProgression.MarkEffect}",
+                        "TextPrimaryBrush", markup: true);
+        }
         return grid;
     }
 
-    private static void AddCell(Grid grid, int row, int col, string text, string brushKey, bool bold = false)
+    // Taux de critique affiché : celui de l'arme, relevé des points de pourcentage d'un effet actif et
+    // plafonné à 100 (Q7). Le chiffre part entre marqueurs quand un effet y a contribué → violet.
+    private static string CriticalLabel(int masteryRank, int level, int targetLevel, int criticalStrikesRank, int boostPercent)
     {
-        var tb = MakeText(text, 11, brushKey);
+        // Même format « 0 » qu'avant le lot 6a : sans boost, le taux affiché est inchangé à l'unité près
+        // (Math.Round arrondirait au pair le plus proche, pas comme ce format).
+        string rate = (100 * WeaponStrike.CriticalChance(masteryRank, level, targetLevel, criticalStrikesRank)).ToString("0");
+        if (boostPercent <= 0) return rate;
+        return $"{SkillProgression.MarkEffect}{Math.Min(100, int.Parse(rate) + boostPercent)}{SkillProgression.MarkEffect}";
+    }
+
+    private static void AddCell(Grid grid, int row, int col, string text, string brushKey, bool bold = false, bool markup = false)
+    {
+        var tb = markup ? MakeMarkup(text, 11, brushKey) : MakeText(text, 11, brushKey);
         if (bold) tb.FontWeight = FontWeights.Bold;
         if (col > 0)
         {
@@ -1232,6 +1283,16 @@ public partial class SkillTooltipControl : UserControl
     {
         var tb = new TextBlock { Text = text, FontSize = size };
         tb.SetResourceReference(ForegroundProperty, brushKey);
+        return tb;
+    }
+
+    // Même cellule, mais remplie par SkillMarkup : nécessaire dès qu'un chiffre part entre marqueurs
+    // (bonus d'effets, taux de critique relevé). ⚠ TextBlock SANS Text : les deux voies s'excluent.
+    private static TextBlock MakeMarkup(string text, double size, string brushKey)
+    {
+        var tb = new TextBlock { FontSize = size };
+        tb.SetResourceReference(ForegroundProperty, brushKey);
+        SkillMarkup.SetText(tb, text);
         return tb;
     }
 }

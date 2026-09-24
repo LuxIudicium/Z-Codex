@@ -379,6 +379,13 @@ public class SkillSlotViewModel : ViewModelBase
     // savoir si cette compétence-ci assomme, et si un effet y change vraiment quelque chose.
     public KnockdownEffects Knockdown => Owner?.KnockdownEffects ?? default;
 
+    // ── Dégâts et critique (lot 6a) : ce que les effets actifs du perso ajoutent aux dégâts de CETTE
+    // compétence (ligne « bonus d'effets »), à son taux de critique et à sa pénétration d'armure. Les deux
+    // effets qui relèvent un chiffre dans le TEXTE (familier, esprits) passent, eux, par la description
+    // résolue — donc par Description/DisplayDescription, sans propriété dédiée.
+    public DamageBoosts DamageBoosts =>
+        Owner is { } o && _skill is { } s ? o.DamageBoostsFor(s) : default;
+
     // Permet au perso de pousser une mise à jour live de l'infobulle (footer + description).
     public void RaiseTooltipChanged()
     {
@@ -406,6 +413,7 @@ public class SkillSlotViewModel : ViewModelBase
         OnPropertyChanged(nameof(DurationBoostPct));
         OnPropertyChanged(nameof(ConditionDurations));
         OnPropertyChanged(nameof(Knockdown));
+        OnPropertyChanged(nameof(DamageBoosts));
         OnPropertyChanged(nameof(AdrenalineGainPerHit));
         OnPropertyChanged(nameof(AdrenalineSlowed));
         OnPropertyChanged(nameof(AdrenalineFromTeam));
