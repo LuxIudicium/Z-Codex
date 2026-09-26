@@ -452,9 +452,13 @@ public static class SkillDamage
     /// inférieur (wiki/Damage_calculation : Strike Level d'une skill = 3 × niveau du lanceur).
     /// La pénétration réduit l'AL effectif (25% : AL 60 → 45).
     /// </summary>
-    public static int DamageAt(int value, int armorLevel, int armorPenetration, int casterLevel = 20)
+    /// <param name="multiplier">Multiplicateur appliqué à la valeur de BASE, avant l'armure (Vengeance
+    /// ×1,25, Affinité vitale ×0,70 — lot 6b, Q10) : un seul arrondi tombe à la fin, comme
+    /// <see cref="WeaponStrike.DamageAt"/>.</param>
+    public static int DamageAt(int value, int armorLevel, int armorPenetration, int casterLevel = 20,
+                               double multiplier = 1.0)
     {
         double effectiveAl = armorLevel * (100 - armorPenetration) / 100.0;
-        return (int)Math.Floor(value * Math.Pow(2, (3 * casterLevel - effectiveAl) / 40.0));
+        return (int)Math.Floor(value * multiplier * Math.Pow(2, (3 * casterLevel - effectiveAl) / 40.0));
     }
 }

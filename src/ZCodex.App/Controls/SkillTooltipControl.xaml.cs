@@ -1146,8 +1146,31 @@ public partial class SkillTooltipControl : UserControl
             DamagePanel.Children.Add(damageGrid);
         }
 
+        // Les lignes « ignore l'armure » subissent le multiplicateur reçu comme celles de la table
+        // (Q6 du cadrage 6b : « table + lignes »). Le chiffre passe alors en violet — sans ça, un
+        // paquet à 40 se lirait 50 sans que rien ne dise pourquoi.
         foreach (var row in ignoring)
-            DamagePanel.Children.Add(MakeText($"{IgnoringLine(row, fluxDmg)} {L("— ignore l'armure", "— ignores armor")}", 11, "TextSecondaryBrush"));
+        {
+            string line = $"{IgnoringLine(row, fluxDmg, boosts.Multiplier)} {L("— ignore l'armure", "— ignores armor")}";
+            DamagePanel.Children.Add(boosts.HasMultiplier
+                ? MakeMarkup(line, 11, "TextSecondaryBrush")
+                : MakeText(line, 11, "TextSecondaryBrush"));
+        }
+
+        // Effets ALLUMÉS qui ne font rien ICI, et pourquoi. ⚠ Relevé par Philippe à la QA du lot 6b :
+        // l'explication existait, mais dans l'infobulle de l'ICÔNE — donc pas sous les yeux de qui
+        // regarde le chiffre disparaître. Elle se dit maintenant à l'endroit où le chiffre manque.
+        foreach (var sup in boosts.Suppressed ?? [])
+        {
+            // Rouge : la même couleur que les effets d'équipe à double tranchant, et le même sens —
+            // « attention, ceci ne joue pas en ta faveur ». ErrorTextBrush existe dans les DEUX thèmes,
+            // donc le piège du style implicite manquant en mode sombre ne peut pas se produire.
+            var line = MakeText(SuppressionLine(sup), 10, "ErrorTextBrush");
+            line.FontStyle = FontStyles.Italic;
+            line.TextWrapping = TextWrapping.Wrap;
+            line.Margin = new Thickness(0, 2, 0, 0);
+            DamagePanel.Children.Add(line);
+        }
 
         // Le niveau de la cible n'apparaît que sur les tables d'arme (il ne sert qu'au taux de
         // critique) ; ses dégâts subis ne dépendent que de son AL (colonnes).
@@ -1204,17 +1227,24 @@ public partial class SkillTooltipControl : UserControl
             AddCell(grid, critRow, 0, mods.AlwaysCritical ? L("critique", "critical")
                 : $"{L("critique", "critical")} ({CriticalLabel(masteryRank, level, targetLevel, criticalStrikesRank, boosts.CriticalPercent)}%)",
                 "TextSecondaryBrush", markup: boosts.CriticalPercent > 0);
+            // Multiplicateur reçu (Vengeance ×1,25, Affinité vitale ×0,70) : il se COMPOSE avec celui
+            // que la compétence porte elle-même (« 25% less damage » du Tir double) et entre par le
+            // canal qui existait déjà, donc un seul arrondi tombe à la fin. Le « +X » absorbé de la
+            // compétence, qui ignore l'armure, est multiplié à part — sur sa valeur de base (Q10).
+            double mult = mods.Multiplier * boosts.Multiplier;
+            int scaledBonus = (int)Math.Floor(bonus * boosts.Multiplier);
+            bool scaled = boosts.HasMultiplier;
             for (int c = 0; c < columns.Count; c++)
             {
                 if (!mods.AlwaysCritical)
                 {
-                    int min = Boost(WeaponStrike.DamageAt(weapon.Min, masteryRank, columns[c].Al, penetration, mods.Multiplier, level) + bonus, fluxDamagePercent);
-                    int max = Boost(WeaponStrike.DamageAt(weapon.Max, masteryRank, columns[c].Al, penetration, mods.Multiplier, level) + bonus, fluxDamagePercent);
-                    AddCell(grid, 1, c + 1, $"{min}–{max}", "TextPrimaryBrush");
+                    int min = Boost(WeaponStrike.DamageAt(weapon.Min, masteryRank, columns[c].Al, penetration, mult, level) + scaledBonus, fluxDamagePercent);
+                    int max = Boost(WeaponStrike.DamageAt(weapon.Max, masteryRank, columns[c].Al, penetration, mult, level) + scaledBonus, fluxDamagePercent);
+                    AddCell(grid, 1, c + 1, Marked($"{min}–{max}", scaled), "TextPrimaryBrush", markup: scaled);
                 }
                 AddCell(grid, critRow, c + 1,
-                    Boost(WeaponStrike.CriticalAt(weapon, masteryRank, columns[c].Al, penetration, mods.Multiplier, level) + bonus, fluxDamagePercent).ToString(),
-                    "TextPrimaryBrush");
+                    Marked(Boost(WeaponStrike.CriticalAt(weapon, masteryRank, columns[c].Al, penetration, mult, level) + scaledBonus, fluxDamagePercent).ToString(), scaled),
+                    "TextPrimaryBrush", markup: scaled);
             }
         }
 
@@ -1223,8 +1253,9 @@ public partial class SkillTooltipControl : UserControl
             AddCell(grid, weaponRows + r + 1, 0, RowLabel(rows[r]), "TextSecondaryBrush");
             for (int c = 0; c < columns.Count; c++)
                 AddCell(grid, weaponRows + r + 1, c + 1,
-                        Boost(SkillDamage.DamageAt(rows[r].Value, columns[c].Al, penetration, level), fluxDamagePercent).ToString(),
-                        "TextPrimaryBrush");
+                        Marked(Boost(SkillDamage.DamageAt(rows[r].Value, columns[c].Al, penetration, level, boosts.Multiplier), fluxDamagePercent).ToString(),
+                               boosts.HasMultiplier),
+                        "TextPrimaryBrush", markup: boosts.HasMultiplier);
         }
 
         if (boostRows > 0)
@@ -1250,6 +1281,11 @@ public partial class SkillTooltipControl : UserControl
         return $"{SkillProgression.MarkEffect}{Math.Min(100, int.Parse(rate) + boostPercent)}{SkillProgression.MarkEffect}";
     }
 
+    /// <summary>Entoure un chiffre du marqueur d'effet (→ violet) quand un effet actif l'a modifié.
+    /// Passe le texte tel quel sinon : sans effet, l'infobulle doit rester à l'octet ce qu'elle était.</summary>
+    private static string Marked(string text, bool marked) =>
+        marked ? $"{SkillProgression.MarkEffect}{text}{SkillProgression.MarkEffect}" : text;
+
     private static void AddCell(Grid grid, int row, int col, string text, string brushKey, bool bold = false, bool markup = false)
     {
         var tb = markup ? MakeMarkup(text, 11, brushKey) : MakeText(text, 11, brushKey);
@@ -1267,15 +1303,30 @@ public partial class SkillTooltipControl : UserControl
     private static string? FrType(string? damageType)
         => damageType is { } t ? SkillDamage.DisplayType(t) : null;
 
+    // « Arme brute : sans effet ici — ce personnage est sous un enchantement. »
+    private static string SuppressionLine(SuppressedBoost sup) => sup.Reason switch
+    {
+        DamageBoostSuppression.Enchanted =>
+            $"{sup.SkillName} : {L("sans effet ici — ce personnage est sous un enchantement.", "no effect here — this character is under an enchantment.")}",
+        DamageBoostSuppression.WrongElement =>
+            $"{sup.SkillName} : {L("sans effet ici — l'arme de ce personnage n'inflige pas ce type de dégâts.", "no effect here — this character's weapon does not deal that damage type.")}",
+        DamageBoostSuppression.PreparationRemoved =>
+            $"{sup.SkillName} : {L("sans effet ici — cette compétence retire les préparations avant de toucher.", "no effect here — this skill removes preparations before it hits.")}",
+        _ => sup.SkillName,
+    };
+
     // Libellé de ligne de la table (armor-respecting, donc toujours typé sauf exception).
     private static string RowLabel(SkillDamage.Row row) => SkillDamage.DisplayType(row.DamageType);
 
     // Ligne armor-ignoring : « 46 », « +34 » (bonus d'attaque), « 49 (sacré) ». Boostée du +pct %
     // de flux (Jack of All Trades) comme tous les dégâts affichés.
-    private static string IgnoringLine(SkillDamage.Row row, int fluxDamagePercent)
+    private static string IgnoringLine(SkillDamage.Row row, int fluxDamagePercent, double multiplier = 1.0)
     {
-        int value = Boost(row.Value, fluxDamagePercent);
+        bool scaled = Math.Abs(multiplier - 1.0) > 0.0001;
+        int value = Boost((int)Math.Floor(row.Value * multiplier), fluxDamagePercent);
         var val = row.IsBonus ? $"+{value}" : value.ToString();
+        // Marqueur d'effet (violet) autour du seul CHIFFRE : le type entre parenthèses reste neutre.
+        if (scaled) val = $"{SkillProgression.MarkEffect}{val}{SkillProgression.MarkEffect}";
         return FrType(row.DamageType) is { } type ? $"{val} ({type})" : val;
     }
 

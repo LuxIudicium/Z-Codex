@@ -1,4 +1,4 @@
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using ZCodex.Core.Models;
 
 namespace ZCodex.Core.Data;
@@ -17,6 +17,13 @@ public enum DamageBoostKind
     CriticalChance,
     /// <summary>Pénétration d'armure de BASE : NON cumulable, seul le MAX compte (Q8).</summary>
     BasePenetration,
+    /// <summary>Pénétration d'armure en BONUS (« adds +X% ») : se CUMULE par-dessus le max de base
+    /// (Q8). Clairvoyance du juge reçue, et le mod d'arme « de fractionnement ».</summary>
+    BonusPenetration,
+    /// <summary>Multiplicateur en POINTS DE POURCENTAGE, appliqué à la valeur de BASE avant l'armure
+    /// (Q10) : +25 pour Vengeance, −30 pour l'Affinité vitale. Plusieurs multiplicateurs se
+    /// composent (×1,25 puis ×0,70).</summary>
+    Multiplier,
 }
 
 /// <summary>Qui l'effet touche. Les périmètres d'ARME réutilisent <see cref="ConditionWeaponScope"/>
@@ -42,6 +49,12 @@ public enum DamageBoostScope
     SpiritAttacks,
     /// <summary>« Your Ritualist skills » (Glaive était destructrice, Daoshen était cruel).</summary>
     RitualistSkills,
+    /// <summary>TOUS les dégâts que le perso inflige, sorts compris (Vengeance : « this ally deals
+    /// 25% more damage »). ⚠ Vol de vie et perte de vie sèche en sont exclus — ce ne sont pas des
+    /// dégâts (<see cref="SkillDamage.RowKind"/>), décision déjà prise pour la fenêtre Spike. Le
+    /// familier et les esprits en sont exclus aussi : l'effet enchante le perso, pas ses créatures
+    /// (glossaire G1).</summary>
+    AllDamage,
 }
 
 /// <summary>
@@ -54,17 +67,45 @@ public enum DamageBoostScope
 /// <paramref name="RequiresElement"/> = l'effet exige que l'arme inflige ce type de dégâts (les 3
 /// conjurations et l'Aura de poussière d'ébène) : le § 6.1 du plan dit comment on en juge.
 /// <paramref name="BaseSkillId"/> = id PvE d'une variante « (PvP) » : l'icône est mémorisée sur l'id
-/// de base. La caractéristique d'échelle n'est jamais listée : c'est TOUJOURS celle de la compétence
+/// de base. <paramref name="Received"/> = effet REÇU D'UN ALLIÉ (lot 6b) : la compétence n'est pas sur
+/// la barre du perso qui en profite, donc son icône ne sort pas du balayage « équipée » et son rang se
+/// lit chez le LANCEUR le plus fort de l'équipe. <paramref name="Malus"/> = l'effet RETIRE des dégâts
+/// (Affinité vitale, Arme du tourment) : même descripteur, valeur négative.
+/// <paramref name="LostWhenEnchanted"/> = « no effect while target ally is enchanted » (Arme brute).
+/// <paramref name="CannotSelfTarget"/> = son lanceur ne peut jamais en profiter : un perso seul qui la
+/// porte n'a donc pas d'icône du tout (patron de l'Arme du Grand Nain, lot 4c). La caractéristique d'échelle n'est jamais listée : c'est TOUJOURS celle de la compétence
 /// source elle-même, lue par l'appelant (donc la substitution du lot 5 s'y applique gratuitement).
 /// </summary>
 public sealed record DamageBoostDescriptor(
     int SkillId, DamageBoostScope Scope, DamageBoostKind Kind,
     int Index = -1, int Fixed = 0, string? DamageType = null, bool IsBonus = true,
-    string? RequiresElement = null, int BaseSkillId = 0)
+    string? RequiresElement = null, int BaseSkillId = 0,
+    bool Received = false, bool Malus = false, bool LostWhenEnchanted = false,
+    bool CannotSelfTarget = false)
 {
     /// <summary>Id sous lequel l'icône est mémorisée (et persistée) : l'id de base.</summary>
     public int ToggleId => BaseSkillId != 0 ? BaseSkillId : SkillId;
 }
+
+/// <summary>
+/// Pourquoi un effet ALLUMÉ ne fait rien sur CETTE compétence. Sans ça, son chiffre disparaît de la
+/// table sans un mot — l'explication vivait dans l'infobulle de l'ICÔNE, c'est-à-dire ailleurs que là
+/// où l'utilisateur regarde (relevé par Philippe à la QA du lot 6b).
+/// </summary>
+public enum DamageBoostSuppression
+{
+    /// <summary>Arme brute : « no effect while target ally is enchanted » (lot 6b, Q4).</summary>
+    Enchanted,
+    /// <summary>Conjuration ou Aura de poussière d'ébène : l'arme n'inflige pas ce type de dégâts
+    /// (§ 6.1 du plan).</summary>
+    WrongElement,
+    /// <summary>Préparation annulée : Tir de barrage et Volée les retirent avant de frapper.</summary>
+    PreparationRemoved,
+}
+
+/// <summary>Un effet allumé qui ne s'applique pas ici, et pourquoi. <paramref name="SkillName"/> est
+/// déjà dans la langue affichée.</summary>
+public readonly record struct SuppressedBoost(string SkillName, DamageBoostSuppression Reason);
 
 /// <summary>Un paquet de dégâts ajouté par un effet actif : <paramref name="IgnoresArmor"/> suit la
 /// règle maison (un bonus « +X » ignore l'armure, un paquet typé sans « + » la subit), donc les
@@ -84,21 +125,41 @@ public readonly record struct DamageBoosts(
     IReadOnlyList<DamageBoostPacket>? Packets = null,
     int CriticalPercent = 0,
     int BasePenetration = 0,
-    int BonusPenetration = 0)
+    int BonusPenetration = 0,
+    double MultiplierOffset = 0,
+    IReadOnlyList<SuppressedBoost>? Suppressed = null)
 {
+    /// <summary>
+    /// Multiplicateur de dégâts reçu (Vengeance ×1,25, Affinité vitale ×0,70).
+    ///
+    /// ⚠ Il est stocké en ÉCART À 1 (<see cref="MultiplierOffset"/>), et surtout pas comme un facteur
+    /// valant 1 au repos : la valeur par défaut d'un paramètre de constructeur primaire ne s'applique
+    /// PAS à <c>default(DamageBoosts)</c>, qui met tous les champs à zéro. Un facteur « par défaut 1 »
+    /// vaudrait donc 0 pour la valeur par défaut de la propriété de dépendance de l'infobulle
+    /// (<c>PropertyMetadata(default(DamageBoosts), …)</c>) et METTRAIT TOUS LES DÉGÂTS À ZÉRO, sans
+    /// erreur ni build rouge. Relevé par le harnais du lot 6b.
+    /// </summary>
+    public double Multiplier => 1.0 + MultiplierOffset;
+
     /// <summary>Au moins un effet à afficher — sinon l'infobulle n'ajoute ni ligne ni chiffre.</summary>
     public bool Any => Packets is { Count: > 0 } || CriticalPercent > 0
-                       || BasePenetration > 0 || BonusPenetration > 0;
+                       || BasePenetration > 0 || BonusPenetration > 0 || HasMultiplier
+                       || Suppressed is { Count: > 0 };
+
+    /// <summary>Un multiplicateur de dégâts est-il en jeu ? Comparaison par écart, pas par égalité de
+    /// doubles.</summary>
+    public bool HasMultiplier => Math.Abs(MultiplierOffset) > 0.0001;
 
     /// <summary>Somme des paquets contre une armure donnée : les paquets qui ignorent l'armure passent
     /// tels quels, les autres par la formule de dégâts. Un seul chiffre par colonne d'AL, comme la
-    /// maquette (option B).</summary>
+    /// maquette (option B). Le multiplicateur s'applique à la valeur de BASE, avant l'armure (Q10),
+    /// et un seul arrondi tombe à la fin — comme <see cref="WeaponStrike.DamageAt"/>.</summary>
     public int TotalAt(int armorLevel, int armorPenetration, int casterLevel)
     {
         int total = 0;
         foreach (var p in Packets ?? [])
-            total += p.IgnoresArmor ? p.Value
-                   : SkillDamage.DamageAt(p.Value, armorLevel, armorPenetration, casterLevel);
+            total += p.IgnoresArmor ? (int)Math.Floor(p.Value * Multiplier)
+                   : SkillDamage.DamageAt(p.Value, armorLevel, armorPenetration, casterLevel, Multiplier);
         return total;
     }
 }
@@ -125,6 +186,15 @@ public static class DamageBoostData
     public const int GhostlyMightPvpSkillId  = 2966;
     public const int FearMeSkillId           = 366;
     public const int SiphonStrengthSkillId   = 827;
+    // ── Lot 6b : effets de dégâts REÇUS D'UN ALLIÉ ────────────────────────────
+    public const int StrengthOfHonorSkillId    = 243;
+    public const int StrengthOfHonorPvpSkillId = 2999;
+    public const int BrutalWeaponSkillId       = 1258;
+    public const int GreatDwarfWeaponSkillId   = 2219;
+    public const int FindTheirWeaknessSkillId  = 1781;
+    public const int VengeanceSkillId          = 315;
+    public const int LifeAttunementSkillId     = 244;
+    public const int NightmareWeaponSkillId    = 795;
 
     /// <summary>Id d'icône du mod d'arme « de fractionnement » : ce n'est pas une compétence, donc un id
     /// réservé négatif, comme le mod « Furieux » du lot 1a (qui occupe −1).</summary>
@@ -194,9 +264,72 @@ public static class DamageBoostData
         new(1732, DamageBoostScope.RitualistSkills, DamageBoostKind.BasePenetration, Fixed: 20),                     // Glaive était destructrice
         new(3157, DamageBoostScope.RitualistSkills, DamageBoostKind.BasePenetration, Fixed: 10, BaseSkillId: 1732),  // Glaive était destructrice (PvP)
         new(1218, DamageBoostScope.RitualistSkills, DamageBoostKind.BasePenetration, Fixed: 10),                     // Daoshen était cruel
+
+        // ══ LOT 6b — effets reçus d'un allié (recensement CLOS le 26/09/2026) ══
+        // Tous marqués Received : leur compétence n'est PAS sur la barre du perso qui en profite, donc
+        // l'icône vient du balayage d'équipe et la valeur se lit au rang du LANCEUR le plus fort.
+        //
+        // ⚠ Les trois bonus plats ci-dessous IGNORENT l'armure (tranché par Philippe le 26/09/2026)
+        // MALGRÉ leur description, qui est approximative : Force de l'honneur dit « deals X more
+        // damage » sans « + », et l'Arme du Grand Nain dit « +X weapon damage » comme s'il s'agissait
+        // d'un coup d'arme. Ce sont des bonus → IsBonus, comme les conjurations du 6a.
+        new(StrengthOfHonorSkillId,    DamageBoostScope.MeleeAttacks, DamageBoostKind.Damage, Index: 0, Received: true),  // Force de l'honneur (en mêlée, glossaire G2)
+        new(StrengthOfHonorPvpSkillId, DamageBoostScope.MeleeAttacks, DamageBoostKind.Damage, Index: 0, Received: true,
+            BaseSkillId: StrengthOfHonorSkillId),                                                                        // Force de l'honneur (PvP) : +1…4…5
+        // Arme brute : l'index 0 est sa DURÉE, le bonus est à l'index 1. « No effect while target ally
+        // is enchanted » → LostWhenEnchanted (Q4 du cadrage 6b).
+        new(BrutalWeaponSkillId, DamageBoostScope.Attacks, DamageBoostKind.Damage, Index: 1, Received: true,
+            LostWhenEnchanted: true),
+        // ⚠ « Cannot self-target » : son porteur ne peut JAMAIS la recevoir (déjà la règle du lot 4c).
+        new(GreatDwarfWeaponSkillId, DamageBoostScope.Attacks, DamageBoostKind.Damage, Index: 0, Received: true,
+            CannotSelfTarget: true),                                                                                     // Arme du Grand Nain (rang de titre Deldrimor)
+        // « Trouvez leur faiblesse ! » : index 1 (l'index 0 est la durée du cri, l'index 2 celle de la
+        // Blessure profonde). ⚠ La variante PvP (3034) n'est VOLONTAIREMENT pas ici : elle a PERDU ses
+        // dégâts, il ne lui reste que la Blessure profonde — même cas que Lecture du vent (PvP) au 6a.
+        new(FindTheirWeaknessSkillId, DamageBoostScope.Attacks, DamageBoostKind.Damage, Index: 1, Received: true),
+        // Vengeance : ×1,25 sur la valeur de BASE, avant l'armure, sur TOUS les paquets de dégâts, dégâts
+        // d'arme compris (Q10). Le 25 % est un LITTÉRAL — la compétence n'a aucune progression.
+        // ⚠ Même règle que celle DÉJÀ tranchée pour la fenêtre Spike (cf. SpikeWeaponBuffs) : le vol de
+        // vie et la perte de vie sèche restent en dehors du multiplicateur.
+        // ⚠ CannotSelfTarget sans que le texte le dise : elle RESSUSCITE sa cible, donc son lanceur —
+        // vivant, puisqu'il incante — ne peut pas en être le bénéficiaire.
+        new(VengeanceSkillId, DamageBoostScope.AllDamage, DamageBoostKind.Multiplier, Fixed: 25, Received: true,
+            CannotSelfTarget: true),
+        // Clairvoyance du juge : +20 % de pénétration en BONUS (littéral), cumulée par-dessus le max de
+        // base. Elle est DÉJÀ un convertisseur (lot 4b) : les deux rôles cohabitent sur la même icône.
+        new(ConditionDurationData.JudgesInsightSkillId, DamageBoostScope.Attacks, DamageBoostKind.BonusPenetration,
+            Fixed: 20, Received: true),
+        // Arme de fractionnement : 10 % de pénétration de BASE (littéral, non cumulable). Elle porte
+        // DÉJÀ l'armure brisée du lot 4b, sur la même icône.
+        new(ConditionDurationData.SunderingWeaponSkillId, DamageBoostScope.Attacks, DamageBoostKind.BasePenetration,
+            Fixed: 10, Received: true),
+
+        // ── Les deux MALUS reçus (Q2 du cadrage 6b, validés le 26/09/2026) ────
+        // Ils n'étaient dans AUCUN recensement : trouvés en balayant les sorts posables sur un allié.
+        // Une infobulle qui ne montrerait que les bonus mentirait quand l'un des deux est actif.
+        // Affinité vitale : « this ally deals 30% less damage with attacks » — 30 % LITTÉRAL (sa seule
+        // colonne de progression porte le soin, pas le malus).
+        new(LifeAttunementSkillId, DamageBoostScope.Attacks, DamageBoostKind.Multiplier, Fixed: 30,
+            Received: true, Malus: true),
+        // Arme du tourment : « attacks ... deal 10…42…50 less damage ». ⚠ Ses DEUX colonnes de
+        // progression sont identiques à tous les rangs (le vol de vie et le malus suivent la même
+        // échelle), donc l'index ne prête pas à conséquence — vérifié dans la base, pas supposé.
+        new(NightmareWeaponSkillId, DamageBoostScope.Attacks, DamageBoostKind.Damage, Index: 0,
+            Received: true, Malus: true),
     };
 
     private static readonly Dictionary<int, DamageBoostDescriptor> _bySkillId = All.ToDictionary(d => d.SkillId);
+
+    /// <summary>Les effets REÇUS d'un allié (lot 6b) : le balayage d'équipe s'appuie sur cette liste au
+    /// lieu d'une suite de cas en dur, donc ajouter une source ne demande qu'un descripteur.</summary>
+    public static readonly IReadOnlyList<DamageBoostDescriptor> ReceivedAll =
+        All.Where(d => d.Received).ToList();
+
+    /// <summary>Ids d'ICÔNE des effets reçus, sans doublon et dans l'ordre des descripteurs. ⚠ Deux
+    /// descripteurs peuvent partager une icône (Force de l'honneur et sa variante PvP) : c'est cette
+    /// liste-ci, pas <see cref="ReceivedAll"/>, qu'il faut parcourir pour afficher un bandeau.</summary>
+    public static readonly IReadOnlyList<int> ReceivedToggleIds =
+        ReceivedAll.Select(d => d.ToggleId).Distinct().ToList();
 
     private static readonly HashSet<int> _toggleIds =
         All.Select(d => d.ToggleId).Append(SunderingModToggleId).ToHashSet();
@@ -211,10 +344,11 @@ public static class DamageBoostData
     /// que le perso n'a pas laisse la description en plage, donc l'effet n'a pas de chiffre non plus).</summary>
     public static int ValueOf(DamageBoostDescriptor descriptor, Skill source, int rank)
     {
-        if (descriptor.Fixed > 0) return descriptor.Fixed;
+        int sign = descriptor.Malus ? -1 : 1;
+        if (descriptor.Fixed > 0) return sign * descriptor.Fixed;
         if (descriptor.Index < 0 || source.Progression is not { } prog || descriptor.Index >= prog.Length)
             return 0;
-        return SkillProgression.IntAt(prog[descriptor.Index], rank) ?? 0;
+        return sign * (SkillProgression.IntAt(prog[descriptor.Index], rank) ?? 0);
     }
 
     // ── Périmètres ────────────────────────────────────────────────────────────
@@ -234,8 +368,14 @@ public static class DamageBoostData
     /// <paramref name="equipped"/> = l'arme de main du set actif (elle décide du périmètre des attaques à
     /// arme libre, comme au lot 4b).</summary>
     public static bool Affects(DamageBoostDescriptor descriptor, Skill source, Skill target, WeaponKind equipped) =>
-        !PreparationLost(source, target)
-        && descriptor.Scope switch
+        !PreparationLost(source, target) && AffectsScope(descriptor, target, equipped);
+
+    /// <summary>Le PÉRIMÈTRE seul : <paramref name="target"/> est-elle le genre de compétence que cet
+    /// effet vise ? Sans la règle de la préparation perdue, qui n'est pas une question de périmètre mais
+    /// d'annulation — l'appelant qui veut EXPLIQUER pourquoi un effet allumé ne fait rien doit pouvoir
+    /// distinguer « ça ne la visait pas » (rien à dire) de « ça la visait, et c'est annulé » (à dire).</summary>
+    public static bool AffectsScope(DamageBoostDescriptor descriptor, Skill target, WeaponKind equipped) =>
+        descriptor.Scope switch
         {
             DamageBoostScope.Attacks         => WeaponStrike.IsWeaponAttack(target),
             DamageBoostScope.BowAttacks      => ConditionDurationData.InWeaponScope(ConditionWeaponScope.Bow, target, equipped),
@@ -246,6 +386,11 @@ public static class DamageBoostData
             DamageBoostScope.PetAttacks      => target.SkillType == "Pet Attack",
             DamageBoostScope.SpiritAttacks   => SpiritAttackRange(target) is not null,
             DamageBoostScope.RitualistSkills => IsRitualistSkill(target),
+            // Vengeance enchante LE PERSO : ses sorts comptent, mais ni son familier ni ses esprits
+            // (glossaire G1, déjà appliqué au Preneur d'Âmes). Le vol de vie et la perte de vie sèche
+            // sont écartés plus loin, à l'affichage, parce que c'est la NATURE du paquet qui décide.
+            DamageBoostScope.AllDamage       => target.SkillType != "Pet Attack"
+                                                && SpiritAttackRange(target) is null,
             _                                => false,
         };
 

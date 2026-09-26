@@ -106,6 +106,11 @@ public class BuildEditorViewModel : ViewModelBase
         Character.JudgesInsightProvider = () => CharacterSlotViewModel.JudgesInsightFor(new[] { Character });
         // Arme du Grand Nain (lot 4c) : PAS d'auto-ciblage ici — « Cannot self-target ». Un build simple n'a
         // qu'un perso, donc elle ne peut venir de personne : aucune icône, même s'il la porte.
+        // Effets de dégâts reçus d'un allié (lot 6b) : dans un build SIMPLE, le perso ne peut les recevoir
+        // que de lui-même — les deux « Cannot self-target » (Arme du Grand Nain, Vengeance) n'y ont donc
+        // aucune icône, exactement comme au lot 4c.
+        Character.ReceivedDamageBoostsProvider = receiver =>
+            CharacterSlotViewModel.ReceivedDamageBoostsFor(new[] { Character }, receiver);
         Character.GreatDwarfWeaponProvider = receiver =>
             CharacterSlotViewModel.GreatDwarfWeaponFor(new[] { Character }, receiver);
         // Saignement de Ronces (lot 4c) : un seul perso, donc porteur éventuel = lui, sinon rang de simulation.

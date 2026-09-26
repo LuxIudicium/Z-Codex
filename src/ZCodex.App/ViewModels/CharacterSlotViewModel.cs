@@ -453,6 +453,18 @@ public class CharacterSlotViewModel : ViewModelBase
                 items = items.Append(new AttributeBoostIndicatorViewModel(this, ji, ConditionDurationData.JudgesInsightSkillId, received: true));
             if (GreatDwarfWeapon is { } gdw)
                 items = items.Append(new AttributeBoostIndicatorViewModel(this, gdw, KnockdownData.GreatDwarfWeaponSkillId, received: true));
+            // Effets de dégâts reçus d'un allié (lot 6b) : les 6 NOUVELLES icônes. Les trois lignes
+            // ci-dessus émettent déjà celles que les lots 4b et 4c avaient posées pour d'autres raisons
+            // (armure brisée, conversion en sacré, chance d'assommer) — leur rôle « dégâts » s'ajoute sur
+            // la MÊME icône, il ne lui en crée pas une deuxième.
+            foreach (int toggleId in DamageBoostData.ReceivedToggleIds)
+            {
+                if (toggleId is ConditionDurationData.SunderingWeaponSkillId
+                             or ConditionDurationData.JudgesInsightSkillId
+                             or KnockdownData.GreatDwarfWeaponSkillId) continue;
+                if (ReceivedDamageBoosts.TryGetValue(toggleId, out var recv))
+                    items = items.Append(new AttributeBoostIndicatorViewModel(this, recv.Skill, toggleId, received: true));
+            }
             if (HasFuriousMod)
                 items = items.Append(new AttributeBoostIndicatorViewModel(this, null, AdrenalineBoostData.FuriousModToggleId, received: false));
             if (HasSunderingMod)
@@ -478,7 +490,7 @@ public class CharacterSlotViewModel : ViewModelBase
         : ConditionDurationData.ConverterBySkillId(skill.Id) is { Received: false } k ? k.ToggleId
         : skill.Id == ConditionDurationData.ArcherSignetSkillId ? skill.Id
         : AttributeSubstitutionData.BySkillId(skill.Id) is not null ? skill.Id
-        : DamageBoostData.BySkillId(skill.Id) is { } b ? b.ToggleId
+        : DamageBoostData.BySkillId(skill.Id) is { Received: false } b ? b.ToggleId
         : null;
 
     // Familles dont un perso ne porte qu'un effet à la fois (wiki *Effect stacking* : « one stance, one preparation, one
@@ -492,6 +504,12 @@ public class CharacterSlotViewModel : ViewModelBase
         if (toggleId is AdrenalineBoostData.WeaponOfFurySkillId or SkillSpeedBoostData.WeaponOfQuickeningSkillId
                      or ConditionDurationData.SunderingWeaponSkillId or KnockdownData.GreatDwarfWeaponSkillId)
             return "Weapon Spell";
+        // Effets de dégâts reçus (lot 6b) : la recherche par la barre, plus bas, ne peut pas les voir —
+        // leur compétence est chez le LANCEUR. L'Arme brute et l'Arme du tourment rejoignent donc ici la
+        // famille « un seul sort d'arme à la fois », déduite du type de la compétence et non d'une liste.
+        if (ReceivedDamageBoosts.TryGetValue(toggleId, out var received)
+            && ExclusiveSkillTypes.Contains(received.Skill.SkillType))
+            return received.Skill.SkillType;
         // Les effets qui exigent un TYPE D'ARME (3 conjurations + Aura de poussière d'ébène) : une arme
         // n'inflige qu'un type de dégâts à la fois, donc au plus un d'entre eux peut agir (lot 6a).
         if (DamageBoostData.ExclusiveElementFamily(toggleId) is { } element) return element;
@@ -655,6 +673,46 @@ public class CharacterSlotViewModel : ViewModelBase
 
     public Skill? GreatDwarfWeapon =>
         GreatDwarfWeaponProvider is { } p ? p(this) : OwnerBuild?.GreatDwarfWeaponFor(this);
+
+    // ── Effets de dégâts REÇUS d'un allié (chantier infobulle, lot 6b) ────────
+    // ⚠ Une SEULE voie pour les 9 sources, pilotée par DamageBoostData.ReceivedAll — là où les lots 1a
+    // à 4c avaient un bloc copié par effet (Weapon of Fury, Weapon of Quickening, Sundering Weapon,
+    // Clairvoyance du juge, Arme du Grand Nain). Ajouter une source ne demande donc qu'un descripteur,
+    // et le piège du lot 4c (une diffusion absente de la signature du teambuild n'apparaît jamais chez
+    // les AUTRES persos) ne peut plus se produire source par source : la signature est construite ici.
+    //
+    // Rang : celui du LANCEUR le plus fort qui la porte (« le plus fort gagne », patron de l'Arme de
+    // fractionnement du lot 4b), lu sur la caractéristique de la compétence source — donc la
+    // substitution du lot 5 s'y applique gratuitement. ⚠ Deux sources tournent sur un rang de TITRE
+    // (Arme du Grand Nain : Deldrimor) : si son porteur n'a pas saisi son rang, la ligne vaut 0 et le
+    // bonus tombe au minimum, en silence. Accepté par Philippe le 26/09/2026 (Q5 du cadrage 6b).
+    public static IReadOnlyDictionary<int, (Skill Skill, int Rank)> ReceivedDamageBoostsFor(
+        IEnumerable<CharacterSlotViewModel> characters, CharacterSlotViewModel? receiver = null)
+    {
+        var list = characters as IReadOnlyCollection<CharacterSlotViewModel> ?? characters.ToList();
+        Dictionary<int, (Skill Skill, int Rank)>? found = null;
+        foreach (var d in DamageBoostData.ReceivedAll)
+            foreach (var c in list)
+            {
+                // « Cannot self-target » : le porteur est exclu du balayage qui lui proposerait l'effet.
+                if (d.CannotSelfTarget && ReferenceEquals(c, receiver)) continue;
+                if (c.FindEquippedSkill(d.SkillId) is not { } sk) continue;
+                int rank = c.AttributeLevel(c.SubstitutedAttributeFor(sk) ?? sk.Attribute) ?? 0;
+                found ??= [];
+                found[d.ToggleId] = found.TryGetValue(d.ToggleId, out var prev) && prev.Rank >= rank
+                    ? prev : (sk, rank);
+            }
+        return found ?? EmptyReceivedBoosts;
+    }
+
+    private static readonly Dictionary<int, (Skill Skill, int Rank)> EmptyReceivedBoosts = [];
+
+    public Func<CharacterSlotViewModel, IReadOnlyDictionary<int, (Skill Skill, int Rank)>>? ReceivedDamageBoostsProvider { get; set; }
+
+    /// <summary>Les effets de dégâts que CE perso peut recevoir d'un allié, par id d'icône.</summary>
+    public IReadOnlyDictionary<int, (Skill Skill, int Rank)> ReceivedDamageBoosts =>
+        ReceivedDamageBoostsProvider is { } p ? p(this)
+        : OwnerBuild?.ReceivedDamageBoostsFor(this) ?? EmptyReceivedBoosts;
 
     // Effets d'adrénaline du bandeau d'équipe (lot 1b) : Infuriating Heat, Dark Fury, Mark of Fury,
     // Soothing. Environnement du teambuild propriétaire, ou (build simple) provider de l'éditeur.
@@ -885,18 +943,45 @@ public class CharacterSlotViewModel : ViewModelBase
         string? element = EffectiveElementFor(target, equipped);
 
         List<DamageBoostPacket>? packets = null;
-        int critical = 0, basePenetration = 0;
+        int critical = 0, basePenetration = 0, bonusPenetration = 0;
+        double multiplier = 1.0;
         bool elementTaken = false;
+        // Arme brute : « aucun effet si l'allié visé est enchanté ». Deuxième entorse assumée à « icône
+        // allumée = ça marche » (la première est le § 6.1), tranchée par Philippe le 26/09/2026 : dès que
+        // l'application VOIT un enchantement allumé sur ce perso, l'Arme brute tombe. Le cas est courant
+        // dès ce lot — Force de l'honneur, Clairvoyance du juge, Vengeance et Affinité vitale sont
+        // toutes les quatre des enchantements reçus. Patron : Nature colérique (lot 1a).
+        bool enchanted = IsEnchantedByLitEffect;
 
-        foreach (var slot in SkillSlots)
+        List<SuppressedBoost>? suppressed = null;
+        void Suppress(Skill sk, DamageBoostSuppression reason) =>
+            (suppressed ??= []).Add(new SuppressedBoost(sk.DisplayName, reason));
+
+        foreach (var (sk, d) in LitDamageBoosts())
         {
-            if (slot.Skill is not { } sk || DamageBoostData.BySkillId(sk.Id) is not { } d) continue;
             if (d.Kind == DamageBoostKind.TextDamage) continue;
-            if (!IsAttributeBoostActive(d.ToggleId) || !DamageBoostData.Affects(d, sk, target, equipped)) continue;
+            // ⚠ Le PÉRIMÈTRE d'abord : un effet qui ne visait pas cette compétence n'a rien à expliquer.
+            // Les trois annulations qui suivent, elles, portent sur un effet qui LA VISAIT — c'est
+            // précisément quand un chiffre disparaît sous les yeux qu'il faut dire pourquoi.
+            if (!DamageBoostData.AffectsScope(d, target, equipped)) continue;
+            if (DamageBoostData.PreparationLost(sk, target))
+            {
+                Suppress(sk, DamageBoostSuppression.PreparationRemoved);
+                continue;
+            }
+            if (d.LostWhenEnchanted && enchanted)
+            {
+                Suppress(sk, DamageBoostSuppression.Enchanted);
+                continue;
+            }
             // Seule entorse du chantier à « icône allumée = ça marche » : une conjuration ne s'applique
             // que si le type de dégâts effectif est le sien — mais uniquement quand l'application le SAIT
             // (cf. § 6.1 du plan et DamageBoostData.ElementSatisfied).
-            if (!DamageBoostData.ElementSatisfied(d.RequiresElement, element)) continue;
+            if (!DamageBoostData.ElementSatisfied(d.RequiresElement, element))
+            {
+                Suppress(sk, DamageBoostSuppression.WrongElement);
+                continue;
+            }
             // Une arme n'inflige qu'un type de dégâts à la fois : au plus UN effet à exigence d'élément
             // peut agir. L'exclusivité des icônes (ExclusiveFamilyOf) l'empêche déjà à l'allumage ; ce
             // garde-fou couvre les fichiers enregistrés AVANT cette règle, qui peuvent en porter deux.
@@ -906,7 +991,9 @@ public class CharacterSlotViewModel : ViewModelBase
                 elementTaken = true;
             }
             int value = ValueOfBoost(d, sk);
-            if (value <= 0) continue;
+            // ⚠ « == 0 » et non « <= 0 » : un MALUS reçu (Affinité vitale, Arme du tourment) est
+            // légitimement négatif depuis le lot 6b.
+            if (value == 0) continue;
             switch (d.Kind)
             {
                 case DamageBoostKind.Damage:
@@ -914,24 +1001,73 @@ public class CharacterSlotViewModel : ViewModelBase
                     break;
                 // Les chances de critique s'ADDITIONNENT (Q7 : « s'ajoute tel quel au taux affiché ») ;
                 // seul l'affichage plafonne à 100 %. La pénétration de BASE, elle, ne se cumule jamais :
-                // seul le plus fort compte (Q8).
-                case DamageBoostKind.CriticalChance:  critical += value; break;
-                case DamageBoostKind.BasePenetration: basePenetration = Math.Max(basePenetration, value); break;
+                // seul le plus fort compte (Q8) — celle en BONUS se cumule au contraire.
+                case DamageBoostKind.CriticalChance:   critical += value; break;
+                case DamageBoostKind.BasePenetration:  basePenetration = Math.Max(basePenetration, value); break;
+                case DamageBoostKind.BonusPenetration: bonusPenetration += value; break;
+                // Les multiplicateurs se COMPOSENT : Vengeance (+25) sous Affinité vitale (−30) donne
+                // ×1,25 × 0,70. Chacun porte des points de pourcentage signés.
+                case DamageBoostKind.Multiplier:       multiplier *= 1.0 + value / 100.0; break;
             }
         }
 
-        return new DamageBoosts(packets, critical, basePenetration, SunderingModPercentFor(target, equipped));
+        // ⚠ Le multiplicateur part en ÉCART À 1 : cf. DamageBoosts.Multiplier, où le piège est expliqué.
+        return new DamageBoosts(packets, critical, basePenetration,
+                                bonusPenetration + SunderingModPercentFor(target, equipped), multiplier - 1.0,
+                                suppressed);
     }
+
+    /// <summary>Les effets de dégâts ALLUMÉS de ce perso, des DEUX origines : sa propre barre (lots 6a)
+    /// et ce qu'un allié lui envoie (lot 6b). Un effet reçu porte la compétence du LANCEUR, donc son rang
+    /// se lit chez lui — c'est pour ça que la paire rend la compétence source et pas seulement l'id.</summary>
+    private IEnumerable<(Skill Source, DamageBoostDescriptor Descriptor)> LitDamageBoosts()
+    {
+        foreach (var slot in SkillSlots)
+            if (slot.Skill is { } sk && DamageBoostData.BySkillId(sk.Id) is { Received: false } d
+                && IsAttributeBoostActive(d.ToggleId))
+                yield return (sk, d);
+
+        foreach (var (toggleId, recv) in ReceivedDamageBoosts)
+            if (IsAttributeBoostActive(toggleId) && DamageBoostData.BySkillId(recv.Skill.Id) is { } d)
+                yield return (recv.Skill, d);
+    }
+
+    /// <summary>Un ENCHANTEMENT est-il allumé sur ce perso ? Compte ses propres icônes d'enchantement et
+    /// celles qu'il reçoit d'un allié. Sert la règle de l'Arme brute (lot 6b, Q4).</summary>
+    public bool IsEnchantedByLitEffect
+    {
+        get
+        {
+            foreach (var slot in SkillSlots)
+                if (slot.Skill is { SkillType: EnchantmentSkillType } sk
+                    && PersonalToggleIdOf(sk) is { } id && IsAttributeBoostActive(id))
+                    return true;
+            foreach (var (toggleId, recv) in ReceivedDamageBoosts)
+                if (recv.Skill.SkillType == EnchantmentSkillType && IsAttributeBoostActive(toggleId))
+                    return true;
+            return false;
+        }
+    }
+
+    private const string EnchantmentSkillType = "Enchantment Spell";
 
     // Valeur d'un effet au rang de SA PROPRE caractéristique (substitution du lot 5 comprise). Rang null =
     // caractéristique hors du build : la description de l'effet reste alors en plage verte, donc son bonus
     // n'a pas de chiffre non plus — on ne lui donne PAS la valeur du rang 0.
     private int ValueOfBoost(DamageBoostDescriptor descriptor, Skill source)
     {
-        if (descriptor.Fixed > 0) return descriptor.Fixed;
-        int? rank = AttributeLevel(SubstitutedAttributeFor(source) ?? source.Attribute);
+        // ⚠ Passer par ValueOf même pour un littéral : c'est LUI qui porte le signe des malus (lot 6b).
+        if (descriptor.Fixed > 0) return DamageBoostData.ValueOf(descriptor, source, 0);
+        int? rank = ReceivedRankOf(descriptor) ?? AttributeLevel(SubstitutedAttributeFor(source) ?? source.Attribute);
         return rank is null ? 0 : DamageBoostData.ValueOf(descriptor, source, rank.Value);
     }
+
+    /// <summary>Rang d'un effet REÇU : celui de son lanceur le plus fort, jamais celui du receveur — la
+    /// caractéristique d'échelle est souvent absente de la barre de celui qui en profite (le Communion
+    /// de l'Arme brute chez un Guerrier, le rang Deldrimor chez qui ne porte pas la compétence).</summary>
+    private int? ReceivedRankOf(DamageBoostDescriptor descriptor) =>
+        descriptor.Received && ReceivedDamageBoosts.TryGetValue(descriptor.ToggleId, out var recv)
+            ? recv.Rank : null;
 
     /// <summary>Points de pénétration d'armure en BONUS apportés par le mod d'arme « de fractionnement » du
     /// set actif (icône allumée = les 20 % de chance ont joué, idiome du chantier). Il ne vaut que pour les
@@ -955,11 +1091,10 @@ public class CharacterSlotViewModel : ViewModelBase
     /// bonus ; colonne −1 = rien à relever.</summary>
     public (int Column, int Bonus) TextDamageBonusFor(Skill target)
     {
-        foreach (var slot in SkillSlots)
+        foreach (var (sk, d) in LitDamageBoosts())
         {
-            if (slot.Skill is not { } sk || DamageBoostData.BySkillId(sk.Id) is not { Kind: DamageBoostKind.TextDamage } d)
-                continue;
-            if (!IsAttributeBoostActive(d.ToggleId) || !DamageBoostData.Affects(d, sk, target, WeaponKind.None)) continue;
+            if (d.Kind != DamageBoostKind.TextDamage) continue;
+            if (!DamageBoostData.Affects(d, sk, target, WeaponKind.None)) continue;
             int bonus = ValueOfBoost(d, sk);
             if (bonus <= 0) continue;
             int column = DamageBoostData.TextBonusColumn(d.Scope, target);

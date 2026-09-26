@@ -86,13 +86,22 @@ public class TeamBuildViewModel : ViewModelBase, IRenamableTab
             string sig = $"{skill?.Id}|{bonus}|{WeaponOfFury?.Id}|{WeaponOfQuickening?.Id}|{SunderingWeapon}"
                        + $"|{JudgesInsight?.Id}|{string.Join(";", TeamAdrenaline.Effects)}"
                        + $"|{EnergizingChorusReduction}|{TeamSpeed}"
-                       + $"|{CharacterSlotViewModel.GreatDwarfWeaponFor(EnumerateTree())?.Id}";
+                       + $"|{CharacterSlotViewModel.GreatDwarfWeaponFor(EnumerateTree())?.Id}"
+                       + $"|{ReceivedDamageBoostsSignature}";
             if (sig == _heroicRefrainSig) return;
             _heroicRefrainSig = sig;
             _heroicRefrainTimer.Stop();
             _heroicRefrainTimer.Start();
         };
     }
+
+    // ⚠ Les 9 effets du lot 6b passent TOUS par cette seule chaîne : c'est ce qui rend le piège du lot 4c
+    // (une diffusion oubliée dans la signature n'apparaît jamais chez les autres persos) impossible à
+    // reproduire source par source. Le RANG y entre aussi : le Communion du lanceur change le bonus
+    // annoncé chez tous ses receveurs.
+    private string ReceivedDamageBoostsSignature =>
+        string.Join(",", CharacterSlotViewModel.ReceivedDamageBoostsFor(EnumerateTree())
+            .OrderBy(kv => kv.Key).Select(kv => $"{kv.Key}:{kv.Value.Rank}"));
 
     private string _heroicRefrainSig = "";
     private readonly DispatcherTimer _heroicRefrainTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
@@ -152,6 +161,11 @@ public class TeamBuildViewModel : ViewModelBase, IRenamableTab
     // porte ne peut pas se la lancer, donc il est exclu du balayage qui la lui proposerait.
     public Skill? GreatDwarfWeaponFor(CharacterSlotViewModel receiver) =>
         CharacterSlotViewModel.GreatDwarfWeaponFor(EnumerateTree(), receiver);
+
+    // Effets de dégâts reçus d'un allié (lot 6b) : UNE seule voie pour les 9 sources, pilotée par les
+    // descripteurs. Le receveur est passé parce que deux d'entre elles ne peuvent pas venir de soi-même.
+    public IReadOnlyDictionary<int, (Skill Skill, int Rank)> ReceivedDamageBoostsFor(CharacterSlotViewModel receiver) =>
+        CharacterSlotViewModel.ReceivedDamageBoostsFor(EnumerateTree(), receiver);
 
     // Saignement de Ronces (lot 4c) : Survie du porteur le plus fort, ou rang de simulation du bandeau ;
     // 0 si l'esprit n'est pas posé.

@@ -191,6 +191,8 @@
     <sys:String x:Key="S.Boost.SunderingTip">Amélioration d'arme « de fractionnement » : +20 % de pénétration d'armure (20 % de chance).</sys:String>
     <sys:String x:Key="S.Boost.NoEffectWrongElement">Sans effet : l'arme de ce personnage n'inflige pas de dégâts de {0}.</sys:String>
     <sys:String x:Key="S.Boost.SingleSpiritNote">En jeu, un SEUL esprit en profite (et il est détruit au bout de 10 secondes) : l'infobulle montre le bonus sur tous.</sys:String>
+    <sys:String x:Key="S.Boost.DamageMalusNote">Allumé = cet effet est actif : il FAIT BAISSER les dégâts affichés ci-dessous.</sys:String>
+    <sys:String x:Key="S.Boost.GreatDwarfNote">Allumé = le sort d'arme est actif ; sa chance d'assommer est comptée comme ayant joué.</sys:String>
 
     <!-- ── Recherche de templates ─────────────────────────────────────── -->
     <sys:String x:Key="S.Search.Title">Rechercher des templates de compétences</sys:String>

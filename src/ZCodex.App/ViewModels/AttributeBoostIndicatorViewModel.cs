@@ -37,8 +37,11 @@ public class AttributeBoostIndicatorViewModel : ViewModelBase
         // quand un esprit est à portée, Signet of Mystic Speed quand l'enchantement vise ce perso (lot 3) ;
         // la Célérité symbolique (lot 5) prévient quand Incantation rapide vaut 0 — allumée, elle FAIT BAISSER
         // les sceaux du perso, ce qui est le vrai comportement du jeu mais surprend sans un mot d'explication.
-        string? note = skill is null || skill.Id is 763 or 1199 or 3145
-                       || skill.Id == KnockdownData.GreatDwarfWeaponSkillId ? T("S.Boost.ProcNote")
+        // ⚠ L'Arme du Grand Nain a quitté la note « l'effet a proc » au lot 6b : sa chance d'assommer
+        // est bien un proc, mais ses +15…20 dégâts, eux, valent tant que le sort d'arme tient. Une
+        // seule note qui dit les deux, sinon elle ment sur la moitié de l'icône.
+        string? note = skill is null || skill.Id is 763 or 1199 or 3145 ? T("S.Boost.ProcNote")
+            : skill.Id == KnockdownData.GreatDwarfWeaponSkillId ? T("S.Boost.GreatDwarfNote")
             // Conjuration (ou Aura de poussière d'ébène) allumée alors que l'arme n'inflige pas son type de
             // dégâts : sans ce mot, son absence totale d'effet passe pour un bug (lot 6a, § 6.1).
             : owner.BoostElementMismatch(skill) is { } required
@@ -46,6 +49,14 @@ public class AttributeBoostIndicatorViewModel : ViewModelBase
             // Sceau de puissance spectrale en PvP : mécanique divergente de sa jumelle — un seul esprit en
             // profite en jeu, l'infobulle l'affiche sur tous (décision du 24/09/2026).
             : skill.Id == DamageBoostData.GhostlyMightPvpSkillId ? T("S.Boost.SingleSpiritNote")
+            // Arme brute allumée sous un enchantement : son bonus TOMBE (lot 6b, Q4). Sans ce mot, son
+            // absence d'effet passe pour un bug — exactement le raisonnement de la Nature colérique.
+            : skill.Id == DamageBoostData.BrutalWeaponSkillId && owner.IsEnchantedByLitEffect
+                ? T("S.Boost.NoEffectEnchanted")
+            // Les deux effets reçus qui RETIRENT des dégâts : allumés, ils font BAISSER les chiffres de
+            // l'infobulle. C'est le vrai comportement du jeu, mais il surprend sans un mot (lot 6b, Q2).
+            : skill.Id is DamageBoostData.LifeAttunementSkillId or DamageBoostData.NightmareWeaponSkillId
+                ? T("S.Boost.DamageMalusNote")
             : AdrenalineBoostData.BySkillId(skill.Id) is { NeedsUnenchanted: true } && owner.IsEnchantedByAdrenalineEffect
                 ? T("S.Boost.NoEffectEnchanted")
             : skill.Id == ConditionDurationData.ArcherSignetSkillId && owner.ArcherSignetWithoutBow

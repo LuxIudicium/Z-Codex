@@ -33,8 +33,8 @@ public static class HelpContent
 {
     // Version du CONTENU de l'aide (indépendante de la version applicative de l'À propos) :
     // à incrémenter et redater à chaque mise à jour.
-    public const string VersionFr = "Aide v24 — 24/09/2026";
-    public const string VersionEn = "Help v24 — 2026-09-24";
+    public const string VersionFr = "Aide v25 — 26/09/2026";
+    public const string VersionEn = "Help v25 — 2026-09-26";
 
     public static string Version => AppLanguage.IsFr ? VersionFr : VersionEn;
 
@@ -312,11 +312,11 @@ public static class HelpContent
               "Une compétence active peut faire lire à d'autres compétences une caractéristique qui n'est pas la leur (Sceau des illusions, Célérité symbolique). Leurs valeurs s'affichent alors en rose, et la mention de fin d'infobulle nomme les deux caractéristiques : celle qui est réellement lue, puis celle qu'elle remplace.",
               "An active skill can make other skills read an attribute that is not their own (Signet of Illusions, Symbolic Celerity). Their values then show in pink, and the attribute line at the end of the tooltip names both attributes: the one actually read, then the one it replaces."),
             R("Valeurs en violet", "Purple values",
-              "Un effet actif peut relever un chiffre écrit dans la description d'une autre compétence : il s'affiche alors en violet, la couleur que l'application donne partout aux bonus d'une compétence active.",
-              "An active effect can raise a number written in another skill's description: it then shows in purple, the color this application uses everywhere for bonuses granted by an active skill."),
+              "Un effet actif — le vôtre, ou celui qu'un allié vous envoie — peut modifier un chiffre écrit dans la description d'une autre compétence, à la hausse comme à la baisse : il s'affiche alors en violet, la couleur que l'application donne partout aux valeurs venues d'une compétence active.",
+              "An active effect — your own, or one an ally casts on you — can change a number written in another skill's description, up or down: it then shows in purple, the color this application uses everywhere for values that come from an active skill."),
             R("Table de dégâts", "Damage table",
-              "Si « Afficher les dégâts selon l'armure » est activé : dégâts par niveau d'armure, pénétration comprise. Pour les attaques d'arme : plage totale (arme customisée, rang de maîtrise) et coup critique avec son taux. Les effets actifs y ajoutent leur propre ligne, « bonus d'effets », et peuvent relever la pénétration comme le taux de critique.",
-              "If “Show armor-based damage” is on: damage per armor level, penetration included. For weapon attacks: full range (customized weapon, mastery rank) and critical hit with its rate. Active effects add their own “effect bonus” row, and may raise both penetration and critical rate."),
+              "Si « Afficher les dégâts selon l'armure » est activé : dégâts par niveau d'armure, pénétration comprise. Pour les attaques d'arme : plage totale (arme customisée, rang de maîtrise) et coup critique avec son taux. Les effets actifs y ajoutent leur propre ligne, « bonus d'effets », peuvent relever la pénétration comme le taux de critique, et certains multiplient toute la table. Un effet allumé qui ne s'applique pas à la compétence survolée le dit sous la table, avec sa raison.",
+              "If “Show armor-based damage” is on: damage per armor level, penetration included. For weapon attacks: full range (customized weapon, mastery rank) and critical hit with its rate. Active effects add their own “effect bonus” row, may raise both penetration and critical rate, and some multiply the whole table. An active effect that does not apply to the skill you are hovering says so below the table, with the reason."),
             R("Bloc « Invocation »", "“Spawning” block",
               "Pour un Ritualiste : effet de la Puissance de l'invocation — durée des sorts d'arme, PV, armure et durée de vie des esprits et serviteurs.",
               "For a Ritualist: effect of Spawning Power — weapon spell duration, health, armor and lifespan of spirits and minions.")),
