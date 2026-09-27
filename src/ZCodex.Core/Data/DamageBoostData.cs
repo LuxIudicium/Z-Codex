@@ -72,7 +72,9 @@ public enum DamageBoostScope
     NonDaggerAttacks,
     /// <summary>Attaques du familier (Agression barbare).</summary>
     PetAttacks,
-    /// <summary>Attaques des esprits contrôlés (Sceau de puissance spectrale).</summary>
+    /// <summary>Attaques des esprits contrôlés (Sceau de puissance spectrale, Aura de sangsue de l'esprit).
+    /// ⚠ « Attaquer » couvre les DEUX formes : infliger des dégâts, ou VOLER DE LA VIE — trois esprits ne
+    /// font que la seconde (cf. <see cref="DamageBoostData.AttacksAsSpirit"/>).</summary>
     SpiritAttacks,
     /// <summary>« Your Ritualist skills » (Glaive était destructrice, Daoshen était cruel).</summary>
     RitualistSkills,
@@ -691,19 +693,23 @@ public static class DamageBoostData
             DamageBoostScope.NonDaggerAttacks => WeaponStrike.IsWeaponAttack(target)
                                                 && !ConditionDurationData.InWeaponScope(ConditionWeaponScope.Daggers, target, equipped),
             DamageBoostScope.PetAttacks      => target.SkillType == "Pet Attack",
-            DamageBoostScope.SpiritAttacks   => SpiritAttackRange(target) is not null,
+            // ⚠ AttacksAsSpirit, et non la seule clause de DÉGÂTS : trois esprits attaquent en volant de la
+            // vie (lot 6c-3b). Sans ça, l'Aura de sangsue ne leur donnait rien du tout.
+            DamageBoostScope.SpiritAttacks   => AttacksAsSpirit(target),
             DamageBoostScope.RitualistSkills => IsRitualistSkill(target),
             // Vengeance enchante LE PERSO : ses sorts comptent, mais ni son familier ni ses esprits
             // (glossaire G1, déjà appliqué au Preneur d'Âmes). Le vol de vie et la perte de vie sèche
             // sont écartés plus loin, à l'affichage, parce que c'est la NATURE du paquet qui décide.
+            // ⚠ Même élargissement : sans lui, Vengeance « visait » la Mélodie du sang, et comme elle n'a
+            // aucun paquet de dégâts à montrer, l'infobulle ouvrait une section de dégâts VIDE.
             DamageBoostScope.AllDamage       => target.SkillType != "Pet Attack"
-                                                && SpiritAttackRange(target) is null,
+                                                && !AttacksAsSpirit(target),
             // L'Étendard d'honneur. Le familier a son propre descripteur (TextDamage) et les esprits sont
             // exclus par le texte de la compétence (« Spirits are unaffected »). ⚠ Le test « y a-t-il
             // vraiment un paquet soumis à l'armure ? » N'EST PAS ICI : il demande la description RÉSOLUE,
             // que le périmètre n'a pas — c'est BenefitsFromArmorRespectingBonus, que l'appelant enchaîne.
             DamageBoostScope.ArmorRespectingDamage => target.SkillType != "Pet Attack"
-                                                && SpiritAttackRange(target) is null
+                                                && !AttacksAsSpirit(target)
                                                 && !IsEnemyTriggeredDamage(target),
             _                                => false,
         };
@@ -724,6 +730,18 @@ public static class DamageBoostData
         @"\bits attacks deal\s+(?<range>\d+(?:\.\.\.\d+)+)\s+damage\b",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
+    // ⚠ TROIS esprits de la base n'infligent PAS de dégâts : leur attaque EST un vol de vie — Mélodie du
+    // sang (1253), sa variante PvP (3019) et Vampirisme (2110). Relevé par Philippe le 27/09/2026 : « ce
+    // n'est pas vraiment mentionné dans leur description, mais les attaques de ces esprits volent de la
+    // vie ». Deux conséquences, et elles vont en sens INVERSE :
+    //  • le malus de dégâts de l'Aura de sangsue n'a **rien à mordre** chez eux (pas de dégâts du tout) ;
+    //  • son vol de vie, lui, **s'AJOUTE au leur** — donc chez ces trois-là l'Aura est purement un gain.
+    // ⚠ Voyage (1255) attaque aussi, mais sa description ne chiffre **ni** dégât **ni** vol de vie : aucun
+    // nombre à relever, donc il reste dehors — règle du § 6.6, on lit la clause et on ne tient pas de liste.
+    private static readonly Regex SpiritStealRegex = new(
+        @"\bits attacks steal\s+(?<range>\d+(?:\.\.\.\d+)+)\s+Health\b",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
     // Premier paquet de dégâts d'une attaque de familier. « [^.;]*? » borne la recherche de la clause
     // conditionnelle à la PHRASE : sur les 16 attaques de familier, 2 seulement ont deux paquets (Coup
     // brutal, Assaut de Melandru PvP) et dans les deux le second est explicitement conditionnel, donc
@@ -740,6 +758,38 @@ public static class DamageBoostData
     public static string? SpiritAttackRange(Skill skill) =>
         SpiritAttackRegex.Match(skill.Description) is { Success: true } m ? m.Groups["range"].Value : null;
 
+    /// <summary>Plage du VOL DE VIE « Its attacks steal X Health » d'un rituel d'asservissement, ou null :
+    /// les 3 esprits dont l'attaque vole de la vie au lieu d'infliger des dégâts (lot 6c-3b).</summary>
+    public static string? SpiritStealRange(Skill skill) =>
+        SpiritStealRegex.Match(skill.Description) is { Success: true } m ? m.Groups["range"].Value : null;
+
+    /// <summary>
+    /// Cet esprit ATTAQUE-t-il, avec une sortie chiffrée dans sa description ? Les DEUX formes comptent :
+    /// des DÉGÂTS (Douleur, Angoisse, Mélodie des Ombres, Dissonance, Désenchantement, Regard de fureur)
+    /// ou un VOL DE VIE (Mélodie du sang, Vampirisme).
+    ///
+    /// C'est le périmètre de <see cref="DamageBoostScope.SpiritAttacks"/>, et c'est aussi ce qui EXCLUT les
+    /// esprits des effets posés sur le perso (glossaire G1). ⚠ Union, Destruction, Refuge et les autres
+    /// rituels utilitaires n'attaquent pas ; Voyage attaque mais ne chiffre rien.
+    /// </summary>
+    public static bool AttacksAsSpirit(Skill skill) =>
+        SpiritAttackRange(skill) is not null || SpiritStealRange(skill) is not null;
+
+    /// <summary>
+    /// Le vol de vie conféré par cet effet se lit-il DANS LE TEXTE de la compétence survolée, au lieu
+    /// d'aller sur sa propre ligne sous la table ?
+    ///
+    /// Vrai pour les 3 esprits dont l'attaque EST un vol de vie : leur chiffre existe DÉJÀ dans leur
+    /// description, donc l'effet le RELÈVE — exactement comme le Sceau de puissance spectrale relève les
+    /// dégâts de la Douleur (Q12). Une ligne « Vol de vie : 17 » posée à côté d'un « vole 21 points de
+    /// vie » laisserait le lecteur additionner lui-même deux chiffres qui décrivent le MÊME coup.
+    /// (Correction demandée par Philippe le 27/09/2026, après la QA du lot 6c-3.)
+    /// </summary>
+    public static bool LifeStealReadInText(DamageBoostDescriptor descriptor, Skill target) =>
+        descriptor.Kind == DamageBoostKind.LifeSteal
+        && descriptor.Scope == DamageBoostScope.SpiritAttacks
+        && SpiritStealRange(target) is not null;
+
     /// <summary>Plage du PREMIER paquet non conditionnel d'une attaque de familier, ou null (Morsure
     /// empoisonnée n'annonce aucun dégât ; le Coup enragé (PvP) n'a qu'un paquet par-unité).</summary>
     public static string? PetDamageRange(Skill skill)
@@ -752,9 +802,14 @@ public static class DamageBoostData
 
     /// <summary>Index de la colonne de progression de <paramref name="target"/> que l'effet relève, ou −1 :
     /// la clause de l'esprit ou le premier paquet du familier, apparié à la progression par les ancres
-    /// (donc jamais un index deviné).</summary>
-    public static int TextBonusColumn(DamageBoostScope scope, Skill target) => scope switch
+    /// (donc jamais un index deviné). ⚠ Il faut le DESCRIPTEUR et pas seulement son périmètre : sur un
+    /// esprit qui vole de la vie, un effet relève la colonne du VOL DE VIE et non celle des dégâts.</summary>
+    public static int TextBonusColumn(DamageBoostDescriptor descriptor, Skill target) => descriptor.Scope switch
     {
+        // Le vol de vie conféré à un esprit qui vole DÉJÀ de la vie relève SA colonne (lot 6c-3b). C'est le
+        // seul cas où deux descripteurs du même effet visent deux colonnes différentes de la même cible.
+        DamageBoostScope.SpiritAttacks when LifeStealReadInText(descriptor, target)
+                                       => SkillProgression.ColumnOf(target.Progression, SpiritStealRange(target)),
         DamageBoostScope.SpiritAttacks => SkillProgression.ColumnOf(target.Progression, SpiritAttackRange(target)),
         DamageBoostScope.PetAttacks    => SkillProgression.ColumnOf(target.Progression, PetDamageRange(target)),
         _                              => -1,

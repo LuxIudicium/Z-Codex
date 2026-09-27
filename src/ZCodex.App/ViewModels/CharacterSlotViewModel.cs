@@ -1063,6 +1063,10 @@ public class CharacterSlotViewModel : ViewModelBase
         foreach (var (sk, d) in LitDamageBoosts())
         {
             if (d.Kind == DamageBoostKind.TextDamage) continue;
+            // ⚠ Depuis le lot 6c-3b, le vol de vie conféré à un esprit qui vole DÉJÀ de la vie passe lui
+            // aussi par TextDamageBonusFor : il RELÈVE son chiffre au lieu de s'afficher sur une ligne à
+            // part, sinon le lecteur devrait additionner deux nombres qui décrivent le même coup.
+            if (DamageBoostData.LifeStealReadInText(d, target)) continue;
             // ⚠ Le PÉRIMÈTRE d'abord : un effet qui ne visait pas cette compétence n'a rien à expliquer.
             // Les trois annulations qui suivent, elles, portent sur un effet qui LA VISAIT — c'est
             // précisément quand un chiffre disparaît sous les yeux qu'il faut dire pourquoi.
@@ -1306,7 +1310,10 @@ public class CharacterSlotViewModel : ViewModelBase
         int column = -1, total = 0;
         foreach (var (sk, d) in LitDamageBoosts())
         {
-            if (d.Kind != DamageBoostKind.TextDamage) continue;
+            // ⚠ Le vol de vie conféré à un esprit qui vole DÉJÀ de la vie entre ici aussi (lot 6c-3b) : sur
+            // ces 3 esprits-là, c'est SON chiffre de vol de vie que l'effet relève, pas des dégâts.
+            if (d.Kind != DamageBoostKind.TextDamage
+                && !DamageBoostData.LifeStealReadInText(d, target)) continue;
             if (!DamageBoostData.Affects(d, sk, target, WeaponKind.None)) continue;
             // Un bonus « aux dégâts physiques » posé sur le familier tombe si le Grand brasier convertit
             // ses attaques (le familier est une « créature à portée »).
@@ -1316,7 +1323,11 @@ public class CharacterSlotViewModel : ViewModelBase
             // MALUS est légitimement négatif, et le refuser ici aurait fait taire l'Aura de sangsue de
             // l'esprit en silence, build vert.
             if (bonus == 0) continue;
-            int col = DamageBoostData.TextBonusColumn(d.Scope, target);
+            // ⚠ Le descripteur, pas son périmètre : c'est ce qui permet au malus de dégâts et au vol de vie
+            // du MÊME effet de viser deux colonnes différentes de la même cible. Sur la Mélodie du sang, le
+            // malus ne trouve aucune colonne de dégâts (col = −1) et s'écarte tout seul — c'est exactement
+            // le comportement voulu : il n'y a pas de dégâts à retirer.
+            int col = DamageBoostData.TextBonusColumn(d, target);
             if (col < 0) continue;
             if (column < 0) column = col;
             if (col == column) total += bonus;
