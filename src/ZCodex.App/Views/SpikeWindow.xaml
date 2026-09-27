@@ -179,6 +179,69 @@
                                                 </ItemsControl.ItemTemplate>
                                             </ItemsControl>
                                         </StackPanel>
+                                        <!-- Effets de dégâts de la carte (lot 6e) : les MÊMES icônes que
+                                             la vue Build, filtrées à celles qui changent un chiffre ici
+                                             (SpikeBoostToggles) — les 9 buffs d'arme ont leur rangée
+                                             au-dessus, et l'adrénaline, l'énergie ou les durées n'ont
+                                             rien à faire dans un spike. Cliquables : l'état est le même
+                                             des deux côtés, allumer ici allume partout.
+                                             ⚠ WrapPanel : la rangée peut être longue sur un perso très
+                                             équipé, et la carte tient dans une colonne sur deux. -->
+                                        <StackPanel Orientation="Horizontal" Margin="0,5,0,0"
+                                                    Visibility="{Binding HasSpikeBoostToggles, Converter={StaticResource BoolToVisibilityConverter}}">
+                                            <TextBlock Text="{DynamicResource S.Spike.Effects}" FontSize="10"
+                                                       Foreground="{DynamicResource TextFaintBrush}"
+                                                       VerticalAlignment="Center" Margin="0,0,5,0"/>
+                                            <ItemsControl ItemsSource="{Binding SpikeBoostToggles}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <WrapPanel Orientation="Horizontal"/>
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border MouseLeftButtonDown="BoostToggle_Click" Cursor="Hand"
+                                                                Margin="0,0,4,0" CornerRadius="2" BorderThickness="2"
+                                                                ToolTipService.ShowDuration="30000">
+                                                            <Border.ToolTip>
+                                                                <ToolTip MaxWidth="420" Padding="0">
+                                                                    <StackPanel>
+                                                                        <ctrl:SkillTooltipControl Skill="{Binding Skill}"/>
+                                                                        <TextBlock Text="{Binding ClickNote}" FontSize="10" FontStyle="Italic"
+                                                                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                                                                   TextWrapping="Wrap" Margin="6,2,6,4"/>
+                                                                    </StackPanel>
+                                                                </ToolTip>
+                                                            </Border.ToolTip>
+                                                            <Border.Style>
+                                                                <Style TargetType="Border">
+                                                                    <Setter Property="BorderBrush" Value="Transparent"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                                            <Setter Property="BorderBrush" Value="#43A047"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Border.Style>
+                                                            <Image Width="20" Height="20" Stretch="Uniform"
+                                                                   Source="{Binding Skill.IconPath, Converter={StaticResource UrlToImage}, ConverterParameter=64}"
+                                                                   RenderOptions.BitmapScalingMode="HighQuality">
+                                                                <Image.Style>
+                                                                    <Style TargetType="Image">
+                                                                        <Setter Property="Opacity" Value="0.35"/>
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                                                <Setter Property="Opacity" Value="1"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Image.Style>
+                                                            </Image>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
                                         <!-- Attaques normales (lot 6d-2) : la case de CE perso, ouverte par
                                              la case maîtresse de la barre d'options. Cochée, elle ajoute la
                                              ligne de ses coups d'arme normaux en fin de liste. -->

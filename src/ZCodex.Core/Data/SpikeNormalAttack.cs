@@ -20,10 +20,24 @@ public static class SpikeNormalAttack
     /// normaux : <paramref name="SunderingHits"/> coups à la pénétration de BASE d'Arme de fractionnement,
     /// <paramref name="SplinterHits"/> coups au +<paramref name="SplinterBonus"/> d'Arme d'éclats (qui
     /// ignore l'armure), <paramref name="FtwHits"/> coups au +<paramref name="FtwBonus"/> de « Trouvez
-    /// leur faiblesse ! ».</summary>
+    /// leur faiblesse ! », plus les effets à charges du lot 6e (<paramref name="Boosts"/>).</summary>
     public readonly record struct Charges(int SunderingHits = 0,
                                           int SplinterHits = 0, int SplinterBonus = 0,
-                                          int FtwHits = 0, int FtwBonus = 0);
+                                          int FtwHits = 0, int FtwBonus = 0,
+                                          IReadOnlyList<BoostCharge>? Boosts = null);
+
+    /// <summary>
+    /// Un effet à charges du lot 6e : ses <paramref name="Hits"/> premiers coups reçoivent
+    /// <paramref name="Flat"/> de dégâts (NÉGATIF pour un malus — l'Arme du tourment retire 10…50) et
+    /// <paramref name="Steal"/> de vol de vie.
+    ///
+    /// ⚠ Les trois champs sont indépendants : l'Arme du tourment en porte deux à la fois (elle retire
+    /// des dégâts ET vole de la vie), « Je suis le plus fort ! » n'en porte qu'un.
+    /// ⚠ Le CRITIQUE n'est pas ici, et c'est voulu : « Visez les yeux ! » relève une PROBABILITÉ, et la
+    /// fenêtre chiffre une fourchette min–max en coup non critique — son bonus ne déplace donc aucun
+    /// nombre, seulement la note de la ligne.
+    /// </summary>
+    public readonly record struct BoostCharge(int Hits, int Flat, int Steal);
 
     /// <summary>
     /// UN coup normal. <paramref name="penetration"/> = la pénétration TOTALE de ce coup (pool de base
@@ -33,18 +47,21 @@ public static class SpikeNormalAttack
     /// </summary>
     public static (int Min, int Max) Hit(WeaponStrike.Weapon weapon, int masteryRank, int armorLevel,
                                          int penetration, int flatBonus, bool critical,
-                                         int attackerLevel = 20)
+                                         int attackerLevel = 20, double weaponMultiplier = 1.0)
     {
+        // ⚠ Plancher à 0 depuis le lot 6e : un MALUS plat (l'Arme du tourment retire jusqu'à 50) peut
+        // dépasser les dégâts d'un coup faible, et un coup ne rend jamais de la vie à sa cible. Sans
+        // effet sur les chiffres du 6d-2, où tous les +X étaient positifs.
         if (critical)
         {
             int crit = WeaponStrike.CriticalAt(weapon, masteryRank, armorLevel, penetration,
-                                               1.0, attackerLevel) + flatBonus;
-            return (crit, crit);
+                                               weaponMultiplier, attackerLevel) + flatBonus;
+            return (Math.Max(0, crit), Math.Max(0, crit));
         }
-        return (WeaponStrike.DamageAt(weapon.Min, masteryRank, armorLevel, penetration,
-                                      1.0, attackerLevel) + flatBonus,
-                WeaponStrike.DamageAt(weapon.Max, masteryRank, armorLevel, penetration,
-                                      1.0, attackerLevel) + flatBonus);
+        return (Math.Max(0, WeaponStrike.DamageAt(weapon.Min, masteryRank, armorLevel, penetration,
+                                                  weaponMultiplier, attackerLevel) + flatBonus),
+                Math.Max(0, WeaponStrike.DamageAt(weapon.Max, masteryRank, armorLevel, penetration,
+                                                  weaponMultiplier, attackerLevel) + flatBonus));
     }
 
     /// <summary>
@@ -56,20 +73,32 @@ public static class SpikeNormalAttack
     /// chaque coup (Arme brutale) ; le +X d'ARME de l'Arme du Grand Nain, lui, est déjà dans la plage de
     /// <paramref name="weapon"/>, car il passe avant l'armure et le critique.
     /// </summary>
-    public static (int Min, int Max) Damage(WeaponStrike.Weapon weapon, int masteryRank, int armorLevel,
-                                           int bonusPen, int hits, bool critical, int flatPerHit,
-                                           Charges charges, int attackerLevel = 20)
+    /// <param name="stealPerHit">Vol de vie conféré à CHAQUE coup par un effet permanent du lot 6e ; celui
+    /// des effets à charges arrive par <see cref="Charges.Boosts"/>. ⚠ Il sort en 3ᵉ terme et n'entre pas
+    /// dans la fourchette de dégâts : le vol de vie n'est pas un dégât (règle du chantier, les
+    /// multiplicateurs et le flux ne le touchent pas).</param>
+    /// <param name="weaponMultiplier">Le multiplicateur qui ne mord QUE sur l'arme (Rafale ×0,75) : il
+    /// entre avant l'armure, et jamais sur les +X plats — exactement comme dans l'infobulle.</param>
+    public static (int Min, int Max, int Steal) Damage(
+        WeaponStrike.Weapon weapon, int masteryRank, int armorLevel,
+        int bonusPen, int hits, bool critical, int flatPerHit,
+        Charges charges, int attackerLevel = 20,
+        int stealPerHit = 0, double weaponMultiplier = 1.0)
     {
-        int min = 0, max = 0;
+        int min = 0, max = 0, steal = 0;
         for (int i = 1; i <= hits; i++)
         {
             int pen = bonusPen + (i <= charges.SunderingHits ? SpikeWeaponBuffs.SunderingBasePen : 0);
             int flat = flatPerHit
                      + (i <= charges.SplinterHits ? charges.SplinterBonus : 0)
                      + (i <= charges.FtwHits ? charges.FtwBonus : 0);
-            var (hitMin, hitMax) = Hit(weapon, masteryRank, armorLevel, pen, flat, critical, attackerLevel);
+            steal += stealPerHit;
+            foreach (var b in charges.Boosts ?? [])
+                if (i <= b.Hits) { flat += b.Flat; steal += b.Steal; }
+            var (hitMin, hitMax) = Hit(weapon, masteryRank, armorLevel, pen, flat, critical,
+                                       attackerLevel, weaponMultiplier);
             min += hitMin; max += hitMax;
         }
-        return (min, max);
+        return (min, max, steal);
     }
 }

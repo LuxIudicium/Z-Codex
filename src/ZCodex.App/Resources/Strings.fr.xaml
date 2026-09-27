@@ -479,6 +479,7 @@
     <sys:String x:Key="S.Spike.TeambuildTip">Ramène la fenêtre du teambuild au premier plan pour choisir les lignes du roster spike (8 max, racines ou variantes)</sys:String>
     <sys:String x:Key="S.Spike.ClickHint">Cliquez une compétence pour la compter dans le spike (cadre vert) ; recliquez pour la retirer.</sys:String>
     <sys:String x:Key="S.Spike.Buffs">Buffs :</sys:String>
+    <sys:String x:Key="S.Spike.Effects">Effets :</sys:String>
     <sys:String x:Key="S.Spike.Target">Cible</sys:String>
     <sys:String x:Key="S.Spike.DeleteProfileTip">Supprimer le profil sélectionné</sys:String>
     <sys:String x:Key="S.Spike.SaveProfileTip">Enregistrer la cible courante sous ce nom</sys:String>
@@ -504,7 +505,7 @@
     <sys:String x:Key="S.Spike.CrackedArmor">Armure brisée</sys:String>
     <sys:String x:Key="S.Spike.CrackedArmorTip">−20 AL sur tous les types, plancher 60 (description officielle)</sys:String>
     <sys:String x:Key="S.Spike.AllCrits">Tout en critique</sys:String>
-    <sys:String x:Key="S.Spike.AllCritsTip">Toutes les attaques d'arme au dégât critique (« Visez les yeux ! »)</sys:String>
+    <sys:String x:Key="S.Spike.AllCritsTip">Toutes les attaques d'arme au dégât critique (meilleur cas)</sys:String>
     <sys:String x:Key="S.Spike.NoSkillSelected">Aucune compétence sélectionnée — cliquez des compétences (cadre vert) dans le panneau de gauche.</sys:String>
     <sys:String x:Key="S.Spike.ColSkill">Compétence</sys:String>
     <sys:String x:Key="S.Spike.ColCombat">Combat</sys:String>

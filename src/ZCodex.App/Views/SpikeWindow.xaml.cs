@@ -45,6 +45,16 @@ public partial class SpikeWindow : Window
             toggle.IsActive = !toggle.IsActive;
     }
 
+    // Clic sur une icône d'effet de dégâts de la carte (lot 6e) : la MÊME bascule que dans la vue
+    // Build — allumer ici allume partout, il n'y a qu'un seul état par perso. Le recalcul suit tout
+    // seul : Toggle() notifie, le perso est muté, et la fenêtre se reconstruit.
+    private void BoostToggle_Click(object sender, MouseButtonEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is AttributeBoostIndicatorViewModel vm)
+            vm.Toggle();
+        e.Handled = true;
+    }
+
     private void SaveProfile_Click(object sender, RoutedEventArgs e) => _vm.SaveProfile();
     private void DeleteProfile_Click(object sender, RoutedEventArgs e) => _vm.DeleteProfile();
 

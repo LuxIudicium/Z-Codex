@@ -199,6 +199,17 @@ public readonly record struct SuppressedBoost(string SkillName, DamageBoostSuppr
 public readonly record struct DamageBoostPacket(int Value, string? DamageType, bool IgnoresArmor);
 
 /// <summary>
+/// Un effet qui a RÉELLEMENT agi, avec son nom affiché (lot 6e). L'infobulle n'en a pas besoin — elle
+/// montre un total —, mais le détail d'une ligne de la fenêtre Spike nomme chacun de ses termes
+/// (« +7 Flèches de verre · ×0,70 Affinité vitale »), et un total anonyme y serait illisible.
+///
+/// ⚠ Il ne remplace pas <see cref="DamageBoostPacket"/> : celui-ci porte ce qu'il faut pour CALCULER
+/// (valeur, type, armure), celui-là ce qu'il faut pour EXPLIQUER. Les mélanger obligerait l'infobulle
+/// à trimballer des libellés dont elle ne fait rien.
+/// </summary>
+public readonly record struct DamageBoostSource(string Name, DamageBoostKind Kind, int Value);
+
+/// <summary>
 /// Ce que les effets actifs du perso font aux dégâts de UNE compétence (lot 6a).
 /// <paramref name="Packets"/> = la ligne « bonus d'effets » ; <paramref name="CriticalPercent"/> =
 /// SOMME des bonus de critique des effets allumés — ils s'additionnent bien entre EUX, mais le total se
@@ -224,7 +235,8 @@ public readonly record struct DamageBoosts(
     bool StoneStriker = false,
     DamageTypeNote? TypeNote = null,
     int LifeSteal = 0,
-    double WeaponMultiplierOffset = 0)
+    double WeaponMultiplierOffset = 0,
+    IReadOnlyList<DamageBoostSource>? Sources = null)
 {
     /// <summary>
     /// Multiplicateur de dégâts reçu (Vengeance ×1,25, Affinité vitale ×0,70).
@@ -296,6 +308,15 @@ public static class DamageBoostData
     public const int GhostlyMightPvpSkillId  = 2966;
     public const int FearMeSkillId           = 366;
     public const int SiphonStrengthSkillId   = 827;
+    /// <summary>Concentration experte : la seule des 23 du lot 6e dont le texte réserve le bonus aux
+    /// COMPÉTENCES d'attaque (« Your bow attack skills … do +1…8…10 damage ») — cf.
+    /// <see cref="SpikeBoostCoverage.SkillOnly"/>.</summary>
+    public const int ExpertFocusSkillId      = 2145;
+    /// <summary>« Esquive ceci ! » : « Your NEXT ATTACK … deals +14…20 damage » — 1 charge (lot 6e).</summary>
+    public const int DodgeThisSkillId        = 2354;
+    /// <summary>« Je suis le plus fort ! » : « Your NEXT 5…8 ATTACKS deal +14…20 damage » — le compte est
+    /// à la colonne 0 de la progression, les dégâts à la colonne 1 (lot 6e).</summary>
+    public const int IAmTheStrongestSkillId  = 2355;
     // ── Lot 6b : effets de dégâts REÇUS D'UN ALLIÉ ────────────────────────────
     public const int StrengthOfHonorSkillId    = 243;
     public const int StrengthOfHonorPvpSkillId = 2999;
@@ -350,7 +371,7 @@ public static class DamageBoostData
         new(IgniteArrowsSkillId, DamageBoostScope.BowAttacks, DamageBoostKind.Damage, Index: 0, DamageType: "fire", IsBonus: false),
         new(1199, DamageBoostScope.BowAttacks, DamageBoostKind.Damage, Index: 1),                       // Flèches de verre
         new(3145, DamageBoostScope.BowAttacks, DamageBoostKind.Damage, Index: 1, BaseSkillId: 1199),    // Flèches de verre (PvP)
-        new(2145, DamageBoostScope.BowAttacks, DamageBoostKind.Damage, Index: 1),                       // Concentration experte
+        new(ExpertFocusSkillId, DamageBoostScope.BowAttacks, DamageBoostKind.Damage, Index: 1),          // Concentration experte
         new(429,  DamageBoostScope.BowAttacks, DamageBoostKind.Damage, Index: 1),                       // Flèches de Melandru (cible enchantée : Q9)
         // ⚠ Ces deux-là avaient été MANQUÉES par le recensement du § 6.2, parce qu'elles annoncent leur bonus
         // dans une phrase NUE (« +3…9…10 damage. ») et non « your arrows deal +X ». Trouvées le 24/09/2026 en
@@ -366,8 +387,8 @@ public static class DamageBoostData
         new(1736, DamageBoostScope.Attacks,     DamageBoostKind.Damage, Index: 1),                       // Force de l'esprit (sous sort d'arme : Q9)
         new(1760, DamageBoostScope.MeleeAttacks, DamageBoostKind.Damage, Index: 0, DamageType: "earth", RequiresElement: "earth"), // Aura de poussière d'ébène
         new(944,  DamageBoostScope.Attacks,     DamageBoostKind.Damage, Fixed: 5),                       // Sceau de force (+5 littéral, charges non comptées)
-        new(2355, DamageBoostScope.Attacks,     DamageBoostKind.Damage, Index: 1),                       // « Je suis le plus fort ! » (PvE)
-        new(2354, DamageBoostScope.Attacks,     DamageBoostKind.Damage, Index: 1),                       // « Esquive ceci ! » (PvE)
+        new(IAmTheStrongestSkillId, DamageBoostScope.Attacks, DamageBoostKind.Damage, Index: 1),         // « Je suis le plus fort ! » (PvE)
+        new(DodgeThisSkillId, DamageBoostScope.Attacks,     DamageBoostKind.Damage, Index: 1),           // « Esquive ceci ! » (PvE)
 
         // ── Chiffres relevés DANS LE TEXTE de la compétence touchée (Q12) ─────
         new(FeralAggressionSkillId, DamageBoostScope.PetAttacks,    DamageBoostKind.TextDamage, Index: 1),
@@ -726,6 +747,41 @@ public static class DamageBoostData
                                                 && !AttacksAsSpirit(target),
             _                                => false,
         };
+
+    /// <summary>
+    /// Le même périmètre jugé sur la seule ARME, sans compétence : c'est ce qu'il faut pour un COUP
+    /// NORMAL (lot 6e), qui n'est pas une compétence. Patron exact du lot 6d-2, qui a donné la même
+    /// seconde entrée à <see cref="ConditionDurationData.InWeaponScope"/> et à
+    /// <see cref="EffectiveElement"/> — <b>aucune duplication de règle</b> : les périmètres d'arme
+    /// délèguent tous à l'unique <c>InWeaponScope(scope, kind)</c>.
+    ///
+    /// ⚠ Ce qu'un coup normal ne peut JAMAIS satisfaire, et pourquoi :
+    ///  • <see cref="DamageBoostScope.RitualistSkills"/> — « your Ritualist skills » : un coup d'arme
+    ///    n'est pas une compétence, ce qui écarte Daoshen était cruel sans liste d'exception ;
+    ///  • <see cref="DamageBoostScope.PetAttacks"/> et <see cref="DamageBoostScope.SpiritAttacks"/> —
+    ///    la ligne d'attaque normale est celle du PERSO, pas de ses créatures.
+    /// Le texte « attack <b>skill</b> » de Concentration experte, lui, n'est pas un périmètre d'arme :
+    /// il est porté par <see cref="SpikeBoostCoverage.SkillOnly"/>, là où vivent les règles du 6e.
+    /// </summary>
+    public static bool AffectsPlainAttack(DamageBoostDescriptor descriptor, WeaponKind kind) =>
+        descriptor.Scope switch
+        {
+            DamageBoostScope.Attacks          => IsStrikingWeapon(kind),
+            DamageBoostScope.BowAttacks       => ConditionDurationData.InWeaponScope(ConditionWeaponScope.Bow, kind),
+            DamageBoostScope.MeleeAttacks     => ConditionDurationData.InWeaponScope(ConditionWeaponScope.Melee, kind),
+            DamageBoostScope.DaggerAttacks    => ConditionDurationData.InWeaponScope(ConditionWeaponScope.Daggers, kind),
+            DamageBoostScope.ScytheAttacks    => ConditionDurationData.InWeaponScope(ConditionWeaponScope.Scythe, kind),
+            DamageBoostScope.NonDaggerAttacks => IsStrikingWeapon(kind)
+                                                 && !ConditionDurationData.InWeaponScope(ConditionWeaponScope.Daggers, kind),
+            // Un coup normal inflige des dégâts du perso, et il SUBIT l'armure : les deux périmètres
+            // larges le couvrent (Vengeance, « Par le marteau d'Ural ! », l'Étendard d'honneur).
+            DamageBoostScope.AllDamage or DamageBoostScope.ArmorRespectingDamage => IsStrikingWeapon(kind),
+            _ => false,
+        };
+
+    /// <summary>Une arme qui FRAPPE : tout sauf « aucune arme ». Une arme de lanceur en est une — un
+    /// bâton cogne, faiblement (<see cref="WeaponStrike.All"/> lui donne bien une plage de dégâts).</summary>
+    private static bool IsStrikingWeapon(WeaponKind kind) => kind != WeaponKind.None;
 
     /// <summary>Compétence Ritualiste au sens de « Your Ritualist skills ». ⚠ Les compétences
     /// d'allégeance sont stockées <see cref="Profession.None"/> mais verrouillées à une profession :

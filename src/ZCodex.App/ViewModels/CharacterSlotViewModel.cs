@@ -455,6 +455,11 @@ public class CharacterSlotViewModel : ViewModelBase
             // conteneurs et le cadre vert ne bascule jamais visuellement (skills ≠ changées, donc le
             // handler du constructeur ne se déclenche pas ici).
             OnPropertyChanged(nameof(AttributeBoostToggles));
+            // Lot 6e : la fenêtre Spike affiche une VUE FILTRÉE de la même rangée. Sans cette seconde
+            // notification, cliquer une icône DANS le Spike laisserait son cadre vert inchangé — le
+            // recalcul, lui, se ferait quand même, et le total bougerait sans que l'icône bouge.
+            OnPropertyChanged(nameof(SpikeBoostToggles));
+            OnPropertyChanged(nameof(HasSpikeBoostToggles));
         }
     }
 
@@ -557,6 +562,27 @@ public class CharacterSlotViewModel : ViewModelBase
     }
 
     public bool HasAttributeBoostToggles => AttributeBoostToggles.Any();
+
+    /// <summary>
+    /// Lot 6e — la rangée d'icônes de la carte du perso DANS la fenêtre Spike : les mêmes que celles de
+    /// la vue Build, filtrées à celles qui changent un chiffre de cette fenêtre-là.
+    ///
+    /// ⚠ Le filtre n'est pas une liste : une icône y figure si elle porte au moins un descripteur de
+    /// dégâts que le Spike ne compte pas déjà (<see cref="SpikeBoostCoverage.AlreadyCounted"/>). Les
+    /// autres sortent toutes seules — l'adrénaline, l'énergie, la recharge, les durées et la
+    /// substitution de caractéristique n'ont aucun effet sur un spike, et les 9 buffs d'arme ont déjà
+    /// leur propre rangée juste au-dessus.
+    /// </summary>
+    /// ⚠ Une icône SANS compétence (le mod « de fractionnement », le mod « Furieux ») n'a aucun
+    /// descripteur : elle sort d'elle-même, et c'est juste — la fenêtre a sa case de ligne pour ce mod.
+    /// ⚠ Les effets du BANDEAU d'équipe (« Visez les yeux ! », « Ensemble et unis ! ») ne sont dans
+    /// aucune rangée de carte, par construction. Ils comptent quand même, et c'est le DÉTAIL de la ligne
+    /// qui les nomme — le Spike n'affiche pas le bandeau, et lui en greffer un serait un autre chantier.
+    public IEnumerable<AttributeBoostIndicatorViewModel> SpikeBoostToggles =>
+        AttributeBoostToggles.Where(t => t.Skill is { } sk
+            && DamageBoostData.DescriptorsFor(sk.Id).Any(d => !SpikeBoostCoverage.AlreadyCounted(d, sk.Name)));
+
+    public bool HasSpikeBoostToggles => SpikeBoostToggles.Any();
 
     // Rafraîchit UNIQUEMENT le bandeau (pas les tooltips) : utilisé par le teambuild quand la
     // diffusion Heroic Refrain d'un COÉQUIPIER change (équipement/retrait/rang), un événement
@@ -1072,11 +1098,48 @@ public class CharacterSlotViewModel : ViewModelBase
     /// « de fractionnement »). Les deux effets qui relèvent un chiffre DANS LE TEXTE (familier, esprits)
     /// n'entrent PAS ici : ils passent par <see cref="TextDamageBonusFor"/>.</summary>
     public DamageBoosts DamageBoostsFor(Skill target)
+        => BoostsFor(target, ActiveWeaponKind(), spikeOnly: false, includeSkill: null);
+
+    /// <summary>
+    /// Lot 6e — les mêmes effets, vus par la fenêtre SPIKE. Trois différences, et trois seulement :
+    ///
+    ///  • <b>le filtre</b> : les effets que le Spike compte déjà par un autre chemin sont écartés
+    ///    (<see cref="SpikeBoostCoverage.AlreadyCounted"/>), sinon ils compteraient DEUX fois ;
+    ///  • <b>le périmètre</b> se juge sur l'arme de la LIGNE (<paramref name="rowWeapon"/>) et non sur
+    ///    celle du set actif — tranché par Philippe le 27/09/2026. Le Spike connaît l'arme de chaque
+    ///    ligne, forçage manuel compris, et la Méthode de l'Assassin (dagues) et celle du Maître (hors
+    ///    dagues) étant des complémentaires exacts, c'est la seule façon de ne jamais appliquer la
+    ///    mauvaise des deux ;
+    ///  • <b>le tri par ligne</b> : <paramref name="includeSkill"/> dit, pour chaque effet du lot (clé =
+    ///    l'id de son descripteur), s'il compte sur CETTE ligne. Il sert aux effets à CHARGES, qui ne
+    ///    valent que sur les premières attaques — et, sur la ligne d'attaque normale, à demander les
+    ///    effets un par un pour savoir lequel s'arrête au 3ᵉ coup et lequel tient jusqu'au 8ᵉ.
+    ///    ⚠ Il porte sur TOUS les effets du lot, pas seulement ceux à charges : demander « seulement
+    ///    celui-ci » doit rendre celui-ci SEUL, sinon les permanents reviendraient dans chaque appel et
+    ///    seraient comptés autant de fois qu'il y a d'effets à charges.
+    ///
+    /// ⚠ <paramref name="target"/> à null = un COUP NORMAL (lot 6d-2) : pas une compétence, donc pas de
+    /// préparation à perdre, aucun chiffre à relever dans un texte, et un paquet qui subit l'armure par
+    /// nature. Le mod d'arme « de fractionnement » est retiré du résultat : la fenêtre a sa propre case
+    /// par ligne pour lui, l'y laisser le compterait deux fois lui aussi.
+    /// </summary>
+    public DamageBoosts SpikeDamageBoostsFor(Skill? target, WeaponKind rowWeapon,
+                                             Func<int, bool>? includeSkill = null)
+        => BoostsFor(target, rowWeapon, spikeOnly: true, includeSkill);
+
+    // Le CORPS unique de la chaîne. ⚠ Il n'en existe qu'un : la faire vivre deux fois la condamnerait à
+    // diverger au prochain effet (leçon du lot 6d-2, où EffectiveElement a été coupée de la même façon).
+    // `scopeWeapon` décide du seul PÉRIMÈTRE ; `equipped` (le set actif) reste la vérité de la chaîne de
+    // conversion et des règles qui en dépendent — c'est la règle du 6d-1, et aucun des 23 effets du 6e
+    // n'exige un élément ni des dégâts physiques, ce que le harnais verrouille.
+    private DamageBoosts BoostsFor(Skill? target, WeaponKind scopeWeapon, bool spikeOnly,
+                                   Func<int, bool>? includeSkill)
     {
         var equipped = ActiveWeaponKind();
-        string? element = EffectiveElementFor(target, equipped);
+        string? element = target is null ? null : EffectiveElementFor(target, equipped);
 
         List<DamageBoostPacket>? packets = null;
+        List<DamageBoostSource>? sources = null;
         int critical = 0, basePenetration = 0, bonusPenetration = 0, lifeSteal = 0;
         double multiplier = 1.0, weaponMultiplier = 1.0;
         bool elementTaken = false;
@@ -1099,15 +1162,30 @@ public class CharacterSlotViewModel : ViewModelBase
         foreach (var (sk, d) in LitDamageBoosts())
         {
             if (d.Kind == DamageBoostKind.TextDamage) continue;
+            // ⚠⚠ LE filtre du lot 6e, et la raison d'être du lot : 33 des 56 descripteurs sont DÉJÀ
+            // comptés par la fenêtre Spike (compteurs « Procs », cases des 9 buffs d'arme, cas Grenth).
+            // Les y importer les compterait DEUX fois. La partition est calculée depuis ces chemins-là,
+            // jamais recopiée — cf. SpikeBoostCoverage.
+            if (spikeOnly && SpikeBoostCoverage.AlreadyCounted(d, sk.Name)) continue;
+            // Le tri PAR LIGNE de l'appelant. Il sert d'abord aux effets à charges (« vos 5 prochaines
+            // attaques ») : sans lui, « Je suis le plus fort ! » donnerait son +20 à TOUTES les attaques
+            // du spike au lieu des 5 à 8 premières. ⚠ Il vient APRÈS le filtre du 6e, donc il ne voit que
+            // les effets du lot — la table de l'infobulle, elle, ne le passe jamais.
+            if (includeSkill is not null && !includeSkill(d.SkillId)) continue;
             // ⚠ Depuis le lot 6c-3b, le vol de vie conféré à un esprit qui vole DÉJÀ de la vie passe lui
             // aussi par TextDamageBonusFor : il RELÈVE son chiffre au lieu de s'afficher sur une ligne à
             // part, sinon le lecteur devrait additionner deux nombres qui décrivent le même coup.
-            if (DamageBoostData.LifeStealReadInText(d, target)) continue;
+            if (target is not null && DamageBoostData.LifeStealReadInText(d, target)) continue;
             // ⚠ Le PÉRIMÈTRE d'abord : un effet qui ne visait pas cette compétence n'a rien à expliquer.
             // Les trois annulations qui suivent, elles, portent sur un effet qui LA VISAIT — c'est
             // précisément quand un chiffre disparaît sous les yeux qu'il faut dire pourquoi.
-            if (!DamageBoostData.AffectsScope(d, target, equipped)) continue;
-            if (DamageBoostData.PreparationLost(sk, target))
+            // Cible nulle = un coup normal : le périmètre se juge alors sur la seule arme, et le texte
+            // de Concentration experte (« bow attack SKILLS ») l'en écarte (Q20 du lot 6d-2).
+            bool inScope = target is null
+                ? DamageBoostData.AffectsPlainAttack(d, scopeWeapon) && !SpikeBoostCoverage.SkillOnly(d.SkillId)
+                : DamageBoostData.AffectsScope(d, target, scopeWeapon);
+            if (!inScope) continue;
+            if (target is not null && DamageBoostData.PreparationLost(sk, target))
             {
                 Suppress(sk, DamageBoostSuppression.PreparationRemoved);
                 continue;
@@ -1128,9 +1206,15 @@ public class CharacterSlotViewModel : ViewModelBase
             // « Augmente les dégâts physiques » (Vannage, et l'Ordre de la douleur au 6c-2) : le bonus SAUTE
             // dès que l'arme est convertie (glossaire G3). Et il le dit ICI, là où le chiffre manque — la
             // leçon de la QA du 6b.
-            if (d.RequiresPhysical && AttackConverted(target, equipped))
+            // ⚠ Sur un COUP NORMAL, un bonus « aux dégâts physiques » est écarté PUREMENT ET SIMPLEMENT,
+            // et c'est un choix prudent, pas un oubli : aucun des 23 effets du lot 6e n'a RequiresPhysical
+            // (les deux qui l'ont — Vannage et Ordre de la douleur — sont comptés par leur compteur
+            // « Procs »), donc ce chemin est mort aujourd'hui. Le harnais le VERROUILLE : si un futur
+            // descripteur arrive avec RequiresPhysical sans chemin Spike, il rougit au lieu de laisser
+            // un chiffre entrer sans que personne ait jugé sa conversion.
+            if (d.RequiresPhysical && (target is null || AttackConverted(target, equipped)))
             {
-                Suppress(sk, DamageBoostSuppression.NoLongerPhysical);
+                if (target is not null) Suppress(sk, DamageBoostSuppression.NoLongerPhysical);
                 continue;
             }
             // Étendard d'honneur (lot 6c-2) : il ne donne son +8…15 qu'à ce qui SUBIT l'armure. Le périmètre
@@ -1139,7 +1223,9 @@ public class CharacterSlotViewModel : ViewModelBase
             // description RÉSOLUE. L'analyse ne se fait donc qu'ici, et une seule fois par infobulle.
             // ⚠ Aucune ligne « sans effet ici » : sur un soin ou une Flamme d'obsidienne, l'Étendard n'avait
             // rien à donner, il n'y a aucun chiffre manquant à justifier.
-            if (d.Scope == DamageBoostScope.ArmorRespectingDamage)
+            // ⚠ Un COUP NORMAL n'a pas de description à analyser — et il n'en a pas besoin : un coup
+            // d'arme SUBIT l'armure par nature, donc il profite de l'Étendard sans autre examen.
+            if (d.Scope == DamageBoostScope.ArmorRespectingDamage && target is not null)
             {
                 armorAnalysis ??= SkillDamage.Analyze(ResolveDescription(target), target.Name);
                 if (!DamageBoostData.BenefitsFromArmorRespectingBonus(target, armorAnalysis)) continue;
@@ -1164,6 +1250,11 @@ public class CharacterSlotViewModel : ViewModelBase
             // ⚠ « == 0 » et non « <= 0 » : un MALUS reçu (Affinité vitale, Arme du tourment) est
             // légitimement négatif depuis le lot 6b.
             if (value == 0) continue;
+            // Lot 6e : l'effet a réellement agi, donc le détail d'une ligne du Spike peut le NOMMER. Le
+            // suffixe « (PvP) » tombe, comme pour les noms des 9 buffs d'arme — la copie équipée est
+            // signalée ailleurs, et la répéter sur chaque ligne du détail serait du bruit.
+            (sources ??= []).Add(new DamageBoostSource(
+                ZCodex.Core.Search.SkillVariants.BaseName(sk.DisplayName), d.Kind, value));
             switch (d.Kind)
             {
                 case DamageBoostKind.Damage:
@@ -1190,10 +1281,16 @@ public class CharacterSlotViewModel : ViewModelBase
 
         // ⚠ Les DEUX multiplicateurs partent en ÉCART À 1 : cf. DamageBoosts.Multiplier, où le piège est
         // expliqué — un facteur « par défaut 1 » vaudrait 0 pour default(DamageBoosts).
+        // ⚠ Le mod d'arme « de fractionnement » ne rejoint PAS le résultat du Spike : la fenêtre a sa
+        // propre case par ligne (SpikeWeaponMods), qui l'ajoute déjà à la pénétration — même piège de
+        // double compte que les 33 descripteurs filtrés plus haut, mais par un quatrième chemin, qui
+        // n'est pas un effet de compétence et n'a donc pas sa place dans SpikeBoostCoverage.
         return new DamageBoosts(packets, critical, basePenetration,
-                                bonusPenetration + SunderingModPercentFor(target, equipped), multiplier - 1.0,
+                                bonusPenetration + (spikeOnly || target is null ? 0 : SunderingModPercentFor(target, equipped)),
+                                multiplier - 1.0,
                                 suppressed, WinterLit, StoneStrikerLit,
-                                TypeNoteFor(target, equipped, element), lifeSteal, weaponMultiplier - 1.0);
+                                target is null ? null : TypeNoteFor(target, equipped, element),
+                                lifeSteal, weaponMultiplier - 1.0, sources);
     }
 
     /// <summary>Les effets de dégâts ALLUMÉS de ce perso, des DEUX origines : sa propre barre (lots 6a)
@@ -1293,12 +1390,33 @@ public class CharacterSlotViewModel : ViewModelBase
     {
         // ⚠ Passer par ValueOf même pour un littéral : c'est LUI qui porte le signe des malus (lot 6b).
         if (descriptor.Fixed > 0) return DamageBoostData.ValueOf(descriptor, source, 0);
-        // Un effet REÇU ou de BANDEAU se lit au rang de son PORTEUR, jamais à celui du perso qui en profite :
-        // retomber sur le receveur rendrait null, donc 0, et le bonus tomberait en silence (lot 6c-2).
-        int? rank = descriptor.Received || descriptor.Band
+        int? rank = RankOfBoost(descriptor, source);
+        return rank is null ? 0 : DamageBoostData.ValueOf(descriptor, source, rank.Value);
+    }
+
+    // Le rang auquel se résout un effet. Un effet REÇU ou de BANDEAU se lit au rang de son PORTEUR,
+    // jamais à celui du perso qui en profite : retomber sur le receveur rendrait null, donc 0, et le
+    // bonus tomberait en silence (lot 6c-2).
+    private int? RankOfBoost(DamageBoostDescriptor descriptor, Skill source)
+        => descriptor.Received || descriptor.Band
             ? ReceivedRankOf(descriptor) ?? BandRankOf(descriptor)
             : AttributeLevel(SubstitutedAttributeFor(source) ?? source.Attribute);
-        return rank is null ? 0 : DamageBoostData.ValueOf(descriptor, source, rank.Value);
+
+    /// <summary>
+    /// Lot 6e — la compétence SOURCE d'un effet de dégâts ALLUMÉ sur ce perso et le rang auquel elle se
+    /// résout, ou null si l'effet est éteint (ou absent des trois origines). Sert au décompte des
+    /// CHARGES : « Je suis le plus fort ! » annonce le nombre d'attaques couvertes dans sa propre
+    /// progression, à une colonne autre que celle de ses dégâts.
+    ///
+    /// ⚠ Il passe par la MÊME énumération que tout le reste du chantier : l'état allumé et le rang ne
+    /// peuvent donc pas diverger de ce que la table des dégâts affiche.
+    /// </summary>
+    public (Skill Source, int Rank)? LitBoostAt(int descriptorSkillId)
+    {
+        foreach (var (sk, d) in LitDamageBoosts())
+            if (d.SkillId == descriptorSkillId)
+                return (sk, RankOfBoost(d, sk) ?? 0);
+        return null;
     }
 
     /// <summary>Rang d'un effet de BANDEAU (lot 6c-2) : celui de son porteur le plus fort. null = personne ne

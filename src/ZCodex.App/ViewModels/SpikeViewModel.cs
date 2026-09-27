@@ -343,6 +343,11 @@ public class SpikeViewModel : ViewModelBase
         // précalcule les effets ACTIFS (proposé ∩ coché) par membre du roster.
         var buffCtx = SyncWeaponBuffs();
 
+        // Lot 6e : les effets à CHARGES de la carte du perso (« vos 5 prochaines attaques », « Ends
+        // after 3 attacks »). Même règle que Q22 pour les buffs d'arme — les charges vont aux
+        // PREMIÈRES attaques d'arme dans l'ordre de cast, et ce qui reste retombe sur les coups normaux.
+        var chargeCtx = ComputeBoostCharges();
+
         // Valeurs de vol de vie (3 et/ou 5) déclarées par les mods vampiriques des lignes : elles
         // n'ajoutent rien à leur ligne, elles font apparaître les lignes ARTIFICIELLES globales
         // ajoutées tout à la fin (chantier 16).
@@ -363,22 +368,28 @@ public class SpikeViewModel : ViewModelBase
             // fin au hex, donc ne peut proc qu'UNE fois → pas de contrôle (décision Philippe).
             if (SpikeProcSkills.IsMindWrackDual(skill.Name))
             {
-                // Vengeance s'applique aussi ici (« tout, sorts inclus » — décision Philippe).
+                // Vengeance s'applique aussi ici (« tout, sorts inclus » — décision Philippe), et
+                // depuis le lot 6e les multiplicateurs de la carte avec elle : « Par le marteau
+                // d'Ural ! » et l'Affinité vitale portent sur TOUS les dégâts du perso, sorts compris.
+                // ⚠ Une arme nulle suffit : le périmètre « tous les dégâts » ne la regarde pas.
                 bool mwVengeance = buffCtx.GetValueOrDefault(member) is { Vengeance: true };
+                double mwFactor = (mwVengeance ? SpikeWeaponBuffs.VengeanceMultiplier : 1.0)
+                    * member.SpikeDamageBoostsFor(skill, WeaponKind.None,
+                        id => !SpikeBoostCoverage.IsCharged(id)).Multiplier;
                 var mw = analysis.Rows.Where(r => r.Kind == SkillDamage.RowKind.Damage).ToList();
                 if (mw.Count > 0)
                 {
                     var t = BuildMindWrackRow(member, skill, slot, mw[0].Value,
                         Math.Max(0, slot.SpikeProcs), hasProcs: true,
                         L("par point d'énergie perdu", "per point of energy lost"),
-                        mwVengeance);
+                        mwVengeance, mwFactor);
                     Rows.Add(t.Row); totalMin += t.Min; totalMax += t.Max;
                     totalFluxMin += t.FluxMin; totalFluxMax += t.FluxMax;
                 }
                 if (mw.Count > 1)
                 {
                     var t = BuildMindWrackRow(member, skill, slot, mw[1].Value,
-                        1, hasProcs: false, L("à énergie 0", "at 0 energy"), mwVengeance);
+                        1, hasProcs: false, L("à énergie 0", "at 0 energy"), mwVengeance, mwFactor);
                     Rows.Add(t.Row); totalMin += t.Min; totalMax += t.Max;
                     totalFluxMin += t.FluxMin; totalFluxMax += t.FluxMax;
                 }
@@ -528,6 +539,22 @@ public class SpikeViewModel : ViewModelBase
             bool hornbow = isBowRow && slot.SpikeHornbow;
             if (sunderingMod) pen += SpikeWeaponMods.SunderingBonusPen;
             if (hornbow) pen += SpikeWeaponMods.HornbowBonusPen;
+
+            // ── Lot 6e : les effets de la carte que la fenêtre ne comptait pas ────────────────
+            // Le périmètre se juge sur l'arme de CETTE ligne (forçage manuel compris) — tranché par
+            // Philippe le 27/09/2026 : la Méthode de l'Assassin (dagues) et celle du Maître (hors
+            // dagues) sont des complémentaires exacts, c'est la seule façon de ne jamais appliquer
+            // la mauvaise. Les effets à charges ne valent que sur les lignes qui en consomment une.
+            var bc = chargeCtx.GetValueOrDefault(member);
+            var rowKind = weapon is { } rowWeapon ? WeaponStrike.KindOf(rowWeapon) : WeaponKind.None;
+            // Tout ce qui est permanent compte ; un effet à charges ne compte que si CETTE ligne en
+            // consomme une (les N premières attaques d'arme, dans l'ordre de cast).
+            var boosts = member.SpikeDamageBoostsFor(skill, rowKind, id =>
+                !SpikeBoostCoverage.IsCharged(id)
+                || (bc is not null && bc.Slots.TryGetValue(id, out var lit) && lit.Contains(slot)));
+            // Pénétration : de BASE en MAX avec le pool existant (jamais cumulée), en BONUS par-dessus.
+            pen = Math.Max(pen, boosts.BasePenetration);
+            pen += boosts.BonusPenetration;
             if (weaponMod == SpikeWeaponMod.Vampiric)
                 vampiricSteals.Add(SpikeWeaponMods.VampiricSteal(weapon!));
 
@@ -586,24 +613,34 @@ public class SpikeViewModel : ViewModelBase
                 var w = mb is { GdwBonus: > 0 }
                     ? weapon! with { Min = weapon.Min + mb.GdwBonus, Max = weapon.Max + mb.GdwBonus }
                     : weapon!;
+                // ⚠ Le multiplicateur d'ARME (Rafale ×0,75, lot 6e) entre ICI et nulle part ailleurs :
+                // il ne touche ni le « +X » absorbé de la compétence, ni les paquets, ni les bonus des
+                // autres effets — même canal que dans l'infobulle, qui le compose avec mods.Multiplier.
+                double weaponMult = mods.Multiplier * boosts.WeaponMultiplier;
                 int wMin, wMax;
                 if (_allCrits || mods.AlwaysCritical)
                     wMin = wMax = WeaponStrike.CriticalAt(w, rank, al, pen,
-                        mods.Multiplier, AttackerLevel) + bonus;
+                        weaponMult, AttackerLevel) + bonus;
                 else
                 {
                     wMin = WeaponStrike.DamageAt(w.Min, rank, al, pen,
-                        mods.Multiplier, AttackerLevel) + bonus;
+                        weaponMult, AttackerLevel) + bonus;
                     wMax = WeaponStrike.DamageAt(w.Max, rank, al, pen,
-                        mods.Multiplier, AttackerLevel) + bonus;
+                        weaponMult, AttackerLevel) + bonus;
                 }
                 min += wMin; max += wMax; dmgMin += wMin; dmgMax += wMax;
                 string range = wMin == wMax ? wMax.ToString() : $"{wMin}–{wMax}";
                 string label = weaponType == weapon!.DamageType
                     ? weapon.DisplayName : $"{weapon.DisplayName} ({TypeLabel(weaponType)})";
                 parts.Add(bonus > 0 ? $"{label} {range} {L($"(+{bonus} compris)", $"(+{bonus} included)")}" : $"{label} {range}");
+                // Taux de critique. ⚠ Lot 6e : les effets allumés (Œil critique, « Craignez-moi ! »,
+                // les deux Méthodes, Siphon de force, « Visez les yeux ! ») entrent par le paramètre
+                // `boostPercent` de CriticalChance, qui porte la règle MULTIPLICATIVE validée en jeu le
+                // 27/09/2026 (Q14). Ils ne déplacent AUCUN chiffre de la fourchette — elle est calculée
+                // en coup non critique —, seulement ce taux affiché : c'est tout ce qu'un taux peut
+                // faire dans une fenêtre qui annonce un min–max et non une espérance.
                 parts.Add(mods.AlwaysCritical ? L("critique forcé", "forced critical")
-                    : $"{L("crit", "crit")} {100 * WeaponStrike.CriticalChance(rank, AttackerLevel, _targetLevel, slot.CriticalStrikesRank ?? 0):0} %");
+                    : $"{L("crit", "crit")} {100 * WeaponStrike.CriticalChance(rank, AttackerLevel, _targetLevel, slot.CriticalStrikesRank ?? 0, boosts.CriticalPercent):0} %");
                 if (weaponDeduced) parts.Add(L("arme déduite", "deduced weapon"));
                 // Un effet a changé le type : la ligne le DIT, sinon une colonne d'armure inattendue
                 // (Briseur de pierre en terre, Hiver en froid) passerait pour un bug de calcul.
@@ -767,6 +804,30 @@ public class SpikeViewModel : ViewModelBase
                 }
             }
 
+            // Lot 6e — les paquets et le vol de vie des effets de la carte, ajoutés AVANT le ×coups
+            // comme ceux des buffs d'arme juste au-dessus : une double frappe reçoit deux fois le bonus,
+            // puisque l'effet parle de « vos attaques » et non de la compétence.
+            if (boosts.Packets is { Count: > 0 })
+            {
+                int bMin = 0, bMax = 0;
+                foreach (var p in boosts.Packets)
+                {
+                    // Un « +X » ignore l'armure (règle maison du chantier), un paquet TYPÉ sans « + » la
+                    // subit et passe donc par la formule, contre l'AL de son propre type.
+                    int v = p.IgnoresArmor ? p.Value
+                        : SkillDamage.DamageAt(p.Value,
+                            target.EffectiveArmor(p.DamageType, _withCrackedArmor), pen, AttackerLevel);
+                    bMin += v; bMax += v;
+                }
+                min += bMin; max += bMax; dmgMin += bMin; dmgMax += bMax;
+            }
+            // Vol de vie CONFÉRÉ par un effet (Arme du tourment, Aura de sangsue de l'esprit) : il entre
+            // dans le total mais PAS dans l'assiette des dégâts — ni multiplicateur, ni flux, ni armure.
+            // C'est la règle du chantier depuis toujours ; le vol de vie n'est pas un dégât.
+            if (boosts.LifeSteal > 0) { min += boosts.LifeSteal; max += boosts.LifeSteal; }
+            foreach (var s in boosts.Sources ?? [])
+                parts.Add(BoostSourcePart(s));
+
             int coups = SpikeMultiHit.Hits(skill);
             bool showProcs = !isAttackType && SpikeProcSkills.IsProcCapable(skill.Name) && maxTicks <= 1;
             int procs = showProcs ? Math.Max(0, slot.SpikeProcs) : 1;
@@ -812,14 +873,20 @@ public class SpikeViewModel : ViewModelBase
                           + $"{GwConditionData.DisplayName("Deep Wound")} → "
                           + L("toggle cible)", "target toggle)"));
             }
-            if (mb is { Vengeance: true } && dmgMax > 0)
+            // Multiplicateurs de DÉGÂTS, composés en un seul facteur : la case Vengeance de la fenêtre
+            // (chantier 14) et ceux que le lot 6e apporte (Affinité vitale ×0,70, « Par le marteau
+            // d'Ural ! » ×1,25…1,33). ⚠ Les composer AVANT de multiplier, et non les appliquer l'un
+            // après l'autre : deux arrondis successifs ne donnent pas le même nombre qu'un seul.
+            double damageFactor = (mb is { Vengeance: true } ? SpikeWeaponBuffs.VengeanceMultiplier : 1.0)
+                                  * boosts.Multiplier;
+            if (Math.Abs(damageFactor - 1.0) > 0.0001 && dmgMax > 0)
             {
-                int vMin = (int)(dmgMin * SpikeWeaponBuffs.VengeanceMultiplier);
-                int vMax = (int)(dmgMax * SpikeWeaponBuffs.VengeanceMultiplier);
+                int vMin = (int)(dmgMin * damageFactor);
+                int vMax = (int)(dmgMax * damageFactor);
                 min += vMin - dmgMin; max += vMax - dmgMax;
                 dmgMin = vMin; dmgMax = vMax;
                 // « Vengeance » est identique en FR et EN (vérifié DB) : seule la virgule décimale change.
-                parts.Add(L("Vengeance (×1,25)", "Vengeance (×1.25)"));
+                if (mb is { Vengeance: true }) parts.Add(L("Vengeance (×1,25)", "Vengeance (×1.25)"));
             }
 
             int chainPct = chainCombo != null && chainCombo.TryGetValue(slot, out var cp) ? cp : 0;
@@ -870,7 +937,8 @@ public class SpikeViewModel : ViewModelBase
             foreach (var member in Build.SpikeMembers)
             {
                 if (!member.SpikeNormalRow) continue;
-                var t = BuildNormalAttackRow(member, target, buffCtx.GetValueOrDefault(member), vampiricSteals);
+                var t = BuildNormalAttackRow(member, target, buffCtx.GetValueOrDefault(member),
+                                             vampiricSteals, chargeCtx.GetValueOrDefault(member));
                 Rows.Add(t.Row);
                 totalMin += t.Min; totalMax += t.Max;
                 totalFluxMin += t.FluxMin; totalFluxMax += t.FluxMax;
@@ -930,10 +998,12 @@ public class SpikeViewModel : ViewModelBase
     // vengeance → ×1,25 sur le total de la ligne (buff d'arme, « tout, sorts inclus »).
     private (SpikeRowViewModel Row, int Min, int Max, int FluxMin, int FluxMax) BuildMindWrackRow(
         CharacterSlotViewModel member, Skill skill, SkillSlotViewModel slot,
-        int value, int procs, bool hasProcs, string label, bool vengeance)
+        int value, int procs, bool hasProcs, string label, bool vengeance, double factor)
     {
+        // `factor` compose DÉJÀ Vengeance et les multiplicateurs du lot 6e ; `vengeance` ne sert plus
+        // qu'à la note du détail. Un seul arrondi, comme sur les lignes d'attaque.
         int dmg = value * procs;
-        if (vengeance) dmg = (int)(dmg * SpikeWeaponBuffs.VengeanceMultiplier);
+        if (Math.Abs(factor - 1.0) > 0.0001) dmg = (int)(dmg * factor);
         var (fluxMin, fluxMax) = FluxDamageBonus(
             Build.ActiveFlux, member, skill, dmg, dmg, 0, _targetPrimaryProfession);
         var row = new SpikeRowViewModel
@@ -972,7 +1042,8 @@ public class SpikeViewModel : ViewModelBase
     /// pénètre « with your attack skills », pas avec les coups normaux (à confirmer par Philippe).
     /// </summary>
     private (SpikeRowViewModel Row, int Min, int Max, int FluxMin, int FluxMax) BuildNormalAttackRow(
-        CharacterSlotViewModel member, SpikeTarget target, MemberBuffs? mb, SortedSet<int> vampiricSteals)
+        CharacterSlotViewModel member, SpikeTarget target, MemberBuffs? mb, SortedSet<int> vampiricSteals,
+        BoostCharges? bc)
     {
         string title = L("Attaque normale", "Normal attack");
         string? icon = ProfessionIconService.GetLocalPath(member.PrimaryProfession);
@@ -1040,28 +1111,73 @@ public class SpikeViewModel : ViewModelBase
         // normal que si le spike du perso n'a aucune attaque d'arme pour la consommer.
         int ftwCharges = mb is { FtwActive: true, FtwSlot: null, FtwBonus: > 0 } ? 1 : 0;
 
+        // ── Lot 6e : les effets de la carte sur un COUP NORMAL ───────────────────────────────
+        // Q20 (lot 6d-2) : « TOUT ce qui est allumé, charges comprises ». Cible NULLE = un coup normal,
+        // pas une compétence : le périmètre se juge alors sur la seule arme. Deux sortes d'appels :
+        //  • celui-ci, les PERMANENTS en bloc — chaque coup les reçoit, tous de la même façon ;
+        //  • puis un appel PAR effet à charges, pour connaître SON bonus à lui : c'est le seul moyen de
+        //    savoir lequel s'arrête au 3ᵉ coup et lequel tient jusqu'au 8ᵉ.
+        var plain = member.SpikeDamageBoostsFor(null, kind, id => !SpikeBoostCoverage.IsCharged(id));
+        // Les paquets d'un effet, ramenés au +X PLAT que le coup encaisse : un « +X » ignore l'armure et
+        // passe tel quel, un paquet typé sans « + » passe par la formule, contre l'AL de SON type.
+        // (Aucun des 23 n'est du second genre aujourd'hui — mais le jeter en silence serait un piège.)
+        int FlatOf(DamageBoosts b) => (b.Packets ?? []).Sum(p => p.IgnoresArmor
+            ? p.Value
+            : SkillDamage.DamageAt(p.Value, target.EffectiveArmor(p.DamageType, _withCrackedArmor),
+                                   bonusPen, AttackerLevel));
+
+        var boostCharges = new List<SpikeNormalAttack.BoostCharge>();
+        var chargedParts = new List<string>();
+        foreach (var rule in SpikeBoostCoverage.Charges)
+        {
+            // Charges RESTANTES après les attaques du spike (Q22), bornées au nombre de coups tapés.
+            int left = bc is not null && bc.Remaining.TryGetValue(rule.SkillId, out int r) ? r : 0;
+            if (left <= 0 || hits <= 0) continue;
+            // CET effet SEUL : le prédicat écarte tout le reste, permanents compris — sinon leur bonus
+            // reviendrait dans chaque appel et serait compté autant de fois qu'il y a d'effets à charges.
+            var one = member.SpikeDamageBoostsFor(null, kind, id => id == rule.SkillId);
+            if (one.Sources is not { Count: > 0 }) continue;
+            int flat = FlatOf(one);
+            int covered = Math.Min(left, hits);
+            if (flat != 0 || one.LifeSteal > 0)
+                boostCharges.Add(new SpikeNormalAttack.BoostCharge(covered, flat, one.LifeSteal));
+            foreach (var s in one.Sources)
+                chargedParts.Add($"{BoostSourcePart(s)} {ChargeNote(covered)}");
+        }
+
         // Great Dwarf Weapon : vrai dégât d'ARME, donc dans la plage avant armure et critique.
         var w = mb is { GdwBonus: > 0 }
             ? weapon with { Min = weapon.Min + mb.GdwBonus, Max = weapon.Max + mb.GdwBonus } : weapon;
         int brutal = mb?.BrutalBonus ?? 0;
 
+        // Lot 6e : le +X permanent des effets de la carte rejoint celui de l'Arme brutale — même place
+        // dans le calcul (après l'armure, sur chaque coup), donc un seul terme.
+        int flatPerHit = brutal + FlatOf(plain);
+
         var charges = new SpikeNormalAttack.Charges(
             SunderingHits: sunderCharges,
             SplinterHits: splinterCharges, SplinterBonus: mb?.SplinterBonus ?? 0,
-            FtwHits: ftwCharges, FtwBonus: mb?.FtwBonus ?? 0);
-        var (min, max) = SpikeNormalAttack.Damage(w, rank, al, bonusPen, hits, _allCrits,
-                                                  brutal, charges, AttackerLevel);
+            FtwHits: ftwCharges, FtwBonus: mb?.FtwBonus ?? 0,
+            Boosts: boostCharges);
+        var (min, max, steal) = SpikeNormalAttack.Damage(
+            w, rank, al, bonusPen, hits, _allCrits, flatPerHit, charges, AttackerLevel,
+            stealPerHit: plain.LifeSteal, weaponMultiplier: plain.WeaponMultiplier);
         // Coup de RÉFÉRENCE du détail : sans aucune charge, donc le régime permanent de la ligne.
-        var (nudeMin, nudeMax) = SpikeNormalAttack.Hit(w, rank, al, bonusPen, brutal, _allCrits, AttackerLevel);
+        var (nudeMin, nudeMax) = SpikeNormalAttack.Hit(w, rank, al, bonusPen, flatPerHit, _allCrits,
+                                                       AttackerLevel, plain.WeaponMultiplier);
 
-        int dmgMin = min, dmgMax = max;   // tout est du dégât : ni vol ni perte de vie sur un coup d'arme
+        // ⚠ Le vol de vie sort de l'assiette des DÉGÂTS : ni multiplicateur, ni flux (règle du chantier).
+        int dmgMin = min, dmgMax = max;
+        double damageFactor = (mb is { Vengeance: true } ? SpikeWeaponBuffs.VengeanceMultiplier : 1.0)
+                              * plain.Multiplier;
         bool vengeance = mb is { Vengeance: true } && dmgMax > 0;
-        if (vengeance)
+        if (Math.Abs(damageFactor - 1.0) > 0.0001 && dmgMax > 0)
         {
-            dmgMin = (int)(dmgMin * SpikeWeaponBuffs.VengeanceMultiplier);
-            dmgMax = (int)(dmgMax * SpikeWeaponBuffs.VengeanceMultiplier);
+            dmgMin = (int)(dmgMin * damageFactor);
+            dmgMax = (int)(dmgMax * damageFactor);
             min = dmgMin; max = dmgMax;
         }
+        min += steal; max += steal;
 
         var parts = new List<string>
         {
@@ -1070,7 +1186,7 @@ public class SpikeViewModel : ViewModelBase
                 : $"{weapon.DisplayName} ({TypeLabel(lineType.Received)}) {Range(nudeMin, nudeMax)}",
             _allCrits
                 ? L("critique forcé", "forced critical")
-                : $"{L("crit", "crit")} {100 * WeaponStrike.CriticalChance(rank, AttackerLevel, _targetLevel, member.AttributeLevel("Critical Strikes") ?? 0):0} %",
+                : $"{L("crit", "crit")} {100 * WeaponStrike.CriticalChance(rank, AttackerLevel, _targetLevel, member.AttributeLevel("Critical Strikes") ?? 0, plain.CriticalPercent):0} %",
             hits == 1 ? L("1 coup", "1 hit") : L($"× {hits} coups", $"× {hits} hits"),
         };
         if (deduced) parts.Add(L("arme déduite", "deduced weapon"));
@@ -1100,6 +1216,9 @@ public class SpikeViewModel : ViewModelBase
         if (hornbow)
             parts.Add(L($"arc corne (+{SpikeWeaponMods.HornbowBonusPen} % pén.)",
                         $"hornbow (+{SpikeWeaponMods.HornbowBonusPen}% pen.)"));
+        // Lot 6e : les effets de la carte, permanents puis ceux qui s'épuisent (avec leur note de charge).
+        foreach (var s in plain.Sources ?? []) parts.Add(BoostSourcePart(s));
+        parts.AddRange(chargedParts);
         if (vengeance) parts.Add(L("Vengeance (×1,25)", "Vengeance (×1.25)"));
 
         // Flux : les deux flux qui dépendent d'une COMPÉTENCE (Chain Combo par l'ordre de cast, Amateur
@@ -1134,6 +1253,38 @@ public class SpikeViewModel : ViewModelBase
     }
 
     private static string Range(int min, int max) => min == max ? max.ToString() : $"{min}–{max}";
+
+    /// <summary>
+    /// Le terme du DÉTAIL qui nomme un effet du lot 6e. Sans lui, la ligne afficherait un nombre plus
+    /// gros sans dire d'où il vient — et ces effets-là, contrairement aux 9 buffs d'arme, n'ont pas
+    /// d'interrupteur dans cette fenêtre : leur seule trace serait le chiffre.
+    ///
+    /// ⚠ Un paquet NÉGATIF s'écrit avec son signe (« −42 Arme du tourment ») : un malus affiché en
+    /// « +−42 » ou, pire, sans signe, se lirait comme un gain.
+    /// </summary>
+    private static string BoostSourcePart(DamageBoostSource s) => s.Kind switch
+    {
+        DamageBoostKind.Damage => s.Value >= 0 ? $"+{s.Value} {s.Name}" : $"−{-s.Value} {s.Name}",
+        DamageBoostKind.CriticalChance => $"{s.Name} (+{s.Value} % crit)",
+        DamageBoostKind.BasePenetration or DamageBoostKind.BonusPenetration =>
+            L($"{s.Name} ({s.Value} % pén.)", $"{s.Name} ({s.Value}% pen.)"),
+        DamageBoostKind.Multiplier =>
+            $"{s.Name} (×{FormatFactor(1.0 + s.Value / 100.0)})",
+        DamageBoostKind.WeaponMultiplier =>
+            L($"{s.Name} (×{FormatFactor(1.0 + s.Value / 100.0)} sur l'arme)",
+              $"{s.Name} (×{FormatFactor(1.0 + s.Value / 100.0)} on weapon)"),
+        DamageBoostKind.LifeSteal => L($"vie volée {s.Value} ({s.Name})", $"life stolen {s.Value} ({s.Name})"),
+        _ => s.Name,
+    };
+
+    // ⚠ Le séparateur décimal suit la LANGUE AFFICHÉE et non la culture du système : tout le reste de
+    // la fenêtre écrit « ×1,25 » en français avec une virgule posée à la main (la culture du process
+    // peut être invariante, cf. InvariantGlobalization).
+    private static string FormatFactor(double factor)
+    {
+        string s = factor.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+        return AppLanguage.IsFr ? s.Replace('.', ',') : s;
+    }
 
     // « sur le 1er coup » / « sur les N premiers coups » — note de charge d'un buff (lot 6d-2, Q22).
     private static string ChargeNote(int count) => count <= 1
@@ -1346,6 +1497,63 @@ public class SpikeViewModel : ViewModelBase
     }
 
     private static bool IsPvpCopy(Skill s) => s.Name.EndsWith("(PvP)", StringComparison.OrdinalIgnoreCase);
+
+    // ── Effets à CHARGES du lot 6e ────────────────────────────────────────────
+    //
+    // ⚠ Ce que le § 6.12 du plan n'avait pas vu : 4 des 23 descripteurs du lot s'épuisent après N
+    // attaques (« Esquive ceci ! » 1, « Je suis le plus fort ! » 5…8, « Visez les yeux ! » 1, Arme du
+    // tourment 3). L'infobulle ne montre qu'un coup isolé, donc la question ne s'y pose jamais ; la
+    // fenêtre Spike, elle, compte une SÉQUENCE, et sans ça « Je suis le plus fort ! » donnerait son +20
+    // à toutes les attaques du spike.
+    //
+    // La règle est celle de Q22 (lot 6d-2), étendue et non rouverte. Le comptage suit donc exactement le
+    // patron d'Arme de fractionnement : les N premières attaques d'ARME du perso dans l'ordre de cast.
+
+    /// <summary>Ce qu'un effet à charges couvre chez un perso : les lignes qui en consomment une, et ce
+    /// qu'il reste pour les coups normaux.</summary>
+    private sealed record BoostCharges(IReadOnlyDictionary<int, HashSet<SkillSlotViewModel>> Slots,
+                                       IReadOnlyDictionary<int, int> Remaining,
+                                       IReadOnlyDictionary<int, int> Total);
+
+    private Dictionary<CharacterSlotViewModel, BoostCharges> ComputeBoostCharges()
+    {
+        var ctx = new Dictionary<CharacterSlotViewModel, BoostCharges>();
+        foreach (var m in Build.SpikeMembers)
+        {
+            var slots = new Dictionary<int, HashSet<SkillSlotViewModel>>();
+            var remaining = new Dictionary<int, int>();
+            var total = new Dictionary<int, int>();
+
+            // Les attaques d'ARME du spike, dans l'ordre de cast — la même assiette que les buffs à
+            // charges du chantier 14 (Pet Attack exclue, comme la table d'arme).
+            var attacks = m.SkillSlots
+                .Where(s => s.IsSpikeSelected && s.Skill is { } k && WeaponStrike.IsWeaponAttack(k))
+                .OrderBy(s => s.SpikeOrder).ToList();
+
+            foreach (var rule in SpikeBoostCoverage.Charges)
+            {
+                int count = ChargeCountOf(m, rule);
+                if (count <= 0) continue;
+                total[rule.SkillId] = count;
+                slots[rule.SkillId] = [.. attacks.Take(count)];
+                remaining[rule.SkillId] = Math.Max(0, count - attacks.Count);
+            }
+            ctx[m] = new BoostCharges(slots, remaining, total);
+        }
+        return ctx;
+    }
+
+    /// <summary>Nombre d'attaques que cet effet couvre chez ce perso, 0 s'il n'est pas allumé. Littéral
+    /// pour trois d'entre eux ; « Je suis le plus fort ! » le lit dans sa PROPRE progression (colonne 0,
+    /// 5…8 selon le rang de titre) — sondé dans la base, pas recopié.</summary>
+    private static int ChargeCountOf(CharacterSlotViewModel member, SpikeBoostCoverage.ChargeRule rule)
+    {
+        if (member.LitBoostAt(rule.SkillId) is not var (source, rank)) return 0;
+        if (rule.Fixed > 0) return rule.Fixed;
+        return rule.Index >= 0 && source.Progression is { } prog && rule.Index < prog.Length
+            ? SkillProgression.IntAt(prog[rule.Index], rank) ?? 0
+            : 0;
+    }
 
     // ── Seuils « X for each [ressource] (maximum Y) » (Symbolic Strike, Aneurysm…) ────────────
     // Compte maximal d'unités : celui qui atteint le plafond annoncé (⌈max / par-unité⌉), ou le
