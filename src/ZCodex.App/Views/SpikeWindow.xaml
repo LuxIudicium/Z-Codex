@@ -179,6 +179,16 @@
                                                 </ItemsControl.ItemTemplate>
                                             </ItemsControl>
                                         </StackPanel>
+                                        <!-- Attaques normales (lot 6d-2) : la case de CE perso, ouverte par
+                                             la case maîtresse de la barre d'options. Cochée, elle ajoute la
+                                             ligne de ses coups d'arme normaux en fin de liste. -->
+                                        <CheckBox Margin="0,5,0,0" FontSize="10" VerticalAlignment="Center"
+                                                  Content="{DynamicResource S.Spike.NormalRow}"
+                                                  IsChecked="{Binding SpikeNormalRow}"
+                                                  ToolTip="{DynamicResource S.Spike.NormalRowTip}"
+                                                  Visibility="{Binding DataContext.Build.ShowNormalAttacks,
+                                                               RelativeSource={RelativeSource AncestorType=Window},
+                                                               Converter={StaticResource BoolToVisibilityConverter}}"/>
                                     </StackPanel>
                                 </Border>
                             </DataTemplate>
@@ -335,8 +345,14 @@
                                   VerticalAlignment="Center"
                                   ToolTip="{DynamicResource S.Spike.CrackedArmorTip}"/>
                         <CheckBox Content="{DynamicResource S.Spike.AllCrits}" IsChecked="{Binding AllCrits}"
-                                  VerticalAlignment="Center"
+                                  Margin="0,0,14,0" VerticalAlignment="Center"
                                   ToolTip="{DynamicResource S.Spike.AllCritsTip}"/>
+                        <!-- Case MAÎTRESSE des attaques normales (lot 6d-2) : elle ouvre la case de chaque
+                             carte du roster, et seuls les persos cochés ont une ligne. -->
+                        <CheckBox Content="{DynamicResource S.Spike.NormalAttacks}"
+                                  IsChecked="{Binding Build.ShowNormalAttacks}"
+                                  VerticalAlignment="Center"
+                                  ToolTip="{DynamicResource S.Spike.NormalAttacksTip}"/>
                     </StackPanel>
                 </DockPanel>
 
@@ -483,7 +499,7 @@
                                                 <ComboBox MinWidth="130" FontSize="10" Padding="4,1"
                                                           VerticalAlignment="Center"
                                                           ItemsSource="{Binding ModOptions}"
-                                                          SelectedValue="{Binding Slot.SpikeWeaponModKey}"
+                                                          SelectedValue="{Binding ModKeyValue}"
                                                           SelectedValuePath="Key"
                                                           ToolTip="{DynamicResource S.Spike.WeaponModTip}">
                                                     <ComboBox.ItemTemplate>
@@ -497,12 +513,12 @@
                                                  la ligne. Arc corne : +10 % permanents sur toutes ses attaques. -->
                                             <CheckBox Margin="0,2,0,0" FontSize="10" VerticalAlignment="Center"
                                                       Content="{DynamicResource S.Spike.SunderingProc}"
-                                                      IsChecked="{Binding Slot.SpikeSunderingProc}"
+                                                      IsChecked="{Binding SunderingProcValue}"
                                                       Visibility="{Binding HasSunderingProc, Converter={StaticResource BoolToVisibilityConverter}}"
                                                       ToolTip="{DynamicResource S.Spike.SunderingProcTip}"/>
                                             <CheckBox Margin="0,2,0,0" FontSize="10" VerticalAlignment="Center"
                                                       Content="{DynamicResource S.Spike.Hornbow}"
-                                                      IsChecked="{Binding Slot.SpikeHornbow}"
+                                                      IsChecked="{Binding HornbowValue}"
                                                       Visibility="{Binding IsBowRow, Converter={StaticResource BoolToVisibilityConverter}}"
                                                       ToolTip="{DynamicResource S.Spike.HornbowTip}"/>
                                             <!-- Attaque d'arme libre : choix d'arme toujours proposé (défaut = arme de

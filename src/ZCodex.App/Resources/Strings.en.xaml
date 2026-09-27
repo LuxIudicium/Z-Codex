@@ -524,6 +524,10 @@
     <sys:String x:Key="S.Spike.SunderingProcTip">The mod triggers (20% of the time): +20% armor penetration for the whole row, all strikes included. Stacks with Judge's Insight and with base armor penetration.</sys:String>
     <sys:String x:Key="S.Spike.Hornbow">Hornbow</sys:String>
     <sys:String x:Key="S.Spike.HornbowTip">Hornbow: a permanent +10% armor penetration (not a proc). Damage range and mastery are the same as every other bow.</sys:String>
+    <sys:String x:Key="S.Spike.NormalAttacks">Normal attacks</sys:String>
+    <sys:String x:Key="S.Spike.NormalAttacksTip">Also count plain weapon hits (no skill involved). Then tick, on each character's card, the ones you want a row for.</sys:String>
+    <sys:String x:Key="S.Spike.NormalRow">Normal attack</sys:String>
+    <sys:String x:Key="S.Spike.NormalRowTip">Adds a row at the end of the list for this character's plain weapon hits, with its own hit counter. The weapon is the one in the active set, otherwise the one deduced from the bar. The row counts ONLY the weapon hit: conjures, Orders, Strength of Honor, Hundred Blades and other riders already have their own counter row.</sys:String>
     <sys:String x:Key="S.Spike.ConditionMet">Condition met</sys:String>
     <sys:String x:Key="S.Spike.CasterHp">Caster HP:</sys:String>
     <sys:String x:Key="S.Spike.CasterHpTip">Caster's current HP at cast time (committed on leaving the field)</sys:String>

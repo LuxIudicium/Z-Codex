@@ -63,6 +63,7 @@ public static class TeamBuildSubset
             GameMode               = source.GameMode,
             VampiricHits3          = source.VampiricHits3,
             VampiricHits5          = source.VampiricHits5,
+            ShowNormalAttacks      = source.ShowNormalAttacks,
         };
     }
 

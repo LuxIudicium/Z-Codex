@@ -586,6 +586,14 @@ public class TeamBuildViewModel : ViewModelBase, IRenamableTab
     public int VampiricHits3 { get => _vampiricHits3; set => SetField(ref _vampiricHits3, value); }
     public int VampiricHits5 { get => _vampiricHits5; set => SetField(ref _vampiricHits5, value); }
 
+    // Case MAÎTRESSE des lignes d'attaque normale (lot 6d-2, Q19) : éteinte, la fenêtre Spike ne montre
+    // ni les lignes ni les cases par perso — un build enregistré avant ce lot garde donc exactement son
+    // total. Allumée, chaque perso du roster reçoit sa case (CharacterSlotViewModel.SpikeNormalRow) et
+    // seuls les persos cochés ont une ligne. Persisté (.zcx v23).
+    private bool _showNormalAttacks;
+
+    public bool ShowNormalAttacks { get => _showNormalAttacks; set => SetField(ref _showNormalAttacks, value); }
+
     /// <summary>Compteur d'attaques de la ligne de vol de vie <paramref name="steal"/> (3 ou 5).</summary>
     public int VampiricHits(int steal) => steal == Core.Data.SpikeWeaponMods.VampiricStealTwoHanded
         ? VampiricHits5 : VampiricHits3;

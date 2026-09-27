@@ -19,6 +19,9 @@ public class TeamBuild
     // lignes pour un total identique. 0 = ligne affichée mais non comptée. Absent (≤ v17) → 1.
     public int VampiricHits3 { get; set; } = 1;
     public int VampiricHits5 { get; set; } = 1;
+    // v23 — case MAÎTRESSE des lignes d'attaque normale du spike (lot 6d-2) : éteinte, ni les lignes
+    // ni les cases par perso n'existent. Absent (≤ v22) → false, total inchangé.
+    public bool ShowNormalAttacks { get; set; }
     // v17 — mode de jeu au moment de l'enregistrement, restauré à la réouverture. Null = fichier
     // antérieur à v17 (ou format hérité .pwnd/.txt) : le mode courant s'applique alors, comme avant.
     public GameMode? GameMode { get; set; }

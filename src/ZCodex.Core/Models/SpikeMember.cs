@@ -10,6 +10,14 @@ public class SpikeMember
     // v11 — clés (SpikeWeaponBuffs.Descriptor.Key) des buffs d'arme actifs sur CE membre
     // (état par perso, décision Philippe). Absent (fichiers ≤ v10) → aucun buff.
     public List<string> Buffs { get; set; } = new();
+    // v23 — ligne des ATTAQUES NORMALES de ce membre (lot 6d-2) : la case de sa carte, son compteur de
+    // coups et les trois contrôles de la ligne (mod de préfixe, proc du fractionnement, arc corne).
+    // Absent (fichiers ≤ v22) → ligne éteinte, donc total inchangé pour un build enregistré avant.
+    public bool NormalRow { get; set; }
+    public int NormalHits { get; set; } = 1;
+    public string? NormalWeaponMod { get; set; }
+    public bool NormalSunderingProc { get; set; }
+    public bool NormalHornbow { get; set; }
 }
 
 // Une skill cochée du spike : slot 0–7 + type de dégât de l'arme pour CETTE attaque (lore

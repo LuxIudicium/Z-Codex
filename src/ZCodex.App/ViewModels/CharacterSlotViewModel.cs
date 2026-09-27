@@ -120,6 +120,42 @@ public class CharacterSlotViewModel : ViewModelBase
             OnPropertyChanged(nameof(SpikeActiveBuffs));
     }
 
+    // ── Ligne d'ATTAQUE NORMALE du spike (lot 6d-2) ───────────────────────────
+    // Q19 : deux niveaux de cases — la maîtresse est au build (TeamBuildViewModel.ShowNormalAttacks),
+    // celle-ci est la case de CE perso, sur sa carte du roster. Cochée, elle ajoute une ligne
+    // artificielle en fin de liste : ses coups d'arme normaux, comptés à la main. Persisté .zcx v23.
+    private bool _spikeNormalRow;
+    private int _spikeNormalHits = 1;
+    private string _spikeNormalWeaponModKey = string.Empty;
+    private bool _spikeNormalSunderingProc, _spikeNormalHornbow;
+
+    public bool SpikeNormalRow { get => _spikeNormalRow; set => SetField(ref _spikeNormalRow, value); }
+
+    /// <summary>Nombre de coups d'arme normaux comptés pour ce perso (bornes du ComboBox des procs).</summary>
+    public int SpikeNormalHits { get => _spikeNormalHits; set => SetField(ref _spikeNormalHits, value); }
+
+    /// <summary>Mod de PRÉFIXE de l'arme des coups normaux (clé SpikeWeaponMods ; vide = aucun) — Q21.</summary>
+    public string SpikeNormalWeaponModKey
+    {
+        get => _spikeNormalWeaponModKey;
+        set
+        {
+            if (!SetField(ref _spikeNormalWeaponModKey, value ?? string.Empty)) return;
+            // Même règle que la ligne d'attaque : la case du proc n'a de sens que sous « de
+            // fractionnement » et ne survit pas à un changement de mod.
+            if (SpikeWeaponMods.FromKey(_spikeNormalWeaponModKey) != SpikeWeaponMod.Sundering)
+                SpikeNormalSunderingProc = false;
+        }
+    }
+
+    public bool SpikeNormalSunderingProc
+    {
+        get => _spikeNormalSunderingProc;
+        set => SetField(ref _spikeNormalSunderingProc, value);
+    }
+
+    public bool SpikeNormalHornbow { get => _spikeNormalHornbow; set => SetField(ref _spikeNormalHornbow, value); }
+
     // Rangée d'icônes de la carte membre (fenêtre Spike) : buffs PROPOSABLES à ce perso
     // (= équipés sur un membre du roster ; DWG sur son seul porteur). Resynchronisée par
     // SpikeViewModel à chaque recalcul — HasSpikeBuffToggles est UI-only, FILTRÉ du dirty
@@ -1434,6 +1470,32 @@ public class CharacterSlotViewModel : ViewModelBase
         return new SpikeDamageType(received, received != natural);
     }
 
+    /// <summary>Arme de main du set d'armes ACTIF (None = aucune arme renseignée). Publique pour la ligne
+    /// d'ATTAQUE NORMALE de la fenêtre Spike (lot 6d-2, Q17) : son arme est celle du set actif, et à défaut
+    /// celle déduite de la barre.</summary>
+    public WeaponKind ActiveSetWeaponKind => ActiveWeaponKind();
+
+    /// <summary>Le mod élémentaire du set actif porte-t-il sur un coup normal de <paramref name="kind"/> ?
+    /// Vrai seulement si c'est bien l'arme du set qui frappe : une arme DÉDUITE de la barre (set non
+    /// renseigné) ne porte aucun mod. Décide aussi le grisage de la liste « Mod » de la ligne (Q15).</summary>
+    public bool ElementalModOnNormalAttack(WeaponKind kind) =>
+        ActiveElementalMod is not null && kind != WeaponKind.None && kind == ActiveWeaponKind();
+
+    /// <summary>Type de dégâts qu'un COUP NORMAL de ce perso fait arriver chez la cible du Spike (lot 6d-2) :
+    /// la chaîne du § 6.1 sans compétence — aucun type intrinsèque, périmètre jugé sur la seule arme.
+    /// <paramref name="native"/> = le type natif de l'arme qui frappe, retenu quand rien ne convertit.
+    /// <paramref name="judgesInsight"/> = la case Clairvoyance du juge de la fenêtre, qui s'ajoute à l'icône
+    /// de la carte (Q13).</summary>
+    public SpikeDamageType SpikeNormalAttackType(WeaponKind kind, string? native, bool judgesInsight)
+    {
+        var state = ConversionState(null);
+        if (judgesInsight) state = state with { JudgesInsight = true };
+        string? effective = DamageBoostData.PlainAttackElement(
+            state, kind, ElementalModOnNormalAttack(kind)) ?? native;
+        string? received = DamageBoostData.DisplayedType(effective, WinterLit, StoneStrikerLit);
+        return new SpikeDamageType(received, received != native);
+    }
+
     /// <summary>Type d'un paquet de dégâts de la description tel que la cible du Spike le REÇOIT. Briseur
     /// de pierre force la terre sur TOUT ce que le perso infliger, sorts compris, et Hiver passe
     /// l'élémentaire en froid — les deux déplacent donc aussi l'armure des paquets qui ne sont pas des
@@ -1444,7 +1506,9 @@ public class CharacterSlotViewModel : ViewModelBase
         return new SpikeDamageType(received, received != packetType);
     }
 
-    private DamageBoostData.ConversionState ConversionState(Skill target)
+    // target null = une ATTAQUE NORMALE (lot 6d-2) : il n'y a pas de compétence frappée, donc aucune
+    // préparation à perdre — Barrage et Volée sont les seules à en retirer, et un coup normal n'en est pas.
+    private DamageBoostData.ConversionState ConversionState(Skill? target)
     {
         List<DamageConverterDescriptor>? lit = null;
         foreach (var slot in SkillSlots)
@@ -1452,7 +1516,7 @@ public class CharacterSlotViewModel : ViewModelBase
                 && IsAttributeBoostActive(k.ToggleId)
                 // ⚠ Tir de barrage et Volée retirent les préparations avant de frapper : les Flèches
                 // enflammées n'y convertissent donc RIEN, et c'est le mod d'arme qui décide du type.
-                && !DamageBoostData.PreparationLost(sk, target))
+                && (target is null || !DamageBoostData.PreparationLost(sk, target)))
                 (lit ??= []).Add(k);
 
         var rituals = ActiveNatureRituals;

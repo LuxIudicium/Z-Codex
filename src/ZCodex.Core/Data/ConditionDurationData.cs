@@ -255,19 +255,10 @@ public static class ConditionDurationData
             ? equipped
             : KindOf(WeaponStrike.For(target));
 
-    private static WeaponKind KindOf(WeaponStrike.Weapon? weapon) => weapon?.Mastery switch
-    {
-        "Axe Mastery"     => WeaponKind.Axe,
-        "Swordsmanship"   => WeaponKind.Sword,
-        "Hammer Mastery"  => WeaponKind.Hammer,
-        "Scythe Mastery"  => WeaponKind.Scythe,
-        "Spear Mastery"   => WeaponKind.Spear,
-        "Marksmanship"    => WeaponKind.Bow,
-        "Dagger Mastery"  => WeaponKind.Daggers,
-        "Wand"            => WeaponKind.Wand,
-        "Staff"           => WeaponKind.Staff,
-        _                 => WeaponKind.None,
-    };
+    // Table maîtrise → type d'équipement : elle vit dans WeaponStrike, à côté des armes qu'elle
+    // nomme (lot 6d-2). Elle était recopiée ici, à un libellé près d'une divergence silencieuse.
+    private static WeaponKind KindOf(WeaponStrike.Weapon? weapon) =>
+        weapon is null ? WeaponKind.None : WeaponStrike.KindOf(weapon);
 
     /// <summary>
     /// L'ajouteur <paramref name="source"/> pose-t-il sa condition sur <paramref name="target"/> ? La cible doit
@@ -293,6 +284,19 @@ public static class ConditionDurationData
     public static bool InWeaponScope(ConditionWeaponScope scope, Skill target, WeaponKind equipped) =>
         InScope(scope, target, equipped);
 
+    /// <summary>Le même périmètre jugé sur la seule ARME, sans compétence : c'est ce qu'il faut pour une
+    /// ATTAQUE NORMALE (lot 6d-2), qui n'est pas une compétence et dont l'arme est donc la seule donnée.
+    /// La version à <see cref="Skill"/> ci-dessus s'appuie dessus, plus ses deux exceptions portées par le
+    /// TYPE de la compétence (Frappe du javelot, attaque de mêlée à arme libre sans arme renseignée).</summary>
+    public static bool InWeaponScope(ConditionWeaponScope scope, WeaponKind kind) => scope switch
+    {
+        ConditionWeaponScope.Bow     => kind == WeaponKind.Bow,
+        ConditionWeaponScope.Daggers => kind == WeaponKind.Daggers,
+        ConditionWeaponScope.Scythe  => kind == WeaponKind.Scythe,
+        ConditionWeaponScope.Melee   => IsMeleeKind(kind),
+        _                            => IsPhysical(kind),
+    };
+
     /// <summary><paramref name="target"/> se lance-t-elle avec l'ARME du set actif ? Un mod élémentaire convertit
     /// les dégâts de l'arme qui le porte, pas ceux des autres : une corde Fiery ne rend pas une attaque à l'épée
     /// élémentaire.</summary>
@@ -304,18 +308,18 @@ public static class ConditionDurationData
     {
         if (!WeaponStrike.IsWeaponAttack(target)) return false;
         var kind = AttackWeapon(target, equipped);
+        // Sans arme renseignée, une « Melee Attack » à arme libre reste de la mêlée — ses 5 armes
+        // possibles le sont toutes (et elles sont toutes physiques).
+        bool freeMelee = kind == WeaponKind.None && target.SkillType == "Melee Attack";
         return scope switch
         {
-            ConditionWeaponScope.Bow     => kind == WeaponKind.Bow,
-            ConditionWeaponScope.Daggers => kind == WeaponKind.Daggers,
-            ConditionWeaponScope.Scythe  => kind == WeaponKind.Scythe,
             // « en mêlée » (glossaire G2) : les 5 armes de corps à corps, plus la lance sur la seule
-            // Frappe du javelot, qui est bien un « Spear Melee Attack ». Sans arme renseignée, une
-            // « Melee Attack » à arme libre reste de la mêlée — ses 5 armes possibles le sont toutes.
-            ConditionWeaponScope.Melee   => IsMeleeKind(kind)
-                                            || target.SkillType == "Spear Melee Attack"
-                                            || (kind == WeaponKind.None && target.SkillType == "Melee Attack"),
-            _ => IsPhysical(kind) || (kind == WeaponKind.None && target.SkillType == "Melee Attack"),
+            // Frappe du javelot, qui est bien un « Spear Melee Attack ».
+            ConditionWeaponScope.Melee => InWeaponScope(scope, kind)
+                                          || target.SkillType == "Spear Melee Attack" || freeMelee,
+            ConditionWeaponScope.Bow or ConditionWeaponScope.Daggers or ConditionWeaponScope.Scythe
+                => InWeaponScope(scope, kind),
+            _ => InWeaponScope(scope, kind) || freeMelee,
         };
     }
 

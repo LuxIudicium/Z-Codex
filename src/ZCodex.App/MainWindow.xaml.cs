@@ -3852,6 +3852,7 @@ public partial class MainWindow : Window
         vm.NatureRituals.LoadBramblesRank(model.BramblesRitualRank);
         vm.VampiricHits3 = Math.Clamp(model.VampiricHits3, 0, 25);
         vm.VampiricHits5 = Math.Clamp(model.VampiricHits5, 0, 25);
+        vm.ShowNormalAttacks = model.ShowNormalAttacks;   // v23 — lignes d'attaque normale du spike
         vm.Tags.Clear();
         foreach (var tag in model.Tags) vm.Tags.Add(tag);
 
@@ -3896,6 +3897,13 @@ public partial class MainWindow : Window
                 slot.SpikeSunderingProc = sk.SunderingProc;
                 slot.SpikeHornbow = sk.Hornbow;
             }
+            // Ligne d'attaque normale du membre (v23) : le mod AVANT la case du proc, comme pour un
+            // slot — son setter la remet à false.
+            member.SpikeNormalRow = sm.NormalRow;
+            member.SpikeNormalHits = Math.Clamp(sm.NormalHits, 0, 25);
+            member.SpikeNormalWeaponModKey = sm.NormalWeaponMod ?? string.Empty;
+            member.SpikeNormalSunderingProc = sm.NormalSunderingProc;
+            member.SpikeNormalHornbow = sm.NormalHornbow;
             // Buffs d'arme actifs du membre (v11) — instances fraîches, pas de purge préalable.
             foreach (var key in sm.Buffs) member.SetSpikeBuff(key, true);
         }
@@ -3961,6 +3969,7 @@ public partial class MainWindow : Window
         BramblesRitualRank = vm.NatureRituals.BramblesRank,
         VampiricHits3 = vm.VampiricHits3,
         VampiricHits5 = vm.VampiricHits5,
+        ShowNormalAttacks = vm.ShowNormalAttacks,
         Characters = vm.Characters.Select(CharToModel).ToList(),
         Locks = vm.Locks.Select(l => new VariantLock
         {
@@ -3990,6 +3999,11 @@ public partial class MainWindow : Window
             }).ToList(),
             // Ordre stable (HashSet non déterministe) : les snapshots d'undo comparent le JSON.
             Buffs = m.SpikeActiveBuffs.OrderBy(k => k, StringComparer.Ordinal).ToList(),
+            NormalRow = m.SpikeNormalRow,
+            NormalHits = m.SpikeNormalHits,
+            NormalWeaponMod = m.SpikeNormalWeaponModKey is { Length: > 0 } nm ? nm : null,
+            NormalSunderingProc = m.SpikeNormalSunderingProc,
+            NormalHornbow = m.SpikeNormalHornbow,
         }).ToList(),
     };
 

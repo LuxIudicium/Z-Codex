@@ -945,17 +945,38 @@ public static class DamageBoostData
     /// tous les deux « … for creatures in range ». Ne pas « réparer » ceci.
     /// </summary>
     public static string? EffectiveElement(ConversionState state, Skill target, WeaponKind equipped)
-    {
         // ⚠ Le type que l'attaque porte elle-même gagne sur l'arme ET sur les esprits qui ne
         // convertissent que le physique : un Javelot d'éclair reste de la foudre sous Grand brasier
         // (tranché le 26/09/2026). Les deux conversions qui suivent, elles, l'écrasent encore — un
         // enchantement qui dit « vos attaques infligent des dégâts de X » vise toutes les attaques.
-        string? element = IntrinsicType(target);
+        => EffectiveElement(state, IntrinsicType(target),
+                            ConditionDurationData.UsesEquippedWeapon(target, equipped),
+                            scope => ConditionDurationData.InWeaponScope(scope, target, equipped));
+
+    /// <summary>
+    /// La MÊME chaîne pour une ATTAQUE NORMALE (lot 6d-2) : pas de compétence, donc aucun type
+    /// intrinsèque, et un périmètre jugé sur la seule arme. <paramref name="modOnThisWeapon"/> = l'arme
+    /// qui frappe est bien celle du set actif, donc celle qui porte le mod élémentaire (faux quand l'arme
+    /// a été DÉDUITE de la barre faute de set renseigné : il n'y a alors pas de mod à appliquer).
+    ///
+    /// ⚠ Une PRÉPARATION n'est jamais perdue ici : ce sont Barrage et Volée qui la retirent avant de
+    /// frapper, et un coup normal n'est ni l'une ni l'autre. L'appelant passe donc tous ses convertisseurs.
+    /// </summary>
+    public static string? PlainAttackElement(ConversionState state, WeaponKind kind, bool modOnThisWeapon)
+        => EffectiveElement(state, intrinsic: null, modOnThisWeapon,
+                            scope => ConditionDurationData.InWeaponScope(scope, kind));
+
+    // Le corps de la chaîne, partagé par les deux entrées ci-dessus : ce qu'elle a besoin de savoir de
+    // l'attaque se réduit à trois choses, et jamais à la compétence elle-même.
+    private static string? EffectiveElement(ConversionState state, string? intrinsic,
+                                            bool usesEquippedWeapon,
+                                            Func<ConditionWeaponScope, bool> inScope)
+    {
+        string? element = intrinsic;
 
         // Un mod élémentaire ne convertit QUE les attaques de l'arme qui le porte — et il ne peut rien
         // contre une attaque qui impose déjà son type.
-        if (element is null && state.ElementalMod is { } mod
-            && ConditionDurationData.UsesEquippedWeapon(target, equipped))
+        if (element is null && state.ElementalMod is { } mod && usesEquippedWeapon)
             element = mod;
 
         foreach (var k in state.LitConverters ?? [])
@@ -967,17 +988,15 @@ public static class DamageBoostData
             // promet l'inverse. Il est le SEUL des 15 convertisseurs de la table à être dans ce cas
             // (vérifié : aucun autre n'a d'étape dédiée) — trouvé au harnais du lot 6d-1.
             if (k.SkillId != ConditionDurationData.StoneStrikerSkillId
-                && ConditionDurationData.InWeaponScope(k.Weapon, target, equipped))
+                && inScope(k.Weapon))
                 element = k.Element;
 
-        if (state.JudgesInsight && ConditionDurationData.InWeaponScope(ConditionWeaponScope.Physical, target, equipped))
+        if (state.JudgesInsight && inScope(ConditionWeaponScope.Physical))
             element = "holy";
 
-        if (element is null && state.GreaterConflagration
-            && ConditionDurationData.InWeaponScope(ConditionWeaponScope.Physical, target, equipped))
+        if (element is null && state.GreaterConflagration && inScope(ConditionWeaponScope.Physical))
             element = "fire";
-        if (element is null && state.Conflagration
-            && ConditionDurationData.InWeaponScope(ConditionWeaponScope.Bow, target, equipped))
+        if (element is null && state.Conflagration && inScope(ConditionWeaponScope.Bow))
             element = "fire";
 
         // ⚠ Briseur de pierre a le dernier mot, MAIS seulement sur ce qui est élémentaire ou physique
@@ -985,7 +1004,7 @@ public static class DamageBoostData
         // sacré. Conséquence voulue et conforme au wiki : sous Briseur de pierre les conjurations ne
         // s'appliquent plus (aucune n'est de terre) et l'Aura de poussière d'ébène, si, s'applique.
         if (state.StoneStriker && (element is null || IsElemental(element) || IsPhysicalType(element))
-            && ConditionDurationData.InWeaponScope(ConditionWeaponScope.Physical, target, equipped))
+            && inScope(ConditionWeaponScope.Physical))
             element = "earth";
 
         return element;

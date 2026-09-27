@@ -33,8 +33,8 @@ public static class HelpContent
 {
     // Version du CONTENU de l'aide (indépendante de la version applicative de l'À propos) :
     // à incrémenter et redater à chaque mise à jour.
-    public const string VersionFr = "Aide v25 — 26/09/2026";
-    public const string VersionEn = "Help v25 — 2026-09-26";
+    public const string VersionFr = "Aide v26 — 27/09/2026";
+    public const string VersionEn = "Help v26 — 2026-09-27";
 
     public static string Version => AppLanguage.IsFr ? VersionFr : VersionEn;
 
@@ -626,8 +626,8 @@ public static class HelpContent
               "Pour les compétences à part conditionnelle (cible sous un seuil de PV, sous condition…) : décide si le bonus compte.",
               "For skills with a conditional part (target below an HP threshold, under a condition…): decides whether the bonus counts."),
             R("Type de dégâts de l'arme", "Weapon damage type",
-              "Se choisit par attaque, sur sa ligne : mod élémentaire, skin particulier, ou changement d'arme en cours de spike.",
-              "Chosen per attack, on its row: elemental mod, special skin, or a weapon switch mid-spike."),
+              "Le type est DÉDUIT : les effets allumés sur la carte du perso (formes, conjurations, Clairvoyance du juge, brasiers, Briseur de pierre, Hiver) et le mod élémentaire du set d'armes actif décident, et la ligne le signale par « type converti ». La liste ne sert qu'à FORCER, par attaque : un skin particulier (hache perforante, faux « Sufferer ») ou un changement d'arme en cours de spike. « (auto / déduit) » = on laisse la déduction faire. C'est le type reçu par la cible qui choisit la colonne d'armure utilisée.",
+              "The type is DEDUCED: the effects lit on the character's card (forms, conjures, Judge's Insight, conflagrations, Stone Striker, Winter) and the active weapon set's elemental mod decide it, and the row flags it as \"converted type\". The list only FORCES it, per attack: a special skin (piercing axe, \"Sufferer\" scythe) or a weapon switch mid-spike. \"(auto / deduced)\" leaves the deduction alone. The type the target RECEIVES is what picks the armor column."),
             R("Mod d'arme", "Weapon mod",
               "Mod de préfixe physique de l'attaque : de fractionnement ou vampirique. Il occupe le même emplacement qu'un mod élémentaire — choisir un type de dégâts élémentaire le remet à « Aucun ». Les autres types de la liste sont des skins et laissent le préfixe libre.",
               "The attack's physical prefix mod: Sundering or Vampiric. It uses the same slot as an elemental mod — picking an elemental damage type resets it to \"None\". The other types in the list are skins and leave the prefix free."),
@@ -637,6 +637,9 @@ public static class HelpContent
             R("Lignes « Vol de vie »", "\"Life Stealing\" rows",
               "Déclarer un mod vampirique n'ajoute rien à sa ligne : cela fait apparaître en fin de liste une ligne globale par valeur de vol (3 à une main, 5 à deux mains). À vous d'y compter toutes les attaques vampiriques qui touchent, celles du spike comprises ; 0 affiche la ligne sans la compter.",
               "Declaring a vampiric mod adds nothing to its own row: it makes a global row appear at the end of the list, one per steal value (3 one-handed, 5 two-handed). You count there every vampiric attack that lands, including the spike's own; 0 shows the row without counting it."),
+            R("Attaques normales", "Normal attacks",
+              "Cochez « Attaques normales » au-dessus de la liste, puis, sur la carte de chaque perso, celui dont vous voulez la ligne. Elle compte ses coups d'arme hors compétence : arme du set actif (sinon déduite de sa barre), type de dégâts déduit comme ailleurs, compteur de coups, mod de préfixe et cases arc corne / proc du fractionnement. Elle ne compte QUE le coup d'arme — les conjurations, Ordres, Honneur, Cent lames et autres riders ont déjà leur ligne à compteur, où vous comptez aussi les déclenchements de vos coups normaux. Les buffs à charges limitées (Arme de fractionnement 3 attaques, Arme d'éclats 4) ne donnent aux coups normaux que ce que les compétences du spike leur ont laissé.",
+              "Tick \"Normal attacks\" above the list, then tick, on each character's card, the ones you want a row for. It counts their plain weapon hits: the active set's weapon (otherwise deduced from the bar), the damage type deduced as everywhere else, a hit counter, the prefix mod and the hornbow / Sundering proc boxes. It counts ONLY the weapon hit — conjures, Orders, Strength of Honor, Hundred Blades and other riders already have their own counter row, where you also count the triggers of your normal hits. Charge-limited buffs (Sundering Weapon, 3 attacks; Splinter Weapon, 4) only give normal hits what the spike's own skills left them."),
             R("Buffs (icônes)", "Buffs (icons)",
               "Buffs d'arme du lanceur (Splinter Weapon, Great Dwarf Weapon, Orders…) : activez ceux qui portent au moment du spike.",
               "The caster's weapon buffs (Splinter Weapon, Great Dwarf Weapon, Orders…): enable those active at spike time."),

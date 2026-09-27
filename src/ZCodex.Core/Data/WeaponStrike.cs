@@ -74,6 +74,45 @@ public static class WeaponStrike
     public static Weapon? ByMasteryName(string? mastery)
         => string.IsNullOrEmpty(mastery) ? null : ByMastery.GetValueOrDefault(mastery);
 
+    /// <summary>Les 9 armes du catalogue (7 martiales + baguette et bâton). Sert à déduire l'arme des
+    /// ATTAQUES NORMALES d'un perso (lot 6d-2), qu'aucun type d'attaque ne restreint : là, toutes les
+    /// armes sont recevables, contrairement au choix manuel d'une attaque libre (cf. ChoicesFor).</summary>
+    public static IReadOnlyList<Weapon> All { get; } =
+        [Axe, Sword, Hammer, Scythe, Spear, Bow, Daggers, Wand, Staff];
+
+    /// <summary>Arme du catalogue correspondant à l'arme de main renseignée dans un set d'équipement
+    /// (lot 6d-2 : l'attaque normale se fait avec l'arme du set ACTIF). Null pour un emplacement de
+    /// main gauche (focus, bouclier) ou un set sans arme.</summary>
+    public static Weapon? ForKind(WeaponKind kind) => kind switch
+    {
+        WeaponKind.Axe => Axe,
+        WeaponKind.Sword => Sword,
+        WeaponKind.Hammer => Hammer,
+        WeaponKind.Scythe => Scythe,
+        WeaponKind.Spear => Spear,
+        WeaponKind.Bow => Bow,
+        WeaponKind.Daggers => Daggers,
+        WeaponKind.Wand => Wand,
+        WeaponKind.Staff => Staff,
+        _ => null,
+    };
+
+    // Table inverse de ForKind, construite DEPUIS les armes ci-dessus (aucun libellé de maîtrise
+    // recopié : un switch sur chaînes exigerait des constantes et ferait diverger les deux tables).
+    private static readonly Dictionary<string, WeaponKind> KindByMastery = new()
+    {
+        [Axe.Mastery] = WeaponKind.Axe, [Sword.Mastery] = WeaponKind.Sword,
+        [Hammer.Mastery] = WeaponKind.Hammer, [Scythe.Mastery] = WeaponKind.Scythe,
+        [Spear.Mastery] = WeaponKind.Spear, [Bow.Mastery] = WeaponKind.Bow,
+        [Daggers.Mastery] = WeaponKind.Daggers, [Wand.Mastery] = WeaponKind.Wand,
+        [Staff.Mastery] = WeaponKind.Staff,
+    };
+
+    /// <summary>Type d'équipement d'une arme du catalogue — l'inverse de <see cref="ForKind"/>. La
+    /// chaîne de conversion du § 6.1 raisonne en <see cref="WeaponKind"/> (« seulement les flèches »,
+    /// « seulement la faux ») : une attaque normale à l'arme DÉDUITE doit donc pouvoir s'y présenter.</summary>
+    public static WeaponKind KindOf(Weapon weapon) => KindByMastery.GetValueOrDefault(weapon.Mastery);
+
     /// <summary>Rang qui scale le coup de <paramref name="weapon"/> : celui du perso dans la
     /// maîtrise de l'arme, ou <b>0</b> quand il n'a pas cet attribut du tout — un perso hors
     /// profession tient quand même l'arme et frappe à rang 0, comme en jeu (décision Philippe) ;

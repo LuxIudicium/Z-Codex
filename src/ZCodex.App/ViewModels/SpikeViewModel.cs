@@ -864,6 +864,18 @@ public class SpikeViewModel : ViewModelBase
             totalMin += min; totalMax += max;
         }
 
+        // Attaques NORMALES (lot 6d-2) : une ligne artificielle par perso COCHÉ, avant les lignes de vol
+        // de vie — elle peut déclarer un mod vampirique, qui les fait apparaître (Q21).
+        if (Build.ShowNormalAttacks)
+            foreach (var member in Build.SpikeMembers)
+            {
+                if (!member.SpikeNormalRow) continue;
+                var t = BuildNormalAttackRow(member, target, buffCtx.GetValueOrDefault(member), vampiricSteals);
+                Rows.Add(t.Row);
+                totalMin += t.Min; totalMax += t.Max;
+                totalFluxMin += t.FluxMin; totalFluxMax += t.FluxMax;
+            }
+
         // Vol de vie des mods vampiriques : 1 ou 2 lignes ARTIFICIELLES globales (3 et/ou 5), tout à
         // la fin de la liste, colonne personnage vide — elles n'appartiennent à personne. Cocher
         // « vampirique » sur une ligne ne lui ajoute RIEN : c'est une déclaration qui fait
@@ -940,12 +952,202 @@ public class SpikeViewModel : ViewModelBase
         return (row, dmg, dmg, fluxMin, fluxMax);
     }
 
+    /// <summary>
+    /// Ligne ARTIFICIELLE des attaques NORMALES d'un perso (lot 6d-2, Q17/Q19-Q22) : ses coups d'arme
+    /// hors compétence, comptés à la main. Elle n'a pas de slot — son état vit sur le perso, comme les
+    /// icônes de buffs — et elle ne compte QUE le coup d'arme : les conjurations, Ordres, Honneur, Cent
+    /// lames & co. ont déjà leur propre ligne à compteur « Procs », où l'utilisateur compte lui-même les
+    /// déclenchements des coups normaux. Les ajouter ici les compterait deux fois.
+    ///
+    /// L'arme est celle du set ACTIF, sinon celle déduite de la barre ; le type de dégâts sort de la
+    /// chaîne du § 6.1 (Hiver et Briseur de pierre compris) et décide donc l'AL par type de la cible.
+    ///
+    /// ⚠ Buffs à charges (Q22) : les attaques du spike passent d'abord, les charges RESTANTES vont aux
+    /// premiers coups normaux — d'où le calcul coup par coup, seul moyen de sommer une fourchette dont
+    /// les termes diffèrent. Deux buffs allumés n'entrent jamais ici, et c'est leur TEXTE qui le dit :
+    /// l'Hymne d'envie vise le prochain « attack SKILL » et Destructive Was Glaive les « Ritualist
+    /// skills » — un coup normal n'est ni l'un ni l'autre.
+    ///
+    /// ⚠ La pénétration du rang de FORCE n'entre pas non plus : l'attribut primaire du Guerrier
+    /// pénètre « with your attack skills », pas avec les coups normaux (à confirmer par Philippe).
+    /// </summary>
+    private (SpikeRowViewModel Row, int Min, int Max, int FluxMin, int FluxMax) BuildNormalAttackRow(
+        CharacterSlotViewModel member, SpikeTarget target, MemberBuffs? mb, SortedSet<int> vampiricSteals)
+    {
+        string title = L("Attaque normale", "Normal attack");
+        string? icon = ProfessionIconService.GetLocalPath(member.PrimaryProfession);
+
+        // Arme du set actif, sinon celle déduite des attaques de la barre (Q17). Toutes les armes du
+        // catalogue sont recevables ici : aucun type d'attaque ne restreint un coup normal.
+        var kind = member.ActiveSetWeaponKind;
+        var weapon = WeaponStrike.ForKind(kind);
+        bool deduced = false;
+        if (weapon is null && DeduceWeapon(member, WeaponStrike.All) is { } fallback)
+        {
+            weapon = fallback;
+            kind = WeaponStrike.KindOf(fallback);
+            deduced = true;
+        }
+
+        int hits = Math.Max(0, member.SpikeNormalHits);
+
+        // Ni set d'armes renseigné, ni attaque d'arme dans la barre : rien à calculer, mais la ligne
+        // reste affichée — l'utilisateur a coché la case, il doit voir pourquoi elle ne rend rien.
+        if (weapon is null)
+            return (new SpikeRowViewModel
+            {
+                IconPath = icon,
+                SkillName = title,
+                CharacterName = member.Name,
+                Detail = L("arme indéterminée : renseignez le set d'armes actif du perso",
+                           "weapon undetermined: fill in the character's active weapon set"),
+                RangeText = "—",
+                FluxBonusText = "—",
+                HasProcs = true,
+                ProcsGetter = () => member.SpikeNormalHits,
+                ProcsSetter = v => member.SpikeNormalHits = v,
+            }, 0, 0, 0, 0);
+
+        int rank = WeaponStrike.StrikeRank(weapon, member.AttributeLevel);
+        bool judges = mb is { Judges: true } || member.JudgesInsightLit;
+        var lineType = member.SpikeNormalAttackType(kind, weapon.DamageType, mb is { Judges: true });
+        int al = target.EffectiveArmor(lineType.Received, _withCrackedArmor);
+
+        // Mod de PRÉFIXE de la ligne : proposé tant que le mod élémentaire du set actif ne prend pas la
+        // place (Q15), et jamais sur une arme de lanceur — mêmes règles que les lignes d'attaque.
+        bool canChooseMod = !weapon.IsCaster && !member.ElementalModOnNormalAttack(kind);
+        var weaponMod = canChooseMod ? SpikeWeaponMods.FromKey(member.SpikeNormalWeaponModKey)
+                                     : SpikeWeaponMod.None;
+        // Déclarer « vampirique » ici n'ajoute rien à la ligne : cela fait apparaître la ligne globale
+        // de vol de vie, exactement comme sur une ligne de compétence.
+        if (weaponMod == SpikeWeaponMod.Vampiric) vampiricSteals.Add(SpikeWeaponMods.VampiricSteal(weapon));
+        bool sunderingMod = weaponMod == SpikeWeaponMod.Sundering && member.SpikeNormalSunderingProc;
+        bool isBow = WeaponStrike.IsBow(weapon);
+        bool hornbow = isBow && member.SpikeNormalHornbow;
+
+        // Pénétrations qui ne dépendent pas du coup : Judge's Insight et les deux mods sont des BONUS,
+        // ils s'ajoutent par-dessus le pool de BASE (ici vide hors Arme de fractionnement).
+        int bonusPen = (judges ? SpikeWeaponBuffs.JudgesBonusPen : 0)
+                     + (sunderingMod ? SpikeWeaponMods.SunderingBonusPen : 0)
+                     + (hornbow ? SpikeWeaponMods.HornbowBonusPen : 0);
+
+        // Charges RESTANTES après les attaques du spike (Q22).
+        int sunderCharges = mb is { SunderingActive: true }
+            ? Math.Max(0, SpikeWeaponBuffs.SunderingAttacks - mb.SunderingSlots.Count) : 0;
+        int splinterCharges = mb is { SplinterActive: true, SplinterBonus: > 0 }
+            ? Math.Max(0, SpikeWeaponBuffs.SplinterAttacks - mb.SplinterSlots.Count) : 0;
+        // « Find Their Weakness! » ne couvre QUE la première attaque : sa charge ne retombe sur un coup
+        // normal que si le spike du perso n'a aucune attaque d'arme pour la consommer.
+        int ftwCharges = mb is { FtwActive: true, FtwSlot: null, FtwBonus: > 0 } ? 1 : 0;
+
+        // Great Dwarf Weapon : vrai dégât d'ARME, donc dans la plage avant armure et critique.
+        var w = mb is { GdwBonus: > 0 }
+            ? weapon with { Min = weapon.Min + mb.GdwBonus, Max = weapon.Max + mb.GdwBonus } : weapon;
+        int brutal = mb?.BrutalBonus ?? 0;
+
+        var charges = new SpikeNormalAttack.Charges(
+            SunderingHits: sunderCharges,
+            SplinterHits: splinterCharges, SplinterBonus: mb?.SplinterBonus ?? 0,
+            FtwHits: ftwCharges, FtwBonus: mb?.FtwBonus ?? 0);
+        var (min, max) = SpikeNormalAttack.Damage(w, rank, al, bonusPen, hits, _allCrits,
+                                                  brutal, charges, AttackerLevel);
+        // Coup de RÉFÉRENCE du détail : sans aucune charge, donc le régime permanent de la ligne.
+        var (nudeMin, nudeMax) = SpikeNormalAttack.Hit(w, rank, al, bonusPen, brutal, _allCrits, AttackerLevel);
+
+        int dmgMin = min, dmgMax = max;   // tout est du dégât : ni vol ni perte de vie sur un coup d'arme
+        bool vengeance = mb is { Vengeance: true } && dmgMax > 0;
+        if (vengeance)
+        {
+            dmgMin = (int)(dmgMin * SpikeWeaponBuffs.VengeanceMultiplier);
+            dmgMax = (int)(dmgMax * SpikeWeaponBuffs.VengeanceMultiplier);
+            min = dmgMin; max = dmgMax;
+        }
+
+        var parts = new List<string>
+        {
+            lineType.Received == weapon.DamageType
+                ? $"{weapon.DisplayName} {Range(nudeMin, nudeMax)}"
+                : $"{weapon.DisplayName} ({TypeLabel(lineType.Received)}) {Range(nudeMin, nudeMax)}",
+            _allCrits
+                ? L("critique forcé", "forced critical")
+                : $"{L("crit", "crit")} {100 * WeaponStrike.CriticalChance(rank, AttackerLevel, _targetLevel, member.AttributeLevel("Critical Strikes") ?? 0):0} %",
+            hits == 1 ? L("1 coup", "1 hit") : L($"× {hits} coups", $"× {hits} hits"),
+        };
+        if (deduced) parts.Add(L("arme déduite", "deduced weapon"));
+        if (lineType.Converted) parts.Add(L("type converti", "converted type"));
+        if (judges)
+            parts.Add($"{BuffName(mb, SpikeBuff.JudgesInsight)} {L("(sacré, +20 % pén.)", "(holy, +20% pen.)")}");
+        if (sunderCharges > 0 && hits > 0)
+            parts.Add($"{BuffName(mb, SpikeBuff.SunderingWeapon)} "
+                      + ChargeNote(Math.Min(sunderCharges, hits))
+                      + L($" ({SpikeWeaponBuffs.SunderingBasePen} % pén.)",
+                          $" ({SpikeWeaponBuffs.SunderingBasePen}% pen.)"));
+        if (splinterCharges > 0 && hits > 0)
+            parts.Add($"+{mb!.SplinterBonus} {BuffName(mb, SpikeBuff.SplinterWeapon)} "
+                      + ChargeNote(Math.Min(splinterCharges, hits)) + ArmorIgnoring);
+        if (brutal > 0)
+            parts.Add($"+{brutal} ({BuffName(mb, SpikeBuff.BrutalWeapon)})");
+        if (mb is { GdwBonus: > 0 })
+            parts.Add($"{BuffName(mb, SpikeBuff.GreatDwarfWeapon)} "
+                      + L($"(+{mb.GdwBonus} d'arme compris)", $"(+{mb.GdwBonus} weapon damage included)"));
+        if (ftwCharges > 0 && hits > 0)
+            parts.Add($"+{mb!.FtwBonus} ({BuffName(mb, SpikeBuff.FindTheirWeakness)}, "
+                      + $"{GwConditionData.DisplayName("Deep Wound")} → "
+                      + L("toggle cible", "target toggle") + $", {ChargeNote(Math.Min(ftwCharges, hits))})");
+        if (sunderingMod)
+            parts.Add(L($"de fractionnement (+{SpikeWeaponMods.SunderingBonusPen} % pén.)",
+                        $"Sundering (+{SpikeWeaponMods.SunderingBonusPen}% pen.)"));
+        if (hornbow)
+            parts.Add(L($"arc corne (+{SpikeWeaponMods.HornbowBonusPen} % pén.)",
+                        $"hornbow (+{SpikeWeaponMods.HornbowBonusPen}% pen.)"));
+        if (vengeance) parts.Add(L("Vengeance (×1,25)", "Vengeance (×1.25)"));
+
+        // Flux : les deux flux qui dépendent d'une COMPÉTENCE (Chain Combo par l'ordre de cast, Amateur
+        // Hour par la profession de la compétence) ne peuvent rien dire d'un coup normal ; les deux qui
+        // dépendent du PERSO (Jack of All Trades, There Can Be Only One) s'appliquent.
+        var (fluxMin, fluxMax) = FluxDamageBonus(
+            Build.ActiveFlux, member, null, dmgMin, dmgMax, 0, _targetPrimaryProfession);
+
+        return (new SpikeRowViewModel
+        {
+            IconPath = icon,
+            SkillName = title,
+            CharacterName = member.Name,
+            Detail = string.Join(" · ", parts),
+            RangeText = Range(min, max),
+            FluxBonusText = fluxMin == 0 && fluxMax == 0 ? "—"
+                : fluxMin == fluxMax ? $"+{fluxMax}" : $"+{fluxMin}–{fluxMax}",
+            HasProcs = true,
+            ProcsGetter = () => member.SpikeNormalHits,
+            ProcsSetter = v => member.SpikeNormalHits = v,
+            CanChooseMod = canChooseMod,
+            ModOptions = canChooseMod ? ModOptions() : [],
+            ModKeyGetter = () => member.SpikeNormalWeaponModKey,
+            ModKeySetter = v => member.SpikeNormalWeaponModKey = v ?? string.Empty,
+            HasSunderingProc = weaponMod == SpikeWeaponMod.Sundering,
+            SunderingProcGetter = () => member.SpikeNormalSunderingProc,
+            SunderingProcSetter = v => member.SpikeNormalSunderingProc = v,
+            IsBowRow = isBow,
+            HornbowGetter = () => member.SpikeNormalHornbow,
+            HornbowSetter = v => member.SpikeNormalHornbow = v,
+        }, min, max, fluxMin, fluxMax);
+    }
+
+    private static string Range(int min, int max) => min == max ? max.ToString() : $"{min}–{max}";
+
+    // « sur le 1er coup » / « sur les N premiers coups » — note de charge d'un buff (lot 6d-2, Q22).
+    private static string ChargeNote(int count) => count <= 1
+        ? L("sur le 1er coup", "on the 1st hit")
+        : L($"sur les {count} premiers coups", $"on the first {count} hits");
+
     // Bonus de dégâts dû au flux actif du build, par ligne (colonne « Bonus Flux » + Total).
     // Assiette = dégâts SEULS (dmgMin/dmgMax), hors vol/perte de vie (décision Philippe).
     // chainComboPct = bonus de chaîne précalculé pour ce slot (Chain Combo), 0 sinon.
     // targetPrimary = profession primaire choisie pour la cible (Amateur Hour / There Can Be Only One).
+    // skill null = une ATTAQUE NORMALE (lot 6d-2) : les deux flux qui interrogent la compétence
+    // (Amateur Hour par sa profession, Chain Combo par son ordre de cast) n'ont alors rien à dire.
     private static (int Min, int Max) FluxDamageBonus(
-        Flux? flux, CharacterSlotViewModel member, Skill skill, int dmgMin, int dmgMax,
+        Flux? flux, CharacterSlotViewModel member, Skill? skill, int dmgMin, int dmgMax,
         int chainComboPct, Profession targetPrimary)
     {
         if (dmgMin == 0 && dmgMax == 0) return (0, 0);
@@ -957,7 +1159,7 @@ public class SpikeViewModel : ViewModelBase
                 => (Pct(dmgMin, chainComboPct), Pct(dmgMax, chainComboPct)),
             // Amateur Hour : la compétence relève de la profession SECONDAIRE du perso ET la cible a
             // pour profession PRIMAIRE cette même secondaire (description FluxData validée).
-            Flux.AmateurHour when member.SecondaryProfession != Profession.None
+            Flux.AmateurHour when skill is not null && member.SecondaryProfession != Profession.None
                     && skill.Profession == member.SecondaryProfession
                     && targetPrimary == member.SecondaryProfession
                 => (Pct(dmgMin, 30), Pct(dmgMax, 30)),
@@ -1021,13 +1223,18 @@ public class SpikeViewModel : ViewModelBase
     // langue courante, via Skill.DisplayName) plutôt que codé en dur : les libellés ne peuvent pas
     // diverger de la DB. Suffixe « (PvP) » retiré — la copie PvP est signalée à part, dans le
     // tooltip du toggle.
+    // Sundering/Splinter/FtwActive : le buff est ALLUMÉ, indépendamment du nombre d'attaques qu'il a
+    // couvertes. Indispensable au lot 6d-2 : une liste de slots vide ne dit pas si le buff est éteint ou
+    // s'il est allumé sans aucune attaque à couvrir — et c'est ce second cas qui donne toutes ses charges
+    // aux coups normaux (Q22).
     private sealed record MemberBuffs(HashSet<SkillSlotViewModel> SunderingSlots, bool Judges,
                                       bool Vengeance, int DwgPen,
                                       SkillSlotViewModel? AnthemSlot, int AnthemBonus,
                                       HashSet<SkillSlotViewModel> SplinterSlots, int SplinterBonus,
                                       int BrutalBonus, int GdwBonus,
                                       SkillSlotViewModel? FtwSlot, int FtwBonus,
-                                      IReadOnlyDictionary<SpikeBuff, string> Names);
+                                      IReadOnlyDictionary<SpikeBuff, string> Names,
+                                      bool SunderingActive, bool SplinterActive, bool FtwActive);
 
     // Synchronise la rangée d'icônes de chaque carte membre (offre = buffs équipés sur un membre
     // du roster, cadre vert NON requis — le buff se lance AVANT le spike ; DWG proposé à son seul
@@ -1127,8 +1334,13 @@ public class SpikeViewModel : ViewModelBase
                 splinterSlots, splinterBonus,
                 Active(SpikeBuff.BrutalWeapon) ? brutalBonus : 0,
                 Active(SpikeBuff.GreatDwarfWeapon) ? gdwBonus : 0,
-                ftwSlot, ftwSlot is not null ? ftwBonus : 0,
-                buffNames);
+                // ⚠ Le +X de FTW n'est plus conditionné à ftwSlot : la ligne d'attaque le lit toujours
+                // avec `slot == mb.FtwSlot`, qui exige déjà un slot, tandis que la ligne d'ATTAQUE
+                // NORMALE en a besoin justement quand il n'y a AUCUNE attaque dans le spike (Q22).
+                ftwSlot, Active(SpikeBuff.FindTheirWeakness) ? ftwBonus : 0,
+                buffNames,
+                Active(SpikeBuff.SunderingWeapon), Active(SpikeBuff.SplinterWeapon),
+                Active(SpikeBuff.FindTheirWeakness));
         }
         return ctx;
     }
@@ -1230,16 +1442,54 @@ public sealed class SpikeRowViewModel
 
     // Mod de PRÉFIXE physique de la ligne (aucun / de fractionnement / vampirique). Proposé tant
     // que le type de dégâts choisi n'est pas élémentaire — les deux occupent le même emplacement.
+    // Mêmes délégués que le compteur de procs : sans slot (ligne d'ATTAQUE NORMALE), l'état vit sur
+    // le perso, et le même ComboBox du gabarit y est réaiguillé.
     public bool CanChooseMod { get; init; }
     public IReadOnlyList<SpikeViewModel.WeaponModOption> ModOptions { get; init; } = [];
+    public Func<string?>? ModKeyGetter { get; init; }
+    public Action<string?>? ModKeySetter { get; init; }
+
+    public string? ModKeyValue
+    {
+        get => ModKeyGetter is { } g ? g() : Slot?.SpikeWeaponModKey;
+        set
+        {
+            if (ModKeySetter is { } s) s(value);
+            else if (Slot is not null) Slot.SpikeWeaponModKey = value ?? string.Empty;
+        }
+    }
 
     // Case « Proc du fractionnement » : visible sous le mod de fractionnement seul. Cochée, elle
     // relève la pénétration de 20 points pour TOUTE la ligne (frappes multiples comprises).
     public bool HasSunderingProc { get; init; }
+    public Func<bool>? SunderingProcGetter { get; init; }
+    public Action<bool>? SunderingProcSetter { get; init; }
+
+    public bool SunderingProcValue
+    {
+        get => SunderingProcGetter is { } g ? g() : Slot?.SpikeSunderingProc ?? false;
+        set
+        {
+            if (SunderingProcSetter is { } s) s(value);
+            else if (Slot is not null) Slot.SpikeSunderingProc = value;
+        }
+    }
 
     // Case « Arc corne » : visible quand l'arme de la ligne est un arc. +10 % de pénétration
     // permanente (pas un proc).
     public bool IsBowRow { get; init; }
+    public Func<bool>? HornbowGetter { get; init; }
+    public Action<bool>? HornbowSetter { get; init; }
+
+    public bool HornbowValue
+    {
+        get => HornbowGetter is { } g ? g() : Slot?.SpikeHornbow ?? false;
+        set
+        {
+            if (HornbowSetter is { } s) s(value);
+            else if (Slot is not null) Slot.SpikeHornbow = value;
+        }
+    }
 
     // Part de dégâts conditionnelle (« X more damage if [état] ») : une case à cocher gate son
     // décompte (cochée = comptée, défaut). Liée directement à SpikeConditional du slot ; ConditionText

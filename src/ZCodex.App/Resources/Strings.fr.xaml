@@ -527,6 +527,10 @@
     <sys:String x:Key="S.Spike.SunderingProcTip">Le mod se déclenche (20 % du temps) : +20 % de pénétration d'armure sur toute la ligne, toutes frappes comprises. Se cumule avec Judge's Insight et les pénétrations de base.</sys:String>
     <sys:String x:Key="S.Spike.Hornbow">Arc corne</sys:String>
     <sys:String x:Key="S.Spike.HornbowTip">Arc corne : +10 % de pénétration d'armure en permanence (pas un proc). Plage de dégâts et maîtrise identiques aux autres arcs.</sys:String>
+    <sys:String x:Key="S.Spike.NormalAttacks">Attaques normales</sys:String>
+    <sys:String x:Key="S.Spike.NormalAttacksTip">Compter aussi les coups d'arme normaux (hors compétence). Cochez ensuite, sur la carte de chaque perso, ceux dont vous voulez la ligne.</sys:String>
+    <sys:String x:Key="S.Spike.NormalRow">Attaque normale</sys:String>
+    <sys:String x:Key="S.Spike.NormalRowTip">Ajoute en fin de liste une ligne pour les coups d'arme normaux de ce perso, avec son compteur de coups. L'arme est celle du set actif, sinon celle déduite de sa barre. La ligne ne compte QUE le coup d'arme : les conjurations, Ordres, Honneur, Cent lames et autres riders ont déjà leur propre ligne à compteur.</sys:String>
     <sys:String x:Key="S.Spike.ConditionMet">Condition remplie</sys:String>
     <sys:String x:Key="S.Spike.CasterHp">PV lanceur :</sys:String>
     <sys:String x:Key="S.Spike.CasterHpTip">PV courants du lanceur au moment du cast (validé en quittant le champ)</sys:String>
