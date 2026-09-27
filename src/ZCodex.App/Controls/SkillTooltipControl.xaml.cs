@@ -1157,6 +1157,18 @@ public partial class SkillTooltipControl : UserControl
                 : MakeText(line, 11, "TextSecondaryBrush"));
         }
 
+        // Vol de vie posé par un effet actif (Ordre du vampire, Arme du tourment — lot 6c-2b). Sa propre
+        // ligne, JAMAIS une rangée de la table : le vol de vie ne dépend pas de l'armure, donc répéter le
+        // même chiffre dans chaque colonne serait du bruit et laisserait croire qu'il s'ajoute aux dégâts.
+        // Il échappe aussi au multiplicateur (Vengeance, Ural) et au flux — ce ne sont pas des dégâts.
+        // ⚠ Le vol de vie que la compétence fait ELLE-MÊME n'est toujours pas affiché (décision du
+        // chantier 10, reconfirmée par Philippe le 27/09/2026) : il est déjà écrit dans sa description.
+        if (boosts.LifeSteal > 0)
+            DamagePanel.Children.Add(MakeMarkup(
+                L($"Vol de vie : {SkillProgression.MarkEffect}{boosts.LifeSteal}{SkillProgression.MarkEffect}",
+                  $"Life steal: {SkillProgression.MarkEffect}{boosts.LifeSteal}{SkillProgression.MarkEffect}"),
+                11, "TextSecondaryBrush"));
+
         // Type de dégâts effectif, quand il y a quelque chose à en dire (lot 6c). Le TYPE part en ambre
         // (MarkRitual → RitualVariableBrush) : c'est la couleur des effets d'équipe, elle existe dans les
         // DEUX thèmes, donc aucune clé à créer et aucun risque de style implicite manquant en sombre.
@@ -1345,6 +1357,11 @@ public partial class SkillTooltipControl : UserControl
             $"{sup.SkillName} : {L("sans effet ici — cette compétence retire les préparations avant de toucher.", "no effect here — this skill removes preparations before it hits.")}",
         DamageBoostSuppression.NoLongerPhysical =>
             $"{sup.SkillName} : {L("sans effet ici — les dégâts de ce personnage ne sont plus physiques.", "no effect here — this character's damage is no longer physical.")}",
+        // Ordre du vampire : annulé par tout AUTRE enchantement de Nécromant. La phrase nomme la famille
+        // plutôt que l'effet fautif — il peut venir de trois endroits (sa barre, un allié, le bandeau), et
+        // les deux cas courants sont ses propres frères, l'Ordre de la douleur et la Fureur noire.
+        DamageBoostSuppression.NecromancerEnchanted =>
+            $"{sup.SkillName} : {L("sans effet ici — ce personnage est sous un autre enchantement de Nécromant.", "no effect here — this character is under another Necromancer enchantment.")}",
         _ => sup.SkillName,
     };
 

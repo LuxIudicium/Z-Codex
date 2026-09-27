@@ -24,6 +24,18 @@ public enum DamageBoostKind
     /// (Q10) : +25 pour Vengeance, −30 pour l'Affinité vitale. Plusieurs multiplicateurs se
     /// composent (×1,25 puis ×0,70).</summary>
     Multiplier,
+    /// <summary>
+    /// VOL DE VIE conféré aux attaques par un effet (Ordre du vampire, Arme du tourment). Sa propre
+    /// ligne sous la table : ce ne sont pas des dégâts, donc ni colonne d'AL, ni multiplicateur
+    /// (Vengeance, Ural), ni flux — le vol de vie est hors de tout ça, règle déjà en vigueur.
+    ///
+    /// ⚠ Il ne contredit PAS la décision du chantier 10 (« aucun vol de vie dans l'infobulle »), qui
+    /// vaut toujours pour le vol de vie qu'une compétence fait ELLE-MÊME : celui-là est déjà écrit en
+    /// clair dans sa description, l'afficher deux fois serait une redite. Celui-ci n'est écrit nulle
+    /// part sur la compétence survolée — même raisonnement que la ligne « bonus d'effets ».
+    /// (Arbitrage de Philippe, 27/09/2026.)
+    /// </summary>
+    LifeSteal,
 }
 
 /// <summary>Qui l'effet touche. Les périmètres d'ARME réutilisent <see cref="ConditionWeaponScope"/>
@@ -86,6 +98,9 @@ public enum DamageBoostScope
 /// lit chez le LANCEUR le plus fort de l'équipe. <paramref name="Malus"/> = l'effet RETIRE des dégâts
 /// (Affinité vitale, Arme du tourment) : même descripteur, valeur négative.
 /// <paramref name="LostWhenEnchanted"/> = « no effect while target ally is enchanted » (Arme brute).
+/// <paramref name="LostWhenNecroEnchanted"/> = version ÉTROITE de la précédente : « party members under
+/// another Necromancer enchantment are not affected » (Ordre du vampire). En pratique, l'Ordre de la
+/// douleur et la Fureur noire l'annulent — les deux sont des enchantements de Nécromant du bandeau.
 /// <paramref name="Band"/> = effet du BANDEAU D'ÉQUIPE (lot 6c) : son icône vit dans le bandeau et non
 /// sur la carte d'un perso, donc il ne passe ni par le balayage « équipée » ni par les effets reçus — c'est
 /// l'état du bandeau qui l'allume, pour TOUS les persos à la fois.
@@ -100,7 +115,8 @@ public sealed record DamageBoostDescriptor(
     int Index = -1, int Fixed = 0, string? DamageType = null, bool IsBonus = true,
     string? RequiresElement = null, int BaseSkillId = 0,
     bool Received = false, bool Malus = false, bool LostWhenEnchanted = false,
-    bool CannotSelfTarget = false, bool Band = false, bool RequiresPhysical = false)
+    bool CannotSelfTarget = false, bool Band = false, bool RequiresPhysical = false,
+    bool LostWhenNecroEnchanted = false)
 {
     /// <summary>Id sous lequel l'icône est mémorisée (et persistée) : l'id de base.</summary>
     public int ToggleId => BaseSkillId != 0 ? BaseSkillId : SkillId;
@@ -123,6 +139,10 @@ public enum DamageBoostSuppression
     /// <summary>Bonus « aux dégâts physiques » perdu parce que l'arme a été convertie (glossaire G3) :
     /// Vannage, et l'Ordre de la douleur au 6c-2.</summary>
     NoLongerPhysical,
+    /// <summary>Ordre du vampire : « party members under another Necromancer enchantment are not
+    /// affected ». Version étroite de <see cref="Enchanted"/> — seuls les enchantements de NÉCROMANT
+    /// comptent, et en pratique ce sont l'Ordre de la douleur et la Fureur noire.</summary>
+    NecromancerEnchanted,
 }
 
 /// <summary>
@@ -164,7 +184,8 @@ public readonly record struct DamageBoosts(
     IReadOnlyList<SuppressedBoost>? Suppressed = null,
     bool ElementalToCold = false,
     bool StoneStriker = false,
-    DamageTypeNote? TypeNote = null)
+    DamageTypeNote? TypeNote = null,
+    int LifeSteal = 0)
 {
     /// <summary>
     /// Multiplicateur de dégâts reçu (Vengeance ×1,25, Affinité vitale ×0,70).
@@ -181,7 +202,7 @@ public readonly record struct DamageBoosts(
     /// <summary>Au moins un effet à afficher — sinon l'infobulle n'ajoute ni ligne ni chiffre.</summary>
     public bool Any => Packets is { Count: > 0 } || CriticalPercent > 0
                        || BasePenetration > 0 || BonusPenetration > 0 || HasMultiplier
-                       || Suppressed is { Count: > 0 } || TypeNote is not null;
+                       || Suppressed is { Count: > 0 } || TypeNote is not null || LifeSteal > 0;
 
     /// <summary>Un multiplicateur de dégâts est-il en jeu ? Comparaison par écart, pas par égalité de
     /// doubles.</summary>
@@ -246,6 +267,8 @@ public static class DamageBoostData
     public const int TogetherAsOneSkillId      = 3427;
     public const int EbonStandardOfHonorSkillId = 2233;
     public const int UralsHammerSkillId        = 2217;
+    /// <summary>Ordre du vampire : le seul effet du bandeau qui confère du VOL DE VIE (lot 6c-2b).</summary>
+    public const int OrderOfTheVampireSkillId  = 148;
 
     /// <summary>Id d'icône du mod d'arme « de fractionnement » : ce n'est pas une compétence, donc un id
     /// réservé négatif, comme le mod « Furieux » du lot 1a (qui occupe −1).</summary>
@@ -367,6 +390,11 @@ public static class DamageBoostData
         // échelle), donc l'index ne prête pas à conséquence — vérifié dans la base, pas supposé.
         new(NightmareWeaponSkillId, DamageBoostScope.Attacks, DamageBoostKind.Damage, Index: 0,
             Received: true, Malus: true),
+        // ⚠ L'Arme du tourment a DEUX moitiés, et le lot 6b n'en montrait qu'une : « Target ally's attacks
+        // STEAL 10…42…50 Health but deal 10…42…50 less damage ». Le vol de vie arrive au 6c-2b (27/09/2026).
+        // Même index, et surtout PAS de Malus : le vol de vie est un GAIN, il ne porte pas le signe négatif.
+        new(NightmareWeaponSkillId, DamageBoostScope.Attacks, DamageBoostKind.LifeSteal, Index: 0,
+            Received: true),
 
         // ── « Par le marteau d'Ural ! » (lot 6c-2) : un effet REÇU, pas un effet de bandeau ─────
         // ⚠ Il SORT du bandeau d'équipe où le recensement du § 6.2 l'avait mis (Q3, tranchée le
@@ -443,6 +471,14 @@ public static class DamageBoostData
         // SpiritAttacks, et c'est voulu.
         new(EbonStandardOfHonorSkillId, DamageBoostScope.PetAttacks, DamageBoostKind.TextDamage,
             Index: 1, Band: true),
+        // Ordre du vampire (lot 6c-2b, demande de Philippe du 27/09/2026) : « These party members STEAL
+        // 3…13…16 Health with each physical damage attack. Party members under another Necromancer
+        // enchantment are not affected. » Même progression et même périmètre que l'Ordre de la douleur —
+        // attaques d'arme, physiques, et pas le familier (« membres du groupe ») —, mais du VOL DE VIE.
+        // ⚠ C'est son propre frère qui l'annule le plus souvent : l'Ordre de la douleur est lui aussi un
+        // enchantement de Nécromant, donc les deux Ordres ne se cumulent jamais (vrai comportement du jeu).
+        new(OrderOfTheVampireSkillId, DamageBoostScope.Attacks, DamageBoostKind.LifeSteal, Index: 0,
+            Band: true, RequiresPhysical: true, LostWhenNecroEnchanted: true),
     };
 
     /// <summary>
@@ -482,11 +518,16 @@ public static class DamageBoostData
         WeaponStrike.IsWeaponAttack(target)
         || analysis.Rows.Any(r => r.Kind == SkillDamage.RowKind.Damage && !r.IgnoresArmor);
 
-    // ⚠ Les effets de BANDEAU en sont exclus, et c'est vital : le Vannage porte DEUX descripteurs sur le
-    // même id (le perso et son familier), donc un ToDictionary sur All entier lèverait au chargement de la
-    // classe — crash au démarrage, sans build rouge. Ils se lisent par BandAll, jamais par id.
-    private static readonly Dictionary<int, DamageBoostDescriptor> _bySkillId =
-        All.Where(d => !d.Band).ToDictionary(d => d.SkillId);
+    // ⚠⚠ UNE COMPÉTENCE PEUT PORTER PLUSIEURS DESCRIPTEURS, donc ceci groupe au lieu d'indexer.
+    // Deux occasions de se faire prendre, et les deux sont arrivées :
+    //  • le Vannage porte deux descripteurs sur le même id (le perso et son familier) — d'où l'exclusion
+    //    des effets de BANDEAU, qui se lisent par BandAll et jamais par id ;
+    //  • l'Arme du tourment inflige un malus de dégâts ET confère du vol de vie (lot 6c-2b), et elle
+    //    n'est PAS un effet de bandeau : l'exclusion ci-dessus ne la couvrait pas.
+    // Un ToDictionary LÈVE au chargement de la classe → crash au démarrage, build vert, aucun avertissement.
+    // Le harnais l'a attrapé le 27/09/2026 avant que l'application ne le voie.
+    private static readonly Dictionary<int, List<DamageBoostDescriptor>> _bySkillId =
+        All.Where(d => !d.Band).GroupBy(d => d.SkillId).ToDictionary(g => g.Key, g => g.ToList());
 
     /// <summary>Les effets REÇUS d'un allié (lot 6b) : le balayage d'équipe s'appuie sur cette liste au
     /// lieu d'une suite de cas en dur, donc ajouter une source ne demande qu'un descripteur.</summary>
@@ -510,7 +551,18 @@ public static class DamageBoostData
     private static readonly HashSet<int> _toggleIds =
         All.Where(d => !d.Band).Select(d => d.ToggleId).Append(SunderingModToggleId).ToHashSet();
 
-    public static DamageBoostDescriptor? BySkillId(int skillId) => _bySkillId.GetValueOrDefault(skillId);
+    /// <summary>TOUS les descripteurs d'une compétence, hors bandeau — c'est cette voie-ci qu'il faut
+    /// prendre pour CALCULER, parce qu'une compétence peut en porter plusieurs (l'Arme du tourment, malus
+    /// de dégâts + vol de vie). Liste vide si la compétence n'en a aucun.</summary>
+    public static IReadOnlyList<DamageBoostDescriptor> DescriptorsFor(int skillId) =>
+        _bySkillId.GetValueOrDefault(skillId) ?? [];
+
+    /// <summary>Le PREMIER descripteur d'une compétence, pour les appelants qui ne veulent qu'un id d'icône
+    /// ou savoir si la compétence en porte un. ⚠ Ne JAMAIS s'en servir pour calculer une valeur : une
+    /// compétence peut en porter plusieurs, et on n'en verrait qu'un — passer par
+    /// <see cref="DescriptorsFor"/>.</summary>
+    public static DamageBoostDescriptor? BySkillId(int skillId) =>
+        _bySkillId.GetValueOrDefault(skillId) is { Count: > 0 } list ? list[0] : null;
 
     /// <summary>Id d'icône reconnu — filtre de chargement de la liste persistée des boosts actifs.</summary>
     public static bool IsToggleId(int id) => _toggleIds.Contains(id);
@@ -802,5 +854,5 @@ public static class DamageBoostData
     /// signifie « mon arme inflige ce type de dégâts ».
     /// </summary>
     public static string? ExclusiveElementFamily(int toggleId) =>
-        _bySkillId.GetValueOrDefault(toggleId) is { RequiresElement: not null } ? "WeaponElement" : null;
+        DescriptorsFor(toggleId).Any(d => d.RequiresElement is not null) ? "WeaponElement" : null;
 }

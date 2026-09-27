@@ -119,7 +119,7 @@ public class BuildEditorViewModel : ViewModelBase
         // Rangs des effets de dégâts PORTÉS du bandeau (lot 6c-2) : un seul perso, donc le porteur ne peut
         // être que lui. ⚠ Contrairement aux effets reçus, il n'y a ici AUCUN « cannot self-target » : un
         // Nécromant seul profite bel et bien de son propre Ordre de la douleur.
-        Character.BandDamageRanksProvider = () => CharacterSlotViewModel.BandDamageRanksFor(new[] { Character });
+        Character.BandRanksProvider = () => CharacterSlotViewModel.BandRanksFor(new[] { Character });
 
         // Nouveau build vierge : la PR est obligatoire dans l'éditeur (isQuery=false → le picker
         // n'offre pas « None » sur la PR). Pour qu'un code Any/SEC ne puisse JAMAIS être produit,

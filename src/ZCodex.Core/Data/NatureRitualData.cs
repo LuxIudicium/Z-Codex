@@ -232,18 +232,16 @@ public static class NatureRitualData
             "Party members near you or your pet: +5…15 damage with their attacks (caster's Expertise rank).",
             Group: BandGroup.Shout, EquippedOnly: true),
         // ⚠ Ordre du VAMPIRE : ajouté au bandeau le 27/09/2026 à la demande de Philippe (« que l'on a
-        // oublié »). Il avait été écarté du recensement du § 6.2 pour une raison qui tient toujours — son
-        // effet est du VOL DE VIE, et l'infobulle n'en affiche jamais (décision du chantier 10) —, donc il
-        // n'a AUCUN descripteur de dégâts : c'est une entrée de PRÉSENCE, comme Hiver. Son infobulle le dit,
-        // sinon son absence d'effet sur les chiffres passerait pour un bug.
-        // Même progression que l'Ordre de la douleur (3…13…16, Magie du sang), sondée dans la base.
-        new(Ritual.OrderOfTheVampire, 148, "Order of the Vampire",
+        // oublié »). Il avait été écarté du recensement du § 6.2 parce que son effet est du VOL DE VIE, que
+        // l'infobulle n'affichait jamais (chantier 10) — puis Philippe a demandé le même jour de l'afficher,
+        // d'où son descripteur `LifeSteal` au lot 6c-2b. Le chantier 10 reste valable pour le vol de vie
+        // qu'une compétence fait ELLE-MÊME : celui-là est déjà écrit dans sa description.
+        // Même progression et même périmètre que l'Ordre de la douleur (3…13…16, Magie du sang), sondés.
+        new(Ritual.OrderOfTheVampire, DamageBoostData.OrderOfTheVampireSkillId, "Order of the Vampire",
             "Membres du groupe : vol de vie de 3…16 sur leurs touches physiques (rang de Magie du sang du lanceur). "
-            + "Sans effet sur un membre du groupe déjà sous un autre enchantement de Nécromant. "
-            + "Aucun chiffre d'infobulle ne bouge : le vol de vie n'y est jamais affiché.",
+            + "Sans effet sur un membre du groupe déjà sous un autre enchantement de Nécromant — donc jamais en même temps que l'Ordre de la douleur ou la Fureur noire.",
             "Party members: steal 3…16 Health on their physical hits (caster's Blood Magic rank). "
-            + "No effect on a party member already under another Necromancer enchantment. "
-            + "No tooltip number changes: life steal is never displayed there.",
+            + "No effect on a party member already under another Necromancer enchantment — so never alongside Order of Pain or Dark Fury.",
             Group: BandGroup.Enchantment, EquippedOnly: true),
         // Ordre de la douleur : enchantement de Nécromant, comme l'Ordre du vampire juste au-dessus. ⚠ Son
         // bonus SAUTE dès que les dégâts ne sont plus physiques (glossaire G3), comme le Vannage.
@@ -311,6 +309,18 @@ public static class NatureRitualData
 
     /// <summary>Id de BASE (PvE) du rituel — celui qu'on persiste, stable quel que soit le mode.</summary>
     public static int SkillIdOf(Ritual ritual) => All.First(d => d.Ritual == ritual).SkillId;
+
+    /// <summary>
+    /// Cet effet du bandeau est-il un ENCHANTEMENT DE NÉCROMANT ? Il annule alors l'Ordre du vampire
+    /// (« party members under another Necromancer enchantment are not affected »), l'Ordre du vampire
+    /// lui-même compris — c'est à l'appelant d'écarter la source qu'il examine.
+    ///
+    /// ⚠ Liste explicite, sur une liste de 28 entrées entièrement sous notre contrôle, et le harnais
+    /// VÉRIFIE dans la base réelle qu'elle est exacte : si un futur effet de bandeau était un
+    /// enchantement de Nécromant sans figurer ici, il rougirait au lieu de mentir en silence.
+    /// </summary>
+    public static bool IsNecromancerEnchantment(Ritual ritual) =>
+        ritual is Ritual.OrderOfPain or Ritual.OrderOfTheVampire or Ritual.DarkFury;
 
     // ── Prédicats de type (valeurs SkillType exactes de la base) ──────────────
     public static bool IsSignet(Skill s)      => s.SkillType.Contains("Signet", StringComparison.Ordinal);

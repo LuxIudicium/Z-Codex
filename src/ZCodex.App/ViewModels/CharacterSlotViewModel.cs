@@ -709,42 +709,50 @@ public class CharacterSlotViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Rang du PORTEUR le plus fort de chaque effet de dégâts du bandeau, par SkillId de base (lot 6c-2) ;
-    /// absent du dictionnaire = personne ne le porte.
+    /// Rang du PORTEUR le plus fort de chaque effet de bandeau dont le chantier infobulle a besoin, par
+    /// rituel (lot 6c-2) ; **absent du dictionnaire = personne ne le porte**, donc l'effet n'existe pas,
+    /// même resté allumé dans un fichier enregistré avant le retrait de la compétence.
     ///
-    /// ⚠ Nouveauté du 6c-2 : les trois esprits du 6c-1 ne portaient que des littéraux, les 5 effets portés
+    /// ⚠ Nouveauté du 6c-2 : les trois esprits du 6c-1 ne portaient que des littéraux, les effets PORTÉS
     /// ont tous un rang — et il se lit chez leur PORTEUR. La caractéristique d'échelle est le plus souvent
     /// absente de la barre de celui qui en profite (la Magie du sang de l'Ordre de la douleur chez un
     /// Guerrier, le rang de l'Avant-garde d'Ebon chez qui ne porte pas l'Étendard) : la lire sur le receveur
     /// rendrait null, donc 0, et le bonus disparaîtrait en silence.
+    ///
+    /// ⚠ Deux familles y entrent, et la seconde n'est pas une évidence : les effets qui posent un chiffre,
+    /// ET les **enchantements de Nécromant**, parce qu'ils ANNULENT l'Ordre du vampire. La Fureur noire
+    /// n'a aucun chiffre de dégâts, mais il faut quand même savoir si quelqu'un la porte — sinon un
+    /// bandeau resté allumé dans un vieux fichier ferait taire l'Ordre du vampire sans que rien ne
+    /// l'explique (l'effet fautif serait invisible : un « porté seulement » sans porteur n'est pas affiché).
     /// </summary>
-    public static IReadOnlyDictionary<int, int> BandDamageRanksFor(IEnumerable<CharacterSlotViewModel> characters)
+    public static IReadOnlyDictionary<NatureRitualData.Ritual, int> BandRanksFor(
+        IEnumerable<CharacterSlotViewModel> characters)
     {
         var list = characters as IReadOnlyCollection<CharacterSlotViewModel> ?? characters.ToList();
-        Dictionary<int, int>? found = null;
-        foreach (var d in DamageBoostData.BandAll)
+        Dictionary<NatureRitualData.Ritual, int>? found = null;
+        foreach (var d in NatureRitualData.All)
         {
-            // Les trois esprits du 6c-1 portent des LITTÉRAUX : leur chercher un rang serait un parcours
-            // d'arbre pour rien, et ils sont de toute façon proposés sans porteur.
-            if (d.Fixed > 0) continue;
-            // Une compétence peut porter DEUX descripteurs (le perso et son familier) : le rang est le même,
-            // le dictionnaire est donc bien clé par SkillId et non par descripteur.
-            if (found is not null && found.ContainsKey(d.SkillId)) continue;
-            if (NatureRitualData.BySkillId(d.SkillId) is not { } band) continue;
-            if (WearerRank(band.Ritual, list) is not { } rank) continue;
-            (found ??= [])[d.SkillId] = rank;
+            if (!NeedsBandRank(d)) continue;
+            if (WearerRank(d.Ritual, list) is not { } rank) continue;
+            (found ??= [])[d.Ritual] = rank;
         }
         return found ?? EmptyBandRanks;
     }
 
-    private static readonly Dictionary<int, int> EmptyBandRanks = [];
+    // Les trois esprits du 6c-1 portent des LITTÉRAUX : leur chercher un porteur serait un parcours d'arbre
+    // pour rien, et ils sont de toute façon proposés sans porteur.
+    private static bool NeedsBandRank(NatureRitualData.Descriptor d) =>
+        NatureRitualData.IsNecromancerEnchantment(d.Ritual)
+        || DamageBoostData.BandAll.Any(b => b.SkillId == d.SkillId && b.Fixed == 0);
 
-    public Func<IReadOnlyDictionary<int, int>>? BandDamageRanksProvider { get; set; }
+    private static readonly Dictionary<NatureRitualData.Ritual, int> EmptyBandRanks = [];
 
-    /// <summary>Rangs des porteurs des effets de dégâts du bandeau, vus par CE perso (l'environnement est
-    /// global : ils sont les mêmes pour tout le monde).</summary>
-    public IReadOnlyDictionary<int, int> BandDamageRanks =>
-        BandDamageRanksProvider?.Invoke() ?? OwnerBuild?.BandDamageRanks ?? EmptyBandRanks;
+    public Func<IReadOnlyDictionary<NatureRitualData.Ritual, int>>? BandRanksProvider { get; set; }
+
+    /// <summary>Rangs des porteurs des effets de bandeau utiles au chantier, vus par CE perso
+    /// (l'environnement est global : ils sont les mêmes pour tout le monde).</summary>
+    public IReadOnlyDictionary<NatureRitualData.Ritual, int> BandRanks =>
+        BandRanksProvider?.Invoke() ?? OwnerBuild?.BandRanks ?? EmptyBandRanks;
 
     /// <summary>Hiver est-il posé ? → les dégâts élémentaires s'AFFICHENT en froid. ⚠ Étiquette seulement :
     /// Hiver convertit les dégâts REÇUS, il ne change pas ce que l'arme inflige, donc il ne déclenche
@@ -1033,7 +1041,7 @@ public class CharacterSlotViewModel : ViewModelBase
         string? element = EffectiveElementFor(target, equipped);
 
         List<DamageBoostPacket>? packets = null;
-        int critical = 0, basePenetration = 0, bonusPenetration = 0;
+        int critical = 0, basePenetration = 0, bonusPenetration = 0, lifeSteal = 0;
         double multiplier = 1.0;
         bool elementTaken = false;
         // Arme brute : « aucun effet si l'allié visé est enchanté ». Deuxième entorse assumée à « icône
@@ -1067,6 +1075,14 @@ public class CharacterSlotViewModel : ViewModelBase
             if (d.LostWhenEnchanted && enchanted)
             {
                 Suppress(sk, DamageBoostSuppression.Enchanted);
+                continue;
+            }
+            // Ordre du vampire : annulé par TOUT autre enchantement de Nécromant — donc, en pratique, par son
+            // propre frère l'Ordre de la douleur et par la Fureur noire. Le test est plus coûteux que les
+            // autres (il balaie les trois origines), donc il vient APRÈS le périmètre, jamais avant.
+            if (d.LostWhenNecroEnchanted && IsUnderOtherNecromancerEnchantment(sk))
+            {
+                Suppress(sk, DamageBoostSuppression.NecromancerEnchanted);
                 continue;
             }
             // « Augmente les dégâts physiques » (Vannage, et l'Ordre de la douleur au 6c-2) : le bonus SAUTE
@@ -1122,6 +1138,10 @@ public class CharacterSlotViewModel : ViewModelBase
                 // Les multiplicateurs se COMPOSENT : Vengeance (+25) sous Affinité vitale (−30) donne
                 // ×1,25 × 0,70. Chacun porte des points de pourcentage signés.
                 case DamageBoostKind.Multiplier:       multiplier *= 1.0 + value / 100.0; break;
+                // Vol de vie conféré (Ordre du vampire, Arme du tourment) : sa propre ligne, hors de la
+                // table et hors du multiplicateur — le vol de vie n'est pas un dégât. Deux effets actifs en
+                // même temps s'ADDITIONNENT, comme les paquets de dégâts.
+                case DamageBoostKind.LifeSteal:        lifeSteal += value; break;
             }
         }
 
@@ -1129,7 +1149,7 @@ public class CharacterSlotViewModel : ViewModelBase
         return new DamageBoosts(packets, critical, basePenetration,
                                 bonusPenetration + SunderingModPercentFor(target, equipped), multiplier - 1.0,
                                 suppressed, WinterLit, StoneStrikerLit,
-                                TypeNoteFor(target, equipped, element));
+                                TypeNoteFor(target, equipped, element), lifeSteal);
     }
 
     /// <summary>Les effets de dégâts ALLUMÉS de ce perso, des DEUX origines : sa propre barre (lots 6a)
@@ -1137,29 +1157,70 @@ public class CharacterSlotViewModel : ViewModelBase
     /// se lit chez lui — c'est pour ça que la paire rend la compétence source et pas seulement l'id.</summary>
     private IEnumerable<(Skill Source, DamageBoostDescriptor Descriptor)> LitDamageBoosts()
     {
+        // ⚠ TOUS les descripteurs de la compétence, pas le premier : depuis le lot 6c-2b, l'Arme du tourment
+        // en porte DEUX (son malus de dégâts et son vol de vie). N'en prendre qu'un afficherait la moitié de
+        // ce que l'effet fait, sans rien signaler.
         foreach (var slot in SkillSlots)
-            if (slot.Skill is { } sk && DamageBoostData.BySkillId(sk.Id) is { Received: false } d
-                && IsAttributeBoostActive(d.ToggleId))
-                yield return (sk, d);
+            if (slot.Skill is { } sk)
+                foreach (var d in DamageBoostData.DescriptorsFor(sk.Id))
+                    if (!d.Received && IsAttributeBoostActive(d.ToggleId))
+                        yield return (sk, d);
 
         foreach (var (toggleId, recv) in ReceivedDamageBoosts)
-            if (IsAttributeBoostActive(toggleId) && DamageBoostData.BySkillId(recv.Skill.Id) is { } d)
-                yield return (recv.Skill, d);
+            if (IsAttributeBoostActive(toggleId))
+                foreach (var d in DamageBoostData.DescriptorsFor(recv.Skill.Id))
+                    if (d.Received)
+                        yield return (recv.Skill, d);
 
         // Troisième origine (lot 6c) : le BANDEAU d'équipe. Aucune icône de carte — c'est l'effet posé qui
         // allume, pour tout le monde en même temps. Les trois esprits du 6c-1 n'ont aucun rang à résoudre
         // (leurs chiffres sont des littéraux) ; les 5 effets PORTÉS du 6c-2 en ont un, celui de leur porteur.
         var rituals = ActiveNatureRituals;
-        var bandRanks = BandDamageRanks;
+        var bandRanks = BandRanks;
         foreach (var d in DamageBoostData.BandAll)
             if (NatureRitualData.BySkillId(d.SkillId) is { } band && rituals.Contains(band.Ritual)
                 // ⚠ Un effet « porté seulement » que PLUS PERSONNE n'équipe n'existe pas, même si le bandeau
                 // le garde allumé : l'état est persisté par SkillId, donc un fichier enregistré AVANT le
                 // retrait de la compétence le rouvre allumé. Sans ce test il donnerait son chiffre au rang 0,
                 // ou pire une ligne « sans effet ici » fantôme sur l'Ordre de la douleur.
-                && (!band.EquippedOnly || bandRanks.ContainsKey(d.SkillId))
+                && (!band.EquippedOnly || bandRanks.ContainsKey(band.Ritual))
                 && BandSkill(d.SkillId) is { } sk)
                 yield return (sk, d);
+    }
+
+    /// <summary>
+    /// Un AUTRE enchantement de Nécromant est-il allumé sur ce perso ? Règle de l'Ordre du vampire
+    /// (« party members under another Necromancer enchantment are not affected »), version étroite de celle
+    /// de l'Arme brute. <paramref name="source"/> = l'effet examiné, à écarter du balayage : l'Ordre du
+    /// vampire est lui-même un enchantement de Nécromant, il s'annulerait tout seul sans ça.
+    ///
+    /// Les trois origines comptent — sa propre barre, un allié, le bandeau. ⚠ En pratique ce sont les deux
+    /// du bandeau qui frappent : l'Ordre de la douleur et la Fureur noire. Les deux Ordres ne se cumulent
+    /// donc jamais, ce qui est bien le comportement du jeu.
+    /// </summary>
+    private bool IsUnderOtherNecromancerEnchantment(Skill source)
+    {
+        foreach (var slot in SkillSlots)
+            if (slot.Skill is { Profession: Profession.Necromancer, SkillType: EnchantmentSkillType } sk
+                && sk.Id != source.Id
+                && PersonalToggleIdOf(sk) is { } id && IsAttributeBoostActive(id))
+                return true;
+        foreach (var (toggleId, recv) in ReceivedDamageBoosts)
+            if (recv.Skill is { Profession: Profession.Necromancer, SkillType: EnchantmentSkillType }
+                && recv.Skill.Id != source.Id && IsAttributeBoostActive(toggleId))
+                return true;
+        var rituals = ActiveNatureRituals;
+        var bandRanks = BandRanks;
+        foreach (var d in NatureRitualData.All)
+            // ⚠ « porté seulement » sans porteur = l'effet n'est pas là, et il n'est même pas AFFICHÉ au
+            // bandeau : le laisser annuler l'Ordre du vampire produirait un « sans effet ici » qu'aucune
+            // icône visible n'expliquerait. C'est pourquoi la Fureur noire, qui n'a aucun chiffre de dégâts,
+            // figure quand même dans BandRanks.
+            if (NatureRitualData.IsNecromancerEnchantment(d.Ritual) && d.SkillId != source.Id
+                && rituals.Contains(d.Ritual)
+                && (!d.EquippedOnly || bandRanks.ContainsKey(d.Ritual)))
+                return true;
+        return false;
     }
 
     /// <summary>Un ENCHANTEMENT est-il allumé sur ce perso ? Compte ses propres icônes d'enchantement et
@@ -1199,7 +1260,8 @@ public class CharacterSlotViewModel : ViewModelBase
     /// <summary>Rang d'un effet de BANDEAU (lot 6c-2) : celui de son porteur le plus fort. null = personne ne
     /// le porte, ou l'effet n'a pas de rang du tout (les trois esprits du 6c-1, qui passent par Fixed).</summary>
     private int? BandRankOf(DamageBoostDescriptor descriptor) =>
-        descriptor.Band && BandDamageRanks.TryGetValue(descriptor.SkillId, out int rank) ? rank : null;
+        descriptor.Band && NatureRitualData.BySkillId(descriptor.SkillId) is { } band
+        && BandRanks.TryGetValue(band.Ritual, out int rank) ? rank : null;
 
     /// <summary>Rang d'un effet REÇU : celui de son lanceur le plus fort, jamais celui du receveur — la
     /// caractéristique d'échelle est souvent absente de la barre de celui qui en profite (le Communion

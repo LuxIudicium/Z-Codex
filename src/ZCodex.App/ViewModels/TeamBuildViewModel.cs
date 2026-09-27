@@ -107,7 +107,7 @@ public class TeamBuildViewModel : ViewModelBase, IRenamableTab
     // « Visez les yeux ! » change le taux de critique affiché chez TOUS les persos. Sans son rang dans la
     // signature, leurs infobulles gardent l'ancien chiffre jusqu'à ce qu'autre chose bouge.
     private string BandDamageRanksSignature =>
-        string.Join(",", BandDamageRanks.OrderBy(kv => kv.Key).Select(kv => $"{kv.Key}:{kv.Value}"));
+        string.Join(",", BandRanks.OrderBy(kv => (int)kv.Key).Select(kv => $"{(int)kv.Key}:{kv.Value}"));
 
     private string _heroicRefrainSig = "";
     private readonly DispatcherTimer _heroicRefrainTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
@@ -175,8 +175,8 @@ public class TeamBuildViewModel : ViewModelBase, IRenamableTab
 
     // Rangs des effets de dégâts PORTÉS du bandeau (lot 6c-2) : rang du porteur le plus fort de l'arbre pour
     // chacun ; absent = personne ne le porte, et l'effet ne joue alors pas, même resté allumé dans un fichier.
-    public IReadOnlyDictionary<int, int> BandDamageRanks =>
-        CharacterSlotViewModel.BandDamageRanksFor(EnumerateTree());
+    public IReadOnlyDictionary<ZCodex.Core.Data.NatureRitualData.Ritual, int> BandRanks =>
+        CharacterSlotViewModel.BandRanksFor(EnumerateTree());
 
     // Saignement de Ronces (lot 4c) : Survie du porteur le plus fort, ou rang de simulation du bandeau ;
     // 0 si l'esprit n'est pas posé.
