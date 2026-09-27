@@ -236,20 +236,37 @@ public static class WeaponStrike
 
     /// <summary>
     /// Probabilité (0–1) de critique contre une cible de niveau <paramref name="targetLevel"/> —
-    /// formule d'Izzy (wiki/Damage_calculation), sans modificateur de critique d'arme. Le rang
-    /// de Critical Strikes (+1 %/rang, toutes armes) se combine en probabilités indépendantes,
-    /// pas en somme — wiki/Critical_hit : « multiplicative between ... base crit rate [and]
-    /// Critical Strikes rank » (table Critical Eye × CS : 15 % et 15 % → 27,75 %). Bornée à
-    /// 100% (dépassée dès maîtrise 12 contre une cible de bas niveau).
+    /// formule d'Izzy (wiki/Damage_calculation), sans modificateur de critique d'arme.
+    ///
+    /// ⚠ **Trois facteurs INDÉPENDANTS, jamais une somme** — wiki/Critical_hit : « Critical hit chance
+    /// is **additive between skills**, but **multiplicative** between the effects of base crit rate,
+    /// Critical Strikes rank, and the combined effect of skills. » Soit
+    /// `1 − (1 − base) × (1 − rang/100) × (1 − bonus/100)`. Les cinq lignes de sa table se recalculent
+    /// juste à la décimale (Œil critique × rang 15 = 27,75 % ; Méthode de l'Assassin × rang = 44,75 % ;
+    /// **(Œil critique + Méthode de l'Assassin) × rang = 57,5 %**, qui prouve les deux règles d'un coup :
+    /// 15+35 s'ajoutent ENTRE compétences, puis le total se multiplie).
+    ///
+    /// ⚠⚠ <paramref name="boostPercent"/> = la SOMME des bonus de compétences (« Craignez-moi ! »,
+    /// « Visez les yeux ! », Œil critique, Méthode du Maître…). Il entre ICI, en troisième facteur, et
+    /// **surtout pas en addition au taux affiché** : Q7 du chantier infobulle disait le contraire et
+    /// **a été démentie en jeu le 27/09/2026** par Philippe — Parangon, Maîtrise du javelot 16,
+    /// Commandement 12 (+86 %), cible niveau 20. L'addition prédisait 100 %, donc AUCUN coup normal ;
+    /// il en a compté **4 ou 5 sur une soixantaine** d'attaques sous le cri (et 11 critiques sur 60 sans
+    /// le cri, contre 16,7 % prédits, ce qui valide le taux de base au passage).
+    ///
+    /// Un bonus au-delà de 100 % est ramené à 100 (« Visez les yeux ! » vaut +105 % à Commandement 16) :
+    /// le plafond de Q7 n'a plus besoin d'être posé à la main, il sort du produit. Aucun MALUS de
+    /// critique n'existe dans la base, d'où le plancher à 0.
     /// </summary>
     public static double CriticalChance(int masteryRank, int attackerLevel, int targetLevel,
-                                        int criticalStrikesRank = 0)
+                                        int criticalStrikesRank = 0, int boostPercent = 0)
     {
         double cappedRank = Math.Min(masteryRank, (attackerLevel + 4) / 2.0);
         double chance = 0.05 * Math.Pow(2, (8 * attackerLevel + 4 * masteryRank + 6 * cappedRank
                                             - 15 * targetLevel - 100) / 40.0)
                         * (1 - 0.01 * masteryRank) + 0.01 * masteryRank;
-        chance = 1 - (1 - chance) * (1 - 0.01 * criticalStrikesRank);
+        chance = 1 - (1 - chance) * (1 - 0.01 * criticalStrikesRank)
+                                  * (1 - 0.01 * Math.Clamp(boostPercent, 0, 100));
         return Math.Clamp(chance, 0.0, 1.0);
     }
 

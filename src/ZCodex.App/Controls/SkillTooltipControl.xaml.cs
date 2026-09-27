@@ -1245,8 +1245,9 @@ public partial class SkillTooltipControl : UserControl
             if (!mods.AlwaysCritical) AddCell(grid, 1, 0, L("total", "total"), "TextSecondaryBrush");
             // Taux de critique d'Izzy contre le niveau de cible custom (+ Critical Strikes du
             // perso) — pas pour « always a critical hit » (Keen Chop) où il est forcé par la skill.
-            // Un effet actif (« Craignez-moi ! ») s'y AJOUTE tel quel, plafonné à 100 % : au-delà,
-            // « ça revient au même que 100 % » (Q7). Les DÉGÂTS du critique, eux, ne changent pas.
+            // Un effet actif (« Craignez-moi ! ») s'y combine en probabilités INDÉPENDANTES, il ne s'y
+            // ajoute pas : Q7 disait « s'ajoute tel quel », et le test in-game de Philippe du
+            // 27/09/2026 l'a démentie (cf. CriticalChance). Les DÉGÂTS du critique, eux, ne changent pas.
             AddCell(grid, critRow, 0, mods.AlwaysCritical ? L("critique", "critical")
                 : $"{L("critique", "critical")} ({CriticalLabel(masteryRank, level, targetLevel, criticalStrikesRank, boosts.CriticalPercent)}%)",
                 "TextSecondaryBrush", markup: boosts.CriticalPercent > 0);
@@ -1309,9 +1310,16 @@ public partial class SkillTooltipControl : UserControl
     {
         // Même format « 0 » qu'avant le lot 6a : sans boost, le taux affiché est inchangé à l'unité près
         // (Math.Round arrondirait au pair le plus proche, pas comme ce format).
-        string rate = (100 * WeaponStrike.CriticalChance(masteryRank, level, targetLevel, criticalStrikesRank)).ToString("0");
-        if (boostPercent <= 0) return rate;
-        return $"{SkillProgression.MarkEffect}{Math.Min(100, int.Parse(rate) + boostPercent)}{SkillProgression.MarkEffect}";
+        //
+        // ⚠ Le bonus des effets entre dans CriticalChance en TROISIÈME FACTEUR, il ne s'ajoute pas au
+        // taux affiché : Q7 disait le contraire et a été démentie en jeu le 27/09/2026 (détail au
+        // commentaire de CriticalChance). Deux conséquences en plus du bon nombre : un seul arrondi
+        // tombe, à la fin — l'ancienne version additionnait le bonus au taux DÉJÀ arrondi — et le
+        // plafond à 100 % n'a plus à être posé à la main, il sort du produit.
+        string rate = (100 * WeaponStrike.CriticalChance(masteryRank, level, targetLevel,
+                                                         criticalStrikesRank, boostPercent)).ToString("0");
+        return boostPercent <= 0 ? rate
+            : $"{SkillProgression.MarkEffect}{rate}{SkillProgression.MarkEffect}";
     }
 
     /// <summary>Entoure un chiffre du marqueur d'effet (→ violet) quand un effet actif l'a modifié.
