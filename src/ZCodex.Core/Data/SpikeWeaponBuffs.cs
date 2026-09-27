@@ -41,9 +41,18 @@ public enum SpikeBuff
 public static class SpikeWeaponBuffs
 {
     /// <summary>Un buff proposable : clé stable (persistance .pn3), noms core/PvP, tooltip bilingue
-    /// (<see cref="DisplayTooltip"/> choisit selon <see cref="AppLanguage.IsFr"/>).</summary>
+    /// (<see cref="DisplayTooltip"/> choisit selon <see cref="AppLanguage.IsFr"/>).
+    ///
+    /// <paramref name="CardToggleId"/> = l'icône de la carte du perso qui désigne LE MÊME effet, 0 s'il
+    /// n'y en a pas. ⚠ **7 des 9 buffs de cette fenêtre ont ainsi DEUX interrupteurs** pour une seule
+    /// chose : la case d'ici, et l'icône que l'infobulle lit. La Clairvoyance du juge avait reçu la règle
+    /// « allumé d'un côté OU de l'autre » au lot 6d-1 (Q13) ; le 6e l'a étendue aux 6 autres, sur demande
+    /// de Philippe (27/09/2026), pour que « icône allumée = l'effet agit » soit vrai partout.
+    /// Seuls l'Hymne d'envie (effet de bandeau d'équipe) et l'Arme d'éclats (aucune table d'effet) n'ont
+    /// pas d'icône de carte : eux n'existent QUE dans cette fenêtre.</summary>
     public sealed record Descriptor(SpikeBuff Buff, string Key, string CoreName, string? PvpName,
-                                    string TooltipFr, string TooltipEn, bool SelfOnly)
+                                    string TooltipFr, string TooltipEn, bool SelfOnly,
+                                    int CardToggleId = 0)
     {
         /// <summary>Tooltip du buff dans la langue affichée.</summary>
         public string DisplayTooltip => AppLanguage.IsFr ? TooltipFr : TooltipEn;
@@ -54,20 +63,20 @@ public static class SpikeWeaponBuffs
         new(SpikeBuff.SunderingWeapon, "sundering-weapon", "Sundering Weapon", null,
             "Sundering Weapon — 10 % de pénétration sur les 3 premières attaques (ordre de cast)",
             "Sundering Weapon — 10% armor penetration on the first 3 attacks (cast order)",
-            SelfOnly: false),
+            SelfOnly: false, CardToggleId: ConditionDurationData.SunderingWeaponSkillId),
         new(SpikeBuff.JudgesInsight, "judges-insight", "Judge's Insight", null,
             "Judge's Insight — attaques converties en sacré (AL de base de la cible) + 20 % de pénétration",
             "Judge's Insight — attacks converted to holy (target's base AL) + 20% armor penetration",
-            SelfOnly: false),
+            SelfOnly: false, CardToggleId: ConditionDurationData.JudgesInsightSkillId),
         new(SpikeBuff.Vengeance, "vengeance", "Vengeance", null,
             "Vengeance — ×1,25 sur tous les dégâts du perso (vol/perte de vie exclus)",
             "Vengeance — ×1.25 on all of the character's damage (life steal/loss excluded)",
-            SelfOnly: false),
+            SelfOnly: false, CardToggleId: DamageBoostData.VengeanceSkillId),
         new(SpikeBuff.DestructiveWasGlaive, "destructive-was-glaive", "Destructive Was Glaive",
             "Destructive Was Glaive (PvP)",
             "Destructive Was Glaive — 20 % de pénétration (PvP : 10 %) sur les skills Ritualist du porteur",
             "Destructive Was Glaive — 20% armor penetration (PvP: 10%) on the holder's Ritualist skills",
-            SelfOnly: true),
+            SelfOnly: true, CardToggleId: DamageBoostData.DestructiveWasGlaiveSkillId),
         new(SpikeBuff.AnthemOfEnvy, "anthem-of-envy", "Anthem of Envy", "Anthem of Envy (PvP)",
             "Anthem of Envy — +X sur le premier attack skill (si la cible est à plus de 50 % de ses PV)",
             "Anthem of Envy — +X on the first attack skill (if the target is above 50% Health)",
@@ -80,15 +89,15 @@ public static class SpikeWeaponBuffs
         new(SpikeBuff.BrutalWeapon, "brutal-weapon", "Brutal Weapon", null,
             "Brutal Weapon — +X sur chaque attaque (aucun effet si le perso est enchanté : laisser l'icône éteinte dans ce cas)",
             "Brutal Weapon — +X on each attack (no effect while the character is enchanted: leave the icon off in that case)",
-            SelfOnly: false),
+            SelfOnly: false, CardToggleId: DamageBoostData.BrutalWeaponSkillId),
         new(SpikeBuff.GreatDwarfWeapon, "great-dwarf-weapon", "Great Dwarf Weapon", null,
             "Great Dwarf Weapon — +X de dégâts d'ARME (avant armure) sur chaque attaque ; le renversement (40 %) n'est pas compté",
             "Great Dwarf Weapon — +X WEAPON damage (before armor) on each attack; the knockdown (40%) is not counted",
-            SelfOnly: false),
+            SelfOnly: false, CardToggleId: KnockdownData.GreatDwarfWeaponSkillId),
         new(SpikeBuff.FindTheirWeakness, "find-their-weakness", "\"Find Their Weakness!\"", null,
             "« Find Their Weakness! » — +X (rang du crieur) sur la première attaque ; la Deep Wound passe par le toggle de la cible",
             "\"Find Their Weakness!\" — +X (shouter's rank) on the first attack; the Deep Wound goes through the target's toggle",
-            SelfOnly: false),
+            SelfOnly: false, CardToggleId: DamageBoostData.FindTheirWeaknessSkillId),
     ];
 
     /// <summary>AP de base de Sundering Weapon (« have 10% armor penetration »).</summary>

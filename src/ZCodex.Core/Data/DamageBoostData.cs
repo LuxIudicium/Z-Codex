@@ -312,6 +312,10 @@ public static class DamageBoostData
     /// COMPÉTENCES d'attaque (« Your bow attack skills … do +1…8…10 damage ») — cf.
     /// <see cref="SpikeBoostCoverage.SkillOnly"/>.</summary>
     public const int ExpertFocusSkillId      = 2145;
+    /// <summary>Glaive était destructrice : la seule des 9 cases de la fenêtre Spike dont l'icône de carte
+    /// est un effet PERSONNEL (les autres sont reçues d'un allié). Sa variante PvP (3157) partage son
+    /// icône par <c>BaseSkillId</c>.</summary>
+    public const int DestructiveWasGlaiveSkillId = 1732;
     /// <summary>« Esquive ceci ! » : « Your NEXT ATTACK … deals +14…20 damage » — 1 charge (lot 6e).</summary>
     public const int DodgeThisSkillId        = 2354;
     /// <summary>« Je suis le plus fort ! » : « Your NEXT 5…8 ATTACKS deal +14…20 damage » — le compte est
@@ -415,8 +419,9 @@ public static class DamageBoostData
         new(SiphonStrengthSkillId, DamageBoostScope.Attacks, DamageBoostKind.CriticalChance, Fixed: 50),
 
         // ── Pénétration d'armure de BASE (non cumulable, seul le max compte) ──
-        new(1732, DamageBoostScope.RitualistSkills, DamageBoostKind.BasePenetration, Fixed: 20),                     // Glaive était destructrice
-        new(3157, DamageBoostScope.RitualistSkills, DamageBoostKind.BasePenetration, Fixed: 10, BaseSkillId: 1732),  // Glaive était destructrice (PvP)
+        new(DestructiveWasGlaiveSkillId, DamageBoostScope.RitualistSkills, DamageBoostKind.BasePenetration, Fixed: 20), // Glaive était destructrice
+        new(3157, DamageBoostScope.RitualistSkills, DamageBoostKind.BasePenetration, Fixed: 10,
+            BaseSkillId: DestructiveWasGlaiveSkillId),                                                       // Glaive était destructrice (PvP)
         new(1218, DamageBoostScope.RitualistSkills, DamageBoostKind.BasePenetration, Fixed: 10),                     // Daoshen était cruel
 
         // ══ LOT 6b — effets reçus d'un allié (recensement CLOS le 26/09/2026) ══

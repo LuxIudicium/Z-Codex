@@ -1419,6 +1419,36 @@ public class CharacterSlotViewModel : ViewModelBase
         return null;
     }
 
+    /// <summary>
+    /// La valeur du paquet de DÉGÂTS d'un effet allumé sur ce perso, au rang de son porteur ; 0 si
+    /// l'effet est éteint ou n'a pas de paquet. Sert aux buffs de la fenêtre Spike qu'on allume par
+    /// l'icône de la carte alors que leur LANCEUR est hors du roster du spike : le balayage du roster
+    /// ne trouve alors aucune valeur, et le buff serait actif à +0 (lot 6e, extension de Q13).
+    ///
+    /// ⚠ Il ne rejoue PAS les annulations de <see cref="DamageBoostsFor"/> (l'Arme brute qui tombe sous
+    /// enchantement, notamment) : la fenêtre Spike laisse cet arbitrage à l'utilisateur depuis le
+    /// chantier 14 — son infobulle de case dit « laisser l'icône éteinte dans ce cas ». Changer ça ici
+    /// serait un autre arbitrage, non demandé.
+    /// </summary>
+    public int LitBoostDamageValue(int descriptorSkillId)
+    {
+        foreach (var (sk, d) in LitDamageBoosts())
+            if (d.SkillId == descriptorSkillId && d.Kind == DamageBoostKind.Damage)
+                return ValueOfBoost(d, sk);
+        return 0;
+    }
+
+    /// <summary>
+    /// L'icône de CET effet est-elle allumée sur la carte de ce perso ? ⚠ La question est posée à la
+    /// rangée elle-même, et non au seul ensemble persisté : un id peut y rester allumé alors que plus
+    /// personne ne lance l'effet (fichier enregistré avant un changement de barre). La rangée, elle,
+    /// n'émet une icône que si l'effet est réellement là — c'est donc la seule réponse qui ne peut pas
+    /// mentir. Même garde-fou que le <c>JudgesInsight is not null</c> de <see cref="JudgesInsightLit"/>,
+    /// mais valable pour les 7 buffs d'un coup (lot 6e).
+    /// </summary>
+    public bool IsBoostIconLit(int toggleId) =>
+        toggleId != 0 && AttributeBoostToggles.Any(t => t.ToggleId == toggleId && t.IsActive);
+
     /// <summary>Rang d'un effet de BANDEAU (lot 6c-2) : celui de son porteur le plus fort. null = personne ne
     /// le porte, ou l'effet n'a pas de rang du tout (les trois esprits du 6c-1, qui passent par Fixed).</summary>
     private int? BandRankOf(DamageBoostDescriptor descriptor) =>

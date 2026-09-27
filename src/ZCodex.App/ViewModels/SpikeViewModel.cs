@@ -472,11 +472,11 @@ public class SpikeViewModel : ViewModelBase
             // innée de la description, rang de Force) ; Judge's Insight (« adds +20% ») est un
             // BONUS → cumulé PAR-DESSUS le max de base.
             var mb = buffCtx.GetValueOrDefault(member);
-            // Lot 6d-1, Q13 (27/09/2026) : la Clairvoyance du juge a DEUX interrupteurs — la case de cette
-            // fenêtre (chantier 14) et l'icône de la carte du perso (lot 6b). Allumé d'un côté OU de
-            // l'autre suffit, sinon le même effet aurait deux vérités et l'on verrait le sacré venir de
-            // l'icône pendant que les 20 % de pénétration attendraient la case.
-            bool judges = (mb is { Judges: true } || member.JudgesInsightLit) && isWeaponAttack;
+            // Q13 (lot 6d-1) : la Clairvoyance du juge a DEUX interrupteurs — la case de cette fenêtre
+            // (chantier 14) et l'icône de la carte du perso (lot 6b), et allumé d'un côté OU de l'autre
+            // suffit. ⚠ Le « OU » ne se lit plus ici : le lot 6e l'a remonté dans SyncWeaponBuffs, où il
+            // vaut pour les 7 buffs à deux interrupteurs d'un coup. `mb.Judges` le porte donc déjà.
+            bool judges = mb is { Judges: true } && isWeaponAttack;
             bool sundering = mb is not null && mb.SunderingSlots.Contains(slot);
             bool dwg = mb is { DwgPen: > 0 } && skill.Profession == Profession.Ritualist;
             int pen = Math.Max(analysis.ArmorPenetration, slot.StrengthRank ?? 0);
@@ -1080,7 +1080,7 @@ public class SpikeViewModel : ViewModelBase
             }, 0, 0, 0, 0);
 
         int rank = WeaponStrike.StrikeRank(weapon, member.AttributeLevel);
-        bool judges = mb is { Judges: true } || member.JudgesInsightLit;
+        bool judges = mb is { Judges: true };   // le « OU » de Q13 vit dans SyncWeaponBuffs depuis le 6e
         var lineType = member.SpikeNormalAttackType(kind, weapon.DamageType, mb is { Judges: true });
         int al = target.EffectiveArmor(lineType.Received, _withCrackedArmor);
 
@@ -1453,7 +1453,22 @@ public class SpikeViewModel : ViewModelBase
             else
                 foreach (var t in m.SpikeBuffToggles) t.RaiseActiveChanged(); // réaligne après undo/chargement
 
-            bool Active(SpikeBuff b) => offered.Any(e => e.D.Buff == b && m.IsSpikeBuffActive(e.D.Key));
+            // ⚠⚠ LA RÈGLE « OU », étendue aux 7 buffs le 27/09/2026 sur demande de Philippe. Sept des
+            // neuf buffs de cette fenêtre sont la MÊME compétence que sur la carte du perso, donc DEUX
+            // interrupteurs pour une seule chose ; jusqu'ici la fenêtre ne regardait que sa case, si bien
+            // qu'allumer l'icône dans la vue Build ne bougeait pas le total du spike. La Clairvoyance du
+            // juge avait déjà la règle au lot 6d-1 (Q13) ; le lot 6e l'a rendue vraie partout, parce que
+            // Q23 a posé « icône allumée = l'effet agit ».
+            //
+            // ⚠ L'icône compte MÊME si le buff n'est pas « proposé » ici : `offered` ne balaie que le
+            // roster du spike, alors qu'un effet reçu peut venir d'un coéquipier qui n'en fait pas
+            // partie. C'est précisément le cas que la règle de Q13 couvrait déjà.
+            bool Active(SpikeBuff b)
+            {
+                var d = SpikeWeaponBuffs.All.First(x => x.Buff == b);
+                return (offered.Any(e => e.D.Buff == b) && m.IsSpikeBuffActive(d.Key))
+                       || m.IsBoostIconLit(d.CardToggleId);
+            }
 
             // Attaques d'arme du spike dans l'ordre de cast : assiette de Sundering (3 premières),
             // de Splinter (4 premières), d'Anthem et de FTW (la première — « next attack [skill] » ;
@@ -1474,21 +1489,34 @@ public class SpikeViewModel : ViewModelBase
                 if (Active(SpikeBuff.AnthemOfEnvy)) anthemSlot = attacks.FirstOrDefault();
                 if (Active(SpikeBuff.FindTheirWeakness)) ftwSlot = attacks.FirstOrDefault();
             }
+            // ⚠ DefaultIfEmpty depuis la règle « OU » : le buff peut être actif par l'icône de la carte
+            // sans que le balayage du roster l'ait proposé, et `Max()` sur une séquence vide LÈVE.
+            // (Glaive était destructrice est SelfOnly, donc en pratique les deux vont ensemble — mais
+            // un plantage de la fenêtre entière ne se paie pas sur un « en pratique ».)
             int dwgPen = Active(SpikeBuff.DestructiveWasGlaive)
                 ? offered.Where(e => e.D.Buff == SpikeBuff.DestructiveWasGlaive)
-                    .Select(e => SpikeWeaponBuffs.DwgBasePen(IsPvpCopy(e.Copy))).Max()
+                    .Select(e => SpikeWeaponBuffs.DwgBasePen(IsPvpCopy(e.Copy)))
+                    .DefaultIfEmpty(SpikeWeaponBuffs.DwgBasePen(pvpCopy: false)).Max()
                 : 0;
+
+            // Valeur des trois buffs à +X quand ils sont allumés PAR L'ICÔNE et que leur lanceur est hors
+            // du roster du spike : le balayage du roster ne trouve rien, et le buff serait actif à +0.
+            // On reprend alors la valeur que l'infobulle affiche déjà, résolue au rang du porteur.
+            // ⚠ Le MAX des deux, jamais le remplacement : quand le lanceur EST dans le roster, les deux
+            // sources disent la même chose, et aucun chiffre déjà validé ne bouge.
+            int BonusOf(SpikeBuff b, int rosterValue, int descriptorSkillId) =>
+                Active(b) ? Math.Max(rosterValue, m.LitBoostDamageValue(descriptorSkillId)) : 0;
 
             ctx[m] = new MemberBuffs(sunderingSlots, Active(SpikeBuff.JudgesInsight),
                 Active(SpikeBuff.Vengeance), dwgPen, anthemSlot,
                 anthemSlot is not null ? anthemBonus : 0,
                 splinterSlots, splinterBonus,
-                Active(SpikeBuff.BrutalWeapon) ? brutalBonus : 0,
-                Active(SpikeBuff.GreatDwarfWeapon) ? gdwBonus : 0,
+                BonusOf(SpikeBuff.BrutalWeapon, brutalBonus, DamageBoostData.BrutalWeaponSkillId),
+                BonusOf(SpikeBuff.GreatDwarfWeapon, gdwBonus, DamageBoostData.GreatDwarfWeaponSkillId),
                 // ⚠ Le +X de FTW n'est plus conditionné à ftwSlot : la ligne d'attaque le lit toujours
                 // avec `slot == mb.FtwSlot`, qui exige déjà un slot, tandis que la ligne d'ATTAQUE
                 // NORMALE en a besoin justement quand il n'y a AUCUNE attaque dans le spike (Q22).
-                ftwSlot, Active(SpikeBuff.FindTheirWeakness) ? ftwBonus : 0,
+                ftwSlot, BonusOf(SpikeBuff.FindTheirWeakness, ftwBonus, DamageBoostData.FindTheirWeaknessSkillId),
                 buffNames,
                 Active(SpikeBuff.SunderingWeapon), Active(SpikeBuff.SplinterWeapon),
                 Active(SpikeBuff.FindTheirWeakness));
@@ -1749,19 +1777,38 @@ public sealed class SpikeBuffToggleViewModel : ViewModelBase
     // Dwarf) : un seul actif à la fois par cible (lore GW1). Renseigné par SyncWeaponBuffs.
     public bool IsWeaponSpell { get; init; }
 
+    /// <summary>L'effet est-il allumé par l'icône de la CARTE du perso plutôt que par cette case ?
+    /// (lot 6e, règle « OU » étendue). L'icône de la fenêtre doit alors s'allumer quand même : laisser
+    /// une case grise pendant que l'effet compte dans le total serait exactement la contradiction que
+    /// la règle vient supprimer.</summary>
+    public bool LitOnCard => Member.IsBoostIconLit(Descriptor.CardToggleId);
+
     public bool IsActive
     {
-        get => Member.IsSpikeBuffActive(Descriptor.Key);
+        // ⚠ L'état EFFECTIF, pas celui de la case : allumé d'un côté OU de l'autre (Q13 étendue aux 7).
+        get => Member.IsSpikeBuffActive(Descriptor.Key) || LitOnCard;
         set
         {
+            // Allumé par la carte : c'est ELLE qu'on éteint, sinon le clic serait sans effet visible —
+            // la case s'éteindrait pendant que l'icône de la carte maintient l'effet allumé.
+            if (!value && LitOnCard)
+            {
+                Member.SetAttributeBoost(Descriptor.CardToggleId, false);
+                Member.SetSpikeBuff(Descriptor.Key, false);
+                OnPropertyChanged();
+                return;
+            }
             // Garde-fou GW1 : « a target can only have one weapon spell active at a time ;
             // recasting overwrites the previous one ». Activer un weapon spell éteint donc les
             // autres weapon spells du MÊME perso (leurs icônes se dé-surlignent via RaiseActiveChanged).
             if (value && IsWeaponSpell)
+                // ⚠ `other.IsActive` et non la seule case : depuis la règle « OU », un autre sort d'arme
+                // peut être allumé par l'icône de la carte, et l'exclusivité doit l'éteindre LÀ aussi —
+                // sinon deux sorts d'arme cohabiteraient, ce que le jeu interdit.
                 foreach (var other in Member.SpikeBuffToggles)
-                    if (!ReferenceEquals(other, this) && other.IsWeaponSpell
-                        && Member.IsSpikeBuffActive(other.Descriptor.Key))
+                    if (!ReferenceEquals(other, this) && other.IsWeaponSpell && other.IsActive)
                     {
+                        if (other.LitOnCard) Member.SetAttributeBoost(other.Descriptor.CardToggleId, false);
                         Member.SetSpikeBuff(other.Descriptor.Key, false);
                         other.RaiseActiveChanged();
                     }
