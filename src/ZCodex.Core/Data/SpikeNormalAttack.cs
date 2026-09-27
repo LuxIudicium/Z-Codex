@@ -69,7 +69,7 @@ public static class SpikeNormalAttack
     /// BONUS, permanentes sur la ligne (Clairvoyance du juge, mod de fractionnement qui a proc, arc
     /// corne) ; la pénétration de BASE d'Arme de fractionnement s'y ajoute sur ses seules charges — les
     /// deux catégories du wiki/Armor_penetration, le pool de base valant 0 sans elle (le rang de FORCE
-    /// pénètre « with your attack skills », donc pas ici). <paramref name="flatPerHit"/> = les +X de
+    /// pénètre « with your attack skills », donc pas ici — CONFIRMÉ par Philippe le 27/09/2026). <paramref name="flatPerHit"/> = les +X de
     /// chaque coup (Arme brutale) ; le +X d'ARME de l'Arme du Grand Nain, lui, est déjà dans la plage de
     /// <paramref name="weapon"/>, car il passe avant l'armure et le critique.
     /// </summary>

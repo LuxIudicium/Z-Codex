@@ -1039,7 +1039,8 @@ public class SpikeViewModel : ViewModelBase
     /// skills » — un coup normal n'est ni l'un ni l'autre.
     ///
     /// ⚠ La pénétration du rang de FORCE n'entre pas non plus : l'attribut primaire du Guerrier
-    /// pénètre « with your attack skills », pas avec les coups normaux (à confirmer par Philippe).
+    /// pénètre « with your attack skills », pas avec les coups normaux — CONFIRMÉ par Philippe le
+    /// 27/09/2026, ne pas rouvrir.
     /// </summary>
     private (SpikeRowViewModel Row, int Min, int Max, int FluxMin, int FluxMax) BuildNormalAttackRow(
         CharacterSlotViewModel member, SpikeTarget target, MemberBuffs? mb, SortedSet<int> vampiricSteals,
