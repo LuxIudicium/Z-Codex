@@ -276,8 +276,10 @@ public class SpikeViewModel : ViewModelBase
     // l'arme. Recalculée à chaque construction de ligne, donc dans la langue affichée : les
     // libellés viennent de SkillDamage.DisplayType, déjà bilingue et seule source des noms de
     // types dans toute l'app — dupliquer une table ici la ferait diverger.
+    // Lot 6d-1 : la première entrée ne dit plus « type natif de l'arme » mais « déduit » — depuis que la
+    // chaîne du § 6.1 tranche, le défaut n'est le type natif que si RIEN n'a converti l'attaque.
     private static IReadOnlyList<WeaponTypeOption> TypeOptions(IEnumerable<string> values) =>
-        new[] { new WeaponTypeOption(L("type natif de l'arme", "weapon's native type"), "") }
+        new[] { new WeaponTypeOption(L("(auto / déduit)", "(auto / deduced)"), "") }
             .Concat(values.Select(v => new WeaponTypeOption(SkillDamage.DisplayType(v), v)))
             .ToList();
 
@@ -459,7 +461,11 @@ public class SpikeViewModel : ViewModelBase
             // innée de la description, rang de Force) ; Judge's Insight (« adds +20% ») est un
             // BONUS → cumulé PAR-DESSUS le max de base.
             var mb = buffCtx.GetValueOrDefault(member);
-            bool judges = mb is { Judges: true } && isWeaponAttack;
+            // Lot 6d-1, Q13 (27/09/2026) : la Clairvoyance du juge a DEUX interrupteurs — la case de cette
+            // fenêtre (chantier 14) et l'icône de la carte du perso (lot 6b). Allumé d'un côté OU de
+            // l'autre suffit, sinon le même effet aurait deux vérités et l'on verrait le sacré venir de
+            // l'icône pendant que les 20 % de pénétration attendraient la case.
+            bool judges = (mb is { Judges: true } || member.JudgesInsightLit) && isWeaponAttack;
             bool sundering = mb is not null && mb.SunderingSlots.Contains(slot);
             bool dwg = mb is { DwgPen: > 0 } && skill.Profession == Profession.Ritualist;
             int pen = Math.Max(analysis.ArmorPenetration, slot.StrengthRank ?? 0);
@@ -507,8 +513,12 @@ public class SpikeViewModel : ViewModelBase
             // place), et jamais sur une arme de lanceur. La règle lit le type choisi et non le type
             // effectif : Judge's Insight convertit en sacré mais ne consomme pas le préfixe (buff,
             // pas mod), les deux se cumulent donc.
+            // Lot 6d-1, Q15 : le mod élémentaire du set d'armes ACTIF occupe lui aussi le préfixe, et
+            // l'application le VOIT maintenant. La liste se grise donc toute seule dès qu'il est là,
+            // sans attendre qu'on ait choisi un type élémentaire à la main sur la ligne.
             bool canChooseMod = isWeaponAttack && weapon is { IsCaster: false }
-                                && !WeaponStrike.IsElementalType(slot.SpikeWeaponDamageType);
+                                && !WeaponStrike.IsElementalType(slot.SpikeWeaponDamageType)
+                                && !member.ElementalModAppliesTo(skill);
             var weaponMod = canChooseMod ? SpikeWeaponMods.FromKey(slot.SpikeWeaponModKey)
                                          : SpikeWeaponMod.None;
             // Les deux pénétrations sont de catégorie BONUS (wiki/Armor_penetration) : elles
@@ -554,19 +564,21 @@ public class SpikeViewModel : ViewModelBase
 
             if (weaponTable)
             {
-                // Type de dégât de l'arme : celui choisi pour CETTE attaque (mods/skins,
-                // switch d'armes — décision Philippe), sinon le type natif de l'arme.
-                // Judge's Insight convertit l'attaque en SACRÉ (prioritaire sur le choix
-                // manuel) : l'AL de la cible retombe sur son armure de BASE — aucun bonus
-                // « vs sacré » n'existe, c'est tout l'intérêt du buff contre l'anti-physique.
-                // Un type persisté hors catalogue de l'arme (.pn3 écrit avant ce filtrage, ou
-                // arme changée sur une attaque libre : « contondant » gardé en passant de l'épée
-                // à la hache) est ignoré — on retombe sur le type natif, comme pour SpikeWeaponKind.
-                string picked = slot.SpikeWeaponDamageType;
-                string weaponType = judges ? "holy"
-                    : string.IsNullOrEmpty(picked)
-                      || !WeaponStrike.DamageTypeChoices(weapon!).Contains(picked)
-                        ? weapon!.DamageType : picked;
+                // Type de dégât de la ligne — DÉDUIT depuis le lot 6d-1 (§ 6.1 du plan) : la chaîne de
+                // conversion du perso décide, et la liste déroulante ne sert plus qu'à FORCER (Q6/Q15).
+                // Ce qui entre dans la chaîne : les 13 convertisseurs personnels allumés, le mod
+                // élémentaire du set actif, la Clairvoyance du juge (les deux interrupteurs, Q13), Grand
+                // brasier, Brasier, et Briseur de pierre qui garde le dernier mot. Ce qui en sort ensuite :
+                // Hiver, qui passe l'élémentaire REÇU en froid — dans l'infobulle ce n'était qu'une
+                // étiquette, ici la cible a une armure PAR TYPE et le chiffre bouge vraiment (Q16).
+                // Un type persisté hors catalogue de l'arme (.pn3 écrit avant ce filtrage, ou arme changée
+                // sur une attaque libre : « contondant » gardé en passant de l'épée à la hache) est
+                // ignoré — on retombe sur la déduction, comme pour SpikeWeaponKind.
+                string? picked = WeaponStrike.DamageTypeChoices(weapon!).Contains(slot.SpikeWeaponDamageType)
+                    ? slot.SpikeWeaponDamageType : null;
+                var lineType = member.SpikeDamageTypeFor(skill, picked, weapon!.DamageType,
+                                                         mb is { Judges: true });
+                string? weaponType = lineType.Received;
                 int al = target.EffectiveArmor(weaponType, _withCrackedArmor);
                 int rank = masteryRank!.Value;
                 // Great Dwarf Weapon : « +X weapon damage » = vrai dégât d'ARME, ajouté AVANT
@@ -593,6 +605,9 @@ public class SpikeViewModel : ViewModelBase
                 parts.Add(mods.AlwaysCritical ? L("critique forcé", "forced critical")
                     : $"{L("crit", "crit")} {100 * WeaponStrike.CriticalChance(rank, AttackerLevel, _targetLevel, slot.CriticalStrikesRank ?? 0):0} %");
                 if (weaponDeduced) parts.Add(L("arme déduite", "deduced weapon"));
+                // Un effet a changé le type : la ligne le DIT, sinon une colonne d'armure inattendue
+                // (Briseur de pierre en terre, Hiver en froid) passerait pour un bug de calcul.
+                if (lineType.Converted) parts.Add(L("type converti", "converted type"));
                 if (thresholdRow is { } tr)
                     parts.Add($"{L("seuil", "threshold")} +{tr.Value} × {ThresholdCount(slot, tr)}"
                               + ThresholdCapNote(tr, ThresholdCount(slot, tr)));
@@ -637,7 +652,11 @@ public class SpikeViewModel : ViewModelBase
 
             foreach (var r in respecting)
             {
-                int al = target.EffectiveArmor(r.DamageType, _withCrackedArmor);
+                // Lot 6d-1 : Briseur de pierre force la terre sur TOUT ce que le perso infliger, sorts
+                // compris, et Hiver passe l'élémentaire reçu en froid. Les deux déplacent donc aussi la
+                // colonne d'armure des paquets qui ne sont pas un coup d'arme.
+                string? rType = member.SpikePacketTypeFor(r.DamageType).Received;
+                int al = target.EffectiveArmor(rType, _withCrackedArmor);
                 if (r.IsThreshold)
                 {
                     // Seuil armor-RESPECTING (ex. Doom 50 foudre/rituel, hors v1) : le plafond porte
@@ -647,7 +666,7 @@ public class SpikeViewModel : ViewModelBase
                     int dmg = SkillDamage.DamageAt(listed, al, pen, AttackerLevel);
                     min += dmg; max += dmg; dmgMin += dmg; dmgMax += dmg;
                     thresholdRow = r;
-                    parts.Add($"{TypeLabel(r.DamageType)} {r.Value} × {count} = {listed}{ThresholdCapNote(r, count)} → {dmg}");
+                    parts.Add($"{TypeLabel(rType)} {r.Value} × {count} = {listed}{ThresholdCapNote(r, count)} → {dmg}");
                     continue;
                 }
                 int t = TicksOf(r);
@@ -659,16 +678,16 @@ public class SpikeViewModel : ViewModelBase
                     int sum = ticksDmg.Sum();
                     min += sum; max += sum; dmgMin += sum; dmgMax += sum;
                     parts.Add(t > 1
-                        ? $"{TypeLabel(r.DamageType)} {string.Join("+", ticksDmg)} "
+                        ? $"{TypeLabel(rType)} {string.Join("+", ticksDmg)} "
                           + L("(ticks cumulatifs)", "(cumulative ticks)")
-                        : $"{TypeLabel(r.DamageType)} {ticksDmg[0]}");
+                        : $"{TypeLabel(rType)} {ticksDmg[0]}");
                 }
                 else
                 {
                     int dmg = SkillDamage.DamageAt(r.Value, al, pen, AttackerLevel);
                     min += dmg * t; max += dmg * t; dmgMin += dmg * t; dmgMax += dmg * t;
-                    parts.Add(t > 1 ? $"{TypeLabel(r.DamageType)} {dmg}{TimesLabel(r, t)}"
-                                    : $"{TypeLabel(r.DamageType)} {dmg}");
+                    parts.Add(t > 1 ? $"{TypeLabel(rType)} {dmg}{TimesLabel(r, t)}"
+                                    : $"{TypeLabel(rType)} {dmg}");
                 }
             }
             foreach (var r in ignoring)

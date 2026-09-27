@@ -1374,6 +1374,76 @@ public class CharacterSlotViewModel : ViewModelBase
     private string? EffectiveElementFor(Skill target, WeaponKind equipped) =>
         DamageBoostData.EffectiveElement(ConversionState(target), target, equipped);
 
+    /// <summary>Élément du mod d'arme du set ACTIF (null s'il n'y en a pas).</summary>
+    private string? ActiveElementalMod
+    {
+        get
+        {
+            foreach (int id in ActiveWeaponSetModIds())
+                if (ConditionDurationData.ElementalModType(id) is { } element) return element;
+            return null;
+        }
+    }
+
+    /// <summary>Le mod élémentaire du set actif occupe-t-il le PRÉFIXE de l'arme de cette attaque ? La
+    /// fenêtre Spike n'a plus le droit d'y proposer un mod de fractionnement ou vampirique quand la place
+    /// est prise, et elle le VOIT maintenant au lieu d'attendre un choix manuel (Q15, 27/09/2026).</summary>
+    public bool ElementalModAppliesTo(Skill target) =>
+        ActiveElementalMod is not null
+        && ConditionDurationData.UsesEquippedWeapon(target, ActiveWeaponKind());
+
+    /// <summary>Clairvoyance du juge reçue et ALLUMÉE sur ce perso. Publique parce que la fenêtre Spike a
+    /// sa propre case pour le même effet : allumé d'un côté ou de l'autre suffit (Q13, 27/09/2026).</summary>
+    public bool JudgesInsightLit =>
+        IsAttributeBoostActive(ConditionDurationData.JudgesInsightSkillId) && JudgesInsight is not null;
+
+    // ── Type de dégâts pour la fenêtre Spike (lot 6d-1) ───────────────────────
+
+    /// <summary>
+    /// Type de dégâts qu'une attaque de ce perso fait ARRIVER chez la cible du Spike — la seule chose que
+    /// <see cref="SpikeTarget.EffectiveArmor"/> doit recevoir, puisque la cible y a une armure PAR TYPE.
+    ///
+    /// <paramref name="picked"/> = le type choisi à la main sur la ligne du Spike (vide = aucun). Il ne
+    /// COURT-CIRCUITE pas la chaîne du § 6.1, il y entre (Q15) : élémentaire, il prend la place du mod de
+    /// préfixe, donc Briseur de pierre garde le dernier mot comme en jeu ; skin non élémentaire (jitte
+    /// contondante, faux « Sufferer »…), il sert de type de départ que les convertisseurs peuvent encore
+    /// écraser. <paramref name="native"/> = le type natif de l'arme de la ligne, retenu quand rien n'a
+    /// converti et que rien n'est choisi. <paramref name="judgesInsight"/> = la case Clairvoyance du juge
+    /// de la fenêtre Spike : elle s'AJOUTE à l'icône de la carte, allumé d'un côté ou de l'autre suffit
+    /// (Q13, 27/09/2026) — sans quoi le même effet aurait deux interrupteurs et deux vérités.
+    ///
+    /// ⚠ Le périmètre des convertisseurs se juge sur l'arme du set ACTIF, comme dans l'infobulle, et non
+    /// sur l'arme arrêtée de la ligne : une seule vérité pour la chaîne. La différence ne peut tomber que
+    /// sur une attaque d'arme LIBRE dont la ligne a changé l'arme à la main — et c'est précisément le cas
+    /// que la liste déroulante de type est là pour couvrir.
+    /// </summary>
+    public SpikeDamageType SpikeDamageTypeFor(Skill target, string? picked, string? native,
+                                              bool judgesInsight)
+    {
+        var state = ConversionState(target);
+        if (WeaponStrike.IsElementalType(picked)) state = state with { ElementalMod = picked };
+        if (judgesInsight) state = state with { JudgesInsight = true };
+
+        string? declared = string.IsNullOrEmpty(picked) ? native : picked;
+        string? effective = DamageBoostData.EffectiveElement(state, target, ActiveWeaponKind()) ?? declared;
+        string? received = DamageBoostData.DisplayedType(effective, WinterLit, StoneStrikerLit);
+        // ⚠ Le type INTRINSÈQUE ne compte pas comme une conversion — même règle que la phrase de type de
+        // l'infobulle : un Javelot d'éclair est de la foudre par nature, annoncer « type converti » dessus
+        // sans qu'aucun effet ne soit allumé serait un mensonge. Sous Hiver, en revanche, il l'est.
+        string? natural = DamageBoostData.IntrinsicType(target) ?? declared;
+        return new SpikeDamageType(received, received != natural);
+    }
+
+    /// <summary>Type d'un paquet de dégâts de la description tel que la cible du Spike le REÇOIT. Briseur
+    /// de pierre force la terre sur TOUT ce que le perso infliger, sorts compris, et Hiver passe
+    /// l'élémentaire en froid — les deux déplacent donc aussi l'armure des paquets qui ne sont pas des
+    /// coups d'arme (boules de feu, paquets typés d'une attaque…).</summary>
+    public SpikeDamageType SpikePacketTypeFor(string? packetType)
+    {
+        string? received = DamageBoostData.DisplayedType(packetType, WinterLit, StoneStrikerLit);
+        return new SpikeDamageType(received, received != packetType);
+    }
+
     private DamageBoostData.ConversionState ConversionState(Skill target)
     {
         List<DamageConverterDescriptor>? lit = null;
@@ -1385,19 +1455,11 @@ public class CharacterSlotViewModel : ViewModelBase
                 && !DamageBoostData.PreparationLost(sk, target))
                 (lit ??= []).Add(k);
 
-        string? mod = null;
-        foreach (int id in ActiveWeaponSetModIds())
-            if (ConditionDurationData.ElementalModType(id) is { } modElement)
-            {
-                mod = modElement;
-                break;
-            }
-
         var rituals = ActiveNatureRituals;
         return new DamageBoostData.ConversionState(
             LitConverters: lit,
-            ElementalMod: mod,
-            JudgesInsight: IsAttributeBoostActive(ConditionDurationData.JudgesInsightSkillId) && JudgesInsight is not null,
+            ElementalMod: ActiveElementalMod,
+            JudgesInsight: JudgesInsightLit,
             GreaterConflagration: rituals.Contains(NatureRitualData.Ritual.GreaterConflagration),
             Conflagration: rituals.Contains(NatureRitualData.Ritual.Conflagration),
             StoneStriker: IsAttributeBoostActive(ConditionDurationData.StoneStrikerSkillId)

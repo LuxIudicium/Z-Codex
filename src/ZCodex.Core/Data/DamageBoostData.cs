@@ -176,6 +176,18 @@ public enum DamageBoostSuppression
 /// </summary>
 public readonly record struct DamageTypeNote(string Type, bool Pet, bool Natural);
 
+/// <summary>
+/// Type de dégâts d'une ligne de la fenêtre Spike (lot 6d-1). <paramref name="Received"/> = ce que la
+/// cible ENCAISSE, Hiver et Briseur de pierre compris — c'est lui, et lui seul, qui va chercher l'AL par
+/// type de <see cref="SpikeTarget.EffectiveArmor"/>. <paramref name="Converted"/> = un effet a changé ce
+/// type, il diffère donc de l'arme de la ligne (ou du type forcé à la main dessus) : la ligne le dit,
+/// sinon un chiffre d'armure inattendu passerait pour un bug.
+///
+/// ⚠ Dans l'infobulle, Hiver et Briseur de pierre n'étaient qu'une ÉTIQUETTE — aucun chiffre ne bougeait.
+/// Ici ils déplacent le calcul d'une colonne d'armure à l'autre (Q16, tranchée le 27/09/2026).
+/// </summary>
+public readonly record struct SpikeDamageType(string? Received, bool Converted);
+
 /// <summary>Un effet allumé qui ne s'applique pas ici, et pourquoi. <paramref name="SkillName"/> est
 /// déjà dans la langue affichée.</summary>
 public readonly record struct SuppressedBoost(string SkillName, DamageBoostSuppression Reason);
@@ -189,7 +201,10 @@ public readonly record struct DamageBoostPacket(int Value, string? DamageType, b
 /// <summary>
 /// Ce que les effets actifs du perso font aux dégâts de UNE compétence (lot 6a).
 /// <paramref name="Packets"/> = la ligne « bonus d'effets » ; <paramref name="CriticalPercent"/> =
-/// points de pourcentage à ajouter au taux de critique affiché (plafonné à 100 par l'affichage, Q7) ;
+/// SOMME des bonus de critique des effets allumés — ils s'additionnent bien entre EUX, mais le total se
+/// combine ensuite en probabilités indépendantes avec le taux de base et le rang de Frappes critiques
+/// (<see cref="WeaponStrike.CriticalChance"/>). ⚠ Q7 disait « s'ajoute tel quel au taux affiché » :
+/// démenti en jeu le 27/09/2026, il ne reste vrai qu'entre compétences ;
 /// <paramref name="BasePenetration"/> = pénétration de BASE la plus forte apportée par un effet (elle
 /// entre en MAX avec celle de la description et le rang de Force) ; <paramref name="BonusPenetration"/>
 /// = pénétration en BONUS, qui se CUMULE par-dessus le max de base (mod d'arme « de fractionnement »).
@@ -944,7 +959,15 @@ public static class DamageBoostData
             element = mod;
 
         foreach (var k in state.LitConverters ?? [])
-            if (ConditionDurationData.InWeaponScope(k.Weapon, target, equipped))
+            // ⚠ Briseur de pierre est ÉCARTÉ d'ici : il a sa propre étape tout à la fin de la chaîne
+            // (<see cref="ConversionState.StoneStriker"/>), et elle est plus étroite — elle épargne ce
+            // qui n'est ni élémentaire ni physique. Le laisser passer AUSSI par cette boucle générique,
+            // qui écrase tout sans condition, lui faisait détruire un type INTRINSÈQUE sacré : les trois
+            // compétences de 1483 / 3263 / 3425 redevenaient terre, alors que le commentaire de son étape
+            // promet l'inverse. Il est le SEUL des 15 convertisseurs de la table à être dans ce cas
+            // (vérifié : aucun autre n'a d'étape dédiée) — trouvé au harnais du lot 6d-1.
+            if (k.SkillId != ConditionDurationData.StoneStrikerSkillId
+                && ConditionDurationData.InWeaponScope(k.Weapon, target, equipped))
                 element = k.Element;
 
         if (state.JudgesInsight && ConditionDurationData.InWeaponScope(ConditionWeaponScope.Physical, target, equipped))
