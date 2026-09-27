@@ -55,6 +55,20 @@ public enum DamageBoostScope
     /// familier et les esprits en sont exclus aussi : l'effet enchante le perso, pas ses créatures
     /// (glossaire G1).</summary>
     AllDamage,
+    /// <summary>
+    /// Tout paquet de dégâts SOUMIS À L'ARMURE, quelle que soit la façon dont il arrive — immédiat, effet
+    /// de fin, piège, tic périodique (les 4 ambiguïtés tranchées par Philippe le 26/09/2026). Périmètre de
+    /// l'Étendard d'honneur, le seul effet du chantier qui déborde des attaques.
+    ///
+    /// ⚠ Le tri se fait sur une donnée qui existait DÉJÀ : <see cref="SkillDamage.Row.IgnoresArmor"/> et
+    /// <see cref="SkillDamage.RowKind"/>. En sortent donc tout seuls les paquets qui ignorent l'armure
+    /// (Flamme d'obsidienne, les conjurations, l'Arme du Grand Nain…), le vol de vie et la perte de vie
+    /// sèche. C'est aussi ce qui écarte les 3 exemples que Philippe cite comme « déclenchés par une action
+    /// de l'ENNEMI » — Barbelés, Esprit malveillant, Marque de douleur annoncent tous les trois des dégâts
+    /// SANS TYPE, donc qui ignorent l'armure : rien à coder pour eux (vérifié au harnais, pas supposé).
+    /// Seule exception relevée par le balayage : <see cref="_enemyTriggeredDamage"/>.
+    /// </summary>
+    ArmorRespectingDamage,
 }
 
 /// <summary>
@@ -222,6 +236,16 @@ public static class DamageBoostData
     public const int FavorableWindsSkillId = 472;
     public const int WinnowingSkillId      = 463;
     public const int WinterSkillId         = 462;
+    // Lot 6c-2 : les 5 effets PORTÉS du bandeau, plus « Par le marteau d'Ural ! » qui, lui, est un effet
+    // REÇU (cf. son descripteur). Ids et index de progression relevés dans la base réelle le 27/09/2026.
+    public const int OrderOfPainSkillId        = 134;
+    public const int AnthemOfEnvySkillId       = 1559;
+    public const int AnthemOfEnvyPvpSkillId    = 3148;
+    public const int GoForTheEyesSkillId       = 1558;
+    public const int GoForTheEyesPvpSkillId    = 3026;
+    public const int TogetherAsOneSkillId      = 3427;
+    public const int EbonStandardOfHonorSkillId = 2233;
+    public const int UralsHammerSkillId        = 2217;
 
     /// <summary>Id d'icône du mod d'arme « de fractionnement » : ce n'est pas une compétence, donc un id
     /// réservé négatif, comme le mod « Furieux » du lot 1a (qui occupe −1).</summary>
@@ -344,6 +368,18 @@ public static class DamageBoostData
         new(NightmareWeaponSkillId, DamageBoostScope.Attacks, DamageBoostKind.Damage, Index: 0,
             Received: true, Malus: true),
 
+        // ── « Par le marteau d'Ural ! » (lot 6c-2) : un effet REÇU, pas un effet de bandeau ─────
+        // ⚠ Il SORT du bandeau d'équipe où le recensement du § 6.2 l'avait mis (Q3, tranchée le
+        // 26/09/2026) : le texte anglais ne donne le ×1,25…1,33 qu'aux RESSUSCITÉS, et le crieur, bien
+        // vivant puisqu'il crie, n'en profite jamais. C'est donc le patron EXACT de Vengeance —
+        // Received + CannotSelfTarget —, à un détail près : Ural a une PROGRESSION (rang de titre
+        // Deldrimor, échelle 0→10), là où le 25 % de Vengeance est un littéral. Avec deux porteurs,
+        // chacun l'a au rang du meilleur AUTRE porteur : c'est déjà ce que fait ReceivedDamageBoostsFor.
+        // ⚠ Sa description FR est celle d'une AUTRE version de la compétence ; la base la marque déjà
+        // FrSuspect, donc l'infobulle retombe sur l'anglais toute seule — rien à faire ici.
+        new(UralsHammerSkillId, DamageBoostScope.AllDamage, DamageBoostKind.Multiplier, Index: 0,
+            Received: true, CannotSelfTarget: true),
+
         // ══ LOT 6c-1 — les 3 esprits du bandeau d'équipe ══════════════════════
         // Recensement du bandeau CLOS par balayage de FAMILLE le 26/09/2026 (28 rituels de la nature,
         // 45 rituels d'asservissement, 13 sorts de protection, tous les cris/chants/échos, tout ce qui
@@ -368,7 +404,83 @@ public static class DamageBoostData
         // Hiver (462) n'a PAS de descripteur : il ne porte aucun chiffre. Il ne fait que ré-étiqueter en
         // froid les dégâts élémentaires reçus, et surtout il ne déclenche pas les conjurations — voir le
         // commentaire de EffectiveElement plus bas.
+
+        // ══ LOT 6c-2 — les 5 effets PORTÉS du bandeau ═════════════════════════
+        // Tous Band (l'icône vit au bandeau) et tous à RANG, celui de leur porteur le plus fort : c'est la
+        // nouveauté par rapport au 6c-1, dont les trois esprits ne portaient que des littéraux.
+        // ⚠ Aucun descripteur « (PvP) » ici, à la différence des lots 6a/6b : pour un effet de bandeau,
+        // c'est NatureRitualData.Descriptor qui connaît les deux ids, et l'appelant lui demande la
+        // compétence du mode courant. Les deux variantes splittées (Hymne d'envie, « Visez les yeux ! »)
+        // portent leur chiffre au MÊME index que leur jumelle PvE — vérifié dans la base, pas supposé.
+        //
+        // Ordre de la douleur : « 3…13…16 more damage whenever these party members hit with physical
+        // damage ». ⚠ « Membres du groupe » → le FAMILIER n'en profite pas (allié et créature, jamais
+        // membre du groupe). Et le bonus SAUTE dès que l'arme est convertie (glossaire G3).
+        new(OrderOfPainSkillId, DamageBoostScope.Attacks, DamageBoostKind.Damage, Index: 0, Band: true,
+            RequiresPhysical: true),
+        // Hymne d'envie : « Allies in earshot do +10…22…25 damage with their next attack skill » (cible à
+        // plus de 50 % de santé → Q9, icône allumée = la condition est remplie).
+        new(AnthemOfEnvySkillId, DamageBoostScope.Attacks, DamageBoostKind.Damage, Index: 0, Band: true),
+        // ⚠ « Alliés à portée de voix » : le familier EN EST UN (règle de Philippe du 26/09/2026), et il a
+        // bien des compétences d'attaque. Son chiffre se relève DANS LE TEXTE de son attaque, comme le
+        // Vannage et l'Agression barbare (Q12).
+        new(AnthemOfEnvySkillId, DamageBoostScope.PetAttacks, DamageBoostKind.TextDamage, Index: 0, Band: true),
+        // « Visez les yeux ! » : du CRITIQUE, pas des dégâts (Q7 — les points de pourcentage s'ajoutent tels
+        // quels au taux affiché). ⚠ Aucun descripteur pour le familier, bien qu'il soit un allié à portée de
+        // voix : une attaque de familier n'a pas de table d'arme, donc aucun taux de critique à relever.
+        new(GoForTheEyesSkillId, DamageBoostScope.Attacks, DamageBoostKind.CriticalChance, Index: 0, Band: true),
+        // « Ensemble et unis ! » : ATTAQUES uniquement (Q1a) — sa régénération de santé ne concerne pas ce
+        // chantier. ⚠ Index 1 : l'index 0 porte la DURÉE et l'index 2 la régénération. « Membres du groupe »
+        // → pas le familier, même si le texte le cite comme repère de distance.
+        new(TogetherAsOneSkillId, DamageBoostScope.Attacks, DamageBoostKind.Damage, Index: 1, Band: true),
+        // Étendard de bataille d'honneur : le SEUL effet du chantier qui déborde des attaques — « Allies in
+        // this ward deal +8…15 damage », sur tout paquet soumis à l'armure (§ 6.11 du plan). ⚠ Index 1 :
+        // l'index 0 porte la durée et l'index 2 la part contre les Charrs, IGNORÉE (Q2).
+        new(EbonStandardOfHonorSkillId, DamageBoostScope.ArmorRespectingDamage, DamageBoostKind.Damage,
+            Index: 1, Band: true),
+        // ⚠ Le familier est un « allié dans la zone » → son chiffre monte aussi. Les ESPRITS, eux, sont
+        // exclus par le texte de la compétence lui-même (« Spirits are unaffected ») : pas de descripteur
+        // SpiritAttacks, et c'est voulu.
+        new(EbonStandardOfHonorSkillId, DamageBoostScope.PetAttacks, DamageBoostKind.TextDamage,
+            Index: 1, Band: true),
     };
+
+    /// <summary>
+    /// Les dégâts déclenchés par une ACTION DE L'ENNEMI, qui ne profitent pas de l'Étendard d'honneur
+    /// (règle de Philippe, Q1b du 26/09/2026) — liste CLOSE par balayage de la base réelle le 27/09/2026.
+    ///
+    /// ⚠ Le balayage a trouvé 58 compétences dont les dégâts sont déclenchés par un évènement
+    /// (« whenever », « each time », riposte sur blocage, seuil d'énergie de la cible…), Barbelés, Esprit
+    /// malveillant et Marque de douleur comprises. Une SEULE porte un paquet réellement soumis à l'armure :
+    /// toutes les autres annoncent des dégâts SANS TYPE — ou sacrés —, donc qui ignorent déjà l'armure et
+    /// sortent d'eux-mêmes du périmètre. La liste des exclusions à écrire à la main se réduit à celle-ci.
+    ///
+    /// Armure d'éclats : « Deals 5…29…35 EARTH damage to one nearby foe whenever you are the target of a
+    /// hostile spell or attack » — de la terre, donc soumis à l'armure, et déclenché par l'ennemi qui
+    /// vous prend pour cible.
+    /// </summary>
+    private static readonly HashSet<int> _enemyTriggeredDamage =
+    [
+        1084,   // Armure d'éclats (Sliver Armor)
+    ];
+
+    /// <summary>Les dégâts de cette compétence sont-ils déclenchés par une action de l'ENNEMI ? → hors
+    /// périmètre de l'Étendard d'honneur.</summary>
+    public static bool IsEnemyTriggeredDamage(Skill target) => _enemyTriggeredDamage.Contains(target.Id);
+
+    /// <summary>
+    /// Cette compétence a-t-elle de quoi profiter d'un bonus « sur tout paquet soumis à l'armure »
+    /// (Étendard d'honneur) ? Une attaque d'arme, oui : ses dégâts d'arme sont soumis à l'armure sans
+    /// apparaître comme un paquet de la description. Sinon il faut au moins un paquet de dégâts qui
+    /// SUBIT l'armure — ni vol de vie, ni perte de vie sèche, ni paquet qui l'ignore.
+    ///
+    /// ⚠ Sans ce test, l'Étendard allumé collerait une ligne « bonus d'effets +8 » sur des infobulles qui
+    /// n'affichent aucun dégât du tout (un soin, une Flamme d'obsidienne) : la section s'ouvre dès qu'un
+    /// effet a quelque chose à dire.
+    /// </summary>
+    public static bool BenefitsFromArmorRespectingBonus(Skill target, SkillDamage.Analysis analysis) =>
+        WeaponStrike.IsWeaponAttack(target)
+        || analysis.Rows.Any(r => r.Kind == SkillDamage.RowKind.Damage && !r.IgnoresArmor);
 
     // ⚠ Les effets de BANDEAU en sont exclus, et c'est vital : le Vannage porte DEUX descripteurs sur le
     // même id (le perso et son familier), donc un ToDictionary sur All entier lèverait au chargement de la
@@ -455,6 +567,13 @@ public static class DamageBoostData
             // sont écartés plus loin, à l'affichage, parce que c'est la NATURE du paquet qui décide.
             DamageBoostScope.AllDamage       => target.SkillType != "Pet Attack"
                                                 && SpiritAttackRange(target) is null,
+            // L'Étendard d'honneur. Le familier a son propre descripteur (TextDamage) et les esprits sont
+            // exclus par le texte de la compétence (« Spirits are unaffected »). ⚠ Le test « y a-t-il
+            // vraiment un paquet soumis à l'armure ? » N'EST PAS ICI : il demande la description RÉSOLUE,
+            // que le périmètre n'a pas — c'est BenefitsFromArmorRespectingBonus, que l'appelant enchaîne.
+            DamageBoostScope.ArmorRespectingDamage => target.SkillType != "Pet Attack"
+                                                && SpiritAttackRange(target) is null
+                                                && !IsEnemyTriggeredDamage(target),
             _                                => false,
         };
 

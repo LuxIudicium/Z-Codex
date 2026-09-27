@@ -62,6 +62,17 @@ public static class NatureRitualData
         FavorableWinds,
         Winnowing,
         Winter,
+        // Effets de dégâts d'équipe PORTÉS (lot 6c-2) : à l'inverse des trois esprits ci-dessus, aucun
+        // n'est un esprit → « porté seulement », et tous les cinq ont un RANG, celui de leur porteur le
+        // plus fort (jamais de rang de simulation, règle du 15/09/2026).
+        OrderOfPain,
+        // ⚠ Ordre du VAMPIRE : au bandeau depuis le 27/09/2026 (demande de Philippe), mais SANS descripteur de
+        // dégâts — son effet est du vol de vie, que l'infobulle n'affiche jamais. Entrée de présence, comme Hiver.
+        OrderOfTheVampire,
+        AnthemOfEnvy,
+        GoForTheEyes,
+        TogetherAsOne,
+        EbonBattleStandardOfHonor,
         // Assommement (lot 4c) : Ronces est un rituel de la nature comme les autres — proposé à tout moment,
         // avec son rang de simulation (son saignement suit Survie en pleine nature). Lien terrestre est un
         // esprit d'ASSERVISSEMENT (Ritualiste) : « porté seulement » (décision Q6 du lot 4), sans rang — son
@@ -85,7 +96,7 @@ public static class NatureRitualData
     /// <summary>Famille d'un effet du bandeau : un petit séparateur s'intercale entre deux familles
     /// (bandeau et menu Sélection). <see cref="Enemy"/> = effet lancé par l'ennemi et subi par
     /// l'équipe (Soothing) : cadre rouge, et jamais « équipé » par un perso de l'équipe.</summary>
-    public enum BandGroup { NatureRitual, BindingRitual, Enchantment, Hex, Chant, Enemy, Ward }
+    public enum BandGroup { NatureRitual, BindingRitual, Enchantment, Hex, Chant, Shout, Enemy, Ward }
 
     /// <summary>Métadonnées d'un rituel : identité, mappage vers la compétence de la base, libellé
     /// bilingue (<see cref="DisplayTooltip"/> choisit selon <see cref="AppLanguage.IsFr"/>).
@@ -205,6 +216,41 @@ public static class NatureRitualData
             PvpTooltipFr: "Effet ennemi : l'équipe gagne l'adrénaline deux fois moins vite.",
             PvpTooltipEn: "Enemy effect: the team builds adrenaline half as fast.",
             Group: BandGroup.Enemy),
+        // ── Effets de dégâts PORTÉS du bandeau (lot 6c-2), ids et progressions relevés dans la base réelle
+        // le 27/09/2026. Tous « équipés seulement » (aucun n'est un esprit) et tous à RANG, celui de leur
+        // porteur le plus fort.
+        // ⚠ LEUR PLACE DANS CETTE LISTE EST DICTÉE PAR PHILIPPE (27/09/2026, après la QA du 6c-2) : le cri
+        // « Ensemble et unis ! » vient juste après Apaisement, puis les deux Ordres devant la Fureur noire,
+        // et les trois zones finissent par l'Étendard d'HONNEUR. ⚠ La famille des CRIS apparaît donc DEUX
+        // FOIS, séparément (« Ensemble et unis ! » ici, « Visez les yeux ! » après les chants) : c'est
+        // voulu, et les séparateurs le suivent tout seuls puisqu'ils sortent du CHANGEMENT de famille.
+        // « Ensemble et unis ! » : ATTAQUES uniquement (Q1a, tranchée par Philippe le 26/09/2026), et
+        // « membres du groupe » → le familier n'en profite PAS (il est allié et créature, jamais membre
+        // du groupe), même si le texte le cite comme repère de distance.
+        new(Ritual.TogetherAsOne, DamageBoostData.TogetherAsOneSkillId, "\"Together as One!\"",
+            "Membres du groupe près de vous ou de votre familier : +5…15 points de dégâts sur leurs attaques (rang d'Expertise du lanceur).",
+            "Party members near you or your pet: +5…15 damage with their attacks (caster's Expertise rank).",
+            Group: BandGroup.Shout, EquippedOnly: true),
+        // ⚠ Ordre du VAMPIRE : ajouté au bandeau le 27/09/2026 à la demande de Philippe (« que l'on a
+        // oublié »). Il avait été écarté du recensement du § 6.2 pour une raison qui tient toujours — son
+        // effet est du VOL DE VIE, et l'infobulle n'en affiche jamais (décision du chantier 10) —, donc il
+        // n'a AUCUN descripteur de dégâts : c'est une entrée de PRÉSENCE, comme Hiver. Son infobulle le dit,
+        // sinon son absence d'effet sur les chiffres passerait pour un bug.
+        // Même progression que l'Ordre de la douleur (3…13…16, Magie du sang), sondée dans la base.
+        new(Ritual.OrderOfTheVampire, 148, "Order of the Vampire",
+            "Membres du groupe : vol de vie de 3…16 sur leurs touches physiques (rang de Magie du sang du lanceur). "
+            + "Sans effet sur un membre du groupe déjà sous un autre enchantement de Nécromant. "
+            + "Aucun chiffre d'infobulle ne bouge : le vol de vie n'y est jamais affiché.",
+            "Party members: steal 3…16 Health on their physical hits (caster's Blood Magic rank). "
+            + "No effect on a party member already under another Necromancer enchantment. "
+            + "No tooltip number changes: life steal is never displayed there.",
+            Group: BandGroup.Enchantment, EquippedOnly: true),
+        // Ordre de la douleur : enchantement de Nécromant, comme l'Ordre du vampire juste au-dessus. ⚠ Son
+        // bonus SAUTE dès que les dégâts ne sont plus physiques (glossaire G3), comme le Vannage.
+        new(Ritual.OrderOfPain, DamageBoostData.OrderOfPainSkillId, "Order of Pain",
+            "Membres du groupe : +3…16 points de dégâts sur leurs touches physiques (rang de Magie du sang du lanceur).",
+            "Party members: +3…16 damage on their physical hits (caster's Blood Magic rank).",
+            Group: BandGroup.Enchantment, EquippedOnly: true),
         new(Ritual.DarkFury,         147,  "Dark Fury",         "Membres du groupe : +1 coup d'adrénaline par attaque réussie (enchantement).",
             "Party members: +1 strike of adrenaline per hit (enchantment).",
             Group: BandGroup.Enchantment, EquippedOnly: true),
@@ -215,10 +261,39 @@ public static class NatureRitualData
         new(Ritual.EnergizingChorus, 1569, "Energizing Chorus", "Alliés à portée de voix : prochain cri ou chant −3…7 énergie (rang de Motivation du lanceur).",
             "Allies within earshot: next shout or chant −3…7 Energy (caster's Motivation rank).",
             Group: BandGroup.Chant, EquippedOnly: true),
-        // Sorts de protection (lot 3b), ids relevés dans la base réelle le 16/09/2026 : pas de variante « (PvP) »,
-        // PvE only, et « équipés seulement » comme tout effet du bandeau qui n'est pas un esprit. Time Ward porte
-        // un badge au rang d'Incantation rapide de son porteur ; l'Étendard n'en a pas (son rang ne change que la
-        // durée et la chance). L'Étendard d'HONNEUR (2233) les rejoindra au lot 6c-2.
+        // Hymne d'envie : chant, donc famille du Chœur énergisant. ⚠ Sa jumelle « (PvP) » (3148) a des
+        // CHIFFRES différents (+10…20 au lieu de +10…25) : c'est la variante du mode courant qui compte.
+        new(Ritual.AnthemOfEnvy, DamageBoostData.AnthemOfEnvySkillId, "Anthem of Envy",
+            "Alliés à portée de voix : prochaine compétence d'attaque +10…25 points de dégâts contre un ennemi à plus de 50 % de santé (rang de Commandement du lanceur).",
+            "Allies in earshot: next attack skill +10…25 damage against a foe above 50% Health (caster's Command rank).",
+            PvpSkillId: DamageBoostData.AnthemOfEnvyPvpSkillId,
+            PvpTooltipFr: "Alliés à portée de voix : prochaine compétence d'attaque +10…20 points de dégâts contre un ennemi à plus de 50 % de santé (rang de Commandement du lanceur).",
+            PvpTooltipEn: "Allies in earshot: next attack skill +10…20 damage against a foe above 50% Health (caster's Command rank).",
+            Group: BandGroup.Chant, EquippedOnly: true),
+        // « Visez les yeux ! » : du CRITIQUE, pas des dégâts. ⚠ Sa jumelle « (PvP) » (3026) plafonne à +75 %.
+        // ⚠ Deuxième bloc de la famille des CRIS (le premier est « Ensemble et unis ! », bien plus haut) :
+        // place dictée par Philippe, ne pas « regrouper » les deux.
+        new(Ritual.GoForTheEyes, DamageBoostData.GoForTheEyesSkillId, "\"Go for the Eyes!\"",
+            "Alliés à portée de voix : +30…100 % de chances de coup critique à leur prochaine attaque (rang de Commandement du lanceur).",
+            "Allies in earshot: +30…100% chance to land a critical hit with their next attack (caster's Command rank).",
+            PvpSkillId: DamageBoostData.GoForTheEyesPvpSkillId,
+            PvpTooltipFr: "Alliés à portée de voix : +30…75 % de chances de coup critique à leur prochaine attaque (rang de Commandement du lanceur).",
+            PvpTooltipEn: "Allies in earshot: +30…75% chance to land a critical hit with their next attack (caster's Command rank).",
+            Group: BandGroup.Shout, EquippedOnly: true),
+        // ── Les trois ZONES, en DERNIER, dans l'ordre dicté par Philippe le 27/09/2026 : HONNEUR, puis
+        // sagesse, puis Protection du temps. Ids relevés dans la base réelle le 16/09/2026 (2232, 3422) et le
+        // 27/09/2026 (2233) : pas de variante « (PvP) », PvE only, et « équipés seulement » comme tout effet du
+        // bandeau qui n'est pas un esprit.
+        // L'Étendard d'HONNEUR (lot 6c-2) est le seul effet du chantier qui touche TOUT paquet de dégâts soumis
+        // à l'armure, sorts compris — pas seulement les attaques. ⚠ Sa part contre les Charrs est IGNORÉE (Q2,
+        // seul bonus de la base conditionné à une race) et les esprits n'en profitent pas (son texte le dit).
+        new(Ritual.EbonBattleStandardOfHonor, DamageBoostData.EbonStandardOfHonorSkillId,
+            "Ebon Battle Standard of Honor",
+            "Alliés dans la zone : +8…15 points de dégâts sur tout paquet soumis à l'armure (rang de l'Avant-garde d'Ebon). Les esprits ne sont pas affectés.",
+            "Allies in the ward: +8…15 damage on every armor-respecting packet (Ebon Vanguard rank). Spirits are unaffected.",
+            Group: BandGroup.Ward, EquippedOnly: true),
+        // ⚠ L'Étendard de SAGESSE n'a PAS de badge de rang là où celui d'honneur en a un : son rang de titre ne
+        // change que la durée et la chance, jamais sa réduction (toujours −50 %).
         new(Ritual.EbonBattleStandard, 2232, "Ebon Battle Standard of Wisdom",
             "Alliés dans la zone : recharge des sorts −50 % (44…60 % de chance selon le rang).",
             "Allies in the ward: spells recharge 50% faster (44…60% chance by rank).",
@@ -495,9 +570,15 @@ public static class NatureRitualData
     public static string AttributeOf(Ritual ritual) => ritual switch
     {
         Ritual.InfuriatingHeat  => "Expertise",
-        Ritual.MarkOfFury       => "Blood Magic",
+        Ritual.MarkOfFury or Ritual.OrderOfPain or Ritual.OrderOfTheVampire => "Blood Magic",
         Ritual.EnergizingChorus => "Motivation",
         Ritual.TimeWard         => "Fast Casting",
+        // Lot 6c-2. ⚠ Deux noms de caractéristique relevés DANS LA BASE, pas devinés : « Command » pour les
+        // deux effets de Parangon, « Ebon Vanguard rank » pour l'Étendard (rang de TITRE, donc une ligne de
+        // TitleRankRows chez son porteur — qui l'a forcément équipé, puisque l'effet est « porté seulement »).
+        Ritual.AnthemOfEnvy or Ritual.GoForTheEyes  => "Command",
+        Ritual.TogetherAsOne                        => "Expertise",
+        Ritual.EbonBattleStandardOfHonor            => "Ebon Vanguard rank",
         _                      => "Wilderness Survival",
     };
 
@@ -666,6 +747,14 @@ public static class NatureRitualData
     {
         Ritual.RoaringWinds or Ritual.Tranquility or Ritual.MarkOfFury or Ritual.EnergizingChorus
             or Ritual.TimeWard or Ritual.Brambles                      => true,
+        // Lot 6c-2 : les 5 effets portés ont tous un rang, dans les deux modes. ⚠ L'Étendard d'HONNEUR en a
+        // un là où l'Étendard de SAGESSE n'en a pas : son rang de titre change vraiment son chiffre
+        // (+8…15 dégâts), alors que celui de sagesse ne pilote que la durée et la chance.
+        Ritual.OrderOfPain or Ritual.AnthemOfEnvy or Ritual.GoForTheEyes or Ritual.TogetherAsOne
+            or Ritual.EbonBattleStandardOfHonor                        => true,
+        // L'Ordre du vampire ne change aucun chiffre d'infobulle, mais son badge sert quand même : il résout
+        // son vol de vie au rang de son porteur dans l'infobulle du bandeau.
+        Ritual.OrderOfTheVampire                                       => true,
         Ritual.NaturesRenewal or Ritual.InfuriatingHeat                => PvpVariants,
         _                                                              => false,
     };

@@ -40,6 +40,7 @@ public static class FrStaleDescriptions
         1536, // Wounding Strike — omet le retrait d'enchantement de Derviche
         2001, // Ward of Weakness — omet la durée de la protection elle-même
         3006, // Shadowsong (PvP) — idem 871
+        3148, // Anthem of Envy (PvP) — le CHIFFRE a sauté : « inflige points de dégâts » (relevé au lot 6c-2)
     ];
 
     /// <summary>true si la description FR de cette compétence est connue pour être fausse.</summary>

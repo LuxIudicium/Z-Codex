@@ -87,7 +87,7 @@ public class TeamBuildViewModel : ViewModelBase, IRenamableTab
                        + $"|{JudgesInsight?.Id}|{string.Join(";", TeamAdrenaline.Effects)}"
                        + $"|{EnergizingChorusReduction}|{TeamSpeed}"
                        + $"|{CharacterSlotViewModel.GreatDwarfWeaponFor(EnumerateTree())?.Id}"
-                       + $"|{ReceivedDamageBoostsSignature}";
+                       + $"|{ReceivedDamageBoostsSignature}|{BandDamageRanksSignature}";
             if (sig == _heroicRefrainSig) return;
             _heroicRefrainSig = sig;
             _heroicRefrainTimer.Stop();
@@ -102,6 +102,12 @@ public class TeamBuildViewModel : ViewModelBase, IRenamableTab
     private string ReceivedDamageBoostsSignature =>
         string.Join(",", CharacterSlotViewModel.ReceivedDamageBoostsFor(EnumerateTree())
             .OrderBy(kv => kv.Key).Select(kv => $"{kv.Key}:{kv.Value.Rank}"));
+
+    // ⚠ Même piège du lot 4c, côté BANDEAU cette fois (lot 6c-2) : le Commandement du Parangon qui crie
+    // « Visez les yeux ! » change le taux de critique affiché chez TOUS les persos. Sans son rang dans la
+    // signature, leurs infobulles gardent l'ancien chiffre jusqu'à ce qu'autre chose bouge.
+    private string BandDamageRanksSignature =>
+        string.Join(",", BandDamageRanks.OrderBy(kv => kv.Key).Select(kv => $"{kv.Key}:{kv.Value}"));
 
     private string _heroicRefrainSig = "";
     private readonly DispatcherTimer _heroicRefrainTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
@@ -166,6 +172,11 @@ public class TeamBuildViewModel : ViewModelBase, IRenamableTab
     // descripteurs. Le receveur est passé parce que deux d'entre elles ne peuvent pas venir de soi-même.
     public IReadOnlyDictionary<int, (Skill Skill, int Rank)> ReceivedDamageBoostsFor(CharacterSlotViewModel receiver) =>
         CharacterSlotViewModel.ReceivedDamageBoostsFor(EnumerateTree(), receiver);
+
+    // Rangs des effets de dégâts PORTÉS du bandeau (lot 6c-2) : rang du porteur le plus fort de l'arbre pour
+    // chacun ; absent = personne ne le porte, et l'effet ne joue alors pas, même resté allumé dans un fichier.
+    public IReadOnlyDictionary<int, int> BandDamageRanks =>
+        CharacterSlotViewModel.BandDamageRanksFor(EnumerateTree());
 
     // Saignement de Ronces (lot 4c) : Survie du porteur le plus fort, ou rang de simulation du bandeau ;
     // 0 si l'esprit n'est pas posé.

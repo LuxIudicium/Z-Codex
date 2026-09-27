@@ -695,11 +695,56 @@ public class CharacterSlotViewModel : ViewModelBase
         {
             _bandSkills.Clear();
             foreach (var s in all)
-                if (DamageBoostData.IsBandSkillId(s.Id)) _bandSkills[s.Id] = s;
+                // ⚠ Les VARIANTES « (PvP) » entrent dans le cache depuis le lot 6c-2 : deux effets portés
+                // (Hymne d'envie, « Visez les yeux ! ») ont des CHIFFRES différents en PvP, et c'est la
+                // compétence du mode courant qui les porte. BySkillId reconnaît les deux ids et rend la même
+                // entrée, donc ce test-ci attrape la jumelle sans avoir à la nommer.
+                if (NatureRitualData.BySkillId(s.Id) is { } band && DamageBoostData.IsBandSkillId(band.SkillId))
+                    _bandSkills[s.Id] = s;
             _bandSkillsFrom = all.Count;
         }
-        return _bandSkills.GetValueOrDefault(skillId);
+        // Compétence du MODE DE JEU courant (PvE ou « (PvP) »), comme le bandeau lui-même.
+        int displayed = NatureRitualData.BySkillId(skillId)?.DisplaySkillId ?? skillId;
+        return _bandSkills.GetValueOrDefault(displayed);
     }
+
+    /// <summary>
+    /// Rang du PORTEUR le plus fort de chaque effet de dégâts du bandeau, par SkillId de base (lot 6c-2) ;
+    /// absent du dictionnaire = personne ne le porte.
+    ///
+    /// ⚠ Nouveauté du 6c-2 : les trois esprits du 6c-1 ne portaient que des littéraux, les 5 effets portés
+    /// ont tous un rang — et il se lit chez leur PORTEUR. La caractéristique d'échelle est le plus souvent
+    /// absente de la barre de celui qui en profite (la Magie du sang de l'Ordre de la douleur chez un
+    /// Guerrier, le rang de l'Avant-garde d'Ebon chez qui ne porte pas l'Étendard) : la lire sur le receveur
+    /// rendrait null, donc 0, et le bonus disparaîtrait en silence.
+    /// </summary>
+    public static IReadOnlyDictionary<int, int> BandDamageRanksFor(IEnumerable<CharacterSlotViewModel> characters)
+    {
+        var list = characters as IReadOnlyCollection<CharacterSlotViewModel> ?? characters.ToList();
+        Dictionary<int, int>? found = null;
+        foreach (var d in DamageBoostData.BandAll)
+        {
+            // Les trois esprits du 6c-1 portent des LITTÉRAUX : leur chercher un rang serait un parcours
+            // d'arbre pour rien, et ils sont de toute façon proposés sans porteur.
+            if (d.Fixed > 0) continue;
+            // Une compétence peut porter DEUX descripteurs (le perso et son familier) : le rang est le même,
+            // le dictionnaire est donc bien clé par SkillId et non par descripteur.
+            if (found is not null && found.ContainsKey(d.SkillId)) continue;
+            if (NatureRitualData.BySkillId(d.SkillId) is not { } band) continue;
+            if (WearerRank(band.Ritual, list) is not { } rank) continue;
+            (found ??= [])[d.SkillId] = rank;
+        }
+        return found ?? EmptyBandRanks;
+    }
+
+    private static readonly Dictionary<int, int> EmptyBandRanks = [];
+
+    public Func<IReadOnlyDictionary<int, int>>? BandDamageRanksProvider { get; set; }
+
+    /// <summary>Rangs des porteurs des effets de dégâts du bandeau, vus par CE perso (l'environnement est
+    /// global : ils sont les mêmes pour tout le monde).</summary>
+    public IReadOnlyDictionary<int, int> BandDamageRanks =>
+        BandDamageRanksProvider?.Invoke() ?? OwnerBuild?.BandDamageRanks ?? EmptyBandRanks;
 
     /// <summary>Hiver est-il posé ? → les dégâts élémentaires s'AFFICHENT en froid. ⚠ Étiquette seulement :
     /// Hiver convertit les dégâts REÇUS, il ne change pas ce que l'arme inflige, donc il ne déclenche
@@ -1002,6 +1047,11 @@ public class CharacterSlotViewModel : ViewModelBase
         void Suppress(Skill sk, DamageBoostSuppression reason) =>
             (suppressed ??= []).Add(new SuppressedBoost(sk.DisplayName, reason));
 
+        // Analyse des paquets de dégâts de la compétence survolée : ne sert qu'à l'Étendard d'honneur, donc
+        // calculée à la demande et une seule fois (l'infobulle en refait une de son côté, mais seulement
+        // quand elle s'affiche — ici on est sur le chemin de TOUTES les compétences).
+        SkillDamage.Analysis? armorAnalysis = null;
+
         foreach (var (sk, d) in LitDamageBoosts())
         {
             if (d.Kind == DamageBoostKind.TextDamage) continue;
@@ -1026,6 +1076,17 @@ public class CharacterSlotViewModel : ViewModelBase
             {
                 Suppress(sk, DamageBoostSuppression.NoLongerPhysical);
                 continue;
+            }
+            // Étendard d'honneur (lot 6c-2) : il ne donne son +8…15 qu'à ce qui SUBIT l'armure. Le périmètre
+            // ci-dessus n'a pu écarter que le familier, les esprits et les dégâts déclenchés par l'ennemi ;
+            // la vraie question — « cette compétence a-t-elle un paquet soumis à l'armure ? » — demande la
+            // description RÉSOLUE. L'analyse ne se fait donc qu'ici, et une seule fois par infobulle.
+            // ⚠ Aucune ligne « sans effet ici » : sur un soin ou une Flamme d'obsidienne, l'Étendard n'avait
+            // rien à donner, il n'y a aucun chiffre manquant à justifier.
+            if (d.Scope == DamageBoostScope.ArmorRespectingDamage)
+            {
+                armorAnalysis ??= SkillDamage.Analyze(ResolveDescription(target), target.Name);
+                if (!DamageBoostData.BenefitsFromArmorRespectingBonus(target, armorAnalysis)) continue;
             }
             // Seule entorse du chantier à « icône allumée = ça marche » : une conjuration ne s'applique
             // que si le type de dégâts effectif est le sien — mais uniquement quand l'application le SAIT
@@ -1085,12 +1146,18 @@ public class CharacterSlotViewModel : ViewModelBase
             if (IsAttributeBoostActive(toggleId) && DamageBoostData.BySkillId(recv.Skill.Id) is { } d)
                 yield return (recv.Skill, d);
 
-        // Troisième origine (lot 6c) : le BANDEAU d'équipe. Aucune icône de carte, aucun rang à résoudre
-        // pour le 6c-1 (les deux chiffres sont des littéraux) — c'est l'esprit posé qui allume l'effet,
-        // pour tout le monde en même temps.
+        // Troisième origine (lot 6c) : le BANDEAU d'équipe. Aucune icône de carte — c'est l'effet posé qui
+        // allume, pour tout le monde en même temps. Les trois esprits du 6c-1 n'ont aucun rang à résoudre
+        // (leurs chiffres sont des littéraux) ; les 5 effets PORTÉS du 6c-2 en ont un, celui de leur porteur.
         var rituals = ActiveNatureRituals;
+        var bandRanks = BandDamageRanks;
         foreach (var d in DamageBoostData.BandAll)
             if (NatureRitualData.BySkillId(d.SkillId) is { } band && rituals.Contains(band.Ritual)
+                // ⚠ Un effet « porté seulement » que PLUS PERSONNE n'équipe n'existe pas, même si le bandeau
+                // le garde allumé : l'état est persisté par SkillId, donc un fichier enregistré AVANT le
+                // retrait de la compétence le rouvre allumé. Sans ce test il donnerait son chiffre au rang 0,
+                // ou pire une ligne « sans effet ici » fantôme sur l'Ordre de la douleur.
+                && (!band.EquippedOnly || bandRanks.ContainsKey(d.SkillId))
                 && BandSkill(d.SkillId) is { } sk)
                 yield return (sk, d);
     }
@@ -1121,9 +1188,18 @@ public class CharacterSlotViewModel : ViewModelBase
     {
         // ⚠ Passer par ValueOf même pour un littéral : c'est LUI qui porte le signe des malus (lot 6b).
         if (descriptor.Fixed > 0) return DamageBoostData.ValueOf(descriptor, source, 0);
-        int? rank = ReceivedRankOf(descriptor) ?? AttributeLevel(SubstitutedAttributeFor(source) ?? source.Attribute);
+        // Un effet REÇU ou de BANDEAU se lit au rang de son PORTEUR, jamais à celui du perso qui en profite :
+        // retomber sur le receveur rendrait null, donc 0, et le bonus tomberait en silence (lot 6c-2).
+        int? rank = descriptor.Received || descriptor.Band
+            ? ReceivedRankOf(descriptor) ?? BandRankOf(descriptor)
+            : AttributeLevel(SubstitutedAttributeFor(source) ?? source.Attribute);
         return rank is null ? 0 : DamageBoostData.ValueOf(descriptor, source, rank.Value);
     }
+
+    /// <summary>Rang d'un effet de BANDEAU (lot 6c-2) : celui de son porteur le plus fort. null = personne ne
+    /// le porte, ou l'effet n'a pas de rang du tout (les trois esprits du 6c-1, qui passent par Fixed).</summary>
+    private int? BandRankOf(DamageBoostDescriptor descriptor) =>
+        descriptor.Band && BandDamageRanks.TryGetValue(descriptor.SkillId, out int rank) ? rank : null;
 
     /// <summary>Rang d'un effet REÇU : celui de son lanceur le plus fort, jamais celui du receveur — la
     /// caractéristique d'échelle est souvent absente de la barre de celui qui en profite (le Communion
