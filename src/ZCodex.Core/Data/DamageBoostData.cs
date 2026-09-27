@@ -95,7 +95,13 @@ public enum DamageBoostScope
     /// sèche. C'est aussi ce qui écarte les 3 exemples que Philippe cite comme « déclenchés par une action
     /// de l'ENNEMI » — Barbelés, Esprit malveillant, Marque de douleur annoncent tous les trois des dégâts
     /// SANS TYPE, donc qui ignorent l'armure : rien à coder pour eux (vérifié au harnais, pas supposé).
-    /// Seule exception relevée par le balayage : <see cref="_enemyTriggeredDamage"/>.
+    ///
+    /// ⚠⚠ **Le critère tient donc en UNE phrase, et il n'a AUCUNE exception écrite à la main.** Le balayage
+    /// du 6c-2 avait trouvé un seul candidat qui y échappait — l'Armure d'éclats (1084), dont les dégâts de
+    /// terre subissent l'armure mais partent quand l'ENNEMI vous prend pour cible — et je l'avais mise
+    /// dehors par la lettre de la règle, en signalant que l'arbitrage était rendu à la place de Philippe.
+    /// **Il a tranché le 27/09/2026 : elle profite de l'Étendard comme les autres.** La liste d'exclusions
+    /// et son `IsEnemyTriggeredDamage` ont donc été SUPPRIMÉS — ne pas les réintroduire.
     /// </summary>
     ArmorRespectingDamage,
 }
@@ -561,28 +567,19 @@ public static class DamageBoostData
         new(GrenthsAuraSkillId, DamageBoostScope.ScytheAttacks, DamageBoostKind.LifeSteal, Index: 0),
     };
 
-    /// <summary>
-    /// Les dégâts déclenchés par une ACTION DE L'ENNEMI, qui ne profitent pas de l'Étendard d'honneur
-    /// (règle de Philippe, Q1b du 26/09/2026) — liste CLOSE par balayage de la base réelle le 27/09/2026.
-    ///
-    /// ⚠ Le balayage a trouvé 58 compétences dont les dégâts sont déclenchés par un évènement
-    /// (« whenever », « each time », riposte sur blocage, seuil d'énergie de la cible…), Barbelés, Esprit
-    /// malveillant et Marque de douleur comprises. Une SEULE porte un paquet réellement soumis à l'armure :
-    /// toutes les autres annoncent des dégâts SANS TYPE — ou sacrés —, donc qui ignorent déjà l'armure et
-    /// sortent d'eux-mêmes du périmètre. La liste des exclusions à écrire à la main se réduit à celle-ci.
-    ///
-    /// Armure d'éclats : « Deals 5…29…35 EARTH damage to one nearby foe whenever you are the target of a
-    /// hostile spell or attack » — de la terre, donc soumis à l'armure, et déclenché par l'ennemi qui
-    /// vous prend pour cible.
-    /// </summary>
-    private static readonly HashSet<int> _enemyTriggeredDamage =
-    [
-        1084,   // Armure d'éclats (Sliver Armor)
-    ];
-
-    /// <summary>Les dégâts de cette compétence sont-ils déclenchés par une action de l'ENNEMI ? → hors
-    /// périmètre de l'Étendard d'honneur.</summary>
-    public static bool IsEnemyTriggeredDamage(Skill target) => _enemyTriggeredDamage.Contains(target.Id);
+    // ⚠⚠ IL N'Y A AUCUNE LISTE D'EXCLUSION SOUS L'ÉTENDARD D'HONNEUR — et il ne faut pas en réintroduire.
+    //
+    // Le balayage du 6c-2 avait trouvé 58 compétences dont les dégâts sont déclenchés par un évènement
+    // (« whenever », « each time », riposte sur blocage, seuil d'énergie de la cible…), Barbelés, Esprit
+    // malveillant et Marque de douleur comprises. 57 annoncent des dégâts SANS TYPE — ou sacrés —, donc qui
+    // ignorent déjà l'armure : elles sortent du périmètre TOUTES SEULES, sur la donnée qui existe déjà.
+    //
+    // La 58e était l'Armure d'éclats (1084) : « Deals 5…29…35 EARTH damage to one nearby foe whenever you
+    // are the target of a hostile spell or attack » — de la terre, donc soumise à l'armure, mais déclenchée
+    // par l'ennemi. Je l'avais mise dehors par la lettre de la règle Q1b, en signalant que c'était le seul
+    // arbitrage GW1 rendu à la place de Philippe. ⚠ **Il a tranché le 27/09/2026 : elle profite de
+    // l'Étendard, comme tout paquet soumis à l'armure.** Le `_enemyTriggeredDamage` et son
+    // `IsEnemyTriggeredDamage` ont donc été supprimés : le critère est redevenu UNE phrase sans exception.
 
     /// <summary>
     /// Cette compétence a-t-elle de quoi profiter d'un bonus « sur tout paquet soumis à l'armure »
@@ -708,9 +705,10 @@ public static class DamageBoostData
             // exclus par le texte de la compétence (« Spirits are unaffected »). ⚠ Le test « y a-t-il
             // vraiment un paquet soumis à l'armure ? » N'EST PAS ICI : il demande la description RÉSOLUE,
             // que le périmètre n'a pas — c'est BenefitsFromArmorRespectingBonus, que l'appelant enchaîne.
+            // ⚠ Aucune exclusion « déclenché par l'ennemi » : Philippe a tranché le 27/09/2026 pour l'Armure
+            // d'éclats, le seul candidat que le balayage avait trouvé. Voir le commentaire de l'enum.
             DamageBoostScope.ArmorRespectingDamage => target.SkillType != "Pet Attack"
-                                                && !AttacksAsSpirit(target)
-                                                && !IsEnemyTriggeredDamage(target),
+                                                && !AttacksAsSpirit(target),
             _                                => false,
         };
 
@@ -728,6 +726,16 @@ public static class DamageBoostData
     // ne les touche pas, sans avoir à les nommer.
     private static readonly Regex SpiritAttackRegex = new(
         @"\bits attacks deal\s+(?<range>\d+(?:\.\.\.\d+)+)\s+damage\b",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    // ⚠⚠ TROU DU LOT 6a, trouvé le 27/09/2026 en élargissant le périmètre : le **Sceau des Esprits (1239)**
+    // est le SEUL de la base à annoncer ses dégâts au PLURIEL — « Creates 3 level 1…10…12 spirits. **These
+    // spirits deal 5…17…20 damage with attacks.** » Le motif au singulier ne le voyait pas, donc le Sceau de
+    // puissance spectrale ne touchait pas ses 3 esprits depuis le lot 6a, en silence.
+    // ⚠ Sa variante PvP (2965) n'a RIEN à voir : elle ne crée aucun esprit, elle rend de l'énergie à portée
+    // d'un esprit. Divergence de variante « (PvP) » de plus — aucun descripteur pour elle.
+    private static readonly Regex SpiritGroupAttackRegex = new(
+        @"\bthese spirits deal\s+(?<range>\d+(?:\.\.\.\d+)+)\s+damage with attacks\b",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     // ⚠ TROIS esprits de la base n'infligent PAS de dégâts : leur attaque EST un vol de vie — Mélodie du
@@ -754,9 +762,25 @@ public static class DamageBoostData
     private static readonly Regex ConditionalTailRegex = new(
         @"\bif\b|\bfor each\b", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-    /// <summary>Plage du paquet « Its attacks deal X damage » d'un rituel d'asservissement, ou null.</summary>
+    // Un esprit qui ATTAQUE se reconnaît à ce que sa description parle de SES attaques : « its attacks … »,
+    // la formulation de 17 compétences sur 18. La 18e est le Sceau des Esprits, au pluriel — et elle est
+    // déjà reconnue par SpiritGroupAttackRegex, donc inutile de la redire ici.
+    // ⚠ Ne PAS chercher à couvrir le pluriel avec un motif « these spirits … with attacks » borné par
+    // [^.;]* : la classe exclut le point, et une plage « 5...17...20 » s'intercale entre les deux moitiés
+    // de la phrase — le motif ne peut pas la traverser. Piège attrapé par le harnais le 27/09/2026.
+    private static readonly Regex SpiritOwnAttackRegex = new(
+        @"\bits attacks\b", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    private static readonly Regex SpiritWordRegex = new(
+        @"\bspirits?\b", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    /// <summary>Plage du paquet de dégâts des attaques d'un esprit, ou null : « Its attacks deal X damage »
+    /// (12 rituels d'asservissement) ou « These spirits deal X damage with attacks » (le Sceau des Esprits,
+    /// seule formulation au pluriel de la base — et trou du lot 6a jusqu'au 27/09/2026).</summary>
     public static string? SpiritAttackRange(Skill skill) =>
-        SpiritAttackRegex.Match(skill.Description) is { Success: true } m ? m.Groups["range"].Value : null;
+        SpiritAttackRegex.Match(skill.Description) is { Success: true } m ? m.Groups["range"].Value
+        : SpiritGroupAttackRegex.Match(skill.Description) is { Success: true } g ? g.Groups["range"].Value
+        : null;
 
     /// <summary>Plage du VOL DE VIE « Its attacks steal X Health » d'un rituel d'asservissement, ou null :
     /// les 3 esprits dont l'attaque vole de la vie au lieu d'infliger des dégâts (lot 6c-3b).</summary>
@@ -764,16 +788,26 @@ public static class DamageBoostData
         SpiritStealRegex.Match(skill.Description) is { Success: true } m ? m.Groups["range"].Value : null;
 
     /// <summary>
-    /// Cet esprit ATTAQUE-t-il, avec une sortie chiffrée dans sa description ? Les DEUX formes comptent :
-    /// des DÉGÂTS (Douleur, Angoisse, Mélodie des Ombres, Dissonance, Désenchantement, Regard de fureur)
-    /// ou un VOL DE VIE (Mélodie du sang, Vampirisme).
+    /// Cet esprit ATTAQUE-t-il ? C'est le périmètre de <see cref="DamageBoostScope.SpiritAttacks"/>, et c'est
+    /// aussi ce qui EXCLUT les esprits des effets posés sur le PERSO (glossaire G1).
     ///
-    /// C'est le périmètre de <see cref="DamageBoostScope.SpiritAttacks"/>, et c'est aussi ce qui EXCLUT les
-    /// esprits des effets posés sur le perso (glossaire G1). ⚠ Union, Destruction, Refuge et les autres
-    /// rituels utilitaires n'attaquent pas ; Voyage attaque mais ne chiffre rien.
+    /// ⚠ **La question est « attaque-t-il ? », pas « sa sortie est-elle chiffrée ? »** — règle de Philippe du
+    /// 27/09/2026. Les 18 esprits attaquants se répartissent en trois formes :
+    /// <list type="bullet">
+    /// <item>13 infligent des DÉGÂTS chiffrés (<see cref="SpiritAttackRange"/>) ;</item>
+    /// <item>3 VOLENT de la vie (<see cref="SpiritStealRange"/>) — Mélodie du sang, sa PvP, Vampirisme ;</item>
+    /// <item>2 n'annoncent AUCUN chiffre : Voyage (1255) et sa variante PvP, dont l'attaque assomme. Ils
+    /// profitent quand même de l'Aura de sangsue et se mettent alors à voler de la vie — le chiffre n'a
+    /// nulle part à se poser dans leur texte, donc il prend la ligne « Vol de vie » sous la table.</item>
+    /// </list>
+    ///
+    /// ⚠ Union, Destruction, Refuge, Sables mouvants, Saison des prédateurs, Vents et les autres rituels
+    /// utilitaires n'attaquent pas : leur description parle des attaques des CRÉATURES à portée, ou de
+    /// dégâts qu'ils encaissent. Le test le voit sans avoir à les nommer.
     /// </summary>
     public static bool AttacksAsSpirit(Skill skill) =>
-        SpiritAttackRange(skill) is not null || SpiritStealRange(skill) is not null;
+        SpiritWordRegex.IsMatch(skill.Description)
+        && (SpiritOwnAttackRegex.IsMatch(skill.Description) || SpiritAttackRange(skill) is not null);
 
     /// <summary>
     /// Le vol de vie conféré par cet effet se lit-il DANS LE TEXTE de la compétence survolée, au lieu
