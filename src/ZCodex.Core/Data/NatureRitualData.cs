@@ -56,6 +56,12 @@ public static class NatureRitualData
         // attaques converties ne sont plus physiques — l'Application de poison cesse alors d'empoisonner.
         GreaterConflagration,
         Conflagration,
+        // Effets de DÉGÂTS d'équipe (lot 6c) : trois esprits de plus, donc proposés à tout moment comme
+        // les autres rituels de la nature, et sans aucun rang — leurs chiffres sont des littéraux de la
+        // description (+6 aux flèches, +4 aux dégâts physiques) et Hiver n'a pas de chiffre du tout.
+        FavorableWinds,
+        Winnowing,
+        Winter,
         // Assommement (lot 4c) : Ronces est un rituel de la nature comme les autres — proposé à tout moment,
         // avec son rang de simulation (son saignement suit Survie en pleine nature). Lien terrestre est un
         // esprit d'ASSERVISSEMENT (Ritualiste) : « porté seulement » (décision Q6 du lot 4), sans rang — son
@@ -113,38 +119,68 @@ public static class NatureRitualData
     // SkillId relevés dans la base réelle (probe scratchpad).
     public static readonly IReadOnlyList<Descriptor> All =
     [
-        new(Ritual.EnergizingWind,   474,  "Energizing Wind",   "Compétences : −15 énergie (min. 10) et recharge +25 % (plus lente).",
-            "Skills: −15 Energy (min. 10) and +25% recharge (slower)."),
-        new(Ritual.QuickeningZephyr, 475,  "Quickening Zephyr", "Compétences : +30 % énergie et recharge ×2 plus rapide.",
-            "Skills: +30% Energy and recharge twice as fast."),
-        new(Ritual.PrimalEchoes,     469,  "Primal Echoes",     "Les sceaux coûtent 10 énergie.",
-            "Signets cost 10 Energy."),
-        new(Ritual.RoaringWinds,     1725, "Roaring Winds",     "Chants et cris coûtent +1…5 énergie (rang du lanceur).",
-            "Chants and shouts cost +1…5 Energy (caster's rank)."),
+        // ⚠ L'ORDRE DE CETTE LISTE EST CELUI DU BANDEAU ET DU MENU SÉLECTION, et il a été dicté par
+        // Philippe le 27/09/2026, capture à l'appui. Ne pas le « ranger » autrement. Les séparateurs ne
+        // sont écrits nulle part : ils sortent du changement de famille (BandGroup), et cet ordre-ci les
+        // fait tomber exactement où il les veut — après Ronces, après Lien terrestre, après Apaisement,
+        // après Fureur noire, après Marque de Furie, après Chœur énergisant.
+        // ⚠ Défaut corrigé au passage : Chaleur exaspérante est un rituel de la nature mais se trouvait
+        // APRÈS Lien terrestre, ce qui rouvrait la famille et fabriquait deux séparateurs parasites.
+        new(Ritual.Equinox,          1212, "Equinox",           "Les sorts à overcast infligent +10 overcast.",
+            "Overcast spells inflict +10 overcast."),
         new(Ritual.Quicksand,        1473, "Quicksand",         "+1 énergie sur toute compétence, +1 de plus sur les attaques.",
             "+1 Energy on every skill, +1 more on attacks."),
+        new(Ritual.QuickeningZephyr, 475,  "Quickening Zephyr", "Compétences : +30 % énergie et recharge ×2 plus rapide.",
+            "Skills: +30% Energy and recharge twice as fast."),
+        new(Ritual.EnergizingWind,   474,  "Energizing Wind",   "Compétences : −15 énergie (min. 10) et recharge +25 % (plus lente).",
+            "Skills: −15 Energy (min. 10) and +25% recharge (slower)."),
         new(Ritual.NaturesRenewal,   476,  "Nature's Renewal",  "Enchantements/maléfices : incantation ×2 ; entretien des enchantements ×2 énergie.",
             "Enchantments/hexes: ×2 cast time; enchantment upkeep ×2 Energy.",
             PvpSkillId: 3445,
             PvpTooltipFr: "Enchantements/maléfices : incantation +50…75 % (rang du lanceur) ; entretien des enchantements ×2 énergie.",
             PvpTooltipEn: "Enchantments/hexes: +50…75% cast time (caster's rank); enchantment upkeep ×2 Energy."),
-        new(Ritual.Equinox,          1212, "Equinox",           "Les sorts à overcast infligent +10 overcast.",
-            "Overcast spells inflict +10 overcast."),
         new(Ritual.Tranquility,      1213, "Tranquility",       "Les enchantements expirent 20…50 % plus vite.",
             "Enchantments expire 20…50% faster.",
             PvpSkillId: 3460,
             PvpTooltipFr: "Les enchantements expirent 10…30 % plus vite.",
             PvpTooltipEn: "Enchantments expire 10…30% faster."),
-        // Convertisseurs du type de dégâts (lot 4b), ids relevés dans la base réelle le 16/09/2026 : deux esprits,
-        // donc proposés à tout moment comme les autres rituels de la nature ; aucun rang (la conversion est
-        // binaire), aucune variante « (PvP) ». Hiver est volontairement DEHORS : il convertit l'élémentaire en
-        // froid, il ne touche jamais le physique.
-        new(Ritual.GreaterConflagration, 465, "Greater Conflagration",
-            "Créatures à portée : les dégâts physiques deviennent des dégâts de feu.",
-            "Creatures in range: physical damage becomes fire damage."),
+        // Effets d'adrénaline (lot 1b), SkillId relevés dans la base réelle le 14/09/2026.
+        new(Ritual.InfuriatingHeat,  1730, "Infuriating Heat",  "Adrénaline gagnée ×2.",
+            "Adrenaline gain ×2.",
+            PvpSkillId: 3466,
+            PvpTooltipFr: "Adrénaline gagnée +33…66 % (rang d'Expertise du lanceur).",
+            PvpTooltipEn: "Adrenaline gain +33…66% (caster's Expertise rank)."),
+        new(Ritual.PrimalEchoes,     469,  "Primal Echoes",     "Les sceaux coûtent 10 énergie.",
+            "Signets cost 10 Energy."),
+        new(Ritual.RoaringWinds,     1725, "Roaring Winds",     "Chants et cris coûtent +1…5 énergie (rang du lanceur).",
+            "Chants and shouts cost +1…5 Energy (caster's rank)."),
         new(Ritual.Conflagration,        466, "Conflagration",
             "Créatures à portée : les flèches infligent des dégâts de feu.",
             "Creatures in range: arrows deal fire damage."),
+        // Convertisseurs du type de dégâts (lot 4b), ids relevés dans la base réelle le 16/09/2026 : les deux
+        // brasiers, proposés à tout moment comme les autres rituels de la nature ; aucun rang (la conversion
+        // est binaire), aucune variante « (PvP) ». ⚠ Hiver, juste en dessous, est bien au bandeau depuis le
+        // lot 6c-1 — ce qu'il ne fait PAS, c'est entrer dans la chaîne de conversion (voir son commentaire).
+        new(Ritual.GreaterConflagration, 465, "Greater Conflagration",
+            "Créatures à portée : les dégâts physiques deviennent des dégâts de feu.",
+            "Creatures in range: physical damage becomes fire damage."),
+        // ⚠ Hiver ne fonctionne PAS comme les brasiers : il convertit les dégâts élémentaires REÇUS, il ne
+        // change pas le type de dégâts que l'ARME inflige — il ne déclenche donc JAMAIS une conjuration
+        // (note de mécanique de la page wiki *Winter*, tranchée par Philippe le 26/09/2026). La description
+        // de la base ne permet pas de le deviner : Hiver et Grand brasier écrivent tous les deux
+        // « … for creatures in range ». Ne pas le remettre dans DamageBoostData.EffectiveElement.
+        new(Ritual.Winter, DamageBoostData.WinterSkillId, "Winter",
+            "Créatures à portée : les dégâts élémentaires subis deviennent des dégâts du froid. "
+            + "Ne déclenche PAS les conjurations.",
+            "Creatures in range: elemental damage taken becomes cold damage. Does NOT trigger conjures."),
+        // Effets de dégâts d'équipe (lot 6c), ids relevés dans la base réelle le 26/09/2026 : trois esprits,
+        // aucune variante « (PvP) », aucun rang (les deux chiffres sont des littéraux).
+        new(Ritual.FavorableWinds, DamageBoostData.FavorableWindsSkillId, "Favorable Winds",
+            "Créatures à portée : les flèches infligent +6 points de dégâts.",
+            "Creatures in range: arrows deal +6 damage."),
+        new(Ritual.Winnowing, DamageBoostData.WinnowingSkillId, "Winnowing",
+            "Créatures à portée : les dégâts physiques augmentent de +4.",
+            "Creatures in range: physical damage increased by +4."),
         // Assommement (lot 4c), ids relevés dans la base réelle le 17/09/2026. Ronces est un rituel de la nature :
         // proposé à tout moment, avec rang de simulation (son saignement suit Survie en pleine nature).
         // ⚠ Il ne fait PAS la différence entre un ennemi et nous — « Knocked-down creatures », donc nos propres
@@ -163,12 +199,12 @@ public static class NatureRitualData
             PvpTooltipFr: "Ennemis assommés à portée : assommement d'au moins 3 s.",
             PvpTooltipEn: "Knocked-down foes in range: knockdown lasts at least 3s.",
             Group: BandGroup.BindingRitual, EquippedOnly: true),
-        // Effets d'adrénaline (lot 1b), SkillId relevés dans la base réelle le 14/09/2026.
-        new(Ritual.InfuriatingHeat,  1730, "Infuriating Heat",  "Adrénaline gagnée ×2.",
-            "Adrenaline gain ×2.",
-            PvpSkillId: 3466,
-            PvpTooltipFr: "Adrénaline gagnée +33…66 % (rang d'Expertise du lanceur).",
-            PvpTooltipEn: "Adrenaline gain +33…66% (caster's Expertise rank)."),
+        new(Ritual.Soothing,         1266, "Soothing",          "Effet ennemi : l'équipe gagne l'adrénaline deux fois moins vite.",
+            "Enemy effect: the team builds adrenaline half as fast.",
+            PvpSkillId: 3009,
+            PvpTooltipFr: "Effet ennemi : l'équipe gagne l'adrénaline deux fois moins vite.",
+            PvpTooltipEn: "Enemy effect: the team builds adrenaline half as fast.",
+            Group: BandGroup.Enemy),
         new(Ritual.DarkFury,         147,  "Dark Fury",         "Membres du groupe : +1 coup d'adrénaline par attaque réussie (enchantement).",
             "Party members: +1 strike of adrenaline per hit (enchantment).",
             Group: BandGroup.Enchantment, EquippedOnly: true),
@@ -179,23 +215,17 @@ public static class NatureRitualData
         new(Ritual.EnergizingChorus, 1569, "Energizing Chorus", "Alliés à portée de voix : prochain cri ou chant −3…7 énergie (rang de Motivation du lanceur).",
             "Allies within earshot: next shout or chant −3…7 Energy (caster's Motivation rank).",
             Group: BandGroup.Chant, EquippedOnly: true),
-        new(Ritual.Soothing,         1266, "Soothing",          "Effet ennemi : l'équipe gagne l'adrénaline deux fois moins vite.",
-            "Enemy effect: the team builds adrenaline half as fast.",
-            PvpSkillId: 3009,
-            PvpTooltipFr: "Effet ennemi : l'équipe gagne l'adrénaline deux fois moins vite.",
-            PvpTooltipEn: "Enemy effect: the team builds adrenaline half as fast.",
-            Group: BandGroup.Enemy),
         // Sorts de protection (lot 3b), ids relevés dans la base réelle le 16/09/2026 : pas de variante « (PvP) »,
-        // PvE only, et « équipés seulement » comme tout effet du bandeau qui n'est pas un esprit. Time Ward porte un
-        // badge au rang d'Incantation rapide de son porteur ; l'Étendard n'en a pas (son rang ne change que la durée
-        // et la chance).
-        new(Ritual.TimeWard,           3422, "Time Ward",
-            "Alliés dans la zone : incantation des sorts et recharge de toutes les compétences −15…20 % (rang d'Incantation rapide du lanceur).",
-            "Allies in the ward: spells cast and all skills recharge 15…20% faster (caster's Fast Casting rank).",
-            Group: BandGroup.Ward, EquippedOnly: true),
+        // PvE only, et « équipés seulement » comme tout effet du bandeau qui n'est pas un esprit. Time Ward porte
+        // un badge au rang d'Incantation rapide de son porteur ; l'Étendard n'en a pas (son rang ne change que la
+        // durée et la chance). L'Étendard d'HONNEUR (2233) les rejoindra au lot 6c-2.
         new(Ritual.EbonBattleStandard, 2232, "Ebon Battle Standard of Wisdom",
             "Alliés dans la zone : recharge des sorts −50 % (44…60 % de chance selon le rang).",
             "Allies in the ward: spells recharge 50% faster (44…60% chance by rank).",
+            Group: BandGroup.Ward, EquippedOnly: true),
+        new(Ritual.TimeWard,           3422, "Time Ward",
+            "Alliés dans la zone : incantation des sorts et recharge de toutes les compétences −15…20 % (rang d'Incantation rapide du lanceur).",
+            "Allies in the ward: spells cast and all skills recharge 15…20% faster (caster's Fast Casting rank).",
             Group: BandGroup.Ward, EquippedOnly: true),
     ];
 

@@ -72,6 +72,11 @@ public enum DamageBoostScope
 /// lit chez le LANCEUR le plus fort de l'équipe. <paramref name="Malus"/> = l'effet RETIRE des dégâts
 /// (Affinité vitale, Arme du tourment) : même descripteur, valeur négative.
 /// <paramref name="LostWhenEnchanted"/> = « no effect while target ally is enchanted » (Arme brute).
+/// <paramref name="Band"/> = effet du BANDEAU D'ÉQUIPE (lot 6c) : son icône vit dans le bandeau et non
+/// sur la carte d'un perso, donc il ne passe ni par le balayage « équipée » ni par les effets reçus — c'est
+/// l'état du bandeau qui l'allume, pour TOUS les persos à la fois.
+/// <paramref name="RequiresPhysical"/> = le bonus ne vaut que tant que les dégâts sont encore PHYSIQUES
+/// (glossaire G3) : il SAUTE dès qu'un convertisseur agit, et il doit le dire là où le chiffre manque.
 /// <paramref name="CannotSelfTarget"/> = son lanceur ne peut jamais en profiter : un perso seul qui la
 /// porte n'a donc pas d'icône du tout (patron de l'Arme du Grand Nain, lot 4c). La caractéristique d'échelle n'est jamais listée : c'est TOUJOURS celle de la compétence
 /// source elle-même, lue par l'appelant (donc la substitution du lot 5 s'y applique gratuitement).
@@ -81,7 +86,7 @@ public sealed record DamageBoostDescriptor(
     int Index = -1, int Fixed = 0, string? DamageType = null, bool IsBonus = true,
     string? RequiresElement = null, int BaseSkillId = 0,
     bool Received = false, bool Malus = false, bool LostWhenEnchanted = false,
-    bool CannotSelfTarget = false)
+    bool CannotSelfTarget = false, bool Band = false, bool RequiresPhysical = false)
 {
     /// <summary>Id sous lequel l'icône est mémorisée (et persistée) : l'id de base.</summary>
     public int ToggleId => BaseSkillId != 0 ? BaseSkillId : SkillId;
@@ -101,7 +106,18 @@ public enum DamageBoostSuppression
     WrongElement,
     /// <summary>Préparation annulée : Tir de barrage et Volée les retirent avant de frapper.</summary>
     PreparationRemoved,
+    /// <summary>Bonus « aux dégâts physiques » perdu parce que l'arme a été convertie (glossaire G3) :
+    /// Vannage, et l'Ordre de la douleur au 6c-2.</summary>
+    NoLongerPhysical,
 }
+
+/// <summary>
+/// Phrase « vos attaques infligent des dégâts de X » de l'infobulle. <paramref name="Pet"/> = elle parle
+/// des attaques du FAMILIER et non de celles du perso. <paramref name="Natural"/> = c'est le type d'origine,
+/// que rien n'a converti : l'infobulle le dit quand même pour le familier (son type dépend de l'espèce et
+/// n'apparaît nulle part ailleurs), jamais pour le perso (le type vient de son arme, qu'il a choisie).
+/// </summary>
+public readonly record struct DamageTypeNote(string Type, bool Pet, bool Natural);
 
 /// <summary>Un effet allumé qui ne s'applique pas ici, et pourquoi. <paramref name="SkillName"/> est
 /// déjà dans la langue affichée.</summary>
@@ -120,6 +136,10 @@ public readonly record struct DamageBoostPacket(int Value, string? DamageType, b
 /// <paramref name="BasePenetration"/> = pénétration de BASE la plus forte apportée par un effet (elle
 /// entre en MAX avec celle de la description et le rang de Force) ; <paramref name="BonusPenetration"/>
 /// = pénétration en BONUS, qui se CUMULE par-dessus le max de base (mod d'arme « de fractionnement »).
+/// <paramref name="ElementalToCold"/> = Hiver est posé : tout paquet ÉLÉMENTAIRE s'affiche en froid. C'est
+/// une simple ÉTIQUETTE — aucun chiffre ne bouge, et surtout ça ne déclenche aucune conjuration (§ 6.1).
+/// <paramref name="StoneStriker"/> = Briseur de pierre est allumé sur ce perso : tout paquet élémentaire ou
+/// physique s'affiche en TERRE, **sorts compris**, et il garde le dernier mot sur Hiver.
 /// </summary>
 public readonly record struct DamageBoosts(
     IReadOnlyList<DamageBoostPacket>? Packets = null,
@@ -127,7 +147,10 @@ public readonly record struct DamageBoosts(
     int BasePenetration = 0,
     int BonusPenetration = 0,
     double MultiplierOffset = 0,
-    IReadOnlyList<SuppressedBoost>? Suppressed = null)
+    IReadOnlyList<SuppressedBoost>? Suppressed = null,
+    bool ElementalToCold = false,
+    bool StoneStriker = false,
+    DamageTypeNote? TypeNote = null)
 {
     /// <summary>
     /// Multiplicateur de dégâts reçu (Vengeance ×1,25, Affinité vitale ×0,70).
@@ -144,7 +167,7 @@ public readonly record struct DamageBoosts(
     /// <summary>Au moins un effet à afficher — sinon l'infobulle n'ajoute ni ligne ni chiffre.</summary>
     public bool Any => Packets is { Count: > 0 } || CriticalPercent > 0
                        || BasePenetration > 0 || BonusPenetration > 0 || HasMultiplier
-                       || Suppressed is { Count: > 0 };
+                       || Suppressed is { Count: > 0 } || TypeNote is not null;
 
     /// <summary>Un multiplicateur de dégâts est-il en jeu ? Comparaison par écart, pas par égalité de
     /// doubles.</summary>
@@ -195,6 +218,10 @@ public static class DamageBoostData
     public const int VengeanceSkillId          = 315;
     public const int LifeAttunementSkillId     = 244;
     public const int NightmareWeaponSkillId    = 795;
+    // ── Lot 6c : effets du BANDEAU D'ÉQUIPE ───────────────────────────────────
+    public const int FavorableWindsSkillId = 472;
+    public const int WinnowingSkillId      = 463;
+    public const int WinterSkillId         = 462;
 
     /// <summary>Id d'icône du mod d'arme « de fractionnement » : ce n'est pas une compétence, donc un id
     /// réservé négatif, comme le mod « Furieux » du lot 1a (qui occupe −1).</summary>
@@ -316,9 +343,38 @@ public static class DamageBoostData
         // échelle), donc l'index ne prête pas à conséquence — vérifié dans la base, pas supposé.
         new(NightmareWeaponSkillId, DamageBoostScope.Attacks, DamageBoostKind.Damage, Index: 0,
             Received: true, Malus: true),
+
+        // ══ LOT 6c-1 — les 3 esprits du bandeau d'équipe ══════════════════════
+        // Recensement du bandeau CLOS par balayage de FAMILLE le 26/09/2026 (28 rituels de la nature,
+        // 45 rituels d'asservissement, 13 sorts de protection, tous les cris/chants/échos, tout ce qui
+        // enchante le groupe, les 14 « % de dégâts », les 33 pénétrations) : rien d'autre dans la base ne
+        // modifie un chiffre d'équipe.
+        //
+        // Leurs deux chiffres sont des LITTÉRAUX : les progressions de ces trois compétences ne portent que
+        // le niveau et la durée de vie de l'esprit (sondé dans la base réelle, pas lu à l'œil).
+        //
+        // Vents favorables : « Arrows […] hit for +6 damage for creatures in range ». Un familier ne tire
+        // pas de flèches → rien à ajouter pour lui.
+        new(FavorableWindsSkillId, DamageBoostScope.BowAttacks, DamageBoostKind.Damage, Fixed: 6, Band: true),
+        // Vannage : « Increases physical damage by +4 for creatures in range ». ⚠ Il SAUTE dès que l'arme
+        // est convertie (glossaire G3), comme l'Ordre de la douleur.
+        new(WinnowingSkillId, DamageBoostScope.Attacks, DamageBoostKind.Damage, Fixed: 4, Band: true,
+            RequiresPhysical: true),
+        // ⚠ Le familier EST une « créature à portée » (règle de Philippe du 26/09 : créature et allié oui,
+        // membre du groupe non) et il n'inflige que du physique → son chiffre monte aussi, relevé DANS LE
+        // TEXTE de son attaque comme l'Agression barbare (Q12).
+        new(WinnowingSkillId, DamageBoostScope.PetAttacks, DamageBoostKind.TextDamage, Fixed: 4, Band: true,
+            RequiresPhysical: true),
+        // Hiver (462) n'a PAS de descripteur : il ne porte aucun chiffre. Il ne fait que ré-étiqueter en
+        // froid les dégâts élémentaires reçus, et surtout il ne déclenche pas les conjurations — voir le
+        // commentaire de EffectiveElement plus bas.
     };
 
-    private static readonly Dictionary<int, DamageBoostDescriptor> _bySkillId = All.ToDictionary(d => d.SkillId);
+    // ⚠ Les effets de BANDEAU en sont exclus, et c'est vital : le Vannage porte DEUX descripteurs sur le
+    // même id (le perso et son familier), donc un ToDictionary sur All entier lèverait au chargement de la
+    // classe — crash au démarrage, sans build rouge. Ils se lisent par BandAll, jamais par id.
+    private static readonly Dictionary<int, DamageBoostDescriptor> _bySkillId =
+        All.Where(d => !d.Band).ToDictionary(d => d.SkillId);
 
     /// <summary>Les effets REÇUS d'un allié (lot 6b) : le balayage d'équipe s'appuie sur cette liste au
     /// lieu d'une suite de cas en dur, donc ajouter une source ne demande qu'un descripteur.</summary>
@@ -331,8 +387,16 @@ public static class DamageBoostData
     public static readonly IReadOnlyList<int> ReceivedToggleIds =
         ReceivedAll.Select(d => d.ToggleId).Distinct().ToList();
 
+    /// <summary>Les effets du BANDEAU D'ÉQUIPE (lot 6c) : c'est l'état du bandeau qui les allume, pas une
+    /// icône de carte. Une même compétence peut en avoir plusieurs (le Vannage vise le perso ET son
+    /// familier), donc on parcourt les descripteurs, pas les ids.</summary>
+    public static readonly IReadOnlyList<DamageBoostDescriptor> BandAll =
+        All.Where(d => d.Band).ToList();
+
+    // ⚠ Les effets de BANDEAU sont exclus : leur id ne doit jamais devenir une icône de carte de perso
+    // (sinon un Rôdeur qui porte le Vannage sur sa barre en aurait DEUX, une au bandeau et une chez lui).
     private static readonly HashSet<int> _toggleIds =
-        All.Select(d => d.ToggleId).Append(SunderingModToggleId).ToHashSet();
+        All.Where(d => !d.Band).Select(d => d.ToggleId).Append(SunderingModToggleId).ToHashSet();
 
     public static DamageBoostDescriptor? BySkillId(int skillId) => _bySkillId.GetValueOrDefault(skillId);
 
@@ -450,8 +514,49 @@ public static class DamageBoostData
 
     private static readonly string[] Elemental = ["fire", "cold", "earth", "lightning"];
 
+    /// <summary>
+    /// Les attaques qui portent leur type de dégâts TOUTES SEULES : leur paquet typé convertit l'attaque
+    /// ENTIÈRE (règle de Philippe, 26/09/2026). Conséquence directe : le Grand brasier, qui ne convertit
+    /// que le PHYSIQUE, ne les touche pas — mais Hiver, lui, passe leur élémentaire en froid.
+    ///
+    /// ⚠ Recensement CLOS par balayage de famille sur les 1517 descriptions (motif « ⟨nombre⟩ ⟨type⟩
+    /// damage » sur les seules compétences d'attaque) : **9 résultats, dont 5 sont des paquets qui
+    /// PROQUENT à côté** et gardent donc leur type sans rien convertir — Victoire frissonnante (1539),
+    /// Clivage (335), Victoire paralysante (2147), Javelot sacré (2209) et Moisson des impuretés (1486),
+    /// tous sur le patron de Cent lames (un paquet qui frappe quelqu'un d'AUTRE que la cible de
+    /// l'attaque, ou sous condition d'événement). Les 4 ci-dessous sont les seules à convertir.
+    ///
+    /// ⚠ Ce que ça ne fait PAS encore : les CONDITIONS (lot 4b). Une attaque auto-convertie n'est plus
+    /// physique, donc l'Application de poison ne devrait pas l'empoisonner — Philippe a demandé le
+    /// 26/09/2026 que cette partie-là soit **notée pour plus tard**, pas faite ici.
+    /// </summary>
+    private static readonly Dictionary<int, string> _intrinsicTypes = new()
+    {
+        [1551] = "lightning",  // Javelot d'éclair — « +10…18…20 dégâts de foudre »
+        [3425] = "holy",       // Frappe du jugement — « comme Clivage mais full dégâts sacrés »
+        [1483] = "holy",       // Coup de bannissement
+        [3263] = "holy",       // Coup de bannissement (PvP) — ⚠ la base la nomme « Frappe implacable (PvP) »
+    };
+
+    /// <summary>Type que cette attaque impose d'elle-même, null si elle suit son arme.</summary>
+    public static string? IntrinsicType(Skill target) => _intrinsicTypes.GetValueOrDefault(target.Id);
+
+    /// <summary>Type de dégâts des attaques du FAMILIER. Un familier n'inflige que du physique (perforant
+    /// pour les oiseaux, tranchant pour les loups et félins — l'app ne sait pas lequel) ; la seule exception
+    /// est le Molosse de Balthazar, qui inflige du feu, et que l'app ne connaît pas non plus. Le Grand
+    /// brasier le convertit (c'est une « créature à portée ») ; les convertisseurs du perso, eux, ne
+    /// touchent que SON arme, et Hiver ne convertit pas le physique.</summary>
+    public static string? PetEffectiveElement(ConversionState state) =>
+        state.GreaterConflagration ? "fire" : null;
+
     /// <summary>Type de dégâts élémentaire ? (Hiver ne convertit QUE l'élémentaire.)</summary>
     public static bool IsElemental(string? type) => type is not null && Elemental.Contains(type);
+
+    /// <summary>Type de dégâts PHYSIQUE, au sens de Briseur de pierre (« elemental or physical damage »)
+    /// — les trois types d'arme et le « physique » générique. ⚠ Le sacré, l'ombre, les ténèbres et le
+    /// chaos n'en sont PAS : un Coup de bannissement reste sacré sous Briseur de pierre.</summary>
+    public static bool IsPhysicalType(string? type) =>
+        type is "physical" or "slashing" or "piercing" or "blunt";
 
     /// <summary>
     /// Tout ce qui peut convertir le type de dégâts des attaques d'un perso, au moment présent.
@@ -477,16 +582,26 @@ public static class DamageBoostData
     /// reçue, puis les esprits qui ne convertissent que ce qui est ENCORE physique (Grand brasier sur
     /// tout le physique, Brasier sur les seules flèches) — et Briseur de pierre a TOUJOURS le dernier mot.
     ///
-    /// ⚠ MANQUE ASSUMÉ, à combler au lot 6c : Hiver (462) doit passer tout l'élémentaire en froid, mais il
-    /// n'est pas encore au bandeau d'équipe. Tant qu'il n'y est pas, une conjuration de flamme reste
-    /// active sous Grand brasier + Hiver, là où le froid devrait l'éteindre.
+    /// ⚠⚠ HIVER (462) N'EST PAS DANS CETTE CHAÎNE, ET C'EST VOLONTAIRE (tranché le 26/09/2026, source :
+    /// note de mécanique de la page wiki *Winter*). Il convertit les dégâts élémentaires **REÇUS**, il ne
+    /// change pas le type que l'ARME inflige — il ne déclenche donc JAMAIS une conjuration. Sous Grand
+    /// brasier + Hiver, c'est bien la Conjuration de FLAMME qui marche (l'arme sort du feu) ; les dégâts
+    /// arrivent froids chez la cible, et ça ne regarde que l'étiquette de type, jamais la validité d'une
+    /// conjuration. ⚠ La base ne permet pas de deviner la différence : Hiver et Grand brasier écrivent
+    /// tous les deux « … for creatures in range ». Ne pas « réparer » ceci.
     /// </summary>
     public static string? EffectiveElement(ConversionState state, Skill target, WeaponKind equipped)
     {
-        string? element = null;
+        // ⚠ Le type que l'attaque porte elle-même gagne sur l'arme ET sur les esprits qui ne
+        // convertissent que le physique : un Javelot d'éclair reste de la foudre sous Grand brasier
+        // (tranché le 26/09/2026). Les deux conversions qui suivent, elles, l'écrasent encore — un
+        // enchantement qui dit « vos attaques infligent des dégâts de X » vise toutes les attaques.
+        string? element = IntrinsicType(target);
 
-        // Un mod élémentaire ne convertit QUE les attaques de l'arme qui le porte.
-        if (state.ElementalMod is { } mod && ConditionDurationData.UsesEquippedWeapon(target, equipped))
+        // Un mod élémentaire ne convertit QUE les attaques de l'arme qui le porte — et il ne peut rien
+        // contre une attaque qui impose déjà son type.
+        if (element is null && state.ElementalMod is { } mod
+            && ConditionDurationData.UsesEquippedWeapon(target, equipped))
             element = mod;
 
         foreach (var k in state.LitConverters ?? [])
@@ -503,7 +618,12 @@ public static class DamageBoostData
             && ConditionDurationData.InWeaponScope(ConditionWeaponScope.Bow, target, equipped))
             element = "fire";
 
-        if (state.StoneStriker && ConditionDurationData.InWeaponScope(ConditionWeaponScope.Physical, target, equipped))
+        // ⚠ Briseur de pierre a le dernier mot, MAIS seulement sur ce qui est élémentaire ou physique
+        // (son texte : « elemental or physical damage »). Un Coup de bannissement est SACRÉ : il reste
+        // sacré. Conséquence voulue et conforme au wiki : sous Briseur de pierre les conjurations ne
+        // s'appliquent plus (aucune n'est de terre) et l'Aura de poussière d'ébène, si, s'applique.
+        if (state.StoneStriker && (element is null || IsElemental(element) || IsPhysicalType(element))
+            && ConditionDurationData.InWeaponScope(ConditionWeaponScope.Physical, target, equipped))
             element = "earth";
 
         return element;
@@ -519,6 +639,31 @@ public static class DamageBoostData
     /// l'application ne modélise pas. Dès qu'un convertisseur agit, l'application SAIT le type réel et
     /// seule la conjuration de ce type-là s'applique.
     /// </summary>
+    /// <summary>
+    /// Type de dégâts AFFICHÉ.
+    ///
+    /// ⚠ **Briseur de pierre FORCE la terre et garde le dernier mot** (règle de Philippe du 16/09/2026,
+    /// confirmée par la note de la page wiki *Stone_Striker* : « this skill does not convert damage but
+    /// instead forces the damage type of all dealt damage to be earth damage ») : Hiver ne repasse pas
+    /// derrière. Mais il ne touche que **l'élémentaire et le physique**, exactement comme son texte le
+    /// dit — un paquet SACRÉ (Coup de bannissement, Clairvoyance du juge) n'est ni l'un ni l'autre et
+    /// reste sacré. ⚠ Et il vaut pour **TOUS les dégâts que le perso inflige, sorts compris**, pas
+    /// seulement ses attaques.
+    ///
+    /// Hiver, lui, ne convertit que l'élémentaire : le physique n'est jamais touché.
+    /// </summary>
+    public static string? DisplayedType(string? type, bool elementalToCold, bool stoneStriker = false)
+    {
+        if (stoneStriker && (IsElemental(type) || IsPhysicalType(type))) return "earth";
+        return elementalToCold && IsElemental(type) ? "cold" : type;
+    }
+
+    /// <summary>Cet id est-il celui d'un effet du BANDEAU (lot 6c) ? Sert à ne mettre en cache que les
+    /// compétences utiles quand on cherche leur nom d'affichage.</summary>
+    public static bool IsBandSkillId(int skillId) => _bandSkillIds.Contains(skillId);
+
+    private static readonly HashSet<int> _bandSkillIds = BandAll.Select(d => d.SkillId).ToHashSet();
+
     public static bool ElementSatisfied(string? requiredElement, string? effectiveElement) =>
         requiredElement is null || effectiveElement is null || effectiveElement == requiredElement;
 

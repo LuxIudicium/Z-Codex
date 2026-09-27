@@ -179,6 +179,11 @@ public class MainViewModel : ViewModelBase
 
     public MainViewModel()
     {
+        // Catalogue ambiant du chantier infobulle (lot 6c) : les effets du BANDEAU d'équipe ne sont sur la
+        // barre de personne, il faut donc pouvoir retrouver leur compétence. Même idiome que
+        // NatureRitualData.PvpVariants — posé une fois, lu paresseusement (AllSkills se remplit plus tard).
+        CharacterSlotViewModel.SkillCatalog = () => SkillPanel.AllSkills;
+
         // Le grisé du bandeau suit le mode de jeu PvE/PvP du catalogue du teambuild.
         SkillPanel.PropertyChanged += (_, e) =>
         {

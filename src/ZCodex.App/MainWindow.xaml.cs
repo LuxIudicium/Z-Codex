@@ -2043,8 +2043,11 @@ public partial class MainWindow : Window
         NatureRitualData.BandGroup? lastGroup = null;
         foreach (var d in NatureRitualData.All)
         {
-            // Effet « équipé seulement » (Energizing Chorus) : proposé comme dans le bandeau, si un perso le porte.
-            if (d.EquippedOnly && !env.IsEquipped(d.Ritual)) continue;
+            // ⚠ Un effet « équipé seulement » que PERSONNE ne porte reste listé ici, mais GRISÉ et inerte
+            // (Philippe, 26/09/2026) : sans ça l'utilisateur ne peut pas savoir quelles compétences peuvent
+            // apparaître dans le bandeau. Le BANDEAU, lui, ne change pas — elles y restent absentes tant que
+            // personne ne les porte (règle du 15/09/2026, intacte).
+            bool carried = !d.EquippedOnly || env.IsEquipped(d.Ritual);
             // Même découpage que le bandeau : un séparateur entre deux familles d'effets.
             if (lastGroup is { } g && g != d.Group) NatureRitualMenuItem.Items.Add(new Separator());
             lastGroup = d.Group;
@@ -2052,11 +2055,19 @@ public partial class MainWindow : Window
             {
                 Header = RitualDisplayName(d),
                 IsCheckable = true,
-                IsChecked = env.IsActive(d.Ritual),
-                ToolTip = d.DisplayTooltip,
+                IsChecked = carried && env.IsActive(d.Ritual),
+                IsEnabled = carried,
+                // Grisé, l'entrée doit dire POURQUOI elle ne répond pas — sinon on clique, rien ne se
+                // passe, et ça ressemble à un bug.
+                ToolTip = carried ? d.DisplayTooltip
+                                  : $"{d.DisplayTooltip}\n\n{T("S.Band.NotCarried")}",
             };
+            // ⚠ Piège WPF : une entrée de menu DÉSACTIVÉE n'affiche PAS son infobulle par défaut. Sans
+            // ce réglage, l'explication « personne ne la porte » n'apparaît jamais — c'est exactement ce
+            // que Philippe a vu manquer le 27/09/2026.
+            if (!carried) ToolTipService.SetShowOnDisabled(item, true);
             var ritual = d.Ritual;   // capture par valeur pour la fermeture
-            item.Click += (_, _) => env.Toggle(ritual);
+            if (carried) item.Click += (_, _) => env.Toggle(ritual);
             NatureRitualMenuItem.Items.Add(item);
         }
     }

@@ -1151,10 +1151,21 @@ public partial class SkillTooltipControl : UserControl
         // paquet à 40 se lirait 50 sans que rien ne dise pourquoi.
         foreach (var row in ignoring)
         {
-            string line = $"{IgnoringLine(row, fluxDmg, boosts.Multiplier)} {L("— ignore l'armure", "— ignores armor")}";
+            string line = $"{IgnoringLine(row, fluxDmg, boosts.Multiplier, boosts.ElementalToCold, boosts.StoneStriker)} {L("— ignore l'armure", "— ignores armor")}";
             DamagePanel.Children.Add(boosts.HasMultiplier
                 ? MakeMarkup(line, 11, "TextSecondaryBrush")
                 : MakeText(line, 11, "TextSecondaryBrush"));
+        }
+
+        // Type de dégâts effectif, quand il y a quelque chose à en dire (lot 6c). Le TYPE part en ambre
+        // (MarkRitual → RitualVariableBrush) : c'est la couleur des effets d'équipe, elle existe dans les
+        // DEUX thèmes, donc aucune clé à créer et aucun risque de style implicite manquant en sombre.
+        if (boosts.TypeNote is { } note)
+        {
+            var line = MakeMarkup(TypeNoteLine(note), 11, "TextSecondaryBrush");
+            line.TextWrapping = TextWrapping.Wrap;
+            line.Margin = new Thickness(0, 2, 0, 0);
+            DamagePanel.Children.Add(line);
         }
 
         // Effets ALLUMÉS qui ne font rien ICI, et pourquoi. ⚠ Relevé par Philippe à la QA du lot 6b :
@@ -1250,7 +1261,7 @@ public partial class SkillTooltipControl : UserControl
 
         for (int r = 0; r < rows.Count; r++)
         {
-            AddCell(grid, weaponRows + r + 1, 0, RowLabel(rows[r]), "TextSecondaryBrush");
+            AddCell(grid, weaponRows + r + 1, 0, RowLabel(rows[r], boosts.ElementalToCold, boosts.StoneStriker), "TextSecondaryBrush");
             for (int c = 0; c < columns.Count; c++)
                 AddCell(grid, weaponRows + r + 1, c + 1,
                         Marked(Boost(SkillDamage.DamageAt(rows[r].Value, columns[c].Al, penetration, level, boosts.Multiplier), fluxDamagePercent).ToString(),
@@ -1300,8 +1311,28 @@ public partial class SkillTooltipControl : UserControl
         grid.Children.Add(tb);
     }
 
-    private static string? FrType(string? damageType)
-        => damageType is { } t ? SkillDamage.DisplayType(t) : null;
+    // ⚠ Hiver (lot 6c) ne change AUCUN chiffre : il ne fait que ré-étiqueter en froid les dégâts
+    // élémentaires. Il ne déclenche donc jamais une conjuration (§ 6.1 du plan).
+    private static string? FrType(string? damageType, bool elementalToCold = false, bool stoneStriker = false)
+        => DamageBoostData.DisplayedType(damageType, elementalToCold, stoneStriker) is { } t
+            ? SkillDamage.DisplayType(t) : null;
+
+    // « Vos attaques infligent des dégâts de feu. » — le type seul est en ambre.
+    private static string TypeNoteLine(DamageTypeNote note)
+    {
+        string type = $"{SkillProgression.MarkRitual}{SkillDamage.DisplayType(note.Type)}{SkillProgression.MarkRitual}";
+        // ⚠ « CETTE attaque », pas « vos attaques » (Philippe, 27/09/2026) : la phrase est juste même
+        // quand seule la compétence survolée change de type — un Javelot d'éclair avec un javelot
+        // physique, sous Hiver, n'en dit rien sur les autres attaques du perso.
+        if (!note.Pet)
+            return L($"Cette attaque inflige des dégâts de {type}.", $"This attack deals {type} damage.");
+        // Le familier au naturel : on nomme l'exception, parce que l'app ne sait pas quelle bête tu as.
+        return note.Natural
+            ? L($"Les attaques de votre familier infligent des dégâts {type} (ou de feu avec un Molosse de Balthazar).",
+                $"Your pet's attacks deal {type} damage (or fire with a Hound of Balthazar).")
+            : L($"Les attaques de votre familier infligent des dégâts de {type}.",
+                $"Your pet's attacks deal {type} damage.");
+    }
 
     // « Arme brute : sans effet ici — ce personnage est sous un enchantement. »
     private static string SuppressionLine(SuppressedBoost sup) => sup.Reason switch
@@ -1312,22 +1343,26 @@ public partial class SkillTooltipControl : UserControl
             $"{sup.SkillName} : {L("sans effet ici — l'arme de ce personnage n'inflige pas ce type de dégâts.", "no effect here — this character's weapon does not deal that damage type.")}",
         DamageBoostSuppression.PreparationRemoved =>
             $"{sup.SkillName} : {L("sans effet ici — cette compétence retire les préparations avant de toucher.", "no effect here — this skill removes preparations before it hits.")}",
+        DamageBoostSuppression.NoLongerPhysical =>
+            $"{sup.SkillName} : {L("sans effet ici — les dégâts de ce personnage ne sont plus physiques.", "no effect here — this character's damage is no longer physical.")}",
         _ => sup.SkillName,
     };
 
     // Libellé de ligne de la table (armor-respecting, donc toujours typé sauf exception).
-    private static string RowLabel(SkillDamage.Row row) => SkillDamage.DisplayType(row.DamageType);
+    private static string RowLabel(SkillDamage.Row row, bool elementalToCold = false, bool stoneStriker = false) =>
+        SkillDamage.DisplayType(DamageBoostData.DisplayedType(row.DamageType, elementalToCold, stoneStriker));
 
     // Ligne armor-ignoring : « 46 », « +34 » (bonus d'attaque), « 49 (sacré) ». Boostée du +pct %
     // de flux (Jack of All Trades) comme tous les dégâts affichés.
-    private static string IgnoringLine(SkillDamage.Row row, int fluxDamagePercent, double multiplier = 1.0)
+    private static string IgnoringLine(SkillDamage.Row row, int fluxDamagePercent, double multiplier = 1.0,
+                                       bool elementalToCold = false, bool stoneStriker = false)
     {
         bool scaled = Math.Abs(multiplier - 1.0) > 0.0001;
         int value = Boost((int)Math.Floor(row.Value * multiplier), fluxDamagePercent);
         var val = row.IsBonus ? $"+{value}" : value.ToString();
         // Marqueur d'effet (violet) autour du seul CHIFFRE : le type entre parenthèses reste neutre.
         if (scaled) val = $"{SkillProgression.MarkEffect}{val}{SkillProgression.MarkEffect}";
-        return FrType(row.DamageType) is { } type ? $"{val} ({type})" : val;
+        return FrType(row.DamageType, elementalToCold, stoneStriker) is { } type ? $"{val} ({type})" : val;
     }
 
     private static TextBlock MakeText(string text, double size, string brushKey)

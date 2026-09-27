@@ -492,6 +492,8 @@ public class CharacterSlotViewModel : ViewModelBase
         : AttributeSubstitutionData.BySkillId(skill.Id) is not null ? skill.Id
         : DamageBoostData.BySkillId(skill.Id) is { Received: false } b ? b.ToggleId
         : null;
+    // ⚠ Les effets du BANDEAU (lot 6c) en sont absents par construction : DamageBoostData.BySkillId ne les
+    // connaît pas. Sans ça, un Rôdeur qui porte le Vannage sur sa barre aurait DEUX icônes pour le même effet.
 
     // Familles dont un perso ne porte qu'un effet à la fois (wiki *Effect stacking* : « one stance, one preparation, one
     // glyph, one weapon spell, and one form at a time », plus un seul objet tenu). Null = icône hors de ces familles.
@@ -673,6 +675,49 @@ public class CharacterSlotViewModel : ViewModelBase
 
     public Skill? GreatDwarfWeapon =>
         GreatDwarfWeaponProvider is { } p ? p(this) : OwnerBuild?.GreatDwarfWeaponFor(this);
+
+    // ── Effets de dégâts du BANDEAU D'ÉQUIPE (chantier infobulle, lot 6c) ────
+    // Le bandeau est un environnement GLOBAL : ses effets touchent tous les persos à la fois, et leur
+    // compétence n'est sur la barre de personne. Il faut donc pouvoir la retrouver dans le catalogue —
+    // ambiant, comme NatureRitualData.PvpVariants et AppLanguage.IsFr, posé une fois par MainViewModel.
+    public static Func<IReadOnlyCollection<Skill>>? SkillCatalog { get; set; }
+
+    private static readonly Dictionary<int, Skill> _bandSkills = [];
+    private static int _bandSkillsFrom = -1;
+
+    /// <summary>La compétence d'un effet du bandeau, prise au catalogue (null tant qu'il n'est pas chargé).
+    /// Cache reconstruit quand le catalogue change de taille — il ne change qu'au chargement.</summary>
+    private static Skill? BandSkill(int skillId)
+    {
+        var all = SkillCatalog?.Invoke();
+        if (all is null || all.Count == 0) return null;
+        if (_bandSkillsFrom != all.Count)
+        {
+            _bandSkills.Clear();
+            foreach (var s in all)
+                if (DamageBoostData.IsBandSkillId(s.Id)) _bandSkills[s.Id] = s;
+            _bandSkillsFrom = all.Count;
+        }
+        return _bandSkills.GetValueOrDefault(skillId);
+    }
+
+    /// <summary>Hiver est-il posé ? → les dégâts élémentaires s'AFFICHENT en froid. ⚠ Étiquette seulement :
+    /// Hiver convertit les dégâts REÇUS, il ne change pas ce que l'arme inflige, donc il ne déclenche
+    /// jamais une conjuration (§ 6.1 du plan, tranché le 26/09/2026).</summary>
+    private bool WinterLit => ActiveNatureRituals.Contains(NatureRitualData.Ritual.Winter);
+
+    /// <summary>Briseur de pierre allumé sur ce perso ? Il force en TERRE tout ce qu'il inflige
+    /// d'élémentaire ou de physique, **sorts compris** — d'où un drapeau porté par les boosts, et pas
+    /// seulement une étape de la chaîne des attaques.</summary>
+    private bool StoneStrikerLit =>
+        IsAttributeBoostActive(ConditionDurationData.StoneStrikerSkillId)
+        && FindEquippedSkill(ConditionDurationData.StoneStrikerSkillId) is not null;
+
+    /// <summary>Les dégâts du FAMILIER sont-ils encore physiques ? Un familier n'inflige que du physique,
+    /// et le seul effet modélisé qui le convertisse est le Grand brasier (« creatures in range » — le
+    /// familier en est une). Les convertisseurs personnels du perso, eux, ne touchent que SON arme.</summary>
+    private bool PetDamageStillPhysical =>
+        !ActiveNatureRituals.Contains(NatureRitualData.Ritual.GreaterConflagration);
 
     // ── Effets de dégâts REÇUS d'un allié (chantier infobulle, lot 6b) ────────
     // ⚠ Une SEULE voie pour les 9 sources, pilotée par DamageBoostData.ReceivedAll — là où les lots 1a
@@ -974,6 +1019,14 @@ public class CharacterSlotViewModel : ViewModelBase
                 Suppress(sk, DamageBoostSuppression.Enchanted);
                 continue;
             }
+            // « Augmente les dégâts physiques » (Vannage, et l'Ordre de la douleur au 6c-2) : le bonus SAUTE
+            // dès que l'arme est convertie (glossaire G3). Et il le dit ICI, là où le chiffre manque — la
+            // leçon de la QA du 6b.
+            if (d.RequiresPhysical && AttackConverted(target, equipped))
+            {
+                Suppress(sk, DamageBoostSuppression.NoLongerPhysical);
+                continue;
+            }
             // Seule entorse du chantier à « icône allumée = ça marche » : une conjuration ne s'applique
             // que si le type de dégâts effectif est le sien — mais uniquement quand l'application le SAIT
             // (cf. § 6.1 du plan et DamageBoostData.ElementSatisfied).
@@ -1014,7 +1067,8 @@ public class CharacterSlotViewModel : ViewModelBase
         // ⚠ Le multiplicateur part en ÉCART À 1 : cf. DamageBoosts.Multiplier, où le piège est expliqué.
         return new DamageBoosts(packets, critical, basePenetration,
                                 bonusPenetration + SunderingModPercentFor(target, equipped), multiplier - 1.0,
-                                suppressed);
+                                suppressed, WinterLit, StoneStrikerLit,
+                                TypeNoteFor(target, equipped, element));
     }
 
     /// <summary>Les effets de dégâts ALLUMÉS de ce perso, des DEUX origines : sa propre barre (lots 6a)
@@ -1030,6 +1084,15 @@ public class CharacterSlotViewModel : ViewModelBase
         foreach (var (toggleId, recv) in ReceivedDamageBoosts)
             if (IsAttributeBoostActive(toggleId) && DamageBoostData.BySkillId(recv.Skill.Id) is { } d)
                 yield return (recv.Skill, d);
+
+        // Troisième origine (lot 6c) : le BANDEAU d'équipe. Aucune icône de carte, aucun rang à résoudre
+        // pour le 6c-1 (les deux chiffres sont des littéraux) — c'est l'esprit posé qui allume l'effet,
+        // pour tout le monde en même temps.
+        var rituals = ActiveNatureRituals;
+        foreach (var d in DamageBoostData.BandAll)
+            if (NatureRitualData.BySkillId(d.SkillId) is { } band && rituals.Contains(band.Ritual)
+                && BandSkill(d.SkillId) is { } sk)
+                yield return (sk, d);
     }
 
     /// <summary>Un ENCHANTEMENT est-il allumé sur ce perso ? Compte ses propres icônes d'enchantement et
@@ -1091,16 +1154,56 @@ public class CharacterSlotViewModel : ViewModelBase
     /// bonus ; colonne −1 = rien à relever.</summary>
     public (int Column, int Bonus) TextDamageBonusFor(Skill target)
     {
+        // ⚠ SOMME depuis le lot 6c, plus « le premier qui gagne » : un familier peut cumuler l'Agression
+        // barbare (carte du perso) et le Vannage (bandeau). La colonne, elle, est une propriété de la
+        // compétence survolée — elle est donc la même pour tous les effets qui la visent.
+        int column = -1, total = 0;
         foreach (var (sk, d) in LitDamageBoosts())
         {
             if (d.Kind != DamageBoostKind.TextDamage) continue;
             if (!DamageBoostData.Affects(d, sk, target, WeaponKind.None)) continue;
+            // Un bonus « aux dégâts physiques » posé sur le familier tombe si le Grand brasier convertit
+            // ses attaques (le familier est une « créature à portée »).
+            if (d.RequiresPhysical && d.Scope == DamageBoostScope.PetAttacks && !PetDamageStillPhysical) continue;
             int bonus = ValueOfBoost(d, sk);
             if (bonus <= 0) continue;
-            int column = DamageBoostData.TextBonusColumn(d.Scope, target);
-            if (column >= 0) return (column, bonus);
+            int col = DamageBoostData.TextBonusColumn(d.Scope, target);
+            if (col < 0) continue;
+            if (column < 0) column = col;
+            if (col == column) total += bonus;
         }
-        return (-1, 0);
+        return column >= 0 && total > 0 ? (column, total) : (-1, 0);
+    }
+
+    /// <summary>
+    /// La phrase « vos attaques infligent des dégâts de X » (demande de Philippe, 26/09/2026), ou null.
+    ///
+    /// Deux règles différentes, et c'est voulu :
+    ///  • le PERSO ne la voit que si un effet a **converti** quelque chose — son type de dégâts vient de son
+    ///    arme, qu'il a choisie, donc l'annoncer en permanence serait une ligne de bruit sur 1517 infobulles ;
+    ///  • le FAMILIER la voit **toujours** : son type dépend de l'espèce (perforant pour les oiseaux,
+    ///    tranchant pour les loups et félins, feu pour le seul Molosse de Balthazar), l'app ne sait pas
+    ///    laquelle il a, et rien d'autre dans l'infobulle ne le dit.
+    ///
+    /// ⚠ Le type INTRINSÈQUE ne compte pas comme une conversion : un Javelot d'éclair est de la foudre par
+    /// nature, il n'y a rien à signaler — sauf si Hiver le passe en froid, et là si.
+    /// </summary>
+    private DamageTypeNote? TypeNoteFor(Skill target, WeaponKind equipped, string? element)
+    {
+        if (target.SkillType == "Pet Attack")
+        {
+            // ⚠ Le familier subit Hiver comme tout le monde : sous Grand brasier + Hiver ses attaques
+            // passent en feu PUIS en froid. Briseur de pierre, lui, ne le touche pas — il ne vise que
+            // « the damage YOU deal », et un familier n'est pas son maître. (Retour de Philippe, 27/09.)
+            string? pet = DamageBoostData.PetEffectiveElement(ConversionState(target));
+            string? petShown = DamageBoostData.DisplayedType(pet ?? "physical", WinterLit);
+            return new DamageTypeNote(petShown!, Pet: true, Natural: pet is null && !WinterLit);
+        }
+        if (!WeaponStrike.IsWeaponAttack(target)) return null;
+        string? shown = DamageBoostData.DisplayedType(element, WinterLit, StoneStrikerLit);
+        return shown is not null && shown != DamageBoostData.IntrinsicType(target)
+            ? new DamageTypeNote(shown, Pet: false, Natural: false)
+            : null;
     }
 
     /// <summary>Type de dégâts effectif des attaques de <paramref name="target"/> : la chaîne de conversion

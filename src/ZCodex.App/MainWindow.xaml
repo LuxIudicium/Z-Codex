@@ -93,13 +93,21 @@
              effet ennemi), petit trait vertical entre deux familles. Se masque si aucun effet n'est
              proposé (HasItems). Partagé éditeur + teambuild. -->
         <DataTemplate x:Key="NatureRitualBandTemplate">
-            <StackPanel Orientation="Horizontal"
-                        Visibility="{Binding HasItems, Converter={StaticResource BoolToVisibilityConverter}}">
-                <TextBlock Text="{DynamicResource S.Ed.RitualsLabel}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}"
-                           VerticalAlignment="Center" Margin="0,0,8,0"/>
-                <ItemsControl ItemsSource="{Binding Items}">
+            <!-- Grid, et surtout PAS un StackPanel horizontal : dans un StackPanel horizontal la largeur
+                 disponible est INFINIE, donc le WrapPanel ne replierait jamais. La colonne * borne la
+                 largeur, et le bandeau passe à la ligne (lot 6c : jusqu'à ~27 icônes). Aucun souci de
+                 virtualisation ici — c'est un ItemsControl de quelques dizaines d'éléments. -->
+            <Grid Visibility="{Binding HasItems, Converter={StaticResource BoolToVisibilityConverter}}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="{DynamicResource S.Ed.RitualsLabel}" FontSize="11"
+                           Foreground="{DynamicResource TextMutedBrush}"
+                           VerticalAlignment="Top" Margin="0,6,8,0"/>
+                <ItemsControl Grid.Column="1" ItemsSource="{Binding Items}">
                     <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+                        <ItemsPanelTemplate><WrapPanel Orientation="Horizontal"/></ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
@@ -109,7 +117,7 @@
                                         Visibility="{Binding StartsGroup, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                 <Border MouseLeftButtonDown="NatureRitualToggle_Click"
                                         PreviewMouseWheel="NatureRitualRank_Wheel" Cursor="Hand"
-                                        Width="26" Height="26" Margin="0,0,4,0" CornerRadius="2"
+                                        Width="26" Height="26" Margin="0,0,4,4" CornerRadius="2"
                                         BorderThickness="2" Background="Transparent"
                                         ToolTipService.ShowDuration="30000">
                                     <!-- Tooltip = le VRAI tooltip de la compétence + note band-only (effet ennemi / rang / clic). -->
@@ -171,7 +179,7 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-            </StackPanel>
+            </Grid>
         </DataTemplate>
 
         <!-- Bandeau LOCAL des effets propres à CE perso : boosts d'attribut de compétences équipées
@@ -2380,7 +2388,11 @@
                                         </StackPanel>
 
                                         <!-- 8 slots — SkillSlotStyle + handlers de l'éditeur (drop/drag/molette) -->
-                                        <ItemsControl ItemsSource="{Binding SkillSlots}">
+                                        <!-- Nommée pour que le bandeau d'équipe, juste en dessous, sache où revenir à la
+                                             ligne : la colonne qui les contient est en Width="Auto", donc elle mesure avec
+                                             une largeur INFINIE et un WrapPanel n'y replierait jamais. Passer par cette
+                                             rangée suit tout seul le réglage de taille des emplacements (SlotSize). -->
+                                        <ItemsControl x:Name="EditorSkillRow" ItemsSource="{Binding SkillSlots}">
                                             <ItemsControl.ItemsPanel>
                                                 <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
                                             </ItemsControl.ItemsPanel>
@@ -2441,6 +2453,8 @@
                                              conditions ; se masque de lui-même si aucun rituel équipé). -->
                                         <ContentControl Content="{Binding DataContext.NatureRitualBand, ElementName=BuildEditorRoot}"
                                                         ContentTemplate="{StaticResource NatureRitualBandTemplate}"
+                                                        MaxWidth="{Binding ActualWidth, ElementName=EditorSkillRow}"
+                                                        HorizontalAlignment="Left"
                                                         Margin="2,4,0,0" Focusable="False"
                                                         Visibility="{Binding DataContext.ShowNatureRituals, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                         <!-- Toggle « prolongateurs de durée d'enchantement » (Blessed Aura / Extend)
@@ -2891,8 +2905,13 @@
                                 <Binding Path="TeamNatureRitualBand.HasItems"/>
                             </MultiBinding>
                         </Border.Visibility>
+                        <!-- Même raison que dans l'éditeur : la colonne de gauche du teambuild est en
+                             Width="Auto", donc le WrapPanel a besoin d'un bord. TeamScroll est la zone
+                             visible de la grille des persos — c'est elle qui fixe la largeur utile. -->
                         <ContentControl Content="{Binding TeamNatureRitualBand}"
                                         ContentTemplate="{StaticResource NatureRitualBandTemplate}"
+                                        MaxWidth="{Binding ViewportWidth, ElementName=TeamScroll}"
+                                        HorizontalAlignment="Left"
                                         Focusable="False" VerticalAlignment="Center"/>
                     </Border>
                 </StackPanel>
