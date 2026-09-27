@@ -9,6 +9,10 @@
 /// il en manque côté FR, c'est qu'une clause entière a sauté (relevé 27/07/2026, 21 cas sur
 /// 1253 descriptions FR affichées). Liste validée avec Philippe.
 ///
+/// ⚠ Le détecteur ne voit que les PLAGES (« 5...17...20 ») : une clause dont tous les chiffres sont des
+/// LITTÉRAUX lui échappe. C'est ainsi que la Rafale est passée entre les mailles — son « You do 25% less
+/// damage » a disparu du FR sans qu'aucune plage ne manque (trouvée au lot 6c-3, en codant son malus).
+///
 /// Effet : ces compétences retombent sur la description ANGLAISE et affichent l'avertissement
 /// correspondant dans l'infobulle (cf. <c>Skill.DescriptionFallback</c>). Mieux vaut un anglais
 /// juste qu'un français faux.
@@ -29,6 +33,7 @@ public static class FrStaleDescriptions
         204,  // Rust — omet l'interruption/désactivation des sceaux si Surcharge
         205,  // Lightning Surge — omet Armure brisée et la pénétration d'armure de 25 %
         261,  // Shield of Regeneration — bonus d'armure figé à +40 au lieu de +20...45
+        344,  // Flurry — omet « You do 25% less damage » : le FR ne garde que la vitesse d'attaque (lot 6c-3)
         391,  // Hunter's Shot — omet la condition « si la cible est touchée »
         405,  // Oath Shot — durée figée à 10 s ; seuil d'Expertise faux (7 au lieu de 8)
         865,  // Lightning Hammer — omet Armure brisée

@@ -1042,7 +1042,7 @@ public class CharacterSlotViewModel : ViewModelBase
 
         List<DamageBoostPacket>? packets = null;
         int critical = 0, basePenetration = 0, bonusPenetration = 0, lifeSteal = 0;
-        double multiplier = 1.0;
+        double multiplier = 1.0, weaponMultiplier = 1.0;
         bool elementTaken = false;
         // Arme brute : « aucun effet si l'allié visé est enchanté ». Deuxième entorse assumée à « icône
         // allumée = ça marche » (la première est le § 6.1), tranchée par Philippe le 26/09/2026 : dès que
@@ -1138,6 +1138,9 @@ public class CharacterSlotViewModel : ViewModelBase
                 // Les multiplicateurs se COMPOSENT : Vengeance (+25) sous Affinité vitale (−30) donne
                 // ×1,25 × 0,70. Chacun porte des points de pourcentage signés.
                 case DamageBoostKind.Multiplier:       multiplier *= 1.0 + value / 100.0; break;
+                // Rafale (lot 6c-3) : son −25 % ne compose qu'avec les autres multiplicateurs d'ARME, dans un
+                // canal séparé — sinon il ferait baisser le « +20 » d'un Coup de taille, qu'il ne touche pas.
+                case DamageBoostKind.WeaponMultiplier: weaponMultiplier *= 1.0 + value / 100.0; break;
                 // Vol de vie conféré (Ordre du vampire, Arme du tourment) : sa propre ligne, hors de la
                 // table et hors du multiplicateur — le vol de vie n'est pas un dégât. Deux effets actifs en
                 // même temps s'ADDITIONNENT, comme les paquets de dégâts.
@@ -1145,11 +1148,12 @@ public class CharacterSlotViewModel : ViewModelBase
             }
         }
 
-        // ⚠ Le multiplicateur part en ÉCART À 1 : cf. DamageBoosts.Multiplier, où le piège est expliqué.
+        // ⚠ Les DEUX multiplicateurs partent en ÉCART À 1 : cf. DamageBoosts.Multiplier, où le piège est
+        // expliqué — un facteur « par défaut 1 » vaudrait 0 pour default(DamageBoosts).
         return new DamageBoosts(packets, critical, basePenetration,
                                 bonusPenetration + SunderingModPercentFor(target, equipped), multiplier - 1.0,
                                 suppressed, WinterLit, StoneStrikerLit,
-                                TypeNoteFor(target, equipped, element), lifeSteal);
+                                TypeNoteFor(target, equipped, element), lifeSteal, weaponMultiplier - 1.0);
     }
 
     /// <summary>Les effets de dégâts ALLUMÉS de ce perso, des DEUX origines : sa propre barre (lots 6a)
@@ -1289,7 +1293,11 @@ public class CharacterSlotViewModel : ViewModelBase
     /// <summary>Bonus qu'un effet actif ajoute au chiffre de dégâts écrit DANS la description de
     /// <paramref name="target"/> (Q12) : Agression barbare sur les 16 attaques de familier, Sceau de
     /// puissance spectrale sur les attaques des esprits. Rend la colonne de progression à relever et le
-    /// bonus ; colonne −1 = rien à relever.</summary>
+    /// bonus ; colonne −1 = rien à relever.
+    ///
+    /// ⚠ Le bonus peut être NÉGATIF depuis le lot 6c-3 : l'Aura de sangsue de l'esprit RETIRE 5…20 dégâts
+    /// aux attaques des esprits. Elle et le Sceau de puissance spectrale se compensent donc dans la même
+    /// somme, et la valeur relevée est plancher-née à 0 par <see cref="SkillProgression.Resolve"/>.</summary>
     public (int Column, int Bonus) TextDamageBonusFor(Skill target)
     {
         // ⚠ SOMME depuis le lot 6c, plus « le premier qui gagne » : un familier peut cumuler l'Agression
@@ -1304,13 +1312,18 @@ public class CharacterSlotViewModel : ViewModelBase
             // ses attaques (le familier est une « créature à portée »).
             if (d.RequiresPhysical && d.Scope == DamageBoostScope.PetAttacks && !PetDamageStillPhysical) continue;
             int bonus = ValueOfBoost(d, sk);
-            if (bonus <= 0) continue;
+            // ⚠ « == 0 » et non « <= 0 » depuis le lot 6c-3, exactement comme dans DamageBoostsFor : un
+            // MALUS est légitimement négatif, et le refuser ici aurait fait taire l'Aura de sangsue de
+            // l'esprit en silence, build vert.
+            if (bonus == 0) continue;
             int col = DamageBoostData.TextBonusColumn(d.Scope, target);
             if (col < 0) continue;
             if (column < 0) column = col;
             if (col == column) total += bonus;
         }
-        return column >= 0 && total > 0 ? (column, total) : (-1, 0);
+        // total == 0 : les effets se sont exactement compensés (le Sceau de puissance spectrale sous l'Aura de
+        // sangsue), donc le chiffre affiché est bien celui de la base — rien à relever, et rien à marquer.
+        return column >= 0 && total != 0 ? (column, total) : (-1, 0);
     }
 
     /// <summary>

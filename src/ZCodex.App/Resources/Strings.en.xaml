@@ -190,6 +190,7 @@
     <sys:String x:Key="S.Boost.NoEffectWrongElement">No effect: this character's weapon does not deal {0} damage.</sys:String>
     <sys:String x:Key="S.Boost.SingleSpiritNote">In game a SINGLE spirit benefits (and it is destroyed after 10 seconds): the tooltip shows the bonus on all of them.</sys:String>
     <sys:String x:Key="S.Boost.DamageMalusNote">On = this effect is active: it LOWERS the damage shown below.</sys:String>
+    <sys:String x:Key="S.Boost.WeaponOnlyMalusNote">On = this effect is active: it LOWERS the damage shown below, but only the WEAPON damage — a skill's own "+X" bonus is untouched.</sys:String>
     <sys:String x:Key="S.Boost.GreatDwarfNote">On = the weapon spell is active; its knock-down chance is counted as having triggered.</sys:String>
 
     <!-- ── Template search ────────────────────────────────────────────── -->

@@ -53,9 +53,16 @@ public class AttributeBoostIndicatorViewModel : ViewModelBase
             // absence d'effet passe pour un bug — exactement le raisonnement de la Nature colérique.
             : skill.Id == DamageBoostData.BrutalWeaponSkillId && owner.IsEnchantedByLitEffect
                 ? T("S.Boost.NoEffectEnchanted")
-            // Les deux effets reçus qui RETIRENT des dégâts : allumés, ils font BAISSER les chiffres de
-            // l'infobulle. C'est le vrai comportement du jeu, mais il surprend sans un mot (lot 6b, Q2).
-            : skill.Id is DamageBoostData.LifeAttunementSkillId or DamageBoostData.NightmareWeaponSkillId
+            // Rafale (lot 6c-3) : son malus ne mord QUE sur les dégâts d'arme, donc le « +20 » d'un Coup de
+            // taille NE bouge PAS pendant que le total baisse. Sans ce mot, cette asymétrie passe pour un bug
+            // — c'est l'inverse de la leçon du 6b (« une valeur qui disparaît doit se justifier »), et elle
+            // vaut autant : une valeur qui RESTE alors que sa voisine baisse doit se justifier aussi.
+            : skill.Id == DamageBoostData.FlurrySkillId ? T("S.Boost.WeaponOnlyMalusNote")
+            // Tous les effets qui RETIRENT des dégâts : allumés, ils font BAISSER les chiffres de l'infobulle.
+            // C'est le vrai comportement du jeu, mais il surprend sans un mot (lot 6b, Q2). ⚠ Piloté par la
+            // DONNÉE (le drapeau Malus) et non par une liste d'ids : au lot 6c-3 ils passent de deux à quatre,
+            // et un cinquième n'aurait aucune raison d'être oublié ici.
+            : DamageBoostData.DescriptorsFor(skill.Id).Any(d => d.Malus)
                 ? T("S.Boost.DamageMalusNote")
             : AdrenalineBoostData.BySkillId(skill.Id) is { NeedsUnenchanted: true } && owner.IsEnchantedByAdrenalineEffect
                 ? T("S.Boost.NoEffectEnchanted")

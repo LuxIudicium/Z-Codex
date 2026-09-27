@@ -1254,9 +1254,12 @@ public partial class SkillTooltipControl : UserControl
             // que la compétence porte elle-même (« 25% less damage » du Tir double) et entre par le
             // canal qui existait déjà, donc un seul arrondi tombe à la fin. Le « +X » absorbé de la
             // compétence, qui ignore l'armure, est multiplié à part — sur sa valeur de base (Q10).
-            double mult = mods.Multiplier * boosts.Multiplier;
+            // ⚠ Le multiplicateur d'ARME (Rafale ×0,75, lot 6c-3) entre ICI et NULLE PART AILLEURS : ni sur
+            // scaledBonus (le « +X » de la compétence, que la Rafale ne touche pas), ni sur les lignes de
+            // paquets plus bas, ni sur la ligne « bonus d'effets », ni sur les lignes « ignore l'armure ».
+            double mult = mods.Multiplier * boosts.Multiplier * boosts.WeaponMultiplier;
             int scaledBonus = (int)Math.Floor(bonus * boosts.Multiplier);
-            bool scaled = boosts.HasMultiplier;
+            bool scaled = boosts.HasMultiplier || boosts.HasWeaponMultiplier;
             for (int c = 0; c < columns.Count; c++)
             {
                 if (!mods.AlwaysCritical)
@@ -1286,9 +1289,16 @@ public partial class SkillTooltipControl : UserControl
             int row = weaponRows + rows.Count + 1;
             AddCell(grid, row, 0, L("bonus d'effets", "effect bonus"), "TextSecondaryBrush");
             for (int c = 0; c < columns.Count; c++)
+            {
+                // ⚠ Le « + » n'est PAS un décor : depuis le lot 6b un paquet peut être NÉGATIF (l'Arme du
+                // tourment retire 10…50, l'Aura de Grenth 5…25 au lot 6c-3), et le signe était écrit en dur —
+                // la ligne affichait « +-50 ». Bug jamais vu parce que le seul malus du 6b était un effet REÇU,
+                // qui demande un coéquipier ; l'Aura de Grenth, elle, s'allume d'un clic sur sa propre carte.
+                int total = Boost(boosts.TotalAt(columns[c].Al, penetration, level), fluxDamagePercent);
                 AddCell(grid, row, c + 1,
-                        $"{SkillProgression.MarkEffect}+{Boost(boosts.TotalAt(columns[c].Al, penetration, level), fluxDamagePercent)}{SkillProgression.MarkEffect}",
+                        $"{SkillProgression.MarkEffect}{(total >= 0 ? "+" : "−")}{Math.Abs(total)}{SkillProgression.MarkEffect}",
                         "TextPrimaryBrush", markup: true);
+            }
         }
         return grid;
     }

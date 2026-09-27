@@ -25,6 +25,17 @@ public enum DamageBoostKind
     /// composent (×1,25 puis ×0,70).</summary>
     Multiplier,
     /// <summary>
+    /// Multiplicateur qui ne porte QUE sur les dégâts de l'ARME équipée — la part « 7–17 » de la dague,
+    /// pas les bonus de la compétence, pas ses paquets typés, pas les bonus des autres effets. Le seul cas
+    /// de toute la base est la Rafale (« You do 25% less damage »), et sa mécanique est bien celle-là :
+    /// tous les autres multiplicateurs du chantier (Vengeance, Affinité vitale, Ural) portent sur TOUT
+    /// (règle de Philippe, § 6.11 du plan).
+    ///
+    /// ⚠ Il vit donc dans un champ SÉPARÉ de <see cref="Multiplier"/> dans <see cref="DamageBoosts"/> :
+    /// les mélanger reviendrait à faire baisser le « +20 » d'un Coup de taille, que la Rafale ne touche pas.
+    /// </summary>
+    WeaponMultiplier,
+    /// <summary>
     /// VOL DE VIE conféré aux attaques par un effet (Ordre du vampire, Arme du tourment). Sa propre
     /// ligne sous la table : ce ne sont pas des dégâts, donc ni colonne d'AL, ni multiplicateur
     /// (Vengeance, Ural), ni flux — le vol de vie est hors de tout ça, règle déjà en vigueur.
@@ -52,6 +63,10 @@ public enum DamageBoostScope
     MeleeAttacks,
     /// <summary>« While wielding daggers » (Méthode de l'Assassin).</summary>
     DaggerAttacks,
+    /// <summary>« When you hit with a scythe » (Aura de Grenth, lot 6c-3). Le périmètre de la FAUX existait
+    /// déjà au lot 4b (<see cref="ConditionWeaponScope.Scythe"/>, l'Avatar de Grenth qui convertit) : rien à
+    /// re-coder. ⚠ Ne pas confondre les deux compétences, l'Aura et l'Avatar.</summary>
+    ScytheAttacks,
     /// <summary>« While holding a non-dagger weapon » (Méthode du Maître) : l'exact complément de
     /// <see cref="DaggerAttacks"/> — les deux ne peuvent donc jamais agir sur la même attaque.</summary>
     NonDaggerAttacks,
@@ -185,7 +200,8 @@ public readonly record struct DamageBoosts(
     bool ElementalToCold = false,
     bool StoneStriker = false,
     DamageTypeNote? TypeNote = null,
-    int LifeSteal = 0)
+    int LifeSteal = 0,
+    double WeaponMultiplierOffset = 0)
 {
     /// <summary>
     /// Multiplicateur de dégâts reçu (Vengeance ×1,25, Affinité vitale ×0,70).
@@ -199,14 +215,27 @@ public readonly record struct DamageBoosts(
     /// </summary>
     public double Multiplier => 1.0 + MultiplierOffset;
 
+    /// <summary>
+    /// Multiplicateur qui ne touche QUE les dégâts de l'arme équipée (Rafale ×0,75). Stocké en écart à 1
+    /// pour la même raison que <see cref="Multiplier"/> — voir le piège expliqué juste au-dessus.
+    ///
+    /// ⚠ Il n'entre NI dans <see cref="TotalAt"/> (les bonus d'effets ne sont pas des dégâts d'arme), NI
+    /// sur les paquets propres de la compétence, NI sur son « +X » absorbé. Seule la table d'arme le voit.
+    /// </summary>
+    public double WeaponMultiplier => 1.0 + WeaponMultiplierOffset;
+
     /// <summary>Au moins un effet à afficher — sinon l'infobulle n'ajoute ni ligne ni chiffre.</summary>
     public bool Any => Packets is { Count: > 0 } || CriticalPercent > 0
                        || BasePenetration > 0 || BonusPenetration > 0 || HasMultiplier
-                       || Suppressed is { Count: > 0 } || TypeNote is not null || LifeSteal > 0;
+                       || Suppressed is { Count: > 0 } || TypeNote is not null || LifeSteal > 0
+                       || HasWeaponMultiplier;
 
     /// <summary>Un multiplicateur de dégâts est-il en jeu ? Comparaison par écart, pas par égalité de
     /// doubles.</summary>
     public bool HasMultiplier => Math.Abs(MultiplierOffset) > 0.0001;
+
+    /// <summary>Un multiplicateur de dégâts d'ARME est-il en jeu (Rafale) ?</summary>
+    public bool HasWeaponMultiplier => Math.Abs(WeaponMultiplierOffset) > 0.0001;
 
     /// <summary>Somme des paquets contre une armure donnée : les paquets qui ignorent l'armure passent
     /// tels quels, les autres par la formule de dégâts. Un seul chiffre par colonne d'AL, comme la
@@ -269,6 +298,13 @@ public static class DamageBoostData
     public const int UralsHammerSkillId        = 2217;
     /// <summary>Ordre du vampire : le seul effet du bandeau qui confère du VOL DE VIE (lot 6c-2b).</summary>
     public const int OrderOfTheVampireSkillId  = 148;
+    // ── Lot 6c-3 : les trois trous HORS BANDEAU ───────────────────────────────
+    /// <summary>Rafale : le seul multiplicateur de toute la base qui ne porte que sur l'ARME.</summary>
+    public const int FlurrySkillId          = 344;
+    /// <summary>Aura de sangsue de l'esprit : le miroir du Sceau de puissance spectrale, en négatif.</summary>
+    public const int SpiritleechAuraSkillId = 2203;
+    /// <summary>Aura de Grenth : dernier trou du lot 6a, ni son malus ni son vol de vie n'étaient lus.</summary>
+    public const int GrenthsAuraSkillId     = 2013;
 
     /// <summary>Id d'icône du mod d'arme « de fractionnement » : ce n'est pas une compétence, donc un id
     /// réservé négatif, comme le mod « Furieux » du lot 1a (qui occupe −1).</summary>
@@ -479,6 +515,48 @@ public static class DamageBoostData
         // enchantement de Nécromant, donc les deux Ordres ne se cumulent jamais (vrai comportement du jeu).
         new(OrderOfTheVampireSkillId, DamageBoostScope.Attacks, DamageBoostKind.LifeSteal, Index: 0,
             Band: true, RequiresPhysical: true, LostWhenNecroEnchanted: true),
+
+        // ══ LOT 6c-3 — les trois trous HORS BANDEAU ═══════════════════════════
+        // Balayage de FAMILLE refait le 27/09/2026 sur les 1517 descriptions, trois motifs (« X % more/less
+        // damage », « N less damage », « steal N Health when/with … attack »). Il CONFIRME que la liste est
+        // close, et dit pourquoi les autres résultats sortent :
+        //  • 11 des 18 « % de dégâts » parlent des dégâts SUBIS (Forme de brume, Frénésie, Rage primitive,
+        //    Aura de foi, Armure de l'impassible, « Ils sont enflammés ! »…) — hors chantier, qui n'affiche
+        //    que ce que le perso INFLIGE ;
+        //  • 4 autres (Tir double, Fauchage des deux lunes (PvP), les 2 Tir triple) sont le multiplicateur
+        //    PROPRE de la compétence, déjà porté par WeaponStrike.ModsFor — ce n'est pas un effet ;
+        //  • Empathie retire des dégâts aux attaques de l'ENNEMI, pas aux nôtres ;
+        //  • Parasite sournois et « Khanhei était revanchard » volent de la vie quand l'ENNEMI frappe.
+        //
+        // Rafale : « You attack 33% faster. You do 25% less damage. » Aucune progression du tout dans la base
+        // → le 25 % est un LITTÉRAL, comme celui de Vengeance. ⚠ Son icône EXISTE DÉJÀ, posée par le lot 3
+        // pour la vitesse d'attaque (SkillSpeedBoostData) : PersonalToggleIdOf la trouve avant d'arriver ici,
+        // donc une seule icône pour les deux rôles — et l'exclusivité des POSTURES joue déjà dessus.
+        // ⚠ WeaponMultiplier et non Multiplier : le malus ne mord QUE sur les dégâts d'arme.
+        new(FlurrySkillId, DamageBoostScope.Attacks, DamageBoostKind.WeaponMultiplier, Fixed: 25,
+            Malus: true),
+
+        // Aura de sangsue de l'esprit : « All of your spirits within earshot deal 5…17…20 less damage and
+        // steal 5…17…20 Health when they attack. » Le miroir EXACT du Sceau de puissance spectrale
+        // (SpiritAttacks + TextDamage), en négatif, plus le vol de vie du 6c-2b.
+        // ⚠ Ses DEUX colonnes de progression sont identiques à TOUS les rangs (sondé, pas supposé : sa durée
+        // vaut elle aussi 5…17…20), donc l'index ne prête pas à conséquence — même situation que l'Arme du
+        // tourment. Le harnais verrouille cette identité : si un futur catalogue les désolidarise, il rougit.
+        new(SpiritleechAuraSkillId, DamageBoostScope.SpiritAttacks, DamageBoostKind.TextDamage, Index: 0,
+            Malus: true),
+        // Le vol de vie n'est PAS un malus : c'est un gain, il ne porte pas le signe négatif (règle du 6c-2b).
+        new(SpiritleechAuraSkillId, DamageBoostScope.SpiritAttacks, DamageBoostKind.LifeSteal, Index: 0),
+
+        // Aura de Grenth : « You deal 5…21…25 less damage and steal 5…21…25 Health when you hit with a
+        // scythe. » Dernier trou du lot 6a, trouvé par le balayage du 6c-2b. Patron de l'Arme du tourment
+        // (malus PLAT en paquet négatif + vol de vie), au périmètre de la FAUX.
+        // ⚠ Son « Initial effect: steal 5…21…25 Health from all adjacent foes » reste INVISIBLE : c'est le vol
+        // de vie que la compétence fait ELLE-MÊME, déjà écrit dans sa description (décision du chantier 10).
+        // ⚠ Sa description FR décrit une TOUTE AUTRE compétence, mais la base la marque déjà FrSuspect :
+        // l'infobulle retombe sur l'anglais toute seule, rien à faire ici (même cas qu'Ural).
+        new(GrenthsAuraSkillId, DamageBoostScope.ScytheAttacks, DamageBoostKind.Damage, Index: 0,
+            Malus: true),
+        new(GrenthsAuraSkillId, DamageBoostScope.ScytheAttacks, DamageBoostKind.LifeSteal, Index: 0),
     };
 
     /// <summary>
@@ -609,6 +687,7 @@ public static class DamageBoostData
             DamageBoostScope.BowAttacks      => ConditionDurationData.InWeaponScope(ConditionWeaponScope.Bow, target, equipped),
             DamageBoostScope.MeleeAttacks    => ConditionDurationData.InWeaponScope(ConditionWeaponScope.Melee, target, equipped),
             DamageBoostScope.DaggerAttacks   => ConditionDurationData.InWeaponScope(ConditionWeaponScope.Daggers, target, equipped),
+            DamageBoostScope.ScytheAttacks   => ConditionDurationData.InWeaponScope(ConditionWeaponScope.Scythe, target, equipped),
             DamageBoostScope.NonDaggerAttacks => WeaponStrike.IsWeaponAttack(target)
                                                 && !ConditionDurationData.InWeaponScope(ConditionWeaponScope.Daggers, target, equipped),
             DamageBoostScope.PetAttacks      => target.SkillType == "Pet Attack",

@@ -88,7 +88,8 @@ public static class SkillProgression
     /// la colonne dans le texte porte la valeur relevée, marquée <see cref="MarkEffect"/> ; les
     /// suivantes restent à la valeur de base (le second paquet d'un Coup brutal est conditionnel,
     /// décision § 6.6 du plan). Fonctionne à l'identique sur le texte EN et le texte FR : les deux
-    /// résolvent depuis la MÊME colonne.
+    /// résolvent depuis la MÊME colonne. <paramref name="bonus"/> peut être NÉGATIF (lot 6c-3, l'Aura de
+    /// sangsue de l'esprit) : la valeur relevée est alors plafonnée par le bas à 0.
     /// </summary>
     public static string Resolve(string description, string[][]? progression, int? rank, bool fluxBoosted = false, bool frAnchors = false, bool substituted = false,
                                  int bonusColumn = -1, int bonus = 0)
@@ -112,7 +113,10 @@ public static class SkillProgression
             if (!bumped && ReferenceEquals(v, boosted) && int.TryParse(v[idx], out int b))
             {
                 bumped = true;
-                return $"{MarkEffect}{b + bonus}{MarkEffect}";
+                // ⚠ Plancher à 0 depuis le lot 6c-3 : le bonus relevé peut être NÉGATIF (l'Aura de sangsue
+                // de l'esprit retire 5…20 dégâts aux attaques des esprits), et un esprit qui frappe pour 17
+                // sous un malus de 20 ne frappe pas pour −3. Le jeu ne descend pas sous zéro.
+                return $"{MarkEffect}{Math.Max(0, b + bonus)}{MarkEffect}";
             }
             return $"{mark}{v[idx]}{mark}";
         });
