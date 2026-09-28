@@ -113,7 +113,7 @@ public static class TeamBuildSerializer
 
     private sealed class Pn3Dto
     {
-        public int Version { get; set; } = 23; // v23 = lignes d’attaques NORMALES du spike (case maîtresse du build + case, compteur de coups, mod de préfixe, proc du fractionnement et arc corne par perso — lot 6d-2 du chantier infobulle) ; v22 = rang de simulation Ronces (durée du saignement posé sur les créatures assommées, lot 4c du chantier infobulle) ; Ronces et Lien terrestre rejoignent la liste NatureRituals sans nouveau champ ; v21 = rangs de simulation Infuriating Heat (PvP) et Mark of Fury ; Infuriating Heat, Dark Fury, Mark of Fury et Soothing rejoignent la liste NatureRituals sans nouveau champ, comme les icônes d'adrénaline du perso (lot 1a du chantier infobulle) la liste ActiveAttributeBoosts ; v20 = rang de simulation Nature's Renewal (son surcoût d'incantation dépend du rang en PvP) ; v19 = compteur de projectiles du spike (sorts multi-projectiles) ; v18 = mods d'arme du spike (fractionnement / vampirique / arc corne) + compteurs d'attaques vampiriques ; v17 = mode de jeu PvE/PvP enregistré avec le build ; v16 = boosts d'attribut de compétences équipées par perso ; v15 = rang de simulation Tranquility + toggle prolongateurs de durée par perso ; v14 = rang de simulation Roaring Winds ; v13 = rituels de la nature actifs ; v12 = PV lanceur Grenth's Balance ; v11 = buffs d'arme spike ; v10 = seuil spike ; v9 = part conditionnelle spike ; v8 = procs spike ; v7 = flux ; v6 = roster Spike ; v5 = genre du perso
+        public int Version { get; set; } = 24; // v24 = renversements comptés pour la ligne de Ronces du spike (l'esprit frappe chaque créature renversée, compteur laissé à l'utilisateur — demande de Philippe du 28/09/2026) ; v23 = lignes d’attaques NORMALES du spike (case maîtresse du build + case, compteur de coups, mod de préfixe, proc du fractionnement et arc corne par perso — lot 6d-2 du chantier infobulle) ; v22 = rang de simulation Ronces (durée du saignement posé sur les créatures assommées, lot 4c du chantier infobulle) ; Ronces et Lien terrestre rejoignent la liste NatureRituals sans nouveau champ ; v21 = rangs de simulation Infuriating Heat (PvP) et Mark of Fury ; Infuriating Heat, Dark Fury, Mark of Fury et Soothing rejoignent la liste NatureRituals sans nouveau champ, comme les icônes d'adrénaline du perso (lot 1a du chantier infobulle) la liste ActiveAttributeBoosts ; v20 = rang de simulation Nature's Renewal (son surcoût d'incantation dépend du rang en PvP) ; v19 = compteur de projectiles du spike (sorts multi-projectiles) ; v18 = mods d'arme du spike (fractionnement / vampirique / arc corne) + compteurs d'attaques vampiriques ; v17 = mode de jeu PvE/PvP enregistré avec le build ; v16 = boosts d'attribut de compétences équipées par perso ; v15 = rang de simulation Tranquility + toggle prolongateurs de durée par perso ; v14 = rang de simulation Roaring Winds ; v13 = rituels de la nature actifs ; v12 = PV lanceur Grenth's Balance ; v11 = buffs d'arme spike ; v10 = seuil spike ; v9 = part conditionnelle spike ; v8 = procs spike ; v7 = flux ; v6 = roster Spike ; v5 = genre du perso
         public Guid Id { get; set; }
         public string Name { get; set; } = string.Empty;
         public List<string> Tags { get; set; } = [];
@@ -142,6 +142,9 @@ public static class TeamBuildSerializer
         // v23 — case MAÎTRESSE des lignes d'attaque normale. Absent (≤ v22) → false : un build
         // enregistré avant le lot 6d-2 garde exactement le total qu'il avait.
         public bool ShowNormalAttacks { get; set; }
+        // v24 — renversements comptés pour la ligne de Ronces du spike. Absent (≤ v23) → 0 : la ligne
+        // s'affiche sans rien compter, donc un build enregistré avant garde son total.
+        public int BramblesProcs { get; set; }
     }
 
     private sealed class SpikeMemberDto
@@ -287,6 +290,7 @@ public static class TeamBuildSerializer
         VampiricHits3 = b.VampiricHits3,
         VampiricHits5 = b.VampiricHits5,
         ShowNormalAttacks = b.ShowNormalAttacks,
+        BramblesProcs = b.BramblesProcs,
     };
 
     private static CharacterDto CharToDto(CharacterBuild c)
@@ -407,6 +411,7 @@ public static class TeamBuildSerializer
         VampiricHits3 = Math.Clamp(dto.VampiricHits3, 0, 25),   // v18 — bornes du ComboBox des procs
         VampiricHits5 = Math.Clamp(dto.VampiricHits5, 0, 25),
         ShowNormalAttacks = dto.ShowNormalAttacks,               // v23 — lignes d'attaque normale
+        BramblesProcs = Math.Clamp(dto.BramblesProcs, 0, 25),   // v24 — bornes du ComboBox des procs
     };
 
     private static CharacterBuild CharFromDto(CharacterDto dto, IReadOnlyDictionary<int, Skill> skillsById,

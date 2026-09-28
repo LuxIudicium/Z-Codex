@@ -594,6 +594,13 @@ public class TeamBuildViewModel : ViewModelBase, IRenamableTab
 
     public bool ShowNormalAttacks { get => _showNormalAttacks; set => SetField(ref _showNormalAttacks, value); }
 
+    // Renversements comptés par la ligne de Ronces du spike (28/09/2026). GLOBAL au build, comme les
+    // compteurs vampiriques : l'esprit est unique et frappe qui il veut, le découper par perso n'aurait
+    // aucun sens. 0 = ligne affichée mais non comptée. Persisté (.zcx v24).
+    private int _bramblesProcs;
+
+    public int BramblesProcs { get => _bramblesProcs; set => SetField(ref _bramblesProcs, value); }
+
     /// <summary>Compteur d'attaques de la ligne de vol de vie <paramref name="steal"/> (3 ou 5).</summary>
     public int VampiricHits(int steal) => steal == Core.Data.SpikeWeaponMods.VampiricStealTwoHanded
         ? VampiricHits5 : VampiricHits3;

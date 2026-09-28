@@ -3853,6 +3853,7 @@ public partial class MainWindow : Window
         vm.VampiricHits3 = Math.Clamp(model.VampiricHits3, 0, 25);
         vm.VampiricHits5 = Math.Clamp(model.VampiricHits5, 0, 25);
         vm.ShowNormalAttacks = model.ShowNormalAttacks;   // v23 — lignes d'attaque normale du spike
+        vm.BramblesProcs = Math.Clamp(model.BramblesProcs, 0, 25);   // v24 — ligne de Ronces du spike
         vm.Tags.Clear();
         foreach (var tag in model.Tags) vm.Tags.Add(tag);
 
@@ -3970,6 +3971,7 @@ public partial class MainWindow : Window
         VampiricHits3 = vm.VampiricHits3,
         VampiricHits5 = vm.VampiricHits5,
         ShowNormalAttacks = vm.ShowNormalAttacks,
+        BramblesProcs = vm.BramblesProcs,
         Characters = vm.Characters.Select(CharToModel).ToList(),
         Locks = vm.Locks.Select(l => new VariantLock
         {

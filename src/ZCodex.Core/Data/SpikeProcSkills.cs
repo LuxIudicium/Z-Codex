@@ -27,7 +27,10 @@ public static class SpikeProcSkills
         "Barbs", "Mark of Pain", "Soul Barbs", "Fragility", "Fragility (PvP)",
         "Frustration", "Frustration (PvP)", "Mind Wrack", "Mind Wrack (PvP)", "Wither",
         // Rituels de nature
-        "Edge of Extinction", "Brambles", "Famine", "Favorable Winds", "Winnowing",
+        "Edge of Extinction", "Famine", "Favorable Winds", "Winnowing",
+        // ⚠ Ronces a QUITTÉ cette liste le 28/09/2026 : elle n'est plus comptée par un cadre vert sur
+        // une barre mais par UNE ligne artificielle, pilotée par son icône du bandeau d'équipe
+        // (cf. SpikeBandDamage) — sinon le même esprit comptait deux fois.
         // Binding rituals (attaques d'esprit : dégât ou vol par attaque)
         "Pain", "Pain (PvP)", "Dissonance", "Dissonance (PvP)",
         "Shadowsong", "Shadowsong (PvP)", "Bloodsong", "Bloodsong (PvP)", "Vampirism",

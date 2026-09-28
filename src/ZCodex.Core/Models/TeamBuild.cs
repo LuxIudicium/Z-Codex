@@ -22,6 +22,10 @@ public class TeamBuild
     // v23 — case MAÎTRESSE des lignes d'attaque normale du spike (lot 6d-2) : éteinte, ni les lignes
     // ni les cases par perso n'existent. Absent (≤ v22) → false, total inchangé.
     public bool ShowNormalAttacks { get; set; }
+
+    // Renversements comptés pour la ligne de Ronces du spike (28/09/2026) : l'esprit frappe à chaque
+    // créature renversée, un rythme que l'application ne peut pas deviner. 0 = ligne affichée, non comptée.
+    public int BramblesProcs { get; set; }
     // v17 — mode de jeu au moment de l'enregistrement, restauré à la réouverture. Null = fichier
     // antérieur à v17 (ou format hérité .pwnd/.txt) : le mode courant s'applique alors, comme avant.
     public GameMode? GameMode { get; set; }

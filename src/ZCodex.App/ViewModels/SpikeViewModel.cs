@@ -384,6 +384,11 @@ public class SpikeViewModel : ViewModelBase
         foreach (var slot in member.SkillSlots)
         {
             if (!slot.IsSpikeSelected || slot.Skill is not { } skill) continue;
+            // ⚠ Ronces (28/09/2026) : AUCUNE ligne depuis une barre. Son esprit frappe les créatures
+            // renversées à un rythme que rien ici ne peut deviner, et Philippe a tranché qu'elle se
+            // compte en UNE ligne globale, pilotée par son icône du bandeau d'équipe — deux lignes
+            // pour le même esprit compteraient deux fois. Cf. SpikeBandDamage.
+            if (SpikeBandDamage.IsBandDamageSkill(skill.Id)) continue;
 
             string resolved = member.ResolveDescription(skill);
             // Mode spike : lit aussi les paquets « X more damage » / « increases … by +X »
@@ -970,6 +975,40 @@ public class SpikeViewModel : ViewModelBase
                 totalMin += t.Min; totalMax += t.Max;
                 totalFluxMin += t.FluxMin; totalFluxMax += t.FluxMax;
             }
+
+        // Ronces (28/09/2026) : une ligne ARTIFICIELLE globale, colonne personnage vide — l'esprit
+        // n'appartient à personne. Elle n'existe que si l'icône est allumée au bandeau des effets
+        // d'équipe, le seul interrupteur de cet effet dans la fenêtre (décision de Philippe), et son
+        // compteur est le nombre de renversements que l'utilisateur compte lui-même : l'application ne
+        // sait pas qui tombe ni combien de fois. 0 = ligne affichée, rien compté.
+        // ⚠ Les 5 dégâts sont un littéral qui ignore l'armure (cf. SpikeBandDamage), donc ni la cible,
+        // ni la case Armure brisée, ni les bonus par type ne les déplacent.
+        // ⚠ Colonne Flux à « — » comme les lignes de vol de vie : le flux se calcule pour un PERSO et sa
+        // profession, et cette ligne n'a pas de perso.
+        if (Build.NatureRituals.IsActive(NatureRitualData.Ritual.Brambles))
+        {
+            int procs = Math.Max(0, Build.BramblesProcs);
+            int dealt = SpikeBandDamage.BramblesDamage * procs;
+            var brambles = CharacterSlotViewModel.SkillCatalog?.Invoke()
+                ?.FirstOrDefault(sk => sk.Id == KnockdownData.BramblesSkillId);
+            Rows.Add(new SpikeRowViewModel
+            {
+                IconPath = brambles?.IconPath,
+                SkillName = brambles?.DisplayName ?? "Brambles",
+                CharacterName = string.Empty,
+                Detail = L($"{SpikeBandDamage.BramblesDamage} dégâts par renversement",
+                           $"{SpikeBandDamage.BramblesDamage} damage per knock-down")
+                       + (procs != 1 ? L($" × {procs} renversements", $" × {procs} knock-downs") : "")
+                       + ArmorIgnoring
+                       + L(" · saignement non compté", " · Bleeding not counted"),
+                RangeText = dealt.ToString(),
+                FluxBonusText = "—",
+                HasProcs = true,
+                ProcsGetter = () => Build.BramblesProcs,
+                ProcsSetter = v => Build.BramblesProcs = v,
+            });
+            totalMin += dealt; totalMax += dealt;
+        }
 
         // Vol de vie des mods vampiriques : 1 ou 2 lignes ARTIFICIELLES globales (3 et/ou 5), tout à
         // la fin de la liste, colonne personnage vide — elles n'appartiennent à personne. Cocher

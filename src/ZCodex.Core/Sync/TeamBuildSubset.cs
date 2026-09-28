@@ -64,6 +64,7 @@ public static class TeamBuildSubset
             VampiricHits3          = source.VampiricHits3,
             VampiricHits5          = source.VampiricHits5,
             ShowNormalAttacks      = source.ShowNormalAttacks,
+            BramblesProcs          = source.BramblesProcs,
         };
     }
 
