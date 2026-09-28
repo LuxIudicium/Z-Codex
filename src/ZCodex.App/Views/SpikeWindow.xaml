@@ -35,6 +35,100 @@
                                FontSize="11" Foreground="{DynamicResource TextFaintBrush}"
                                VerticalAlignment="Center" Margin="10,0,0,0" TextWrapping="Wrap"/>
                 </DockPanel>
+                <!-- Effets d'ÉQUIPE (28/09/2026, demande de Philippe) : le MÊME bandeau que la vue
+                     Teambuild, cliquable, rattaché au build du spike. Les effets du bandeau (« Visez les
+                     yeux ! », « Ensemble et unis ! », l'Étendard d'honneur, les rituels de la nature…)
+                     ne sont sur la carte d'AUCUN perso : ils changent les chiffres de cette fenêtre
+                     depuis le lot 6c mais n'y avaient aucun interrupteur.
+                     ⚠ Grid et non StackPanel horizontal : dans un StackPanel la largeur disponible est
+                     INFINIE, donc le WrapPanel ne replierait jamais (même piège qu'au bandeau d'origine).
+                     ⚠ Template recopié de MainWindow : le DataTemplate d'origine porte des HANDLERS
+                     d'évènements, qu'un dictionnaire de ressources partagé ne peut pas héberger sans
+                     code-behind. Le VM, lui, est partagé — la règle de calcul du bandeau vit dans
+                     NatureRitualBandViewModel.RefreshTeam, à un seul endroit. -->
+                <Grid DockPanel.Dock="Top" Margin="0,0,0,6"
+                      Visibility="{Binding TeamEffects.HasItems, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="{DynamicResource S.Ed.RitualsLabel}" FontSize="11"
+                               Foreground="{DynamicResource TextMutedBrush}"
+                               VerticalAlignment="Top" Margin="0,4,8,0"/>
+                    <ItemsControl Grid.Column="1" ItemsSource="{Binding TeamEffects.Items}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><WrapPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <!-- Séparateur de famille (rituels | Dark Fury | Mark of Fury | Soothing). -->
+                                    <Border Width="1" Margin="2,4,6,4" Background="{DynamicResource TextMutedBrush}" Opacity="0.6"
+                                            Visibility="{Binding StartsGroup, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                    <Border MouseLeftButtonDown="TeamEffectToggle_Click"
+                                            PreviewMouseWheel="TeamEffectRank_Wheel" Cursor="Hand"
+                                            Width="26" Height="26" Margin="0,0,4,4" CornerRadius="2"
+                                            BorderThickness="2" Background="Transparent"
+                                            ToolTipService.ShowDuration="30000">
+                                        <Border.ToolTip>
+                                            <ToolTip MaxWidth="420" Padding="0">
+                                                <StackPanel>
+                                                    <ctrl:SkillTooltipControl Skill="{Binding Skill}"
+                                                                              DescriptionOverride="{Binding DescriptionOverride}"
+                                                                              DisplayDescriptionOverride="{Binding DisplayDescriptionOverride}"
+                                                                              AttributeRank="{Binding AttributeRank}"/>
+                                                    <TextBlock Text="{Binding ClickNote}" FontSize="10" FontStyle="Italic"
+                                                               Foreground="{DynamicResource TextSecondaryBrush}"
+                                                               TextWrapping="Wrap" Margin="6,2,6,4"/>
+                                                </StackPanel>
+                                            </ToolTip>
+                                        </Border.ToolTip>
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="BorderBrush" Value="Transparent"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                        <Setter Property="BorderBrush" Value="#43A047"/>
+                                                    </DataTrigger>
+                                                    <!-- Effet ennemi (Soothing) : rouge. Déclaré APRÈS le vert pour l'emporter. -->
+                                                    <MultiDataTrigger>
+                                                        <MultiDataTrigger.Conditions>
+                                                            <Condition Binding="{Binding IsActive}" Value="True"/>
+                                                            <Condition Binding="{Binding IsEnemyEffect}" Value="True"/>
+                                                        </MultiDataTrigger.Conditions>
+                                                        <Setter Property="BorderBrush" Value="#E53935"/>
+                                                    </MultiDataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <Grid>
+                                            <Image Width="20" Height="20" Stretch="Uniform"
+                                                   Source="{Binding IconPath, Converter={StaticResource UrlToImage}, ConverterParameter=64}"
+                                                   RenderOptions.BitmapScalingMode="HighQuality">
+                                                <Image.Style>
+                                                    <Style TargetType="Image">
+                                                        <Setter Property="Opacity" Value="0.35"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                                <Setter Property="Opacity" Value="1"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Image.Style>
+                                            </Image>
+                                            <!-- Badge de rang : rang de simulation, molette pour le changer. -->
+                                            <Border HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                                    Background="#CC000000" CornerRadius="2" Padding="1,0" Margin="0,0,-1,-1"
+                                                    Visibility="{Binding HasRank, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                <TextBlock Text="{Binding Rank}" FontSize="8" Foreground="White"/>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Grid>
                 <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="520">
                     <ItemsControl ItemsSource="{Binding Build.SpikeMembers}">
                         <ItemsControl.ItemsPanel>

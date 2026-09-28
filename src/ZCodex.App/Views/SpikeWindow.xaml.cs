@@ -45,6 +45,28 @@ public partial class SpikeWindow : Window
             toggle.IsActive = !toggle.IsActive;
     }
 
+    // Clic sur une icône du bandeau des effets d'ÉQUIPE (28/09/2026) : la MÊME bascule que dans la vue
+    // Teambuild — l'état vit dans Build.NatureRituals, donc allumer ici allume partout, infobulles
+    // comprises. Le recalcul suit : le toggle mute le build, et Mutated reconstruit la fenêtre.
+    private void TeamEffectToggle_Click(object sender, MouseButtonEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is NatureRitualIndicatorViewModel vm)
+            vm.Toggle();
+        e.Handled = true;
+    }
+
+    // Molette sur une icône du bandeau : rang de SIMULATION de l'effet (mêmes crans que la vue
+    // Teambuild). ⚠ e.Handled dès que le cran a servi, sinon le ScrollViewer du roster défilerait en
+    // même temps (arbitrage molette du chantier : défiler OU modifier, jamais les deux).
+    private void TeamEffectRank_Wheel(object sender, MouseWheelEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is NatureRitualIndicatorViewModel { CanAdjustRank: true } vm)
+        {
+            vm.AdjustRank(e.Delta > 0 ? 1 : -1);
+            e.Handled = true;
+        }
+    }
+
     // Clic sur une icône d'effet de dégâts de la carte (lot 6e) : la MÊME bascule que dans la vue
     // Build — allumer ici allume partout, il n'y a qu'un seul état par perso. Le recalcul suit tout
     // seul : Toggle() notifie, le perso est muté, et la fenêtre se reconstruit.

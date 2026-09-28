@@ -22,8 +22,15 @@ public class SpikeViewModel : ViewModelBase
 
     private readonly AppSettings _settings;
     private readonly Action _onMutated;
+    private readonly Action _onRankPreview;
 
     public TeamBuildViewModel Build { get; }
+
+    /// <summary>Bandeau des effets d'ÉQUIPE de cette fenêtre (28/09/2026) : le même que celui de la vue
+    /// Teambuild, mais rattaché au build du spike. ⚠ Objet distinct, état PARTAGÉ — l'activation vit dans
+    /// <c>Build.NatureRituals</c>, donc allumer un effet ici l'allume aussi dans la vue Teambuild et dans
+    /// les infobulles, et réciproquement.</summary>
+    public NatureRitualBandViewModel TeamEffects { get; } = new();
 
     public SpikeViewModel(TeamBuildViewModel build, AppSettings settings)
     {
@@ -33,10 +40,23 @@ public class SpikeViewModel : ViewModelBase
         _onMutated = ScheduleRecalculate;
         build.Mutated += _onMutated;
         build.SpikeMembers.CollectionChanged += OnRosterChanged;
+        // Aperçu du rang à la molette : il ne passe PAS par Mutated (c'est voulu — le recalcul lourd est
+        // débouncé de 500 ms), donc sans cet abonnement le badge de l'icône resterait figé ici.
+        // ⚠ Il ne rafraîchit QUE le bandeau, jamais la fenêtre : brancher le recalcul complet sur un
+        // évènement qui part à chaque cran de molette, c'est la rafale de Mutated du chantier 11 —
+        // les chiffres, eux, arrivent par Changed → Mutated quand la molette s'arrête.
+        _onRankPreview = RefreshTeamEffects;
+        build.NatureRituals.RankPreview += _onRankPreview;
         Recalculate();
     }
 
     private void OnRosterChanged(object? sender, NotifyCollectionChangedEventArgs e) => ScheduleRecalculate();
+
+    // Le bandeau d'équipe de la fenêtre, reconstruit depuis le build du spike. Le catalogue ambiant est
+    // celui du chantier 6c (les effets de bandeau ne sont sur la barre de personne, il faut retrouver
+    // leur compétence) ; vide avant son initialisation, ce qui ne se produit pas une fenêtre ouverte.
+    private void RefreshTeamEffects() =>
+        TeamEffects.RefreshTeam(Build, CharacterSlotViewModel.SkillCatalog?.Invoke() ?? []);
 
     // Recalcul REPOSTÉ sur la boucle de messages, jamais immédiat. Raison : Recalculate reconstruit
     // Rows (Clear + Add) et détruit donc les conteneurs des lignes ; or Mutated part le plus souvent
@@ -68,6 +88,7 @@ public class SpikeViewModel : ViewModelBase
         _detached = true;
         Build.Mutated -= _onMutated;
         Build.SpikeMembers.CollectionChanged -= OnRosterChanged;
+        Build.NatureRituals.RankPreview -= _onRankPreview;
     }
 
     // ── Cible ─────────────────────────────────────────────────────────────────
@@ -329,6 +350,12 @@ public class SpikeViewModel : ViewModelBase
     public void Recalculate()
     {
         OnPropertyChanged(nameof(FluxDescription)); // le flux peut avoir changé (Mutated)
+        // Bandeau des effets d'équipe de la fenêtre (28/09/2026) : les effets du BANDEAU — « Visez les
+        // yeux ! », « Ensemble et unis ! », l'Étendard, les rituels de la nature — ne sont sur la carte
+        // d'aucun perso, ils n'avaient donc AUCUN interrupteur ici, alors qu'ils changent les chiffres
+        // de la fenêtre depuis le lot 6c. Il vit sur le build du SPIKE et non sur l'onglet actif (la
+        // fenêtre n'est pas modale, l'onglet peut changer sous elle), mais l'état allumé est le même.
+        RefreshTeamEffects();
         Rows.Clear();
         var target = new SpikeTarget(_baseArmor, _targetLevel, _maxHealth,
             _bonusPhysical, _bonusElemental, _bonusSlashing, _bonusPiercing, _bonusBlunt,
@@ -1129,6 +1156,14 @@ public class SpikeViewModel : ViewModelBase
 
         var boostCharges = new List<SpikeNormalAttack.BoostCharge>();
         var chargedParts = new List<string>();
+        // Taux de critique apporté par les effets à CHARGES (« Visez les yeux ! » : le prochain coup).
+        // ⚠ Il ne peut PAS rejoindre le taux de la ligne : celle-ci n'a qu'un taux pour ses N coups,
+        // alors que la charge n'en couvre qu'une partie. Il sort donc en second régime, « (1er coup :
+        // 100 %) » — sans quoi le détail nommait un +100 % que le taux affiché démentait (relecture du
+        // 28/09/2026). ⚠ Les taux s'ADDITIONNENT entre eux (Q7) ; la portée retenue est la plus longue,
+        // ce qui ne prête à conséquence qu'avec deux effets de critique à charges de portées
+        // différentes — il n'y en a qu'un aujourd'hui.
+        int chargedCrit = 0, chargedCritHits = 0;
         foreach (var rule in SpikeBoostCoverage.Charges)
         {
             // Charges RESTANTES après les attaques du spike (Q22), bornées au nombre de coups tapés.
@@ -1142,6 +1177,11 @@ public class SpikeViewModel : ViewModelBase
             int covered = Math.Min(left, hits);
             if (flat != 0 || one.LifeSteal > 0)
                 boostCharges.Add(new SpikeNormalAttack.BoostCharge(covered, flat, one.LifeSteal));
+            if (one.CriticalPercent > 0)
+            {
+                chargedCrit += one.CriticalPercent;
+                chargedCritHits = Math.Max(chargedCritHits, covered);
+            }
             foreach (var s in one.Sources)
                 chargedParts.Add($"{BoostSourcePart(s)} {ChargeNote(covered)}");
         }
@@ -1180,14 +1220,28 @@ public class SpikeViewModel : ViewModelBase
         }
         min += steal; max += steal;
 
+        // Le taux de critique de la ligne : celui du régime permanent, suivi du régime des coups qu'un
+        // effet à charges couvre, quand il y en a un (décision de Philippe du 28/09/2026).
+        string CritPart()
+        {
+            int cs = member.AttributeLevel("Critical Strikes") ?? 0;
+            double rate = WeaponStrike.CriticalChance(rank, AttackerLevel, _targetLevel, cs, plain.CriticalPercent);
+            string text = $"{L("crit", "crit")} {100 * rate:0} %";
+            if (chargedCrit <= 0 || chargedCritHits <= 0) return text;
+            double boosted = WeaponStrike.CriticalChance(rank, AttackerLevel, _targetLevel, cs,
+                                                         plain.CriticalPercent + chargedCrit);
+            return text + (chargedCritHits <= 1
+                ? L($" (1er coup : {100 * boosted:0} %)", $" (1st hit: {100 * boosted:0}%)")
+                : L($" ({chargedCritHits} premiers coups : {100 * boosted:0} %)",
+                    $" (first {chargedCritHits} hits: {100 * boosted:0}%)"));
+        }
+
         var parts = new List<string>
         {
             lineType.Received == weapon.DamageType
                 ? $"{weapon.DisplayName} {Range(nudeMin, nudeMax)}"
                 : $"{weapon.DisplayName} ({TypeLabel(lineType.Received)}) {Range(nudeMin, nudeMax)}",
-            _allCrits
-                ? L("critique forcé", "forced critical")
-                : $"{L("crit", "crit")} {100 * WeaponStrike.CriticalChance(rank, AttackerLevel, _targetLevel, member.AttributeLevel("Critical Strikes") ?? 0, plain.CriticalPercent):0} %",
+            _allCrits ? L("critique forcé", "forced critical") : CritPart(),
             hits == 1 ? L("1 coup", "1 hit") : L($"× {hits} coups", $"× {hits} hits"),
         };
         if (deduced) parts.Add(L("arme déduite", "deduced weapon"));
@@ -1494,10 +1548,15 @@ public class SpikeViewModel : ViewModelBase
             // sans que le balayage du roster l'ait proposé, et `Max()` sur une séquence vide LÈVE.
             // (Glaive était destructrice est SelfOnly, donc en pratique les deux vont ensemble — mais
             // un plantage de la fenêtre entière ne se paie pas sur un « en pratique ».)
+            // ⚠ Le repli lit la COPIE que l'icône porte, et non la plus forte des deux : core 20 %,
+            // PvP 10 % (défaut relevé à la relecture du 28/09/2026 — le repli prenait 20 % même sous
+            // la copie PvP, alors que l'icône sait laquelle est allumée).
             int dwgPen = Active(SpikeBuff.DestructiveWasGlaive)
                 ? offered.Where(e => e.D.Buff == SpikeBuff.DestructiveWasGlaive)
                     .Select(e => SpikeWeaponBuffs.DwgBasePen(IsPvpCopy(e.Copy)))
-                    .DefaultIfEmpty(SpikeWeaponBuffs.DwgBasePen(pvpCopy: false)).Max()
+                    .DefaultIfEmpty(SpikeWeaponBuffs.DwgBasePen(
+                        m.LitBoostIconSkill(DamageBoostData.DestructiveWasGlaiveSkillId) is { } copy
+                        && IsPvpCopy(copy))).Max()
                 : 0;
 
             // Valeur des trois buffs à +X quand ils sont allumés PAR L'ICÔNE et que leur lanceur est hors
@@ -1784,17 +1843,22 @@ public sealed class SpikeBuffToggleViewModel : ViewModelBase
     /// la règle vient supprimer.</summary>
     public bool LitOnCard => Member.IsBoostIconLit(Descriptor.CardToggleId);
 
+    /// <summary>L'icône de la carte existe-t-elle pour cet effet ? Si oui, c'est elle qui porte l'état
+    /// (28/09/2026) : la case et l'icône commandent alors UN SEUL interrupteur, et ne peuvent plus
+    /// s'afficher dans deux états différents — elles sont désormais côte à côte dans cette fenêtre.</summary>
+    public bool HasCardIcon => Member.HasBoostIcon(Descriptor.CardToggleId);
+
     public bool IsActive
     {
         // ⚠ L'état EFFECTIF, pas celui de la case : allumé d'un côté OU de l'autre (Q13 étendue aux 7).
         get => Member.IsSpikeBuffActive(Descriptor.Key) || LitOnCard;
         set
         {
-            // Allumé par la carte : c'est ELLE qu'on éteint, sinon le clic serait sans effet visible —
-            // la case s'éteindrait pendant que l'icône de la carte maintient l'effet allumé.
-            if (!value && LitOnCard)
+            if (!value)
             {
-                Member.SetAttributeBoost(Descriptor.CardToggleId, false);
+                // Éteindre : les DEUX côtés. L'un des deux resté allumé maintiendrait l'effet, et le
+                // clic n'aurait aucun effet visible (c'est le cas que la règle « OU » a créé).
+                if (LitOnCard) Member.SetAttributeBoost(Descriptor.CardToggleId, false);
                 Member.SetSpikeBuff(Descriptor.Key, false);
                 OnPropertyChanged();
                 return;
@@ -1802,7 +1866,8 @@ public sealed class SpikeBuffToggleViewModel : ViewModelBase
             // Garde-fou GW1 : « a target can only have one weapon spell active at a time ;
             // recasting overwrites the previous one ». Activer un weapon spell éteint donc les
             // autres weapon spells du MÊME perso (leurs icônes se dé-surlignent via RaiseActiveChanged).
-            if (value && IsWeaponSpell)
+            if (IsWeaponSpell)
+            {
                 // ⚠ `other.IsActive` et non la seule case : depuis la règle « OU », un autre sort d'arme
                 // peut être allumé par l'icône de la carte, et l'exclusivité doit l'éteindre LÀ aussi —
                 // sinon deux sorts d'arme cohabiteraient, ce que le jeu interdit.
@@ -1813,7 +1878,16 @@ public sealed class SpikeBuffToggleViewModel : ViewModelBase
                         Member.SetSpikeBuff(other.Descriptor.Key, false);
                         other.RaiseActiveChanged();
                     }
-            Member.SetSpikeBuff(Descriptor.Key, value);
+                // ⚠ Et les sorts d'arme allumés par une icône SANS case ici — le lanceur hors du roster
+                // du spike n'en fait pas proposer. La boucle ci-dessus ne peut pas les voir.
+                Member.TurnOffOtherWeaponSpellIcons(Descriptor.CardToggleId);
+            }
+            // Allumer : l'ICÔNE quand elle existe, la case sinon — un seul état, jamais deux (28/09/2026).
+            // ⚠ Sans ça, cocher la case laissait l'icône grise juste en dessous alors que l'effet comptait :
+            // exactement la contradiction que la règle « OU » du 6e-b voulait supprimer, dans l'autre sens.
+            // L'icône propage en plus l'effet aux INFOBULLES de la vue Build, ce que la case ne fait pas.
+            if (HasCardIcon) Member.SetAttributeBoost(Descriptor.CardToggleId, true);
+            else Member.SetSpikeBuff(Descriptor.Key, true);
             OnPropertyChanged();
         }
     }

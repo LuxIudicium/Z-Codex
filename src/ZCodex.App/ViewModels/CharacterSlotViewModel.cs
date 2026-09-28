@@ -446,7 +446,21 @@ public class CharacterSlotViewModel : ViewModelBase
         // Un seul effet par famille sur un perso (règle du jeu ; glyphes le 15/09/2026, puis postures, préparations, sorts
         // d'arme, formes et sorts d'objet au cadrage du lot 3) : allumer une icône éteint celles de sa famille.
         if (active && ExclusiveFamilyOf(skillId) is { } family)
+        {
             changed |= _activeAttributeBoosts.RemoveWhere(id => id != skillId && ExclusiveFamilyOf(id) == family) > 0;
+            // ⚠ Et les CASES de la fenêtre Spike, qui portent le même genre d'état pour les buffs sans
+            // icône de carte — l'Arme d'éclats est un sort d'arme (28/09/2026). Sans ce pont, allumer
+            // l'icône d'un sort d'arme laissait sa case cochée : deux sorts d'arme actifs à la fois,
+            // ce que le jeu interdit et que la fenêtre interdisait déjà dans l'autre sens.
+            if (family == WeaponSpellType)
+                foreach (var t in SpikeBuffToggles)
+                    if (t.IsWeaponSpell && t.Descriptor.CardToggleId != skillId
+                        && IsSpikeBuffActive(t.Descriptor.Key))
+                    {
+                        SetSpikeBuff(t.Descriptor.Key, false);
+                        t.RaiseActiveChanged();
+                    }
+        }
         if (changed)
         {
             NotifyTooltipsChanged();
@@ -541,6 +555,10 @@ public class CharacterSlotViewModel : ViewModelBase
     private static readonly HashSet<string> ExclusiveSkillTypes = new(StringComparer.Ordinal)
         { "Glyph", "Stance", "Preparation", "Form", "Item Spell", "Weapon Spell" };
 
+    // Le SkillType des sorts d'arme, tel que la base l'écrit : la seule famille dont l'exclusivité
+    // franchit la frontière icônes ↔ cases de la fenêtre Spike (cf. SetAttributeBoost).
+    private const string WeaponSpellType = "Weapon Spell";
+
     private string? ExclusiveFamilyOf(int toggleId)
     {
         // Sorts d'arme reçus d'un allié : leur compétence n'est pas forcément sur la barre de CE perso.
@@ -565,22 +583,30 @@ public class CharacterSlotViewModel : ViewModelBase
 
     /// <summary>
     /// Lot 6e — la rangée d'icônes de la carte du perso DANS la fenêtre Spike : les mêmes que celles de
-    /// la vue Build, filtrées à celles qui changent un chiffre de cette fenêtre-là.
+    /// la vue Build, filtrées à celles dont l'état change un chiffre de cette fenêtre-là.
     ///
-    /// ⚠ Le filtre n'est pas une liste : une icône y figure si elle porte au moins un descripteur de
-    /// dégâts que le Spike ne compte pas déjà (<see cref="SpikeBoostCoverage.AlreadyCounted"/>). Les
-    /// autres sortent toutes seules — l'adrénaline, l'énergie, la recharge, les durées et la
-    /// substitution de caractéristique n'ont aucun effet sur un spike, et les 9 buffs d'arme ont déjà
-    /// leur propre rangée juste au-dessus.
+    /// ⚠ Le filtre n'est pas une liste, ce sont DEUX questions posées au code :
+    ///  • l'icône porte-t-elle un descripteur de dégâts que le Spike ne compte pas déjà par un autre
+    ///    chemin (<see cref="SpikeBoostCoverage.AlreadyCounted"/>) — les 23 effets du lot 6e ;
+    ///  • ou est-elle l'icône d'un des buffs d'arme de la fenêtre (28/09/2026, demande de Philippe) ?
+    ///    Depuis la règle « allumé d'un côté OU de l'autre » du 6e-b, l'allumer AGIT sur les chiffres,
+    ///    elle a donc sa place ici — et surtout, c'était le seul interrupteur qui manquait quand le
+    ///    lanceur du buff est hors du roster du spike : sa case, elle, n'est alors pas proposée.
+    ///
+    /// Le reste sort tout seul : l'adrénaline, l'énergie, la recharge, les durées et la substitution de
+    /// caractéristique ne déplacent aucun chiffre de spike. ⚠ Et les effets comptés par un compteur
+    /// « Procs » (conjurations, Ordres, Cent lames…) restent dehors exprès : leur icône n'y changerait
+    /// rien, c'est le compteur de la ligne qui les porte.
     /// </summary>
     /// ⚠ Une icône SANS compétence (le mod « de fractionnement », le mod « Furieux ») n'a aucun
     /// descripteur : elle sort d'elle-même, et c'est juste — la fenêtre a sa case de ligne pour ce mod.
     /// ⚠ Les effets du BANDEAU d'équipe (« Visez les yeux ! », « Ensemble et unis ! ») ne sont dans
-    /// aucune rangée de carte, par construction. Ils comptent quand même, et c'est le DÉTAIL de la ligne
-    /// qui les nomme — le Spike n'affiche pas le bandeau, et lui en greffer un serait un autre chantier.
+    /// aucune rangée de carte, par construction : ils ont leur propre bandeau en haut de la fenêtre
+    /// depuis le 28/09/2026 (SpikeViewModel.TeamEffects).
     public IEnumerable<AttributeBoostIndicatorViewModel> SpikeBoostToggles =>
         AttributeBoostToggles.Where(t => t.Skill is { } sk
-            && DamageBoostData.DescriptorsFor(sk.Id).Any(d => !SpikeBoostCoverage.AlreadyCounted(d, sk.Name)));
+            && (DamageBoostData.DescriptorsFor(sk.Id).Any(d => !SpikeBoostCoverage.AlreadyCounted(d, sk.Name))
+                || SpikeWeaponBuffs.FromCardToggleId(t.ToggleId) is not null));
 
     public bool HasSpikeBoostToggles => SpikeBoostToggles.Any();
 
@@ -1446,8 +1472,44 @@ public class CharacterSlotViewModel : ViewModelBase
     /// mentir. Même garde-fou que le <c>JudgesInsight is not null</c> de <see cref="JudgesInsightLit"/>,
     /// mais valable pour les 7 buffs d'un coup (lot 6e).
     /// </summary>
-    public bool IsBoostIconLit(int toggleId) =>
-        toggleId != 0 && AttributeBoostToggles.Any(t => t.ToggleId == toggleId && t.IsActive);
+    public bool IsBoostIconLit(int toggleId) => LitBoostIcon(toggleId) is not null;
+
+    /// <summary>
+    /// Éteint les icônes de SORTS D'ARME allumées de ce perso, sauf celle passée en exception. Sert aux
+    /// cases de la fenêtre Spike qui portent elles-mêmes l'état, faute d'icône (l'Arme d'éclats, et
+    /// l'Arme du Grand Nain chez son propre porteur) : allumer une telle case doit éteindre les sorts
+    /// d'arme allumés PAR L'ICÔNE, sinon le perso en aurait deux à la fois (28/09/2026).
+    ///
+    /// ⚠ La famille n'est pas devinée : elle sort de <c>ExclusiveFamilyOf</c>, la même que celle qui
+    /// arbitre déjà les icônes entre elles dans <see cref="SetAttributeBoost"/>.
+    /// </summary>
+    public void TurnOffOtherWeaponSpellIcons(int exceptToggleId)
+    {
+        foreach (var t in AttributeBoostToggles.ToList())
+            if (t.ToggleId != exceptToggleId && t.IsActive && ExclusiveFamilyOf(t.ToggleId) == WeaponSpellType)
+                SetAttributeBoost(t.ToggleId, false);
+    }
+
+    /// <summary>L'icône EXISTE-t-elle sur la carte de ce perso, allumée ou non ? Sert aux cases de buff de
+    /// la fenêtre Spike (28/09/2026) : quand l'icône existe, c'est ELLE qui porte l'état, pour qu'un seul
+    /// interrupteur commande l'effet. ⚠ Elle peut manquer alors que la case est proposée : Vengeance et
+    /// l'Arme du Grand Nain ne peuvent pas se cibler elles-mêmes, leur porteur n'a donc pas l'icône.</summary>
+    public bool HasBoostIcon(int toggleId) =>
+        toggleId != 0 && AttributeBoostToggles.Any(t => t.ToggleId == toggleId);
+
+    /// <summary>
+    /// La COPIE réellement allumée derrière cette icône (core ou « (PvP) »), null si elle est éteinte ou
+    /// absente. ⚠ Une variante PvP partage l'icône de sa jumelle (l'id de bascule est celui de la base),
+    /// donc l'id ne dit PAS quelle copie agit — et les deux n'ont pas toujours le même chiffre : Glaive
+    /// était destructrice pénètre 20 % en core et 10 % en PvP. Seule l'icône porte la vraie compétence.
+    /// </summary>
+    public Skill? LitBoostIconSkill(int toggleId) => LitBoostIcon(toggleId)?.Skill;
+
+    // L'icône allumée elle-même : une seule règle pour les deux questions ci-dessus. La rangée n'émet
+    // une icône que si l'effet est réellement là, un id persisté seul ne suffit donc jamais.
+    private AttributeBoostIndicatorViewModel? LitBoostIcon(int toggleId) =>
+        toggleId == 0 ? null
+        : AttributeBoostToggles.FirstOrDefault(t => t.ToggleId == toggleId && t.IsActive);
 
     /// <summary>Rang d'un effet de BANDEAU (lot 6c-2) : celui de son porteur le plus fort. null = personne ne
     /// le porte, ou l'effet n'a pas de rang du tout (les trois esprits du 6c-1, qui passent par Fixed).</summary>

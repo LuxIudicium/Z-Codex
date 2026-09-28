@@ -148,6 +148,12 @@ public static class SpikeWeaponBuffs
             string.Equals(d.CoreName, skillName, StringComparison.OrdinalIgnoreCase)
             || string.Equals(d.PvpName, skillName, StringComparison.OrdinalIgnoreCase));
 
+    /// <summary>Le buff dont l'icône de CARTE porte cet id de bascule, sinon null. ⚠ Il ne suffit pas de
+    /// comparer à 0 : les 2 buffs sans icône (Hymne d'envie, Arme d'éclats) déclarent 0, et un id de
+    /// bascule quelconque (mod d'arme, boost d'attribut) ne doit pas passer pour un buff d'arme.</summary>
+    public static Descriptor? FromCardToggleId(int toggleId)
+        => toggleId == 0 ? null : All.FirstOrDefault(d => d.CardToggleId == toggleId);
+
     /// <summary>Descripteur par clé de persistance, sinon null (clé inconnue d'un fichier futur).</summary>
     public static Descriptor? FromKey(string key)
         => All.FirstOrDefault(d => string.Equals(d.Key, key, StringComparison.Ordinal));

@@ -404,13 +404,9 @@ public class MainViewModel : ViewModelBase
     public void RefreshTeamNatureRitualBand()
     {
         if (_activeTeamBuild is not { } tb) { TeamNatureRitualBand.Clear(); return; }
-        var equipped = tb.Characters.SelectMany(c => c.SkillSlots)
-            .Where(s => s.Skill != null).Select(s => s.Skill!).ToList();
-        tb.NatureRituals.SyncEquipped(NatureRitualBandViewModel.EquippedRituals(equipped)); // option B : extinction au retrait
-        // Badge des effets « équipés seulement » (Mark of Fury, Energizing Chorus) : même arbre que le calcul
-        // des infobulles (variantes comprises).
-        TeamNatureRitualBand.Refresh(equipped, SkillPanel.AllSkills, tb.NatureRituals,
-            r => CharacterSlotViewModel.WearerRank(r, tb.EnumerateTree()));
+        // Le corps vit dans RefreshTeam depuis le 28/09/2026 : la fenêtre Spike affiche le MÊME bandeau,
+        // sur son propre build, et la règle ne doit exister qu'à un endroit.
+        TeamNatureRitualBand.RefreshTeam(tb, SkillPanel.AllSkills);
     }
 
     // Vue active. Le tab d'un build n'est visuellement actif que dans la vue TeamBuild.

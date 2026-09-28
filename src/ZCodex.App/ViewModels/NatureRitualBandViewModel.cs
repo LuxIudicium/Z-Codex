@@ -182,6 +182,25 @@ public class NatureRitualBandViewModel : ViewModelBase
     // on l'invalide pour que le prochain Refresh reconstruise dans la langue courante.
     public void InvalidateLanguage() => _lastSig = "";
 
+    /// <summary>
+    /// Le bandeau d'équipe d'UN teambuild, persos racine compris : ce que la vue Teambuild affiche sous
+    /// les cartes, et ce que la fenêtre Spike affiche sous son bouton de roster depuis le 28/09/2026.
+    ///
+    /// ⚠ La règle vit ICI et nulle part ailleurs (assiette des compétences équipées, extinction au
+    /// retrait, rang du porteur le plus fort). Deux copies de ce corps auraient divergé au premier effet
+    /// ajouté — c'est la leçon du lot 6d-2, où <c>EffectiveElement</c> avait été coupée de la même façon.
+    /// Le bandeau de la fenêtre Spike est un OBJET distinct (il suit le build du spike, pas l'onglet
+    /// actif), mais l'ÉTAT allumé, lui, est celui du build : <see cref="NatureRitualEnvironment"/>.
+    /// </summary>
+    public void RefreshTeam(TeamBuildViewModel build, IEnumerable<Skill> catalog)
+    {
+        var equipped = build.Characters.SelectMany(c => c.SkillSlots)
+            .Where(s => s.Skill != null).Select(s => s.Skill!).ToList();
+        build.NatureRituals.SyncEquipped(EquippedRituals(equipped));   // option B : extinction au retrait
+        Refresh(equipped, catalog, build.NatureRituals,
+                r => CharacterSlotViewModel.WearerRank(r, build.EnumerateTree()));
+    }
+
     /// <param name="wearerRank">Rang du porteur le plus fort d'un effet (null si personne ne l'équipe) : badge des
     /// effets « équipés seulement » (Mark of Fury, Energizing Chorus).</param>
     public void Refresh(IEnumerable<Skill> equipped, IEnumerable<Skill> catalog, NatureRitualEnvironment env,
