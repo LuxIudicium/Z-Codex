@@ -262,16 +262,17 @@ public static class WeaponStrike
 
     /// <summary>Dégâts d'un tirage <paramref name="baseDamage"/> de l'arme customisée, tronqués.
     /// <paramref name="multiplier"/> = malus du type « 25% less damage » (1.0 sinon).</summary>
+    /// <paramref name="specialArmor"/> = armure retirée APRÈS la pénétration (Fardeau nébuleux, lot 7b-2).
     public static int DamageAt(int baseDamage, int masteryRank, int armorLevel, int armorPenetration,
-                               double multiplier = 1.0, int characterLevel = 20)
+                               double multiplier = 1.0, int characterLevel = 20, int specialArmor = 0)
         => (int)Math.Floor(baseDamage * Customized * multiplier
-                           * Factor(masteryRank, armorLevel, armorPenetration, characterLevel));
+                           * Factor(masteryRank, armorLevel, armorPenetration, characterLevel, specialArmor));
 
     /// <summary>Dégâts d'un critique : max de l'arme customisée ×√2 (faux : ×1.09), tronqués.</summary>
     public static int CriticalAt(Weapon weapon, int masteryRank, int armorLevel, int armorPenetration,
-                                 double multiplier = 1.0, int characterLevel = 20)
+                                 double multiplier = 1.0, int characterLevel = 20, int specialArmor = 0)
         => (int)Math.Floor(weapon.Max * Customized * multiplier * (weapon.IsScythe ? 1.09 : Math.Sqrt(2))
-                           * Factor(masteryRank, armorLevel, armorPenetration, characterLevel));
+                           * Factor(masteryRank, armorLevel, armorPenetration, characterLevel, specialArmor));
 
     /// <summary>
     /// Probabilité (0–1) de critique contre une cible de niveau <paramref name="targetLevel"/> —
@@ -309,9 +310,10 @@ public static class WeaponStrike
         return Math.Clamp(chance, 0.0, 1.0);
     }
 
-    private static double Factor(int rank, int armorLevel, int penetration, int level)
+    // Pénétration d'abord, puis l'armure « Special » retirée sans plancher (wiki/Armor_calculation, étape 4).
+    private static double Factor(int rank, int armorLevel, int penetration, int level, int specialArmor = 0)
     {
-        double effectiveAl = armorLevel * (100 - penetration) / 100.0;
+        double effectiveAl = armorLevel * (100 - penetration) / 100.0 - specialArmor;
         return Math.Pow(2, (StrikeLevel5(rank, level) - effectiveAl) / 40.0);
     }
 }

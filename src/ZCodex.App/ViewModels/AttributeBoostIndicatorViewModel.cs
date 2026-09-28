@@ -81,6 +81,7 @@ public class AttributeBoostIndicatorViewModel : ViewModelBase
             : skill.Id == TargetedFoeEffectData.StolenSpeedSkillId ? T("S.Boost.StolenSpeedNote")
             : skill.Id == TargetedFoeEffectData.StolenSpeedPvpSkillId ? T("S.Boost.StolenSpeedPvpNote")
             : skill.Id == TargetedFoeEffectData.ChillingWindsSkillId ? T("S.Boost.ChillingWindsNote")
+            : skill.Id == TargetedFoeEffectData.ShadowyBurdenSkillId ? T("S.Boost.ShadowyBurdenNote")
             : skill.Id == AttributeSubstitutionData.SymbolicCeleritySkillId && owner.FastCastingRank == 0
                 ? T("S.Boost.ZeroFastCasting")
             : skill.Id == SkillSpeedBoostData.GhostlyHasteSkillId ? T("S.Boost.SpiritNote")

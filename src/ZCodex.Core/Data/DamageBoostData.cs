@@ -223,6 +223,8 @@ public readonly record struct DamageBoostSource(string Name, DamageBoostKind Kin
 /// une simple ÉTIQUETTE — aucun chiffre ne bouge, et surtout ça ne déclenche aucune conjuration (§ 6.1).
 /// <paramref name="StoneStriker"/> = Briseur de pierre est allumé sur ce perso : tout paquet élémentaire ou
 /// physique s'affiche en TERRE, **sorts compris**, et il garde le dernier mot sur Hiver.
+/// <paramref name="ArmorReduction"/> = armure que la CIBLE perd contre cette attaque, APRÈS la pénétration et sans
+/// plancher (Fardeau nébuleux, lot 7b-2) : elle touche toute la table, paquets d'effets compris. 0 = aucune.
 /// </summary>
 public readonly record struct DamageBoosts(
     IReadOnlyList<DamageBoostPacket>? Packets = null,
@@ -236,7 +238,8 @@ public readonly record struct DamageBoosts(
     DamageTypeNote? TypeNote = null,
     int LifeSteal = 0,
     double WeaponMultiplierOffset = 0,
-    IReadOnlyList<DamageBoostSource>? Sources = null)
+    IReadOnlyList<DamageBoostSource>? Sources = null,
+    int ArmorReduction = 0)
 {
     /// <summary>
     /// Multiplicateur de dégâts reçu (Vengeance ×1,25, Affinité vitale ×0,70).
@@ -263,7 +266,7 @@ public readonly record struct DamageBoosts(
     public bool Any => Packets is { Count: > 0 } || CriticalPercent > 0
                        || BasePenetration > 0 || BonusPenetration > 0 || HasMultiplier
                        || Suppressed is { Count: > 0 } || TypeNote is not null || LifeSteal > 0
-                       || HasWeaponMultiplier;
+                       || HasWeaponMultiplier || ArmorReduction > 0;
 
     /// <summary>Un multiplicateur de dégâts est-il en jeu ? Comparaison par écart, pas par égalité de
     /// doubles.</summary>
@@ -281,7 +284,7 @@ public readonly record struct DamageBoosts(
         int total = 0;
         foreach (var p in Packets ?? [])
             total += p.IgnoresArmor ? (int)Math.Floor(p.Value * Multiplier)
-                   : SkillDamage.DamageAt(p.Value, armorLevel, armorPenetration, casterLevel, Multiplier);
+                   : SkillDamage.DamageAt(p.Value, armorLevel, armorPenetration, casterLevel, Multiplier, ArmorReduction);
         return total;
     }
 }

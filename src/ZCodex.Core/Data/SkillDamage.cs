@@ -455,10 +455,12 @@ public static class SkillDamage
     /// <param name="multiplier">Multiplicateur appliqué à la valeur de BASE, avant l'armure (Vengeance
     /// ×1,25, Affinité vitale ×0,70 — lot 6b, Q10) : un seul arrondi tombe à la fin, comme
     /// <see cref="WeaponStrike.DamageAt"/>.</param>
+    /// <param name="specialArmor">Armure RETIRÉE après la pénétration, sans plancher (catégorie « Special »
+    /// d'<see cref="ArmorCalculator"/> : Fardeau nébuleux, lot 7b-2). 0 = aucune.</param>
     public static int DamageAt(int value, int armorLevel, int armorPenetration, int casterLevel = 20,
-                               double multiplier = 1.0)
+                               double multiplier = 1.0, int specialArmor = 0)
     {
-        double effectiveAl = armorLevel * (100 - armorPenetration) / 100.0;
+        double effectiveAl = armorLevel * (100 - armorPenetration) / 100.0 - specialArmor;
         return (int)Math.Floor(value * multiplier * Math.Pow(2, (3 * casterLevel - effectiveAl) / 40.0));
     }
 }

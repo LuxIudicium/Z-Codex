@@ -20,6 +20,7 @@ public static class TargetedFoeEffectData
     public const int StolenSpeedSkillId = 880;
     public const int StolenSpeedPvpSkillId = 3187;
     public const int ChillingWindsSkillId = 1368;
+    public const int ShadowyBurdenSkillId = 950;
 
     /// <summary>Sort qui peut viser un ennemi (351 sorts, <see cref="FoeTargetSpells"/>).</summary>
     public static bool TargetsFoe(Skill s) => EnergyCostBoostData.IsSpell(s) && FoeTargetSpells.Names.Contains(s.Name);
@@ -28,6 +29,18 @@ public static class TargetedFoeEffectData
     /// (arbitrage de Philippe), Miroir de glace (qui vise un allié) non plus.</summary>
     public static bool IsWaterHexOnFoe(Skill s) =>
         NatureRitualData.IsHex(s) && s.Attribute == "Water Magic" && TargetsFoe(s);
+
+    /// <summary>
+    /// Fardeau nébuleux (lot 7b-2) : « 20…28…30 less armor against YOUR attacks », tant que la cible n'a pas d'autre
+    /// maléfice (icône allumée = c'est le cas). Seulement les attaques du LANCEUR — pas celles de son familier — et
+    /// dans la catégorie « Special » d'<see cref="ArmorCalculator"/> : après la pénétration, SANS le plancher de 60
+    /// (la seule compétence qui y descend, raison de son entrée au lot 7, Q1). Icône personnelle, pas de variante PvP.
+    /// </summary>
+    public static bool ShadowyBurdenReaches(Skill s) => NatureRitualData.IsAttack(s) && s.SkillType != "Pet Attack";
+
+    /// <summary>Armure retirée par Fardeau nébuleux au rang <paramref name="shadowArts"/> (progression[1]).</summary>
+    public static int ShadowyBurdenArmor(Skill source, int shadowArts) =>
+        SkillProgression.IntAt(source.Progression is { Length: > 1 } p ? p[1] : null, shadowArts) ?? 0;
 
     /// <summary>Icônes dont l'allumage change les infobulles des AUTRES membres (rafraîchissement d'équipe).</summary>
     public static bool IsTeamToggleId(int id) => id is StolenSpeedSkillId or ChillingWindsSkillId;

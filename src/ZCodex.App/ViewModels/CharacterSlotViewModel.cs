@@ -559,6 +559,7 @@ public class CharacterSlotViewModel : ViewModelBase
         : skill.Id == ConditionDurationData.ArcherSignetSkillId ? skill.Id
         : AttributeSubstitutionData.BySkillId(skill.Id) is not null ? skill.Id
         : DamageBoostData.BySkillId(skill.Id) is { Received: false } b ? b.ToggleId
+        : skill.Id == TargetedFoeEffectData.ShadowyBurdenSkillId ? skill.Id                     // Fardeau nébuleux (lot 7b-2)
         : null;
     // ⚠ Les effets du BANDEAU (lot 6c) en sont absents par construction : DamageBoostData.BySkillId ne les
     // connaît pas. Sans ça, un Rôdeur qui porte le Vannage sur sa barre aurait DEUX icônes pour le même effet.
@@ -1253,7 +1254,22 @@ public class CharacterSlotViewModel : ViewModelBase
     /// « de fractionnement »). Les deux effets qui relèvent un chiffre DANS LE TEXTE (familier, esprits)
     /// n'entrent PAS ici : ils passent par <see cref="TextDamageBonusFor"/>.</summary>
     public DamageBoosts DamageBoostsFor(Skill target)
-        => BoostsFor(target, ActiveWeaponKind(), spikeOnly: false, includeSkill: null);
+    {
+        var boosts = BoostsFor(target, ActiveWeaponKind(), spikeOnly: false, includeSkill: null);
+        // Fardeau nébuleux (lot 7b-2) : l'armure que la cible perd contre les attaques de CE perso. Infobulle
+        // seulement — la fenêtre Spike l'aura au lot 7c.
+        return ShadowyBurdenArmorFor(target) is > 0 and var armor ? boosts with { ArmorReduction = armor } : boosts;
+    }
+
+    /// <summary>Armure retirée par Fardeau nébuleux, allumé sur ce perso qui le porte, aux dégâts de
+    /// <paramref name="target"/> (0 = rien : icône éteinte, compétence retirée, ou pas une attaque du perso).</summary>
+    public int ShadowyBurdenArmorFor(Skill target)
+    {
+        if (!IsAttributeBoostActive(TargetedFoeEffectData.ShadowyBurdenSkillId)
+            || !TargetedFoeEffectData.ShadowyBurdenReaches(target)) return 0;
+        var sb = SkillSlots.Select(s => s.Skill).FirstOrDefault(s => s?.Id == TargetedFoeEffectData.ShadowyBurdenSkillId);
+        return sb is null ? 0 : TargetedFoeEffectData.ShadowyBurdenArmor(sb, AttributeLevel("Shadow Arts") ?? 0);
+    }
 
     /// <summary>
     /// Lot 6e — les mêmes effets, vus par la fenêtre SPIKE. Trois différences, et trois seulement :

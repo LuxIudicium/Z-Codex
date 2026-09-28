@@ -1200,6 +1200,14 @@ public partial class SkillTooltipControl : UserControl
         // Il échappe aussi au multiplicateur (Vengeance, Ural) et au flux — ce ne sont pas des dégâts.
         // ⚠ Le vol de vie que la compétence fait ELLE-MÊME n'est toujours pas affiché (décision du
         // chantier 10, reconfirmée par Philippe le 27/09/2026) : il est déjà écrit dans sa description.
+        // Fardeau nébuleux (lot 7b-2) : sans cette ligne, toute la table baisse sans rien qui dise pourquoi. Les colonnes
+        // gardent l'armure NOMINALE de la cible ; la baisse tombe après la pénétration, sans le plancher de 60.
+        if (boosts.ArmorReduction > 0)
+            DamagePanel.Children.Add(MakeMarkup(
+                L($"Fardeau nébuleux : armure de la cible {SkillProgression.MarkEffect}−{boosts.ArmorReduction}{SkillProgression.MarkEffect} (après pénétration, même sous 60)",
+                  $"Shadowy Burden: target armor {SkillProgression.MarkEffect}−{boosts.ArmorReduction}{SkillProgression.MarkEffect} (after penetration, even below 60)"),
+                11, "TextSecondaryBrush"));
+
         if (boosts.LifeSteal > 0)
             DamagePanel.Children.Add(MakeMarkup(
                 L($"Vol de vie : {SkillProgression.MarkEffect}{boosts.LifeSteal}{SkillProgression.MarkEffect}",
@@ -1297,17 +1305,18 @@ public partial class SkillTooltipControl : UserControl
             // paquets plus bas, ni sur la ligne « bonus d'effets », ni sur les lignes « ignore l'armure ».
             double mult = mods.Multiplier * boosts.Multiplier * boosts.WeaponMultiplier;
             int scaledBonus = (int)Math.Floor(bonus * boosts.Multiplier);
-            bool scaled = boosts.HasMultiplier || boosts.HasWeaponMultiplier;
+            // Fardeau nébuleux (lot 7b-2) : l'armure de la cible baisse, TOUS les chiffres de la table bougent → violet.
+            bool scaled = boosts.HasMultiplier || boosts.HasWeaponMultiplier || boosts.ArmorReduction > 0;
             for (int c = 0; c < columns.Count; c++)
             {
                 if (!mods.AlwaysCritical)
                 {
-                    int min = Boost(WeaponStrike.DamageAt(weapon.Min, masteryRank, columns[c].Al, penetration, mult, level) + scaledBonus, fluxDamagePercent);
-                    int max = Boost(WeaponStrike.DamageAt(weapon.Max, masteryRank, columns[c].Al, penetration, mult, level) + scaledBonus, fluxDamagePercent);
+                    int min = Boost(WeaponStrike.DamageAt(weapon.Min, masteryRank, columns[c].Al, penetration, mult, level, boosts.ArmorReduction) + scaledBonus, fluxDamagePercent);
+                    int max = Boost(WeaponStrike.DamageAt(weapon.Max, masteryRank, columns[c].Al, penetration, mult, level, boosts.ArmorReduction) + scaledBonus, fluxDamagePercent);
                     AddCell(grid, 1, c + 1, Marked($"{min}–{max}", scaled), "TextPrimaryBrush", markup: scaled);
                 }
                 AddCell(grid, critRow, c + 1,
-                    Marked(Boost(WeaponStrike.CriticalAt(weapon, masteryRank, columns[c].Al, penetration, mult, level) + scaledBonus, fluxDamagePercent).ToString(), scaled),
+                    Marked(Boost(WeaponStrike.CriticalAt(weapon, masteryRank, columns[c].Al, penetration, mult, level, boosts.ArmorReduction) + scaledBonus, fluxDamagePercent).ToString(), scaled),
                     "TextPrimaryBrush", markup: scaled);
             }
         }
@@ -1315,11 +1324,12 @@ public partial class SkillTooltipControl : UserControl
         for (int r = 0; r < rows.Count; r++)
         {
             AddCell(grid, weaponRows + r + 1, 0, RowLabel(rows[r], boosts.ElementalToCold, boosts.StoneStriker), "TextSecondaryBrush");
+            bool rowScaled = boosts.HasMultiplier || boosts.ArmorReduction > 0;
             for (int c = 0; c < columns.Count; c++)
                 AddCell(grid, weaponRows + r + 1, c + 1,
-                        Marked(Boost(SkillDamage.DamageAt(rows[r].Value, columns[c].Al, penetration, level, boosts.Multiplier), fluxDamagePercent).ToString(),
-                               boosts.HasMultiplier),
-                        "TextPrimaryBrush", markup: boosts.HasMultiplier);
+                        Marked(Boost(SkillDamage.DamageAt(rows[r].Value, columns[c].Al, penetration, level, boosts.Multiplier, boosts.ArmorReduction), fluxDamagePercent).ToString(),
+                               rowScaled),
+                        "TextPrimaryBrush", markup: rowScaled);
         }
 
         if (boostRows > 0)
