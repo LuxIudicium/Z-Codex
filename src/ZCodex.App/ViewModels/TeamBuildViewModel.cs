@@ -87,7 +87,8 @@ public class TeamBuildViewModel : ViewModelBase, IRenamableTab
                        + $"|{JudgesInsight?.Id}|{string.Join(";", TeamAdrenaline.Effects)}"
                        + $"|{EnergizingChorusReduction}|{TeamSpeed}"
                        + $"|{CharacterSlotViewModel.GreatDwarfWeaponFor(EnumerateTree())?.Id}"
-                       + $"|{ReceivedDamageBoostsSignature}|{BandDamageRanksSignature}|{TargetedAllyEffectsSignature}";
+                       + $"|{ReceivedDamageBoostsSignature}|{BandDamageRanksSignature}|{TargetedAllyEffectsSignature}"
+                       + $"|{TargetedFoeEffectsSignature}";
             if (sig == _heroicRefrainSig) return;
             _heroicRefrainSig = sig;
             _heroicRefrainTimer.Stop();
@@ -124,6 +125,16 @@ public class TeamBuildViewModel : ViewModelBase, IRenamableTab
             return $"{tree.Count}:{string.Join(",", ids)}";
         }
     }
+
+    // Lot 7b : Vol de vitesse et Vents glaciaux allumés chez leur lanceur changent les infobulles des AUTRES membres.
+    // L'allumage lui-même les rafraîchit (SetAttributeBoost) ; ici, ce qui peut bouger ENSUITE sans clic : le lanceur
+    // retire la compétence de sa barre, ou sa Magie de l'air change (durée de Vents glaciaux annoncée chez tous).
+    private string TargetedFoeEffectsSignature =>
+        string.Join(",", EnumerateTree().SelectMany(c => new[]
+            {
+                ZCodex.Core.Data.TargetedFoeEffectData.StolenSpeedSkillId,
+                ZCodex.Core.Data.TargetedFoeEffectData.ChillingWindsSkillId,
+            }.Select(id => c.SharedFoeEffect(id) is { } sh ? $"{id}:{sh.Rank}" : "")).Where(x => x.Length > 0));
 
     private string _heroicRefrainSig = "";
     private readonly DispatcherTimer _heroicRefrainTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
@@ -197,6 +208,18 @@ public class TeamBuildViewModel : ViewModelBase, IRenamableTab
     public IReadOnlyList<string> OthersWithLitTargetedAllyEffect(CharacterSlotViewModel me, int toggleId) =>
         EnumerateTree().Where(c => !ReferenceEquals(c, me) && c.HasLitTargetedAllyEffect(toggleId))
             .Select(c => c.DisplayName).Distinct().ToList();
+
+    /// <summary>Effet posé sur un ennemi (lot 7b) que les AUTRES membres que <paramref name="me"/> partagent : porteur au
+    /// plus haut rang, et noms de tous ceux qui l'ont allumé. Null = personne.</summary>
+    public CharacterSlotViewModel.TeamFoeEffect? TeamFoeEffectFor(CharacterSlotViewModel me, int toggleId)
+    {
+        var sharers = EnumerateTree().Where(c => !ReferenceEquals(c, me))
+            .Select(c => (c.DisplayName, Shared: c.SharedFoeEffect(toggleId)))
+            .Where(x => x.Shared is not null).ToList();
+        if (sharers.Count == 0) return null;
+        var best = sharers.MaxBy(x => x.Shared!.Value.Rank).Shared!.Value;
+        return new(best.Skill, best.Rank, string.Join(", ", sharers.Select(x => x.DisplayName).Distinct()));
+    }
 
     /// <summary>Rafraîchit les infobulles de compétences de tous les persos SAUF <paramref name="source"/> (qui s'est
     /// déjà rafraîchi) : une icône du lot 7a allumée sur un perso change les sorts des autres.</summary>

@@ -471,7 +471,8 @@ public class CharacterSlotViewModel : ViewModelBase
         {
             NotifyTooltipsChanged();
             // « A l'aide ! » et Atmosphère enchanteresse (lot 7a) changent les infobulles des AUTRES membres.
-            if (TargetedAllyEffectData.IsToggleId(skillId))
+            // Vol de vitesse et Vents glaciaux (lot 7b) aussi, depuis la carte de leur lanceur.
+            if (TargetedAllyEffectData.IsToggleId(skillId) || TargetedFoeEffectData.IsTeamToggleId(skillId))
                 OwnerBuild?.RefreshOtherSkillTooltips(this);
             // AttributeBoostToggles construit des instances FRAÎCHES à chaque lecture (IsActive lu au
             // constructeur) : sans cette notification, l'ItemsControl du bandeau garde ses anciens
@@ -1072,7 +1073,18 @@ public class CharacterSlotViewModel : ViewModelBase
             && TargetedAllyEffectData.HelpCast.Applies(target) ? names : null;
         if (helpAlly is not null)
             active.Add((TargetedAllyEffectData.HelpCast, TargetedAllyEffects[TargetedAllyEffectData.HelpSkillId], 0));
-        return active.Count == 0 ? default : SkillSpeedBoostData.SpeedFor(target, active) with { HelpAlly = helpAlly };
+        // Vol de vitesse (lot 7b) : allumé chez un AUTRE membre qui porte la version PvE = ses sorts qui visent l'ennemi
+        // maudit s'incantent 50 % plus vite chez tous. Si CE perso l'a lui-même allumé, c'est sa propre icône qui joue.
+        string? stolenAlly = null;
+        if (!IsAttributeBoostActive(TargetedFoeEffectData.StolenSpeedSkillId) && TargetedFoeEffectData.TargetsFoe(target)
+            && TeamFoeEffectFrom(TargetedFoeEffectData.StolenSpeedSkillId) is { } ss
+            && SkillSpeedBoostData.BySkillId(ss.Skill.Id) is { } sd)
+        {
+            stolenAlly = ss.Names;
+            active.Add((sd, ss.Skill, 0));
+        }
+        return active.Count == 0 ? default
+            : SkillSpeedBoostData.SpeedFor(target, active) with { HelpAlly = helpAlly, StolenSpeedAlly = stolenAlly };
     }
 
     // ── Allongeurs de durée propre (chantier infobulle, lot 4a) ───────────────
@@ -1090,7 +1102,43 @@ public class CharacterSlotViewModel : ViewModelBase
         if (HasLitTargetedAllyEffect(SkillDurationBoostData.EnduringHarmonySkillId)
             && SkillDurationBoostData.BySkillId(SkillDurationBoostData.EnduringHarmonySkillId) is { } eh)
             active.Add((eh, TargetedAllyEffects[SkillDurationBoostData.EnduringHarmonySkillId], 0));
+        // Vents glaciaux posé par un AUTRE membre (lot 7b) : ses maléfices d'Eau qui visent l'ennemi durent plus longtemps.
+        if (ChillingWindsFromAlly(target) is { } cw && SkillDurationBoostData.BySkillId(cw.Skill.Id) is { } cd)
+            active.Add((cd, cw.Skill, cw.Rank));
         return active.Count == 0 ? 0 : SkillDurationBoostData.PercentFor(target, active);
+    }
+
+    /// <summary>Vents glaciaux allumé chez un AUTRE membre et qui touche <paramref name="target"/> (null sinon) : nom(s)
+    /// du ou des lanceurs pour la phrase ambre de l'infobulle. Si CE perso l'a lui-même allumé, sa propre icône joue.</summary>
+    public string? ChillingWindsAllyFor(Skill target) => ChillingWindsFromAlly(target)?.Names;
+
+    private TeamFoeEffect? ChillingWindsFromAlly(Skill target) =>
+        !IsAttributeBoostActive(TargetedFoeEffectData.ChillingWindsSkillId) && TargetedFoeEffectData.IsWaterHexOnFoe(target)
+            ? TeamFoeEffectFrom(TargetedFoeEffectData.ChillingWindsSkillId) : null;
+
+    // ── Effets posés sur un ENNEMI (chantier infobulle, lot 7b) ─────────────
+    // L'icône vit sur la carte du LANCEUR (descripteur personnel des lots 3 et 4a) ; la part « alliés » est lue ici,
+    // chez les autres membres. Plusieurs lanceurs : le plus haut rang joue, tous sont nommés.
+
+    /// <summary>Un effet du lot 7b partagé par d'autres membres : la compétence du porteur au plus haut rang (pour sa
+    /// progression), ce rang, et les noms de tous les porteurs qui l'ont allumé.</summary>
+    public sealed record TeamFoeEffect(Skill Skill, int Rank, string Names);
+
+    private TeamFoeEffect? TeamFoeEffectFrom(int toggleId) => OwnerBuild?.TeamFoeEffectFor(this, toggleId);
+
+    /// <summary>La compétence qui PARTAGE l'effet <paramref name="toggleId"/> avec les alliés, si CE perso la porte et
+    /// l'a allumée (null sinon) — avec le rang de sa caractéristique d'échelle.</summary>
+    public (Skill Skill, int Rank)? SharedFoeEffect(int toggleId)
+    {
+        if (!IsAttributeBoostActive(toggleId)) return null;
+        foreach (var slot in SkillSlots)
+            if (slot.Skill is { } sk && TargetedFoeEffectData.SharesWithAllies(sk.Id, toggleId))
+            {
+                string? attr = SkillSpeedBoostData.BySkillId(sk.Id)?.ScalingAttribute
+                            ?? SkillDurationBoostData.BySkillId(sk.Id)?.ScalingAttribute;
+                return (sk, attr is null ? 0 : AttributeLevel(attr) ?? 0);
+            }
+        return null;
     }
 
     // ── Durées de conditions (chantier infobulle, lot 4b) ─────────────────────

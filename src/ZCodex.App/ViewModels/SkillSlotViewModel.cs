@@ -381,6 +381,10 @@ public class SkillSlotViewModel : ViewModelBase
     public int DurationBoostPct =>
         Owner is { } o && _skill is { } s ? o.DurationBoostFor(s) : 0;
 
+    // Vents glaciaux posé par un AUTRE membre (lot 7b) : nom(s) du lanceur, pour la phrase ambre de l'infobulle.
+    public string? DurationBoostAlly =>
+        Owner is { } o && _skill is { } s ? o.ChillingWindsAllyFor(s) : null;
+
     // ── Durées de conditions (lot 4b) : conditions AJOUTÉES aux attaques de CETTE compétence par un effet
     // actif, et allongeurs de durée de condition du perso. L'infobulle fusionne avec les conditions propres.
     public ConditionDurations ConditionDurations =>
@@ -423,6 +427,7 @@ public class SkillSlotViewModel : ViewModelBase
         OnPropertyChanged(nameof(EnchantExtenderPct));
         OnPropertyChanged(nameof(EnchantTranquilityPct));
         OnPropertyChanged(nameof(DurationBoostPct));
+        OnPropertyChanged(nameof(DurationBoostAlly));
         OnPropertyChanged(nameof(ConditionDurations));
         OnPropertyChanged(nameof(Knockdown));
         OnPropertyChanged(nameof(DamageBoosts));

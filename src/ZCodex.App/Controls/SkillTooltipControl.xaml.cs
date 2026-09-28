@@ -367,6 +367,18 @@ public partial class SkillTooltipControl : UserControl
         set => SetValue(DurationBoostPctProperty, value);
     }
 
+    // Vents glaciaux posé par un AUTRE membre (lot 7b) : nom(s) du lanceur quand il joue dans DurationBoostPct, null sinon.
+    // Source extérieure à la carte → durée en ambre et phrase qui nomme le lanceur (patron « A l'aide ! » du lot 7a).
+    public static readonly DependencyProperty DurationBoostAllyProperty =
+        DependencyProperty.Register(nameof(DurationBoostAlly), typeof(string), typeof(SkillTooltipControl),
+            new PropertyMetadata(null, OnInputsChanged));
+
+    public string? DurationBoostAlly
+    {
+        get => (string?)GetValue(DurationBoostAllyProperty);
+        set => SetValue(DurationBoostAllyProperty, value);
+    }
+
     // Effets du perso sur les durées de CONDITIONS (lot 4b) : conditions ajoutées aux attaques de cette
     // compétence par un effet actif, et allongeurs (Sceau de l'Archer, préfixes d'arme). Aucun en catalogue.
     public static readonly DependencyProperty ConditionDurationsProperty =
@@ -814,7 +826,8 @@ public partial class SkillTooltipControl : UserControl
         // Fast Casting ne colore rien (caractéristique toujours active, comme l'Expertise sur l'énergie) : si rien d'autre
         // n'a joué, la valeur s'affiche sans marque.
         // « A l'aide ! » (lot 7a) : source EXTÉRIEURE à la carte → ambre, comme le bandeau d'équipe.
-        bool fromAlly = SkillSpeed.HelpAlly is not null;
+        // Vol de vitesse posé par un autre membre (lot 7b) : idem.
+        bool fromAlly = SkillSpeed.HelpAlly is not null || SkillSpeed.StolenSpeedAlly is not null;
         string shown = r.RitualChanged || (r.SkillChanged && fromAlly) ? RitualMark(r.Final.ToString("0.##"))
                      : r.SkillChanged  ? $"{SkillProgression.MarkSkillBoost}{r.Final.ToString("0.##")}{SkillProgression.MarkSkillBoost}"
                      : r.FluxChanged   ? $"{SkillProgression.MarkFlux}{r.Final.ToString("0.##")}{SkillProgression.MarkFlux}"
@@ -891,6 +904,13 @@ public partial class SkillTooltipControl : UserControl
         if (SkillSpeed.HelpAlly is { } helpAlly)
             lines.Add(RitualMark(L($"Cible sous « A l'aide ! » ({helpAlly}) : incantation 50 % plus rapide",
                                    $"Target under \"Help!\" ({helpAlly}): casts 50% faster")));
+        // Effets posés sur un ennemi par un AUTRE membre (lot 7b) : même phrase ambre, qui nomme le lanceur.
+        if (SkillSpeed.StolenSpeedAlly is { } ssAlly)
+            lines.Add(RitualMark(L($"Cible sous Vol de vitesse ({ssAlly}) : incantation 50 % plus rapide",
+                                   $"Target under Stolen Speed ({ssAlly}): casts 50% faster")));
+        if (DurationBoostAlly is { } cwAlly)
+            lines.Add(RitualMark(L($"Cible sous Vents glaciaux ({cwAlly}) : maléfice de Magie de l'eau prolongé",
+                                   $"Target under Chilling Winds ({cwAlly}): Water Magic hex lasts longer")));
         if (EnergyReduction.AirOfEnchantmentAlly is { } aoeAlly)
             lines.Add(RitualMark(aoeAlly.Length == 0
                 ? L("Sur vous : Atmosphère enchanteresse : −10 d'énergie (minimum 1)",
@@ -931,8 +951,10 @@ public partial class SkillTooltipControl : UserControl
         if (SkillDurationBoostData.OwnSeconds(resolved) is not { } own) return null;     // aucune durée propre annoncée
         int final = SkillDurationBoostData.Extend(own, DurationBoostPct);
         if (final == own) return null;                                                   // rallonge trop faible pour bouger l'entier
+        // Vents glaciaux d'un autre membre (lot 7b) : source extérieure → ambre, comme l'incantation sous « A l'aide ! ».
         return $"{DurationFamilyLabel(family)} : "
-             + $"{SkillProgression.MarkSkillBoost}{final}{SkillProgression.MarkSkillBoost} s";
+             + (DurationBoostAlly is not null ? RitualMark(final.ToString())
+                : $"{SkillProgression.MarkSkillBoost}{final}{SkillProgression.MarkSkillBoost}") + " s";
     }
 
     // « Durée de poison effective », « Durée d'aveuglement effective »… Le nom de la condition vient de

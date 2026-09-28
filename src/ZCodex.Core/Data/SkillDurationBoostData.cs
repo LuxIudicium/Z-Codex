@@ -50,6 +50,8 @@ public static class SkillDurationBoostData
         new(1731, NatureRitualData.IsChantOrShout, PercentIndex: 0,
             ScalingAttribute: "Restoration Magic"),                                          // Vocal Was Sogolon : +20…44…50 %
         new(EnduringHarmonySkillId, NatureRitualData.IsChantOrShout, Percent: 50, Received: true), // Enduring Harmony (reçue) : +50 %
+        new(TargetedFoeEffectData.ChillingWindsSkillId, TargetedFoeEffectData.IsWaterHexOnFoe, PercentIndex: 1,
+            ScalingAttribute: "Air Magic"),                                                  // Chilling Winds (lot 7b) : +25…85…100 % aux maléfices d'Eau
     };
 
     /// <summary>Harmonie persistante : allonge les cris et chants que LANCE l'allié qui la porte (pas ceux qu'il reçoit).</summary>

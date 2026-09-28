@@ -37,11 +37,12 @@ public sealed record SkillSpeedBoostDescriptor(
 /// <c>RechargeBlock</c> = secondes de blocage des attaques (Deadly Paradox), affichées à part ;
 /// <c>AttackSpeedCut</c> = part de la DURÉE d'attaque retirée par les effets de vitesse d'attaque (0,33 = « attaquer
 /// 33 % plus vite »), qui raccourcit d'autant l'incantation des attaques. <c>HelpAlly</c> : « A l'aide ! » joue (lot 7a),
-/// nom de l'allié visé qui la porte, null sinon — pour la phrase d'explication et la couleur ambre de l'infobulle.</summary>
+/// nom de l'allié visé qui la porte, null sinon — pour la phrase d'explication et la couleur ambre de l'infobulle.
+/// <c>StolenSpeedAlly</c> : idem pour Vol de vitesse posé par un AUTRE membre (lot 7b).</summary>
 public readonly record struct SkillSpeed(
     decimal RechargeCut = 0m, int RechargeStrongest = 0, bool RechargeInstant = false, int RechargeAdded = 0,
     decimal CastCut = 0m, int CastStrongest = 0, bool CastInstant = false, bool CastQuarter = false, int CastFlat = 0,
-    int RechargeBlock = 0, decimal AttackSpeedCut = 0m, string? HelpAlly = null)
+    int RechargeBlock = 0, decimal AttackSpeedCut = 0m, string? HelpAlly = null, string? StolenSpeedAlly = null)
 {
     public bool ChangesRecharge => RechargeCut > 0m || RechargeInstant || RechargeAdded != 0 || RechargeBlock > 0;
     public bool ChangesCast => CastCut > 0m || CastInstant || CastQuarter || CastFlat > 0 || AttackSpeedCut > 0m;
@@ -140,6 +141,12 @@ public static class SkillSpeedBoostData
             ScalingAttribute: "Inspiration Magic"),                                                             // Auspicious Incantation : +10…6…5 s
         new(WeaponOfQuickeningSkillId, s => IsSpell(s) || IsBindingRitual(s),
             Recharge: SpeedEffectKind.Percent, RechargeValue: 33, Received: true),                              // Weapon of Quickening (reçue)
+        // Vol de vitesse (lot 7b) : part du LANCEUR, sorts qui visent l'ennemi maudit. La part d'équipe (PvE) est ajoutée
+        // chez les autres membres par l'appelant (TargetedFoeEffectData.SharesWithAllies).
+        new(TargetedFoeEffectData.StolenSpeedSkillId, TargetedFoeEffectData.TargetsFoe,
+            Cast: SpeedEffectKind.Percent, CastValue: 50),                                                      // Stolen Speed : −50 %
+        new(TargetedFoeEffectData.StolenSpeedPvpSkillId, TargetedFoeEffectData.TargetsFoe,
+            Cast: SpeedEffectKind.Percent, CastValue: 50, BaseSkillId: TargetedFoeEffectData.StolenSpeedSkillId), // Stolen Speed (PvP)
 
         // ── Vitesse d'attaque (IAS, ajout au lot 3 le 16/09/2026) : raccourcit l'incantation des attaques ────
         // « Vous attaquez X % plus vite » → l'attaque s'active en base ÷ (1 + X %). Les 37 compétences taguées « ias:self »

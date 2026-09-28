@@ -203,6 +203,7 @@
                                                                                       FastCastingRank="{Binding FastCastingRank}"
                                                                                       AdrenalineStrikesGiven="{Binding AdrenalineStrikesGiven}"
                                                                                       DurationBoostPct="{Binding DurationBoostPct}"
+                                                                                      DurationBoostAlly="{Binding DurationBoostAlly}"
                                                                                       ConditionDurations="{Binding ConditionDurations}"
                                                                                       Knockdown="{Binding Knockdown}"
                                                                                       DamageBoosts="{Binding DamageBoosts}"/>

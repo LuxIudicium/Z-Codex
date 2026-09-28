@@ -77,6 +77,10 @@ public class AttributeBoostIndicatorViewModel : ViewModelBase
             : TargetedAllyEffectData.ToggleIdOf(skill.Id) == TargetedAllyEffectData.HelpSkillId ? T("S.Boost.HelpNote")
             : skill.Id == TargetedAllyEffectData.AirOfEnchantmentSkillId ? T("S.Boost.AirOfEnchantmentNote")
             : skill.Id == SkillDurationBoostData.EnduringHarmonySkillId ? T("S.Boost.EnduringHarmonyNote")
+            // Effets posés sur un ennemi (lot 7b) : l'icône du lanceur agit aussi chez les AUTRES membres (sauf la PvP).
+            : skill.Id == TargetedFoeEffectData.StolenSpeedSkillId ? T("S.Boost.StolenSpeedNote")
+            : skill.Id == TargetedFoeEffectData.StolenSpeedPvpSkillId ? T("S.Boost.StolenSpeedPvpNote")
+            : skill.Id == TargetedFoeEffectData.ChillingWindsSkillId ? T("S.Boost.ChillingWindsNote")
             : skill.Id == AttributeSubstitutionData.SymbolicCeleritySkillId && owner.FastCastingRank == 0
                 ? T("S.Boost.ZeroFastCasting")
             : skill.Id == SkillSpeedBoostData.GhostlyHasteSkillId ? T("S.Boost.SpiritNote")

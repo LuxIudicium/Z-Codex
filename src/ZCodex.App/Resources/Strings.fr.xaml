@@ -187,6 +187,9 @@
     <sys:String x:Key="S.Boost.HelpNote">Allumée = les autres membres visent cet allié : leurs sorts s'incantent 50 % plus vite. Les siens n'en profitent pas.</sys:String>
     <sys:String x:Key="S.Boost.AirOfEnchantmentNote">Allumée = on vise cet allié : tout enchantement lancé sur lui coûte 10 d'énergie de moins (minimum 1), les siens compris.</sys:String>
     <sys:String x:Key="S.Boost.EnduringHarmonyNote">Allumée = les cris et chants que lance cet allié durent 50 % plus longtemps.</sys:String>
+    <sys:String x:Key="S.Boost.StolenSpeedNote">Allumée = on vise l'ennemi sous Vol de vitesse : les sorts qui le visent s'incantent 50 % plus vite, les vôtres et ceux de vos alliés.</sys:String>
+    <sys:String x:Key="S.Boost.StolenSpeedPvpNote">Allumée = on vise l'ennemi sous Vol de vitesse : vos sorts qui le visent s'incantent 50 % plus vite. Ceux de vos alliés n'en profitent pas.</sys:String>
+    <sys:String x:Key="S.Boost.ChillingWindsNote">Allumée = on vise l'ennemi sous Vents glaciaux : le prochain maléfice de Magie de l'eau qui le vise dure plus longtemps, le vôtre ou celui d'un allié.</sys:String>
     <sys:String x:Key="S.Boost.SpiritNote">Allumée = un esprit est à portée de voix.</sys:String>
     <sys:String x:Key="S.Boost.SelfEnchantmentNote">Allumée = l'enchantement est lancé sur ce personnage.</sys:String>
     <sys:String x:Key="S.Boost.NoEffectWithoutBow">Sans effet : le set d'armes actif ne porte pas d'arc.</sys:String>
