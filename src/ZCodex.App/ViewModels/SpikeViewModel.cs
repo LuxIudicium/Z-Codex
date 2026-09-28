@@ -174,14 +174,36 @@ public class SpikeViewModel : ViewModelBase
 
     // ── Options du total ──────────────────────────────────────────────────────
 
-    private bool _withDeepWound, _withCrackedArmor, _allCrits;
+    private bool _withDeepWound, _withCrackedArmor;
 
     // Deep Wound = min(20 % PV max, 100) ajoutés au total (wiki/Deep_Wound).
     public bool WithDeepWound { get => _withDeepWound; set { if (SetField(ref _withDeepWound, value)) Recalculate(); } }
     // Cracked Armor = −20 AL plancher 60 (wiki/Cracked_Armor), avant pénétration.
     public bool WithCrackedArmor { get => _withCrackedArmor; set { if (SetField(ref _withCrackedArmor, value)) Recalculate(); } }
     // « Visez les yeux ! » : toutes les attaques d'arme au dégât critique.
-    public bool AllCrits { get => _allCrits; set { if (SetField(ref _allCrits, value)) Recalculate(); } }
+    /// <summary>
+    /// Case MAÎTRESSE « Tout en critique » (28/09/2026, demande de Philippe). Elle ne porte plus d'état
+    /// propre : elle RELÈVE celui des cases « Critique » des lignes et les écrit toutes d'un geste.
+    ///
+    /// ⚠ Sans ce relevé, décocher une seule ligne laisserait la maîtresse allumée — elle mentirait, et
+    /// c'est exactement la contradiction « deux vérités pour une chose » que le lot 6f vient de
+    /// supprimer ailleurs. Elle est donc re-notifiée à chaque recalcul, puisque les lignes changent.
+    /// ⚠ Aucune ligne à critique possible (aucune attaque d'arme dans le spike) → elle reste décochée :
+    /// il n'y a rien à cocher, et l'afficher cochée promettrait un effet qu'elle n'a pas.
+    /// </summary>
+    public bool AllCrits
+    {
+        get => Rows.Any(r => r.HasCritical) && Rows.Where(r => r.HasCritical).All(r => r.CriticalValue);
+        set
+        {
+            // ⚠ ToList() : chaque écriture mute le build, et le recalcul qui en découle reconstruit
+            // Rows. Il est différé (ScheduleRecalculate), donc l'itération survivrait — mais on ne
+            // parie pas la fenêtre sur l'ordre des évènements WPF.
+            foreach (var row in Rows.Where(r => r.HasCritical).ToList()) row.CriticalValue = value;
+            OnPropertyChanged();
+            Recalculate();
+        }
+    }
 
     // ── Profils de cible (persistés dans settings.json) ───────────────────────
 
@@ -621,6 +643,10 @@ public class SpikeViewModel : ViewModelBase
             bool hasConditional = false;  // au moins une part « X more damage if [état] » détectée
             string? conditionText = null; // clause de la 1re part conditionnelle (tooltip de la case)
 
+            // La ligne propose-t-elle une case « Critique » ? Seule une ligne à table d'ARME a un
+            // critique ; une compétence qui l'impose (« always a critical hit ») n'a rien à cocher, et
+            // une attaque de familier n'a pas de table d'arme du tout.
+            bool canCritical = weaponTable && !mods.AlwaysCritical;
             if (weaponTable)
             {
                 // Type de dégât de la ligne — DÉDUIT depuis le lot 6d-1 (§ 6.1 du plan) : la chaîne de
@@ -650,7 +676,11 @@ public class SpikeViewModel : ViewModelBase
                 // autres effets — même canal que dans l'infobulle, qui le compose avec mods.Multiplier.
                 double weaponMult = mods.Multiplier * boosts.WeaponMultiplier;
                 int wMin, wMax;
-                if (_allCrits || mods.AlwaysCritical)
+                // Critique de CETTE ligne : sa case, ou la compétence qui l'impose (« always a
+                // critical hit »). L'ancien mode global a disparu — la case maîtresse écrit désormais
+                // dans chaque ligne, donc il n'y a plus qu'une source de vérité par ligne.
+                bool rowCritical = slot.SpikeCritical || mods.AlwaysCritical;
+                if (rowCritical)
                     wMin = wMax = WeaponStrike.CriticalAt(w, rank, al, pen,
                         weaponMult, AttackerLevel) + bonus;
                 else
@@ -671,7 +701,10 @@ public class SpikeViewModel : ViewModelBase
                 // 27/09/2026 (Q14). Ils ne déplacent AUCUN chiffre de la fourchette — elle est calculée
                 // en coup non critique —, seulement ce taux affiché : c'est tout ce qu'un taux peut
                 // faire dans une fenêtre qui annonce un min–max et non une espérance.
-                parts.Add(mods.AlwaysCritical ? L("critique forcé", "forced critical")
+                // ⚠ « critique forcé » dès que la ligne EST critique, et plus seulement quand la
+                // compétence l'impose : sous l'ancienne case globale, le détail continuait d'afficher un
+                // taux alors que les nombres étaient déjà des critiques.
+                parts.Add(rowCritical ? L("critique forcé", "forced critical")
                     : $"{L("crit", "crit")} {100 * WeaponStrike.CriticalChance(rank, AttackerLevel, _targetLevel, slot.CriticalStrikesRank ?? 0, boosts.CriticalPercent):0} %");
                 if (weaponDeduced) parts.Add(L("arme déduite", "deduced weapon"));
                 // Un effet a changé le type : la ligne le DIT, sinon une colonne d'armure inattendue
@@ -959,6 +992,7 @@ public class SpikeViewModel : ViewModelBase
                 ModOptions = canChooseMod ? ModOptions() : [],
                 HasSunderingProc = weaponMod == SpikeWeaponMod.Sundering,
                 IsBowRow = isBowRow,
+                HasCritical = canCritical,
             });
             totalMin += min; totalMax += max;
         }
@@ -987,6 +1021,16 @@ public class SpikeViewModel : ViewModelBase
         // profession, et cette ligne n'a pas de perso.
         if (Build.NatureRituals.IsActive(NatureRitualData.Ritual.Brambles))
         {
+            // ⚠ Aucune source de renversement dans le spike : la ligne le DIT en rouge (28/09/2026).
+            // Deux sources comptent — une compétence SÉLECTIONNÉE qui assomme un ennemi (la même
+            // détection que les infobulles du lot 4c, jamais une seconde règle), et l'Arme du Grand Nain
+            // active, qui donne 28…40 % de chance d'assommer à CHAQUE attaque. L'avertissement n'empêche
+            // rien et ne change aucun chiffre : le renversement peut venir d'un coéquipier hors roster,
+            // et le compteur reste libre — il dit seulement que rien dans le spike ne le soutient.
+            bool anyKnockdown =
+                Build.SpikeMembers.Any(m => m.SkillSlots.Any(sl => sl.IsSpikeSelected
+                    && sl.Skill is { } k && KnockdownData.CausesKnockdown(k)))
+                || buffCtx.Values.Any(b => b.GdwBonus > 0);
             int procs = Math.Max(0, Build.BramblesProcs);
             int dealt = SpikeBandDamage.BramblesDamage * procs;
             var brambles = CharacterSlotViewModel.SkillCatalog?.Invoke()
@@ -1006,6 +1050,9 @@ public class SpikeViewModel : ViewModelBase
                 HasProcs = true,
                 ProcsGetter = () => Build.BramblesProcs,
                 ProcsSetter = v => Build.BramblesProcs = v,
+                WarningText = anyKnockdown ? string.Empty
+                    : L("⚠ aucune compétence capable d'assommer n'est sélectionnée dans la spike",
+                        "⚠ no skill able to knock down is selected in the spike"),
             });
             totalMin += dealt; totalMax += dealt;
         }
@@ -1035,6 +1082,9 @@ public class SpikeViewModel : ViewModelBase
             });
             totalMin += stolen; totalMax += stolen;
         }
+
+        // La case maîtresse relève l'état des lignes : celles-ci viennent d'être reconstruites.
+        OnPropertyChanged(nameof(AllCrits));
 
         int deepWound = _withDeepWound ? target.DeepWoundDamage : 0;
         int grandMin = totalMin + totalFluxMin + deepWound;
@@ -1234,16 +1284,21 @@ public class SpikeViewModel : ViewModelBase
         // dans le calcul (après l'armure, sur chaque coup), donc un seul terme.
         int flatPerHit = brutal + FlatOf(plain);
 
+        // Critique de CETTE ligne (28/09/2026) : la case du perso, que la maîtresse « Tout en critique »
+        // coche avec les autres. Tous les coups de la ligne sont alors critiques — c'est un meilleur cas,
+        // pas une espérance, exactement comme sur une ligne d'attaque.
+        bool normalCritical = member.SpikeNormalCritical;
+
         var charges = new SpikeNormalAttack.Charges(
             SunderingHits: sunderCharges,
             SplinterHits: splinterCharges, SplinterBonus: mb?.SplinterBonus ?? 0,
             FtwHits: ftwCharges, FtwBonus: mb?.FtwBonus ?? 0,
             Boosts: boostCharges);
         var (min, max, steal) = SpikeNormalAttack.Damage(
-            w, rank, al, bonusPen, hits, _allCrits, flatPerHit, charges, AttackerLevel,
+            w, rank, al, bonusPen, hits, normalCritical, flatPerHit, charges, AttackerLevel,
             stealPerHit: plain.LifeSteal, weaponMultiplier: plain.WeaponMultiplier);
         // Coup de RÉFÉRENCE du détail : sans aucune charge, donc le régime permanent de la ligne.
-        var (nudeMin, nudeMax) = SpikeNormalAttack.Hit(w, rank, al, bonusPen, flatPerHit, _allCrits,
+        var (nudeMin, nudeMax) = SpikeNormalAttack.Hit(w, rank, al, bonusPen, flatPerHit, normalCritical,
                                                        AttackerLevel, plain.WeaponMultiplier);
 
         // ⚠ Le vol de vie sort de l'assiette des DÉGÂTS : ni multiplicateur, ni flux (règle du chantier).
@@ -1280,7 +1335,7 @@ public class SpikeViewModel : ViewModelBase
             lineType.Received == weapon.DamageType
                 ? $"{weapon.DisplayName} {Range(nudeMin, nudeMax)}"
                 : $"{weapon.DisplayName} ({TypeLabel(lineType.Received)}) {Range(nudeMin, nudeMax)}",
-            _allCrits ? L("critique forcé", "forced critical") : CritPart(),
+            normalCritical ? L("critique forcé", "forced critical") : CritPart(),
             hits == 1 ? L("1 coup", "1 hit") : L($"× {hits} coups", $"× {hits} hits"),
         };
         if (deduced) parts.Add(L("arme déduite", "deduced weapon"));
@@ -1333,6 +1388,9 @@ public class SpikeViewModel : ViewModelBase
             HasProcs = true,
             ProcsGetter = () => member.SpikeNormalHits,
             ProcsSetter = v => member.SpikeNormalHits = v,
+            HasCritical = true,
+            CriticalGetter = () => member.SpikeNormalCritical,
+            CriticalSetter = v => member.SpikeNormalCritical = v,
             CanChooseMod = canChooseMod,
             ModOptions = canChooseMod ? ModOptions() : [],
             ModKeyGetter = () => member.SpikeNormalWeaponModKey,
@@ -1752,6 +1810,31 @@ public sealed class SpikeRowViewModel
 
     // Colonne « Bonus Flux » : bonus de dégâts du flux actif pour cette ligne ("—" si aucun).
     public string FluxBonusText { get; init; } = "—";
+
+    // Case « Critique » de la ligne (28/09/2026) : tous ses coups sont alors comptés en critique —
+    // un MEILLEUR CAS, pas une espérance. Présente sur les lignes à table d'arme seulement, et absente
+    // quand la compétence impose déjà le critique. La case « Tout en critique » de la barre d'options est
+    // leur MAÎTRESSE : elle lit et écrit ces mêmes états, elle n'en a plus d'autre.
+    // ⚠ Délégués comme pour les procs : sans slot (ligne d'ATTAQUE NORMALE), l'état vit sur le PERSO.
+    public bool HasCritical { get; init; }
+    public Func<bool>? CriticalGetter { get; init; }
+    public Action<bool>? CriticalSetter { get; init; }
+
+    public bool CriticalValue
+    {
+        get => CriticalGetter is { } g ? g() : Slot?.SpikeCritical ?? false;
+        set
+        {
+            if (CriticalSetter is { } s) s(value);
+            else if (Slot is not null) Slot.SpikeCritical = value;
+        }
+    }
+
+    // Avertissement de la ligne, en ROUGE sous son détail. Vide = rien à dire. Sert à la ligne de Ronces,
+    // qui compte des renversements alors qu'aucune compétence du spike n'en cause (28/09/2026) : le
+    // chiffre n'est pas faux, mais il repose sur une hypothèse que rien dans le spike ne soutient.
+    public string WarningText { get; init; } = string.Empty;
+    public bool HasWarning => WarningText.Length > 0;
 
     // Compteur « Procs » : déclenchements d'un rider (conjuration, ordre, hex à dégât…) sur la
     // séquence d'attaques. Présent sur les riders de la liste blanche uniquement — absent des sorts

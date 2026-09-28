@@ -3897,6 +3897,7 @@ public partial class MainWindow : Window
                 slot.SpikeWeaponModKey = sk.WeaponMod ?? string.Empty;
                 slot.SpikeSunderingProc = sk.SunderingProc;
                 slot.SpikeHornbow = sk.Hornbow;
+                slot.SpikeCritical = sk.Critical;   // v25 — case « Critique » de la ligne
             }
             // Ligne d'attaque normale du membre (v23) : le mod AVANT la case du proc, comme pour un
             // slot — son setter la remet à false.
@@ -3905,6 +3906,7 @@ public partial class MainWindow : Window
             member.SpikeNormalWeaponModKey = sm.NormalWeaponMod ?? string.Empty;
             member.SpikeNormalSunderingProc = sm.NormalSunderingProc;
             member.SpikeNormalHornbow = sm.NormalHornbow;
+            member.SpikeNormalCritical = sm.NormalCritical;   // v25
             // Buffs d'arme actifs du membre (v11) — instances fraîches, pas de purge préalable.
             foreach (var key in sm.Buffs) member.SetSpikeBuff(key, true);
         }
@@ -3998,6 +4000,7 @@ public partial class MainWindow : Window
                 WeaponMod = string.IsNullOrEmpty(s.SpikeWeaponModKey) ? null : s.SpikeWeaponModKey,
                 SunderingProc = s.SpikeSunderingProc,
                 Hornbow = s.SpikeHornbow,
+                Critical = s.SpikeCritical,
             }).ToList(),
             // Ordre stable (HashSet non déterministe) : les snapshots d'undo comparent le JSON.
             Buffs = m.SpikeActiveBuffs.OrderBy(k => k, StringComparer.Ordinal).ToList(),
@@ -4006,6 +4009,7 @@ public partial class MainWindow : Window
             NormalWeaponMod = m.SpikeNormalWeaponModKey is { Length: > 0 } nm ? nm : null,
             NormalSunderingProc = m.SpikeNormalSunderingProc,
             NormalHornbow = m.SpikeNormalHornbow,
+            NormalCritical = m.SpikeNormalCritical,
         }).ToList(),
     };
 

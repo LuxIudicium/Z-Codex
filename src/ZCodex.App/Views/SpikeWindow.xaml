@@ -575,6 +575,13 @@
                                             </StackPanel>
                                             <TextBlock Text="{Binding Detail}" FontSize="11"
                                                        Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"/>
+                                            <!-- Avertissement de la ligne, en rouge (28/09/2026) : la ligne de
+                                                 Ronces l'affiche quand aucune compétence du spike n'assomme.
+                                                 ⚠ ErrorTextBrush et non un rouge en dur : le thème sombre a
+                                                 le sien (#FF6B6B contre #DD2222 en clair). -->
+                                            <TextBlock Text="{Binding WarningText}" FontSize="11" TextWrapping="Wrap"
+                                                       Foreground="{DynamicResource ErrorTextBrush}"
+                                                       Visibility="{Binding HasWarning, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                         </StackPanel>
                                         <!-- Contrôle extra (ticks ET/OU type d'arme, empilés si les deux
                                              s'appliquent) : colonne fixe, même position sur toutes les lignes. -->
@@ -590,6 +597,15 @@
                                                           SelectedItem="{Binding ProcsValue}"
                                                           ToolTip="{DynamicResource S.Spike.ProcsTip}"/>
                                             </StackPanel>
+                                            <!-- Case « Critique » de la ligne (28/09/2026) : tous ses coups comptés
+                                                 en critique. La case « Tout en critique » de la barre d'options est
+                                                 leur maîtresse. Absente des lignes sans table d'arme et de celles
+                                                 dont la compétence impose déjà le critique. -->
+                                            <CheckBox Content="{DynamicResource S.Spike.Crit}" FontSize="10"
+                                                      Margin="0,0,0,2" VerticalAlignment="Center"
+                                                      IsChecked="{Binding CriticalValue}"
+                                                      ToolTip="{DynamicResource S.Spike.CritTip}"
+                                                      Visibility="{Binding HasCritical, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                             <!-- Compteur de SEUIL (« X for each [ressource] (maximum Y) ») : nombre
                                                  d'unités comptées (signets, conditions, enchantements…), défaut = max. -->
                                             <StackPanel Orientation="Horizontal" Margin="0,0,0,2"

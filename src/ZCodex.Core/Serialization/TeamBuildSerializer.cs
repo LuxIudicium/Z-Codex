@@ -113,7 +113,7 @@ public static class TeamBuildSerializer
 
     private sealed class Pn3Dto
     {
-        public int Version { get; set; } = 24; // v24 = renversements comptés pour la ligne de Ronces du spike (l'esprit frappe chaque créature renversée, compteur laissé à l'utilisateur — demande de Philippe du 28/09/2026) ; v23 = lignes d’attaques NORMALES du spike (case maîtresse du build + case, compteur de coups, mod de préfixe, proc du fractionnement et arc corne par perso — lot 6d-2 du chantier infobulle) ; v22 = rang de simulation Ronces (durée du saignement posé sur les créatures assommées, lot 4c du chantier infobulle) ; Ronces et Lien terrestre rejoignent la liste NatureRituals sans nouveau champ ; v21 = rangs de simulation Infuriating Heat (PvP) et Mark of Fury ; Infuriating Heat, Dark Fury, Mark of Fury et Soothing rejoignent la liste NatureRituals sans nouveau champ, comme les icônes d'adrénaline du perso (lot 1a du chantier infobulle) la liste ActiveAttributeBoosts ; v20 = rang de simulation Nature's Renewal (son surcoût d'incantation dépend du rang en PvP) ; v19 = compteur de projectiles du spike (sorts multi-projectiles) ; v18 = mods d'arme du spike (fractionnement / vampirique / arc corne) + compteurs d'attaques vampiriques ; v17 = mode de jeu PvE/PvP enregistré avec le build ; v16 = boosts d'attribut de compétences équipées par perso ; v15 = rang de simulation Tranquility + toggle prolongateurs de durée par perso ; v14 = rang de simulation Roaring Winds ; v13 = rituels de la nature actifs ; v12 = PV lanceur Grenth's Balance ; v11 = buffs d'arme spike ; v10 = seuil spike ; v9 = part conditionnelle spike ; v8 = procs spike ; v7 = flux ; v6 = roster Spike ; v5 = genre du perso
+        public int Version { get; set; } = 25; // v25 = case « Critique » par ligne d'attaque du spike (par attaque et par ligne d'attaque normale), la case « Tout en critique » devenant leur maîtresse — demande de Philippe du 28/09/2026 ; v24 = renversements comptés pour la ligne de Ronces du spike (l'esprit frappe chaque créature renversée, compteur laissé à l'utilisateur — demande de Philippe du 28/09/2026) ; v23 = lignes d’attaques NORMALES du spike (case maîtresse du build + case, compteur de coups, mod de préfixe, proc du fractionnement et arc corne par perso — lot 6d-2 du chantier infobulle) ; v22 = rang de simulation Ronces (durée du saignement posé sur les créatures assommées, lot 4c du chantier infobulle) ; Ronces et Lien terrestre rejoignent la liste NatureRituals sans nouveau champ ; v21 = rangs de simulation Infuriating Heat (PvP) et Mark of Fury ; Infuriating Heat, Dark Fury, Mark of Fury et Soothing rejoignent la liste NatureRituals sans nouveau champ, comme les icônes d'adrénaline du perso (lot 1a du chantier infobulle) la liste ActiveAttributeBoosts ; v20 = rang de simulation Nature's Renewal (son surcoût d'incantation dépend du rang en PvP) ; v19 = compteur de projectiles du spike (sorts multi-projectiles) ; v18 = mods d'arme du spike (fractionnement / vampirique / arc corne) + compteurs d'attaques vampiriques ; v17 = mode de jeu PvE/PvP enregistré avec le build ; v16 = boosts d'attribut de compétences équipées par perso ; v15 = rang de simulation Tranquility + toggle prolongateurs de durée par perso ; v14 = rang de simulation Roaring Winds ; v13 = rituels de la nature actifs ; v12 = PV lanceur Grenth's Balance ; v11 = buffs d'arme spike ; v10 = seuil spike ; v9 = part conditionnelle spike ; v8 = procs spike ; v7 = flux ; v6 = roster Spike ; v5 = genre du perso
         public Guid Id { get; set; }
         public string Name { get; set; } = string.Empty;
         public List<string> Tags { get; set; } = [];
@@ -160,6 +160,8 @@ public static class TeamBuildSerializer
         public string? NormalWeaponMod { get; set; }
         public bool NormalSunderingProc { get; set; }
         public bool NormalHornbow { get; set; }
+        // v25 — coup critique forcé sur la ligne d'attaque normale ; absent (≤ v24) → false.
+        public bool NormalCritical { get; set; }
         // Repli v6 précoce (07/07/2026, type par MEMBRE) : lus si Skills est vide, plus écrits.
         public List<int> Slots { get; set; } = [];
         public string? WeaponDamageType { get; set; }
@@ -181,6 +183,7 @@ public static class TeamBuildSerializer
         public string? WeaponMod { get; set; }   // v18 — mod de préfixe physique ("sundering"/"vampiric") ; absent → aucun
         public bool SunderingProc { get; set; }  // v18 — proc du fractionnement compté sur la ligne ; absent → false
         public bool Hornbow { get; set; }        // v18 — l'arc de la ligne est un arc corne ; absent → false
+        public bool Critical { get; set; }       // v25 — coup critique forcé sur cette attaque ; absent → false
     }
 
     private sealed class CharacterDto
@@ -271,6 +274,7 @@ public static class TeamBuildSerializer
                 WeaponMod = k.WeaponMod,
                 SunderingProc = k.SunderingProc,
                 Hornbow = k.Hornbow,
+                Critical = k.Critical,
             }).ToList(),
             Buffs = s.Buffs.ToList(),
             NormalRow = s.NormalRow,
@@ -278,6 +282,7 @@ public static class TeamBuildSerializer
             NormalWeaponMod = s.NormalWeaponMod,
             NormalSunderingProc = s.NormalSunderingProc,
             NormalHornbow = s.NormalHornbow,
+            NormalCritical = s.NormalCritical,
         }).ToList(),
         Flux = b.ActiveFlux is { } f ? (int)f : 0,
         NatureRituals = b.ActiveNatureRituals.ToList(),
@@ -378,6 +383,7 @@ public static class TeamBuildSerializer
                         SunderingProc = k.SunderingProc
                             && Data.SpikeWeaponMods.FromKey(k.WeaponMod) == Data.SpikeWeaponMod.Sundering,
                         Hornbow = k.Hornbow,
+                        Critical = k.Critical,
                     })
                     : s.Slots.Select(i => new SpikeSkill { Slot = i, WeaponDamageType = s.WeaponDamageType }))
                 .Where(k => k.Slot is >= 0 and <= 7)
@@ -395,6 +401,7 @@ public static class TeamBuildSerializer
             NormalSunderingProc = s.NormalSunderingProc
                 && Data.SpikeWeaponMods.FromKey(s.NormalWeaponMod) == Data.SpikeWeaponMod.Sundering,
             NormalHornbow = s.NormalHornbow,
+            NormalCritical = s.NormalCritical,
         }).ToList(),
         ActiveFlux = dto.Flux is >= 1 and <= 12 ? (Flux)dto.Flux : null,
         ActiveNatureRituals = dto.NatureRituals

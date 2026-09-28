@@ -502,7 +502,9 @@
     <sys:String x:Key="S.Spike.CrackedArmor">Cracked Armor</sys:String>
     <sys:String x:Key="S.Spike.CrackedArmorTip">−20 AL on all types, floor 60 (official description)</sys:String>
     <sys:String x:Key="S.Spike.AllCrits">All crits</sys:String>
-    <sys:String x:Key="S.Spike.AllCritsTip">All weapon attacks deal critical damage (best case)</sys:String>
+    <sys:String x:Key="S.Spike.AllCritsTip">Ticks the “Critical” box of every attack row at once (best case); unticking a single row unticks it too</sys:String>
+    <sys:String x:Key="S.Spike.Crit">Critical</sys:String>
+    <sys:String x:Key="S.Spike.CritTip">Count every hit of this row as critical (best case) — “All crits” ticks every row at once</sys:String>
     <sys:String x:Key="S.Spike.NoSkillSelected">No skill selected — click skills (green frame) in the left panel.</sys:String>
     <sys:String x:Key="S.Spike.ColSkill">Skill</sys:String>
     <sys:String x:Key="S.Spike.ColCombat">Combat</sys:String>

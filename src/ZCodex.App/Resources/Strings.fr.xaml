@@ -505,7 +505,9 @@
     <sys:String x:Key="S.Spike.CrackedArmor">Armure brisée</sys:String>
     <sys:String x:Key="S.Spike.CrackedArmorTip">−20 AL sur tous les types, plancher 60 (description officielle)</sys:String>
     <sys:String x:Key="S.Spike.AllCrits">Tout en critique</sys:String>
-    <sys:String x:Key="S.Spike.AllCritsTip">Toutes les attaques d'arme au dégât critique (meilleur cas)</sys:String>
+    <sys:String x:Key="S.Spike.AllCritsTip">Coche la case « Critique » de toutes les lignes d'attaque d'un geste (meilleur cas) ; décocher une seule ligne la décoche aussi</sys:String>
+    <sys:String x:Key="S.Spike.Crit">Critique</sys:String>
+    <sys:String x:Key="S.Spike.CritTip">Compter tous les coups de cette ligne en critique (meilleur cas) — « Tout en critique » coche toutes les lignes d'un geste</sys:String>
     <sys:String x:Key="S.Spike.NoSkillSelected">Aucune compétence sélectionnée — cliquez des compétences (cadre vert) dans le panneau de gauche.</sys:String>
     <sys:String x:Key="S.Spike.ColSkill">Compétence</sys:String>
     <sys:String x:Key="S.Spike.ColCombat">Combat</sys:String>

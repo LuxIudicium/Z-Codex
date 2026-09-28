@@ -33,8 +33,8 @@ public static class HelpContent
 {
     // Version du CONTENU de l'aide (indépendante de la version applicative de l'À propos) :
     // à incrémenter et redater à chaque mise à jour.
-    public const string VersionFr = "Aide v29 — 28/09/2026";
-    public const string VersionEn = "Help v29 — 2026-09-28";
+    public const string VersionFr = "Aide v30 — 28/09/2026";
+    public const string VersionEn = "Help v30 — 2026-09-28";
 
     public static string Version => AppLanguage.IsFr ? VersionFr : VersionEn;
 
@@ -665,8 +665,11 @@ public static class HelpContent
               "Enregistrent une cible complète sous un nom.", "Save a complete target under a name."),
             R("Blessure profonde / Armure brisée / Tout en critique",
               "Deep Wound / Cracked Armor / All crits",
-              "Modulent le total : +min(20 % des PV max, 100), −20 AL (plancher 60), et toutes les attaques d'arme en coup critique.",
-              "Modulate the total: +min(20% of max HP, 100), −20 AL (floor 60), and all weapon attacks as critical hits."),
+              "Modulent le total : +min(20 % des PV max, 100), −20 AL (plancher 60), et le coup critique. « Tout en critique » n'est pas un mode global : c'est la MAÎTRESSE des cases « Critique » des lignes — elle les coche et les décoche d'un geste, et se décoche d'elle-même dès qu'une ligne ne l'est plus.",
+              "Modulate the total: +min(20% of max HP, 100), −20 AL (floor 60), and critical hits. “All crits” is not a global mode: it is the MASTER of the rows' “Critical” boxes — it ticks and unticks them all at once, and unticks itself as soon as one row is not critical."),
+            R("Case « Critique » d'une ligne", "A row's “Critical” box",
+              "Sur chaque ligne d'attaque d'arme (ligne d'attaque normale comprise) : cochée, tous les coups de CETTE ligne comptent en coup critique, et son détail affiche « critique forcé » au lieu du taux. C'est un MEILLEUR CAS, pas une espérance — la fenêtre annonce une fourchette, pas une moyenne. La case est absente d'une ligne sans arme (sort, attaque de familier) et de celles dont la compétence impose déjà le critique, qui affichent « critique forcé » sans rien à cocher. État enregistré avec le build.",
+              "On every weapon-attack row (normal-attack rows included): ticked, every hit of THAT row counts as a critical hit, and its detail reads “forced critical” instead of the rate. It is a BEST CASE, not an expectation — the window states a range, not an average. The box is absent from rows without a weapon (spells, pet attacks) and from those whose skill already forces the critical, which read “forced critical” with nothing to tick. Saved with the build."),
             R("Copier l'image", "Copy image",
               "Copie une capture de la fenêtre entière dans le presse-papiers.",
               "Copies a screenshot of the whole window to the clipboard.")),

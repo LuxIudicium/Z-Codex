@@ -18,6 +18,9 @@ public class SpikeMember
     public string? NormalWeaponMod { get; set; }
     public bool NormalSunderingProc { get; set; }
     public bool NormalHornbow { get; set; }
+    // v25 — coup CRITIQUE forcé sur la ligne d'attaque normale de ce membre (case par ligne du
+    // 28/09/2026). Absent (fichiers ≤ v24) → false : le total d'un build enregistré avant ne bouge pas.
+    public bool NormalCritical { get; set; }
 }
 
 // Une skill cochée du spike : slot 0–7 + type de dégât de l'arme pour CETTE attaque (lore
@@ -59,4 +62,7 @@ public class SpikeSkill
     // v18 — l'arc de cette attaque est un ARC CORNE : +10 % de pénétration BONUS permanente
     // (pas un proc). Ignoré hors arc. Absent (fichiers ≤ v17) → false.
     public bool Hornbow { get; set; }
+    // v25 — coup CRITIQUE forcé sur CETTE attaque : la case « Critique » de la ligne, que la case
+    // maîtresse « Tout en critique » coche et décoche d'un geste. Absent (≤ v24) → false.
+    public bool Critical { get; set; }
 }

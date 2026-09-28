@@ -156,6 +156,12 @@ public class CharacterSlotViewModel : ViewModelBase
 
     public bool SpikeNormalHornbow { get => _spikeNormalHornbow; set => SetField(ref _spikeNormalHornbow, value); }
 
+    // Coup CRITIQUE forcé sur la ligne d'attaque normale de ce perso (28/09/2026) : même case
+    // « Critique » que sur une ligne d'attaque, et même maîtresse (« Tout en critique »).
+    // Persisté (.zcx v25).
+    private bool _spikeNormalCritical;
+    public bool SpikeNormalCritical { get => _spikeNormalCritical; set => SetField(ref _spikeNormalCritical, value); }
+
     // Rangée d'icônes de la carte membre (fenêtre Spike) : buffs PROPOSABLES à ce perso
     // (= équipés sur un membre du roster ; DWG sur son seul porteur). Resynchronisée par
     // SpikeViewModel à chaque recalcul — HasSpikeBuffToggles est UI-only, FILTRÉ du dirty

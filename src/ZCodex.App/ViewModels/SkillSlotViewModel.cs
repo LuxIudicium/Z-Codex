@@ -55,6 +55,7 @@ public class SkillSlotViewModel : ViewModelBase
                 SpikeCasterMaxHp = DefaultCasterHp;
                 SpikeWeaponModKey = string.Empty;   // le setter remet aussi SpikeSunderingProc à false
                 SpikeHornbow = false;
+                SpikeCritical = false;
             }
         }
     }
@@ -143,6 +144,17 @@ public class SkillSlotViewModel : ViewModelBase
     {
         get => _spikeProcs;
         set => SetField(ref _spikeProcs, value);
+    }
+
+    // Coup CRITIQUE forcé sur CETTE attaque (28/09/2026) : la case « Critique » de sa ligne du spike.
+    // La case « Tout en critique » de la fenêtre n'est plus un mode global, c'est la MAÎTRESSE de
+    // celles-ci — elle les coche et les décoche d'un geste, et se relève de leur état.
+    // ⚠ Remise à false à la désélection, comme les autres réglages de ligne. Persisté (.zcx v25).
+    private bool _spikeCritical;
+    public bool SpikeCritical
+    {
+        get => _spikeCritical;
+        set => SetField(ref _spikeCritical, value);
     }
 
     // Part de dégâts CONDITIONNELLE comptée pour CE slot du spike (« X more damage if [état] » :
