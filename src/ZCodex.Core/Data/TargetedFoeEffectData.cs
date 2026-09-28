@@ -21,6 +21,21 @@ public static class TargetedFoeEffectData
     public const int StolenSpeedPvpSkillId = 3187;
     public const int ChillingWindsSkillId = 1368;
     public const int ShadowyBurdenSkillId = 950;
+    public const int PainfulBondSkillId = 1237;
+
+    // « Creates a level … spirit » puis « Its attacks … » ou « … damage with attacks » (Sceau des esprits).
+    // ⚠ Pas de [^.]* entre les deux : le rang s'écrit « level 1...10...12 », ses points couperaient la phrase.
+    private static readonly System.Text.RegularExpressions.Regex AttackingSpiritRegex = new(
+        @"\bCreates\b.*?\bspirits?\b.*?\b(?:Its attacks|with attacks)\b",
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Singleline);
+
+    /// <summary>
+    /// Compétence qui crée un esprit QUI ATTAQUE — ce que Lien de douleur (lot 7c) fait frapper plus fort. Déduit du
+    /// texte et non recopié : sur la base du 28/09/2026, Angoisse, Chant de sang, Désenchantement, Dissonance, Regard
+    /// furieux, Douleur, Chant de l'ombre, Vampirisme, Soif d'aventure, leurs variantes PvP, et le Sceau des esprits.
+    /// Sert au seul avertissement de la ligne de Lien de douleur (Q3) : aucun chiffre n'en dépend.
+    /// </summary>
+    public static bool CreatesAttackingSpirit(Skill s) => AttackingSpiritRegex.IsMatch(s.Description ?? "");
 
     /// <summary>Sort qui peut viser un ennemi (351 sorts, <see cref="FoeTargetSpells"/>).</summary>
     public static bool TargetsFoe(Skill s) => EnergyCostBoostData.IsSpell(s) && FoeTargetSpells.Names.Contains(s.Name);

@@ -303,6 +303,27 @@ public class SpikeViewModel : ViewModelBase
     // traduction.
     private static string ArmorIgnoring => L(" (ignore l'armure)", " (armor ignoring)");
 
+    // ── Lot 7c : Fardeau nébuleux ─────────────────────────────────────────────────────────────────────
+    // Le maléfice sélectionné dans la spike, autre que Fardeau nébuleux lui-même, qui l'empêche en jeu de
+    // retirer de l'armure (« only affects this foe while it has no other hexes »). Posé à chaque recalcul.
+    private Skill? _otherHexForShadowyBurden;
+
+    private static string ShadowyBurdenPart(CharacterSlotViewModel member, int armor)
+    {
+        string name = member.SkillSlots.Select(s => s.Skill)
+            .FirstOrDefault(s => s?.Id == TargetedFoeEffectData.ShadowyBurdenSkillId)?.DisplayName ?? "Shadowy Burden";
+        return L($"{name} (armure −{armor} après pén.)", $"{name} (armor −{armor} after pen.)");
+    }
+
+    // Q5 (b) : on compte quand même, la ligne dit en rouge que le jeu ne le ferait pas.
+    private string? ShadowyBurdenConflict() => _otherHexForShadowyBurden is { } hex
+        ? L($"⚠ {hex.DisplayName} est aussi sélectionné : Fardeau nébuleux ne s'applique pas en jeu (autre maléfice sur la cible)",
+            $"⚠ {hex.DisplayName} is also selected: Shadowy Burden does not apply in game (another hex on the target)")
+        : null;
+
+    private static string JoinWarnings(params string?[] warnings)
+        => string.Join("\n", warnings.Where(w => !string.IsNullOrEmpty(w)));
+
     // Nom affiché du buff, dans la langue courante (cf. MemberBuffs.Names). Repli sur le nom
     // anglais du descripteur si la copie équipée a disparu entre deux recalculs.
     private static string BuffName(MemberBuffs? mb, SpikeBuff buff) =>
@@ -401,6 +422,14 @@ public class SpikeViewModel : ViewModelBase
         // n'ajoutent rien à leur ligne, elles font apparaître les lignes ARTIFICIELLES globales
         // ajoutées tout à la fin (chantier 16).
         var vampiricSteals = new SortedSet<int>();
+
+        // Lot 7c : ce que les compétences SÉLECTIONNÉES disent aux deux avertissements du lot. Aucun chiffre n'en
+        // dépend — la règle « icône allumée = ça marche » tient, les lignes le DISENT seulement (Q3, Q5).
+        var selected = Build.SpikeMembers.SelectMany(m => m.SkillSlots)
+            .Where(sl => sl.IsSpikeSelected && sl.Skill is not null).Select(sl => sl.Skill!).ToList();
+        _otherHexForShadowyBurden = selected.FirstOrDefault(k => NatureRitualData.IsHex(k)
+                                                             && k.Id != TargetedFoeEffectData.ShadowyBurdenSkillId);
+        bool anyAttackingSpirit = selected.Any(TargetedFoeEffectData.CreatesAttackingSpirit);
 
         foreach (var member in Build.SpikeMembers)
         foreach (var slot in member.SkillSlots)
@@ -609,6 +638,9 @@ public class SpikeViewModel : ViewModelBase
             // Pénétration : de BASE en MAX avec le pool existant (jamais cumulée), en BONUS par-dessus.
             pen = Math.Max(pen, boosts.BasePenetration);
             pen += boosts.BonusPenetration;
+            // Lot 7c : Fardeau nébuleux — armure retirée APRÈS la pénétration, sans plancher, aux seules attaques
+            // du perso qui l'a allumé (0 partout ailleurs). Même règle que la table de l'infobulle (7b-2).
+            int sbArmor = member.ShadowyBurdenArmorFor(skill);
             if (weaponMod == SpikeWeaponMod.Vampiric)
                 vampiricSteals.Add(SpikeWeaponMods.VampiricSteal(weapon!));
 
@@ -682,13 +714,13 @@ public class SpikeViewModel : ViewModelBase
                 bool rowCritical = slot.SpikeCritical || mods.AlwaysCritical;
                 if (rowCritical)
                     wMin = wMax = WeaponStrike.CriticalAt(w, rank, al, pen,
-                        weaponMult, AttackerLevel) + bonus;
+                        weaponMult, AttackerLevel, sbArmor) + bonus;
                 else
                 {
                     wMin = WeaponStrike.DamageAt(w.Min, rank, al, pen,
-                        weaponMult, AttackerLevel) + bonus;
+                        weaponMult, AttackerLevel, sbArmor) + bonus;
                     wMax = WeaponStrike.DamageAt(w.Max, rank, al, pen,
-                        weaponMult, AttackerLevel) + bonus;
+                        weaponMult, AttackerLevel, sbArmor) + bonus;
                 }
                 min += wMin; max += wMax; dmgMin += wMin; dmgMax += wMax;
                 string range = wMin == wMax ? wMax.ToString() : $"{wMin}–{wMax}";
@@ -765,7 +797,7 @@ public class SpikeViewModel : ViewModelBase
                     // sur les dégâts LISTÉS (AL 60), l'armure/pénétration s'appliquent au total.
                     int count = ThresholdCount(slot, r);
                     int listed = ThresholdListed(r, count);
-                    int dmg = SkillDamage.DamageAt(listed, al, pen, AttackerLevel);
+                    int dmg = SkillDamage.DamageAt(listed, al, pen, AttackerLevel, specialArmor: sbArmor);
                     min += dmg; max += dmg; dmgMin += dmg; dmgMax += dmg;
                     thresholdRow = r;
                     parts.Add($"{TypeLabel(rType)} {r.Value} × {count} = {listed}{ThresholdCapNote(r, count)} → {dmg}");
@@ -776,7 +808,7 @@ public class SpikeViewModel : ViewModelBase
                 {
                     var ticksDmg = new List<int>();
                     for (int i = 1; i <= t; i++)
-                        ticksDmg.Add(SkillDamage.DamageAt(r.Value * i, al, pen, AttackerLevel));
+                        ticksDmg.Add(SkillDamage.DamageAt(r.Value * i, al, pen, AttackerLevel, specialArmor: sbArmor));
                     int sum = ticksDmg.Sum();
                     min += sum; max += sum; dmgMin += sum; dmgMax += sum;
                     parts.Add(t > 1
@@ -786,7 +818,7 @@ public class SpikeViewModel : ViewModelBase
                 }
                 else
                 {
-                    int dmg = SkillDamage.DamageAt(r.Value, al, pen, AttackerLevel);
+                    int dmg = SkillDamage.DamageAt(r.Value, al, pen, AttackerLevel, specialArmor: sbArmor);
                     min += dmg * t; max += dmg * t; dmgMin += dmg * t; dmgMax += dmg * t;
                     parts.Add(t > 1 ? $"{TypeLabel(rType)} {dmg}{TimesLabel(r, t)}"
                                     : $"{TypeLabel(rType)} {dmg}");
@@ -881,7 +913,8 @@ public class SpikeViewModel : ViewModelBase
                     // subit et passe donc par la formule, contre l'AL de son propre type.
                     int v = p.IgnoresArmor ? p.Value
                         : SkillDamage.DamageAt(p.Value,
-                            target.EffectiveArmor(p.DamageType, _withCrackedArmor), pen, AttackerLevel);
+                            target.EffectiveArmor(p.DamageType, _withCrackedArmor), pen, AttackerLevel,
+                            specialArmor: sbArmor);
                     bMin += v; bMax += v;
                 }
                 min += bMin; max += bMax; dmgMin += bMin; dmgMax += bMax;
@@ -920,6 +953,8 @@ public class SpikeViewModel : ViewModelBase
             if (hornbow && penMatters)
                 parts.Add(L($"arc corne (+{SpikeWeaponMods.HornbowBonusPen} % pén.)",
                             $"hornbow (+{SpikeWeaponMods.HornbowBonusPen}% pen.)"));
+            bool sbShown = sbArmor > 0 && penMatters;
+            if (sbShown) parts.Add(ShadowyBurdenPart(member, sbArmor));
             if (mb is { GdwBonus: > 0 } && weaponTable)
                 parts.Add($"{BuffName(mb, SpikeBuff.GreatDwarfWeapon)} "
                           + L($"(+{mb.GdwBonus} d'arme compris)", $"(+{mb.GdwBonus} weapon damage included)"));
@@ -993,6 +1028,14 @@ public class SpikeViewModel : ViewModelBase
                 HasSunderingProc = weaponMod == SpikeWeaponMod.Sundering,
                 IsBowRow = isBowRow,
                 HasCritical = canCritical,
+                WarningText = JoinWarnings(
+                    sbShown ? ShadowyBurdenConflict() : null,
+                    // Lot 7c, Q3 : Lien de douleur n'ajoute rien sans esprit qui attaque — le compteur reste libre
+                    // (l'esprit peut venir d'un coéquipier hors roster), la ligne le dit seulement.
+                    skill.Id == TargetedFoeEffectData.PainfulBondSkillId && !anyAttackingSpirit
+                        ? L("⚠ aucun esprit attaquant n'est sélectionné dans la spike",
+                            "⚠ no attacking spirit is selected in the spike")
+                        : null),
             });
             totalMin += min; totalMax += max;
         }
@@ -1238,10 +1281,12 @@ public class SpikeViewModel : ViewModelBase
         // Les paquets d'un effet, ramenés au +X PLAT que le coup encaisse : un « +X » ignore l'armure et
         // passe tel quel, un paquet typé sans « + » passe par la formule, contre l'AL de SON type.
         // (Aucun des 23 n'est du second genre aujourd'hui — mais le jeter en silence serait un piège.)
+        // Lot 7c, Q4 : un coup normal est une attaque — Fardeau nébuleux le touche aussi.
+        int sbArmor = member.ShadowyBurdenArmorFor(null);
         int FlatOf(DamageBoosts b) => (b.Packets ?? []).Sum(p => p.IgnoresArmor
             ? p.Value
             : SkillDamage.DamageAt(p.Value, target.EffectiveArmor(p.DamageType, _withCrackedArmor),
-                                   bonusPen, AttackerLevel));
+                                   bonusPen, AttackerLevel, specialArmor: sbArmor));
 
         var boostCharges = new List<SpikeNormalAttack.BoostCharge>();
         var chargedParts = new List<string>();
@@ -1296,10 +1341,10 @@ public class SpikeViewModel : ViewModelBase
             Boosts: boostCharges);
         var (min, max, steal) = SpikeNormalAttack.Damage(
             w, rank, al, bonusPen, hits, normalCritical, flatPerHit, charges, AttackerLevel,
-            stealPerHit: plain.LifeSteal, weaponMultiplier: plain.WeaponMultiplier);
+            stealPerHit: plain.LifeSteal, weaponMultiplier: plain.WeaponMultiplier, specialArmor: sbArmor);
         // Coup de RÉFÉRENCE du détail : sans aucune charge, donc le régime permanent de la ligne.
         var (nudeMin, nudeMax) = SpikeNormalAttack.Hit(w, rank, al, bonusPen, flatPerHit, normalCritical,
-                                                       AttackerLevel, plain.WeaponMultiplier);
+                                                       AttackerLevel, plain.WeaponMultiplier, sbArmor);
 
         // ⚠ Le vol de vie sort de l'assiette des DÉGÂTS : ni multiplicateur, ni flux (règle du chantier).
         int dmgMin = min, dmgMax = max;
@@ -1365,6 +1410,7 @@ public class SpikeViewModel : ViewModelBase
         if (hornbow)
             parts.Add(L($"arc corne (+{SpikeWeaponMods.HornbowBonusPen} % pén.)",
                         $"hornbow (+{SpikeWeaponMods.HornbowBonusPen}% pen.)"));
+        if (sbArmor > 0) parts.Add(ShadowyBurdenPart(member, sbArmor));
         // Lot 6e : les effets de la carte, permanents puis ceux qui s'épuisent (avec leur note de charge).
         foreach (var s in plain.Sources ?? []) parts.Add(BoostSourcePart(s));
         parts.AddRange(chargedParts);
@@ -1396,6 +1442,7 @@ public class SpikeViewModel : ViewModelBase
             ModKeyGetter = () => member.SpikeNormalWeaponModKey,
             ModKeySetter = v => member.SpikeNormalWeaponModKey = v ?? string.Empty,
             HasSunderingProc = weaponMod == SpikeWeaponMod.Sundering,
+            WarningText = JoinWarnings(sbArmor > 0 ? ShadowyBurdenConflict() : null),
             SunderingProcGetter = () => member.SpikeNormalSunderingProc,
             SunderingProcSetter = v => member.SpikeNormalSunderingProc = v,
             IsBowRow = isBow,

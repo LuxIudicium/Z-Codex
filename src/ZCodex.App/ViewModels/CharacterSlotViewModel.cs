@@ -1256,17 +1256,19 @@ public class CharacterSlotViewModel : ViewModelBase
     public DamageBoosts DamageBoostsFor(Skill target)
     {
         var boosts = BoostsFor(target, ActiveWeaponKind(), spikeOnly: false, includeSkill: null);
-        // Fardeau nébuleux (lot 7b-2) : l'armure que la cible perd contre les attaques de CE perso. Infobulle
-        // seulement — la fenêtre Spike l'aura au lot 7c.
+        // Fardeau nébuleux (lot 7b-2) : l'armure que la cible perd contre les attaques de CE perso. La fenêtre Spike
+        // la lit à part (lot 7c), ligne par ligne, par ShadowyBurdenArmorFor — pas par SpikeDamageBoostsFor, dont les
+        // appels « un effet à la fois » la recompteraient.
         return ShadowyBurdenArmorFor(target) is > 0 and var armor ? boosts with { ArmorReduction = armor } : boosts;
     }
 
     /// <summary>Armure retirée par Fardeau nébuleux, allumé sur ce perso qui le porte, aux dégâts de
-    /// <paramref name="target"/> (0 = rien : icône éteinte, compétence retirée, ou pas une attaque du perso).</summary>
-    public int ShadowyBurdenArmorFor(Skill target)
+    /// <paramref name="target"/> (0 = rien : icône éteinte, compétence retirée, ou pas une attaque du perso).
+    /// <paramref name="target"/> à null = un COUP NORMAL du Spike : c'est une attaque, il en profite (lot 7c, Q4).</summary>
+    public int ShadowyBurdenArmorFor(Skill? target)
     {
         if (!IsAttributeBoostActive(TargetedFoeEffectData.ShadowyBurdenSkillId)
-            || !TargetedFoeEffectData.ShadowyBurdenReaches(target)) return 0;
+            || target is not null && !TargetedFoeEffectData.ShadowyBurdenReaches(target)) return 0;
         var sb = SkillSlots.Select(s => s.Skill).FirstOrDefault(s => s?.Id == TargetedFoeEffectData.ShadowyBurdenSkillId);
         return sb is null ? 0 : TargetedFoeEffectData.ShadowyBurdenArmor(sb, AttributeLevel("Shadow Arts") ?? 0);
     }

@@ -47,7 +47,8 @@ public static class SpikeNormalAttack
     /// </summary>
     public static (int Min, int Max) Hit(WeaponStrike.Weapon weapon, int masteryRank, int armorLevel,
                                          int penetration, int flatBonus, bool critical,
-                                         int attackerLevel = 20, double weaponMultiplier = 1.0)
+                                         int attackerLevel = 20, double weaponMultiplier = 1.0,
+                                         int specialArmor = 0)
     {
         // ⚠ Plancher à 0 depuis le lot 6e : un MALUS plat (l'Arme du tourment retire jusqu'à 50) peut
         // dépasser les dégâts d'un coup faible, et un coup ne rend jamais de la vie à sa cible. Sans
@@ -55,13 +56,13 @@ public static class SpikeNormalAttack
         if (critical)
         {
             int crit = WeaponStrike.CriticalAt(weapon, masteryRank, armorLevel, penetration,
-                                               weaponMultiplier, attackerLevel) + flatBonus;
+                                               weaponMultiplier, attackerLevel, specialArmor) + flatBonus;
             return (Math.Max(0, crit), Math.Max(0, crit));
         }
         return (Math.Max(0, WeaponStrike.DamageAt(weapon.Min, masteryRank, armorLevel, penetration,
-                                                  weaponMultiplier, attackerLevel) + flatBonus),
+                                                  weaponMultiplier, attackerLevel, specialArmor) + flatBonus),
                 Math.Max(0, WeaponStrike.DamageAt(weapon.Max, masteryRank, armorLevel, penetration,
-                                                  weaponMultiplier, attackerLevel) + flatBonus));
+                                                  weaponMultiplier, attackerLevel, specialArmor) + flatBonus));
     }
 
     /// <summary>
@@ -79,11 +80,13 @@ public static class SpikeNormalAttack
     /// multiplicateurs et le flux ne le touchent pas).</param>
     /// <param name="weaponMultiplier">Le multiplicateur qui ne mord QUE sur l'arme (Rafale ×0,75) : il
     /// entre avant l'armure, et jamais sur les +X plats — exactement comme dans l'infobulle.</param>
+    /// <param name="specialArmor">Armure retirée APRÈS la pénétration, sans plancher (Fardeau nébuleux, lot 7c) :
+    /// un coup normal est une attaque, il en profite comme les compétences d'attaque (Q4).</param>
     public static (int Min, int Max, int Steal) Damage(
         WeaponStrike.Weapon weapon, int masteryRank, int armorLevel,
         int bonusPen, int hits, bool critical, int flatPerHit,
         Charges charges, int attackerLevel = 20,
-        int stealPerHit = 0, double weaponMultiplier = 1.0)
+        int stealPerHit = 0, double weaponMultiplier = 1.0, int specialArmor = 0)
     {
         int min = 0, max = 0, steal = 0;
         for (int i = 1; i <= hits; i++)
@@ -96,7 +99,7 @@ public static class SpikeNormalAttack
             foreach (var b in charges.Boosts ?? [])
                 if (i <= b.Hits) { flat += b.Flat; steal += b.Steal; }
             var (hitMin, hitMax) = Hit(weapon, masteryRank, armorLevel, pen, flat, critical,
-                                       attackerLevel, weaponMultiplier);
+                                       attackerLevel, weaponMultiplier, specialArmor);
             min += hitMin; max += hitMax;
         }
         return (min, max, steal);

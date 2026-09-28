@@ -26,6 +26,11 @@ public static class SpikeProcSkills
         // Hex à dégât déclenché
         "Barbs", "Mark of Pain", "Soul Barbs", "Fragility", "Fragility (PvP)",
         "Frustration", "Frustration (PvP)", "Mind Wrack", "Mind Wrack (PvP)", "Wither",
+        // Lien de douleur (lot 7c) : « Spirits do X more damage against these foes » — le maléfice ne frappe
+        // pas lui-même, il ajoute X à CHAQUE attaque d'esprit. Compteur = attaques d'esprit comptées à la
+        // main ; les +X ignorent l'armure (tranché par Philippe le 28/09/2026). Avant le 7c, la ligne
+        // comptait ces X une seule fois, sans compteur.
+        "Painful Bond",
         // Rituels de nature
         "Edge of Extinction", "Famine", "Favorable Winds", "Winnowing",
         // ⚠ Ronces a QUITTÉ cette liste le 28/09/2026 : elle n'est plus comptée par un cadre vert sur
