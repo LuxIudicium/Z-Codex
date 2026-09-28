@@ -1265,6 +1265,16 @@ public class CharacterSlotViewModel : ViewModelBase
             // Seule entorse du chantier à « icône allumée = ça marche » : une conjuration ne s'applique
             // que si le type de dégâts effectif est le sien — mais uniquement quand l'application le SAIT
             // (cf. § 6.1 du plan et DamageBoostData.ElementSatisfied).
+            // ⚠ VERROU du 28/09/2026 : un COUP NORMAL passe toujours `element` à null (voir plus haut) et
+            // ElementSatisfied est PERMISSIF sur l'inconnu — la conjuration y serait donc accordée sans que
+            // personne ait jugé l'arme, alors qu'elle est refusée sur la ligne d'une compétence du même
+            // perso avec la même arme. On écarte par PRUDENCE, comme le RequiresPhysical juste au-dessus :
+            // même situation d'ignorance, donc même réponse. Chemin MORT aujourd'hui — les 4 descripteurs
+            // à RequiresElement sont tous proc-comptés, donc ce `continue` ne retire aucun chiffre, et
+            // SpikeBoostCoverage.ElementEffectsReachingPlainAttack le VERROUILLE. Le jour où ce verrou se
+            // remplit, la prudence deviendrait un chiffre manquant : il faudra alors faire descendre le
+            // type de dégâts CHOISI sur la ligne jusqu'ici, au lieu de « je ne sais pas ».
+            if (d.RequiresElement is not null && target is null) continue;
             if (!DamageBoostData.ElementSatisfied(d.RequiresElement, element))
             {
                 Suppress(sk, DamageBoostSuppression.WrongElement);

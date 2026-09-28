@@ -87,4 +87,59 @@ public static class SpikeBoostCoverage
     /// qu'un coup normal ne satisfait jamais.
     /// </summary>
     public static bool SkillOnly(int skillId) => skillId == DamageBoostData.ExpertFocusSkillId;
+
+    // ── Les 2 VERROUS de robustesse (28/09/2026, validés par Philippe) ──────────────────
+    //
+    // Deux angles morts repérés à la relecture des lots 6e/6f. Aucun des deux ne change un chiffre
+    // aujourd'hui : ce sont des chemins MORTS, et c'est précisément pour ça qu'ils sont dangereux — le
+    // jour où les données les réveillent, le mauvais chiffre sort en silence, build vert.
+    //
+    // ⚠ Les deux listes ci-dessous sont CALCULÉES depuis les descripteurs réels, jamais tenues à la
+    // main : elles se remplissent toutes seules le jour du danger. Le harnais les exige VIDES, et un
+    // harnais de session étant jetable, c'est leur présence ICI, dans le dépôt et à côté de la donnée
+    // qu'elles surveillent, qui fait le verrou : la prochaine passe les retrouve, pas la mémoire.
+
+    /// <summary>
+    /// <b>Verrou 1 — charges brûlées par la mauvaise arme.</b> Les règles de <see cref="Charges"/> dont
+    /// l'effet est réservé à certaines armes. <b>Doit rester VIDE.</b>
+    ///
+    /// <c>SpikeViewModel.ComputeBoostCharges</c> donne les charges aux N premières attaques d'arme dans
+    /// l'ordre de cast, <b>sans regarder l'arme</b>. C'est juste tant que tout effet à charges porte sur
+    /// « les attaques » sans distinction. Sinon la charge est perdue DEUX fois : l'attaque hors périmètre
+    /// la consomme et n'affiche rien (le filtre de périmètre la jette en aval), et l'attaque suivante,
+    /// celle qui y avait droit, ne l'a plus.
+    ///
+    /// ⚠ Le patron du danger existe déjà : Concentration experte est réservée à l'ARC, simplement elle
+    /// n'a pas de charges. Si cette liste se remplit, il faut d'abord apprendre l'arme de la LIGNE à
+    /// <c>ComputeBoostCharges</c> — et non l'arme équipée, qui divergerait du forçage manuel de la ligne.
+    /// </summary>
+    public static IReadOnlyList<ChargeRule> ChargeRulesWithWeaponScope() =>
+        [.. Charges.Where(c => DamageBoostData.All
+                .Where(d => d.SkillId == c.SkillId)
+                .Any(d => DamageBoostData.IsWeaponRestrictedScope(d.Scope)))];
+
+    /// <summary>
+    /// <b>Verrou 2 — exigence d'élément sur un coup normal.</b> Les descripteurs qui exigent un type de
+    /// dégâts d'arme (<c>RequiresElement</c>) et qu'aucun autre chemin du Spike ne compte déjà — donc
+    /// ceux qui peuvent atteindre une ligne de COUP NORMAL par le lot 6e. <b>Doit rester VIDE.</b>
+    ///
+    /// Un coup normal n'a pas d'élément résolu, et <see cref="DamageBoostData.ElementSatisfied"/> est
+    /// PERMISSIF sur l'inconnu. <c>BoostsFor</c> écarte donc maintenant ces effets d'un coup normal par
+    /// PRUDENCE, exactement comme son voisin <c>RequiresPhysical</c> — sans quoi une conjuration était
+    /// refusée sur la ligne d'une compétence et accordée sur la ligne de coup normal du même perso, même
+    /// arme. Aujourd'hui les 4 seuls concernés (les 3 conjurations + l'Aura de poussière d'ébène) sont
+    /// tous proc-comptés, donc la prudence ne coûte aucun chiffre.
+    ///
+    /// ⚠ Si cette liste se remplit, la prudence devient un chiffre MANQUANT : il faut alors faire
+    /// descendre le type de dégâts CHOISI sur la ligne (<c>SpikeWeaponDamageType</c>) jusqu'à
+    /// <c>BoostsFor</c>, au lieu de lui passer « je ne sais pas ».
+    /// </summary>
+    /// <remarks>⚠ <paramref name="englishNameOf"/> : les trois chemins de couverture indexent par nom
+    /// ANGLAIS et le descripteur ne porte qu'un id. Le résolveur est donc fourni par l'appelant — le
+    /// harnais y branche la VRAIE base, pour que le verrou ne puisse pas se rassurer sur une liste de
+    /// noms recopiée à la main.</remarks>
+    public static IReadOnlyList<DamageBoostDescriptor> ElementEffectsReachingPlainAttack(
+        Func<int, string?> englishNameOf) =>
+        [.. DamageBoostData.All.Where(d => d.RequiresElement is not null
+                                          && !AlreadyCounted(d, englishNameOf(d.SkillId) ?? string.Empty))];
 }

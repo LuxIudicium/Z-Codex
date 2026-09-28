@@ -788,6 +788,17 @@ public static class DamageBoostData
     /// bâton cogne, faiblement (<see cref="WeaponStrike.All"/> lui donne bien une plage de dégâts).</summary>
     private static bool IsStrikingWeapon(WeaponKind kind) => kind != WeaponKind.None;
 
+    /// <summary>
+    /// Ce périmètre réserve-t-il l'effet à CERTAINES armes ? ⚠ Verrou de robustesse du 28/09/2026 :
+    /// <see cref="DamageBoostScope.Attacks"/> couvre toutes les armes, les cinq autres non, et cette
+    /// différence décide si une attaque a le droit de CONSOMMER une charge (cf.
+    /// <c>SpikeBoostCoverage.ChargeRulesWithWeaponScope</c>). Calculé ici, à côté du périmètre lui-même,
+    /// pour qu'un nouveau périmètre d'arme ne puisse pas être ajouté sans passer devant cette liste.
+    /// </summary>
+    public static bool IsWeaponRestrictedScope(DamageBoostScope scope) => scope is
+        DamageBoostScope.BowAttacks or DamageBoostScope.MeleeAttacks or DamageBoostScope.DaggerAttacks
+        or DamageBoostScope.ScytheAttacks or DamageBoostScope.NonDaggerAttacks;
+
     /// <summary>Compétence Ritualiste au sens de « Your Ritualist skills ». ⚠ Les compétences
     /// d'allégeance sont stockées <see cref="Profession.None"/> mais verrouillées à une profession :
     /// Convocation des esprits est bien une compétence Ritualiste.</summary>

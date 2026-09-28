@@ -1711,6 +1711,13 @@ public class SpikeViewModel : ViewModelBase
 
             // Les attaques d'ARME du spike, dans l'ordre de cast — la même assiette que les buffs à
             // charges du chantier 14 (Pet Attack exclue, comme la table d'arme).
+            // ⚠ L'ARME de la ligne n'est PAS regardée ici, et c'est un choix tenu par un verrou :
+            // SpikeBoostCoverage.ChargeRulesWithWeaponScope() doit rester VIDE. Tant qu'elle l'est, tout
+            // effet à charges porte sur « les attaques » sans distinction d'arme et prendre les N
+            // premières est juste. Si elle se remplit, la charge serait perdue DEUX fois (l'attaque hors
+            // périmètre la consomme sans rien afficher, celle qui y avait droit ne l'a plus) : il faudra
+            // alors faire descendre l'arme de la LIGNE jusqu'ici — et non l'arme équipée, qui divergerait
+            // du forçage manuel du ComboBox et rejouerait le même bug une ligne plus loin.
             var attacks = m.SkillSlots
                 .Where(s => s.IsSpikeSelected && s.Skill is { } k && WeaponStrike.IsWeaponAttack(k))
                 .OrderBy(s => s.SpikeOrder).ToList();
