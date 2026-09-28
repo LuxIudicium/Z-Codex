@@ -27,6 +27,15 @@ public class CharacterSlotViewModel : ViewModelBase
             slot.SlotIndex = i;
             slot.PropertyChanged += (s, e) =>
             {
+                // Lot 7c : Fardeau nébuleux sélectionné dans la spike allume son icône (et la verrouille) — la carte
+                // et les infobulles doivent le voir aussitôt, le retrait aussi.
+                if (e.PropertyName == nameof(SkillSlotViewModel.IsSpikeSelected)
+                    && ((SkillSlotViewModel)s!).Skill?.Id == TargetedFoeEffectData.ShadowyBurdenSkillId)
+                {
+                    OnPropertyChanged(nameof(AttributeBoostToggles));
+                    OnPropertyChanged(nameof(SpikeBoostToggles));
+                    NotifyTooltipsChanged();
+                }
                 if (e.PropertyName == nameof(SkillSlotViewModel.Skill))
                 {
                     OnPropertyChanged(nameof(IsEmptyBuild));
@@ -446,6 +455,22 @@ public class CharacterSlotViewModel : ViewModelBase
 
     public bool IsAttributeBoostActive(int skillId) => _activeAttributeBoosts.Contains(skillId);
 
+    /// <summary>
+    /// Icône allumée À L'ÉCRAN et pour les calculs : le choix de l'utilisateur, OU — pour Fardeau nébuleux seulement —
+    /// la compétence sélectionnée dans la spike (lot 7c, tranché par Philippe le 28/09/2026). ⚠ La sélection ne
+    /// touche JAMAIS au choix persisté : la retirer de la spike rend donc l'icône à son état d'avant, sans rien
+    /// avoir à mémoriser (Q1 b).
+    /// </summary>
+    public bool IsBoostIconDisplayedLit(int toggleId) =>
+        IsAttributeBoostActive(toggleId) || IsBoostLockedBySpike(toggleId);
+
+    /// <summary>L'icône est-elle tenue allumée par la spike ? Tant que c'est vrai, aucun clic ne l'éteint, ni sur la
+    /// carte ni dans la fenêtre Spike (Q2 a). Un slot ne reste sélectionné que chez un membre du roster : la sortie
+    /// du roster désélectionne tout (TeamBuildViewModel), donc pas de verrou fantôme.</summary>
+    public bool IsBoostLockedBySpike(int toggleId) =>
+        toggleId == TargetedFoeEffectData.ShadowyBurdenSkillId
+        && SkillSlots.Any(s => s.IsSpikeSelected && s.Skill?.Id == TargetedFoeEffectData.ShadowyBurdenSkillId);
+
     public void SetAttributeBoost(int skillId, bool active)
     {
         bool changed = active ? _activeAttributeBoosts.Add(skillId) : _activeAttributeBoosts.Remove(skillId);
@@ -620,7 +645,10 @@ public class CharacterSlotViewModel : ViewModelBase
     public IEnumerable<AttributeBoostIndicatorViewModel> SpikeBoostToggles =>
         AttributeBoostToggles.Where(t => t.Skill is { } sk
             && (DamageBoostData.DescriptorsFor(sk.Id).Any(d => !SpikeBoostCoverage.AlreadyCounted(d, sk.Name))
-                || SpikeWeaponBuffs.FromCardToggleId(t.ToggleId) is not null));
+                || SpikeWeaponBuffs.FromCardToggleId(t.ToggleId) is not null
+                // Lot 7c : Fardeau nébuleux n'est pas un descripteur de dégâts, mais il change les chiffres du spike
+                // (baisse d'armure) — son icône doit donc être là pour l'éteindre sans repasser par le teambuild.
+                || t.ToggleId == TargetedFoeEffectData.ShadowyBurdenSkillId));
 
     public bool HasSpikeBoostToggles => SpikeBoostToggles.Any();
 
@@ -1267,7 +1295,7 @@ public class CharacterSlotViewModel : ViewModelBase
     /// <paramref name="target"/> à null = un COUP NORMAL du Spike : c'est une attaque, il en profite (lot 7c, Q4).</summary>
     public int ShadowyBurdenArmorFor(Skill? target)
     {
-        if (!IsAttributeBoostActive(TargetedFoeEffectData.ShadowyBurdenSkillId)
+        if (!IsBoostIconDisplayedLit(TargetedFoeEffectData.ShadowyBurdenSkillId)
             || target is not null && !TargetedFoeEffectData.ShadowyBurdenReaches(target)) return 0;
         var sb = SkillSlots.Select(s => s.Skill).FirstOrDefault(s => s?.Id == TargetedFoeEffectData.ShadowyBurdenSkillId);
         return sb is null ? 0 : TargetedFoeEffectData.ShadowyBurdenArmor(sb, AttributeLevel("Shadow Arts") ?? 0);

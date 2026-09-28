@@ -22,7 +22,7 @@ public class AttributeBoostIndicatorViewModel : ViewModelBase
         _owner = owner;
         Skill = skill;
         ToggleId = toggleId;
-        bool active = owner.IsAttributeBoostActive(toggleId);
+        bool active = owner.IsBoostIconDisplayedLit(toggleId);
         // Diffusion reçue (Heroic Refrain, Weapon of Fury) → « recevoir » ; boost propre → « activer ».
         string on  = T(received ? "S.Boost.Receive"       : "S.Boost.Activate");
         string off = T(received ? "S.Boost.StopReceiving" : "S.Boost.Deactivate");
@@ -87,6 +87,8 @@ public class AttributeBoostIndicatorViewModel : ViewModelBase
             : skill.Id == SkillSpeedBoostData.GhostlyHasteSkillId ? T("S.Boost.SpiritNote")
             : skill.Id == SkillSpeedBoostData.SignetOfMysticSpeedSkillId ? T("S.Boost.SelfEnchantmentNote")
             : null;
+        // Lot 7c : tenue allumée par la spike → le clic ne fait rien, la note le dit à la place de l'instruction.
+        if (owner.IsBoostLockedBySpike(toggleId)) click = T("S.Boost.LockedBySpike");
         ClickNote = note is null ? click : $"{note}\n{click}";
     }
 
@@ -113,9 +115,13 @@ public class AttributeBoostIndicatorViewModel : ViewModelBase
     // Note band-only, affichée sous le vrai tooltip de la compétence.
     public string ClickNote { get; }
 
-    public bool IsActive => _owner.IsAttributeBoostActive(ToggleId);
+    public bool IsActive => _owner.IsBoostIconDisplayedLit(ToggleId);
 
     // Le bandeau est reconstruit à chaque bascule et à chaque changement de barre de compétences,
     // donc IsActive est relu à neuf — pas besoin de notifier ici.
-    public void Toggle() => _owner.SetAttributeBoost(ToggleId, !IsActive);
+    public void Toggle()
+    {
+        if (_owner.IsBoostLockedBySpike(ToggleId)) return;   // lot 7c, Q2 a
+        _owner.SetAttributeBoost(ToggleId, !IsActive);
+    }
 }
