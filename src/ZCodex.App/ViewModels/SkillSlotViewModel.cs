@@ -402,9 +402,16 @@ public class SkillSlotViewModel : ViewModelBase
     public DamageBoosts DamageBoosts =>
         Owner is { } o && _skill is { } s ? o.DamageBoostsFor(s) : default;
 
+    // Compétence de familier sans compétence qui donne un familier dans la barre (cf. PetData) : phrase rouge
+    // de l'infobulle, dans la langue courante ; null sinon (et toujours hors d'un perso, ex. catalogue).
+    public string? MissingPetText =>
+        Owner is { } o && _skill is { } s && PetData.RequiresPet(s) && !o.HasPet
+            ? ZCodex.App.LanguageManager.T("S.Tooltip.NoPet") : null;
+
     // Permet au perso de pousser une mise à jour live de l'infobulle (footer + description).
     public void RaiseTooltipChanged()
     {
+        OnPropertyChanged(nameof(MissingPetText));
         OnPropertyChanged(nameof(Footer));
         OnPropertyChanged(nameof(Description));
         OnPropertyChanged(nameof(DisplayDescription));

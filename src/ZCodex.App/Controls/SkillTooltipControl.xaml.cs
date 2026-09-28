@@ -595,6 +595,17 @@ public partial class SkillTooltipControl : UserControl
         private set => SetValue(AttributeLineProperty, value);
     }
 
+    // ── Familier absent (cf. PetData) : phrase rouge sous le type, fournie toute traduite par le slot ──
+    public static readonly DependencyProperty MissingPetTextProperty =
+        DependencyProperty.Register(nameof(MissingPetText), typeof(string), typeof(SkillTooltipControl),
+            new PropertyMetadata(null));
+
+    public string? MissingPetText
+    {
+        get => (string?)GetValue(MissingPetTextProperty);
+        set => SetValue(MissingPetTextProperty, value);
+    }
+
     // ── Avertissement de repli FR→EN (cf. UpdateFrWarning) ────────────────────
     public static readonly DependencyProperty FrWarningTextProperty =
         DependencyProperty.Register(nameof(FrWarningText), typeof(string), typeof(SkillTooltipControl),

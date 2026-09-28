@@ -2207,6 +2207,9 @@ public class CharacterSlotViewModel : ViewModelBase
         RaiseAttributeDisplayChanged();
     }
 
+    // Une compétence de la barre fait suivre le familier (Charme animal & co., cf. PetData).
+    public bool HasPet => SkillSlots.Any(s => s.Skill is { } k && PetData.GrantsPet(k));
+
     // Rafraîchit les infobulles de tous les slots. Public : appelé quand le flux actif change
     // (le teambuild ou l'éditeur pousse la mise à jour, cf. ActiveFluxProvider / OwnerBuild).
     public void RefreshTooltips() => NotifyTooltipsChanged();

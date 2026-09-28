@@ -53,7 +53,8 @@
                                       DurationBoostAlly="{Binding DurationBoostAlly}"
                                       ConditionDurations="{Binding ConditionDurations}"
                                       Knockdown="{Binding Knockdown}"
-                                      DamageBoosts="{Binding DamageBoosts}"/>
+                                      DamageBoosts="{Binding DamageBoosts}"
+                                      MissingPetText="{Binding MissingPetText}"/>
         </DataTemplate>
 
         <!-- Tooltip du catalogue de recherche : DataContext de la cellule = le Skill lui-même. -->
@@ -935,7 +936,8 @@
                                                                       DurationBoostAlly="{Binding DurationBoostAlly}"
                                                                       ConditionDurations="{Binding ConditionDurations}"
                                                                       Knockdown="{Binding Knockdown}"
-                                                                      DamageBoosts="{Binding DamageBoosts}"/>
+                                                                      DamageBoosts="{Binding DamageBoosts}"
+                                                                      MissingPetText="{Binding MissingPetText}"/>
                                         </ToolTip>
                                     </Border.ToolTip>
                                     <Border.ContextMenu>

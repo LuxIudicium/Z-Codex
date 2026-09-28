@@ -181,6 +181,7 @@
     <sys:String x:Key="S.Boost.Deactivate">désactiver</sys:String>
     <sys:String x:Key="S.Boost.FuriousTip">Amélioration d'arme « de fureur » : double l'adrénaline gagnée à la touche (10 % de chance).</sys:String>
     <sys:String x:Key="S.Boost.ProcNote">Allumée = l'effet s'est déclenché.</sys:String>
+    <sys:String x:Key="S.Tooltip.NoPet">Pas de familier : équipez Charme animal, Bien-être animal ou Guérison partagée.</sys:String>
     <sys:String x:Key="S.Band.NotCarried">Personne dans l'équipe ne porte cette compétence : elle n'apparaît dans le bandeau que si un personnage l'équipe.</sys:String>
     <sys:String x:Key="S.Boost.NoEffectEnchanted">Sans effet : ce personnage est sous un enchantement actif.</sys:String>
     <sys:String x:Key="S.Boost.OtherAllyNote">Allumée = le sort lancé vise un autre allié.</sys:String>
