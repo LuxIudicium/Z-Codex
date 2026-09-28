@@ -41,8 +41,10 @@ public static class AttributeBoostData
         new(164,  ElementalAttributes, null, ProgressionIndex: 1), // Elemental Attunement (scale via Energy Storage)
         new(198,  ElementalAttributes, 2),                         // Glyph of Elemental Power (fixe, pas de Progression)
         new(199,  ElementalAttributes, null, ProgressionIndex: 2), // Glyph of Energy (scale via Energy Storage)
-        new(2094, ElementalAttributes, 1),                         // Elemental Lord (Kurzick) — "boosted by 1", fixe
-        new(1951, ElementalAttributes, 1),                         // Elemental Lord (Luxon) — idem
+        // Clés ORPHELINES (900000+, cf. SkillUpdateService) : le wiki ne donne pas d'id de jeu aux compétences
+        // d'allégeance. Les anciennes 2094/1951 ne correspondaient à rien → boost muet de 1.0.0 au 28/09/2026.
+        new(900005, ElementalAttributes, 1),                       // Elemental Lord (Kurzick) — "boosted by 1", fixe
+        new(900006, ElementalAttributes, 1),                       // Elemental Lord (Luxon) — idem
         new(1217, RitualistAttributes, null, ProgressionIndex: 1), // Ritual Lord (scale via Spawning Power — sa PROPRE cible : lu en RAW, pas de cycle)
         new(3428, Array.Empty<string>(), null, ProgressionIndex: 1, TargetsAllAttributes: true), // Shadow Theft (scale via Critical Strikes)
         new(3426, WeaponAttributes, null, ProgressionIndex: 1), // Seven Weapons Stance (scale via Strength)
