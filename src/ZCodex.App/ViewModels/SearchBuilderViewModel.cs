@@ -394,6 +394,8 @@ public class SearchBuilderViewModel : ViewModelBase
 public enum CatalogTabKind
 {
     Profession, Attribute, NoAttribute, PveGroup, PveCategory,
+    // Onglet « All » de tête de ligne (vue Build) : lève profession ET caractéristique.
+    All,
     // Skill Types et Mechanics ont chacun leur PROPRE ligne de puces sous les onglets de
     // profession (choix Philippe 19/08/2026) : chaque ligne gère sa sélection, donc les trois
     // filtres — profession, type, mécanique — sont surlignés en même temps sans se mentir.
@@ -414,6 +416,7 @@ public sealed class CatalogTab : ViewModelBase
     // « PvE only » reste identique en FR (choix Philippe).
     public string Label => Kind switch
     {
+        CatalogTabKind.All                               => ZCodex.App.LanguageManager.T("S.Cat.AllTab"),
         CatalogTabKind.Profession                        => Profession.DisplayName(),
         CatalogTabKind.Attribute or CatalogTabKind.NoAttribute => GwAttributeData.DisplayName(Attribute ?? LabelEn),
         CatalogTabKind.PveGroup                          => "PvE only",

@@ -2017,6 +2017,16 @@
                                         <DataTemplate><TextBlock Text="{Binding Label}"/></DataTemplate>
                                     </ComboBox.ItemTemplate>
                                 </ComboBox>
+                                <ComboBox DockPanel.Dock="Left" Width="120" Margin="0,0,8,0" FontSize="12"
+                                          VerticalContentAlignment="Center"
+                                          ItemsSource="{Binding Catalog.EliteFilters}"
+                                          SelectedValuePath="Filter"
+                                          SelectedValue="{Binding Catalog.SelectedEliteFilter}"
+                                          ToolTip="{DynamicResource S.Ed.EliteFilterTip}">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate><TextBlock Text="{Binding Label}"/></DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
                                 <TextBlock Text="{DynamicResource S.Ed.SearchSkills}" DockPanel.Dock="Left" VerticalAlignment="Center"
                                            Margin="0,0,6,0" FontSize="12"/>
                                 <!-- Bascule des deux filtres, SÉPARÉMENT (demande Philippe 20/08/2026) : 34 types et
@@ -2689,6 +2699,16 @@
                                                     <DataTemplate><TextBlock Text="{Binding Label}"/></DataTemplate>
                                                 </ComboBox.ItemTemplate>
                                             </ComboBox>
+                                            <ComboBox DockPanel.Dock="Left" Width="120" Margin="0,0,8,0" FontSize="12"
+                                                      VerticalContentAlignment="Center"
+                                                      ItemsSource="{Binding Catalog.EliteFilters}"
+                                                      SelectedValuePath="Filter"
+                                                      SelectedValue="{Binding Catalog.SelectedEliteFilter}"
+                                                      ToolTip="{DynamicResource S.Ed.EliteFilterTip}">
+                                                <ComboBox.ItemTemplate>
+                                                    <DataTemplate><TextBlock Text="{Binding Label}"/></DataTemplate>
+                                                </ComboBox.ItemTemplate>
+                                            </ComboBox>
                                             <TextBlock Text="{DynamicResource S.Ed.SearchSkills}" DockPanel.Dock="Left" VerticalAlignment="Center"
                                                        Margin="0,0,6,0" FontSize="12"/>
                                             <TextBox Text="{Binding Catalog.SearchText, UpdateSourceTrigger=PropertyChanged}"
@@ -3231,6 +3251,16 @@
                                   SelectedValuePath="Mode"
                                   SelectedValue="{Binding SkillPanel.SelectedGameMode}"
                                   ToolTip="{DynamicResource S.Ed.GameModeTip}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate><TextBlock Text="{Binding Label}"/></DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        <ComboBox DockPanel.Dock="Left" Width="120" Margin="0,0,8,0" FontSize="12"
+                                  VerticalContentAlignment="Center"
+                                  ItemsSource="{Binding SkillPanel.EliteFilters}"
+                                  SelectedValuePath="Filter"
+                                  SelectedValue="{Binding SkillPanel.SelectedEliteFilter}"
+                                  ToolTip="{DynamicResource S.Ed.EliteFilterTip}">
                             <ComboBox.ItemTemplate>
                                 <DataTemplate><TextBlock Text="{Binding Label}"/></DataTemplate>
                             </ComboBox.ItemTemplate>

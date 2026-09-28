@@ -136,6 +136,7 @@
     <sys:String x:Key="S.Ed.SwapProfs">Swap primary / secondary</sys:String>
     <sys:String x:Key="S.Ed.SearchSkills">Search skills:</sys:String>
     <sys:String x:Key="S.Ed.GameModeTip">Filter the catalog: all skills, PvE only, or PvP only</sys:String>
+    <sys:String x:Key="S.Ed.EliteFilterTip">Filter the catalog: elite and non-elite skills, elite only, or non-elite only</sys:String>
     <sys:String x:Key="S.Ed.CopyCode">Copy code</sys:String>
     <sys:String x:Key="S.Ed.CopyCodeTip">Copy the template code (O code) to the clipboard</sys:String>
     <sys:String x:Key="S.Ed.CopyChat">Copy chat code</sys:String>
@@ -216,6 +217,7 @@
     <sys:String x:Key="S.Cat.Name">Name</sys:String>
     <!-- Colonnes Types/Mechanics + ligne de retour de la recherche -->
     <sys:String x:Key="S.Cat.Types">Skill Types</sys:String>
+    <sys:String x:Key="S.Cat.AllTab">All</sys:String>
     <sys:String x:Key="S.Cat.Mechanics">Mechanics</sys:String>
     <sys:String x:Key="S.Cat.ChipRowTip">Click to fold or unfold this filter row. Folded, it only shows what is active.</sys:String>
     <sys:String x:Key="S.Cat.ToggleTypesTip" xml:space="preserve">Filter by skill Type — what the in-game tooltip says.&#10;Hiding it resets that filter to "All".</sys:String>
@@ -311,7 +313,7 @@
     <sys:String x:Key="S.Msg.PwndNothing">No character to export.</sys:String>
     <sys:String x:Key="S.Dlg.ImportEquip">Import an equipment template</sys:String>
     <sys:String x:Key="S.Dlg.AssignPlayer">Assign a player</sys:String>
-    <sys:String x:Key="S.Dlg.OpenTeamBuild">Open a Team Build</sys:String>
+    <sys:String x:Key="S.Dlg.Open">Open</sys:String>
     <sys:String x:Key="S.Dlg.SaveTeamBuild">Save the Team Build</sys:String>
     <sys:String x:Key="S.Dlg.SaveScreenshot">Save the team build screenshot</sys:String>
     <sys:String x:Key="S.Dlg.SaveBuildTpl">Save the build template</sys:String>
@@ -598,6 +600,7 @@
     <sys:String x:Key="S.Filter.EquipTpl">Equipment templates (*.txt)|*.txt|All files (*.*)|*.*</sys:String>
     <sys:String x:Key="S.Filter.EquipTplSave">Equipment template (*.txt)|*.txt</sys:String>
     <sys:String x:Key="S.Filter.NativeBuild">Z-Codex team build</sys:String>
+    <sys:String x:Key="S.Filter.GwTemplate">GW1 build template</sys:String>
     <sys:String x:Key="S.Filter.AllBuilds">All builds</sys:String>
     <sys:String x:Key="S.Filter.Png">PNG image (*.png)|*.png</sys:String>
     <sys:String x:Key="S.Filter.SkillTplSave">GW1 template (*.txt)|*.txt</sys:String>
@@ -609,6 +612,9 @@
     <sys:String x:Key="S.Filter.AllSkills">All skills</sys:String>
     <sys:String x:Key="S.Filter.PvEOnly">PvE only</sys:String>
     <sys:String x:Key="S.Filter.PvPOnly">PvP only</sys:String>
+    <sys:String x:Key="S.Filter.EliteAll">Elite: all</sys:String>
+    <sys:String x:Key="S.Filter.EliteOnly">Elite only</sys:String>
+    <sys:String x:Key="S.Filter.NonEliteOnly">Non-elite only</sys:String>
 
     <!-- ── Armor calculator ───────────────────────────────────────────── -->
     <sys:String x:Key="S.Armor.SaveProfileTip">Name of the profile to save</sys:String>

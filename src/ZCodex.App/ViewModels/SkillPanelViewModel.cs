@@ -91,6 +91,26 @@ public class SkillCategoryItem : ViewModelBase
 //   PvE des skills splittées PvE/PvP (les non-splittées et les " (PvP)" restent).
 public enum SkillGameMode { All, PvE, PvP }
 
+// Filtre Élite / Non-élite (demande Philippe 28/09/2026) : se CROISE avec tous les autres filtres,
+// d'où un sélecteur à part plutôt qu'un onglet de la ligne profession (exclusive). Même motif
+// notifiant que SkillGameModeOption, pour la même raison (sélection du ComboBox au switch de langue).
+public enum SkillEliteFilter { All, Elite, NonElite }
+
+public class SkillEliteOption : ViewModelBase
+{
+    public SkillEliteFilter Filter { get; }
+    public SkillEliteOption(SkillEliteFilter filter) => Filter = filter;
+    public string Label => Filter switch
+    {
+        SkillEliteFilter.Elite    => T("S.Filter.EliteOnly"),
+        SkillEliteFilter.NonElite => T("S.Filter.NonEliteOnly"),
+        _                         => T("S.Filter.EliteAll"),
+    };
+    public void RaiseLanguageChanged() => OnPropertyChanged(nameof(Label));
+    public override string ToString() => Label;
+    private static string T(string key) => ZCodex.App.LanguageManager.T(key);
+}
+
 // Le filtre se fait sur Mode (enum) → Label est purement d'affichage. Classe NOTIFIANTE (pas record) :
 // au switch de langue on lève PropertyChanged(Label) SANS reconstruire la collection — un ComboBox
 // lié perd sa sélection au Clear+Add (cf. régression 21/07), contrairement au ListBox. Les vues
@@ -283,6 +303,27 @@ public class SkillPanelViewModel : ViewModelBase
         new SkillGameModeOption(SkillGameMode.All),
         new SkillGameModeOption(SkillGameMode.PvE),
         new SkillGameModeOption(SkillGameMode.PvP),
+    };
+
+    public ObservableCollection<SkillEliteOption> EliteFilters { get; } = new()
+    {
+        new SkillEliteOption(SkillEliteFilter.All),
+        new SkillEliteOption(SkillEliteFilter.Elite),
+        new SkillEliteOption(SkillEliteFilter.NonElite),
+    };
+
+    private SkillEliteFilter _selectedEliteFilter;
+    public SkillEliteFilter SelectedEliteFilter
+    {
+        get => _selectedEliteFilter;
+        set { if (SetField(ref _selectedEliteFilter, value)) RefreshSkills(); }
+    }
+
+    private bool MatchesElite(Skill s) => _selectedEliteFilter switch
+    {
+        SkillEliteFilter.Elite    => s.IsElite,
+        SkillEliteFilter.NonElite => !s.IsElite,
+        _                         => true,
     };
 
     public SkillGameMode SelectedGameMode
@@ -565,6 +606,7 @@ public class SkillPanelViewModel : ViewModelBase
         var basis = AllSkills
             .Where(s => !CelestialSkillNames.Contains(s.Name))   // filtre caché : jamais de skills célestes
             .Where(MatchesGameMode)
+            .Where(MatchesElite)
             .Where(s => _extraFilter?.Invoke(s) ?? true)
             .Where(s => _selectedTypeItem?.Def.Test(s) ?? true)
             .Where(s => _selectedMechanicItem?.Def.Test(s) ?? true)
@@ -579,6 +621,7 @@ public class SkillPanelViewModel : ViewModelBase
         var pool = AllSkills
             .Where(s => !CelestialSkillNames.Contains(s.Name))
             .Where(MatchesGameMode)
+            .Where(MatchesElite)
             .Where(s => _extraFilter?.Invoke(s) ?? true)
             .Where(MatchesSearch)
             .Where(s => InScope(s) && MatchesAttributeFilter(s))
@@ -750,6 +793,7 @@ public class SkillPanelViewModel : ViewModelBase
     {
         foreach (var p in Professions) p.RaiseLanguageChanged();
         foreach (var m in GameModes)   m.RaiseLanguageChanged();
+        foreach (var e in EliteFilters) e.RaiseLanguageChanged();
         // Colonnes Types/Mechanics : listes statiques → on notifie le libellé, on ne reconstruit pas
         // (un Clear+Add ferait perdre la sélection, cf. la régression ComboBox du 21/07).
         foreach (var t in TypeCategories)     t.RaiseLanguageChanged();

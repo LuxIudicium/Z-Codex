@@ -139,6 +139,7 @@
     <sys:String x:Key="S.Ed.SwapProfs">Échanger primaire / secondaire</sys:String>
     <sys:String x:Key="S.Ed.SearchSkills">Rechercher :</sys:String>
     <sys:String x:Key="S.Ed.GameModeTip">Filtrer le catalogue : tous les skills, PvE uniquement, ou PvP uniquement</sys:String>
+    <sys:String x:Key="S.Ed.EliteFilterTip">Filtrer le catalogue : élites et non-élites, élites seules, ou non-élites seules</sys:String>
     <sys:String x:Key="S.Ed.CopyCode">Copier le code</sys:String>
     <sys:String x:Key="S.Ed.CopyCodeTip">Copier le code de template (code O) dans le presse-papier</sys:String>
     <sys:String x:Key="S.Ed.CopyChat">Copier le code de chat</sys:String>
@@ -219,6 +220,7 @@
     <sys:String x:Key="S.Cat.Name">Nom</sys:String>
     <!-- Colonnes Types/Mécaniques + ligne de retour de la recherche -->
     <sys:String x:Key="S.Cat.Types">Types de compétences</sys:String>
+    <sys:String x:Key="S.Cat.AllTab">Tout</sys:String>
     <sys:String x:Key="S.Cat.Mechanics">Mécaniques</sys:String>
     <sys:String x:Key="S.Cat.ChipRowTip">Cliquer pour replier ou déplier cette ligne de filtres. Repliée, elle ne montre que ce qui est actif.</sys:String>
     <sys:String x:Key="S.Cat.ToggleTypesTip" xml:space="preserve">Filtrer par Type de compétence — ce que dit l'infobulle du jeu.&#10;Le masquer remet ce filtre sur « All ».</sys:String>
@@ -314,7 +316,7 @@
     <sys:String x:Key="S.Msg.PwndNothing">Aucun personnage à exporter.</sys:String>
     <sys:String x:Key="S.Dlg.ImportEquip">Importer un template d'équipement</sys:String>
     <sys:String x:Key="S.Dlg.AssignPlayer">Assigner un joueur</sys:String>
-    <sys:String x:Key="S.Dlg.OpenTeamBuild">Ouvrir un Team Build</sys:String>
+    <sys:String x:Key="S.Dlg.Open">Ouvrir</sys:String>
     <sys:String x:Key="S.Dlg.SaveTeamBuild">Enregistrer le Team Build</sys:String>
     <sys:String x:Key="S.Dlg.SaveScreenshot">Enregistrer le screenshot du team build</sys:String>
     <sys:String x:Key="S.Dlg.SaveBuildTpl">Enregistrer le template de build</sys:String>
@@ -601,6 +603,7 @@
     <sys:String x:Key="S.Filter.EquipTpl">Templates d'équipement (*.txt)|*.txt|Tous les fichiers (*.*)|*.*</sys:String>
     <sys:String x:Key="S.Filter.EquipTplSave">Template d'équipement (*.txt)|*.txt</sys:String>
     <sys:String x:Key="S.Filter.NativeBuild">Team build Z-Codex</sys:String>
+    <sys:String x:Key="S.Filter.GwTemplate">Template de build GW1</sys:String>
     <sys:String x:Key="S.Filter.AllBuilds">Tous les builds</sys:String>
     <sys:String x:Key="S.Filter.Png">Image PNG (*.png)|*.png</sys:String>
     <sys:String x:Key="S.Filter.SkillTplSave">Template GW1 (*.txt)|*.txt</sys:String>
@@ -612,6 +615,9 @@
     <sys:String x:Key="S.Filter.AllSkills">Toutes les compétences</sys:String>
     <sys:String x:Key="S.Filter.PvEOnly">PvE only</sys:String>
     <sys:String x:Key="S.Filter.PvPOnly">PvP only</sys:String>
+    <sys:String x:Key="S.Filter.EliteAll">Élite : tout</sys:String>
+    <sys:String x:Key="S.Filter.EliteOnly">Élites seules</sys:String>
+    <sys:String x:Key="S.Filter.NonEliteOnly">Non-élites seules</sys:String>
 
     <!-- ── Calculateur d'armure ───────────────────────────────────────── -->
     <sys:String x:Key="S.Armor.SaveProfileTip">Nom du profil à enregistrer</sys:String>

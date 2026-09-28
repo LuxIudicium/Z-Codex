@@ -948,45 +948,22 @@ public partial class MainWindow : Window
         // L'ouverture accepte AUSSI l'ancienne extension .pn3 : sans elle, les team builds déjà
         // enregistrés n'apparaîtraient plus dans la boîte de dialogue.
         var nat  = $"*{TeamBuildSerializer.Extension};*{TeamBuildSerializer.LegacyExtension}";
-        var all  = $"{nat};*{PwndImporter.Extension}";
+        var tpl  = $"*{SkillTemplateImporter.Extension}";
+        var all  = $"{nat};*{PwndImporter.Extension};{tpl}";
         var natFilter  = $"{T("S.Filter.NativeBuild")} ({nat})|{nat}";
         var pwndFilter = $"paw·ned² (*{PwndImporter.Extension})|*{PwndImporter.Extension}";
+        var tplFilter  = $"{T("S.Filter.GwTemplate")} ({tpl})|{tpl}";
         var dlg = new OpenFileDialog
         {
-            Filter = $"{natFilter}|{pwndFilter}|{T("S.Filter.AllBuilds")} ({all})|{all}",
-            Title  = T("S.Dlg.OpenTeamBuild"),
-            FilterIndex = 3,
+            Filter = $"{natFilter}|{pwndFilter}|{tplFilter}|{T("S.Filter.AllBuilds")} ({all})|{all}",
+            Title  = T("S.Dlg.Open"),
+            FilterIndex = 4,
         };
         if (dlg.ShowDialog() != true) return;
 
-        var skillsById = _vm.SkillPanel.AllSkills.ToDictionary(s => s.Id, s => s);
-        var ext = Path.GetExtension(dlg.FileName).ToLowerInvariant();
-
-        TeamBuild? model;
-        var unresolved = new List<int>();
-        bool isPwnd = ext == PwndImporter.Extension;
-        if (isPwnd)
-            model = PwndImporter.Import(dlg.FileName, skillsById);
-        else
-            model = TeamBuildSerializer.Load(dlg.FileName, skillsById, out unresolved);
-
-        if (model == null)
-        {
-            MessageBox.Show(string.Format(T("S.Msg.CantReadFile"), dlg.FileName),
-                T("S.Msg.ErrorTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
-
-        WarnUnresolvedSkills(unresolved);
-
-        var tb = ModelToViewModel(model);
-        if (!isPwnd) tb.FilePath = dlg.FileName; // .pwnd → filePath null, save as .pn3
-        tb.SourcePath = dlg.FileName;   // tracé pour le renommage d'onglet (tout format)
-        RestoreSavedGameMode(model, !isPwnd);    // .pn3 v17 : rouvre dans le mode enregistré
-        _vm.ApplyGameModeTo(tb);        // puis aligne les compétences sur le mode retenu
-        tb.BeginTracking();
-        _vm.OpenTeamBuilds.Add(tb);
-        _vm.ActiveTeamBuild = tb;
+        // Même aiguillage que le double-clic du navigateur : un .txt ouvre un onglet Build (ou la
+        // fenêtre d'équipement s'il n'a que des codes P), le reste un teambuild.
+        OpenFileFromBrowser(dlg.FileName);
     }
 
     // Rien à enregistrer tant qu'aucun onglet n'est actif (le navigateur de fichiers, par exemple) :

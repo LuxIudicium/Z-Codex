@@ -365,6 +365,9 @@ public class BuildEditorViewModel : ViewModelBase
         CatalogTabs.Clear();
         CatalogSubTabs.Clear();
 
+        // « All » en tête, sélectionné : les deux branches ci-dessous remettent le filtre sur tout.
+        CatalogTabs.Add(new CatalogTab("All", CatalogTabKind.All) { IsSelected = true });
+
         if (scope.Count == 0)
         {
             // Browse toutes professions : un groupe dépliable par profession.
@@ -468,8 +471,12 @@ public class BuildEditorViewModel : ViewModelBase
     }
 
     // Clic sur un onglet de la ligne 1 : déplie ses enfants (ligne 2) et applique son filtre.
+    // Recliquer l'onglet déjà sélectionné le désélectionne, c'est-à-dire revient sur « All ».
     public void SelectCatalogTab(CatalogTab tab)
     {
+        if (tab.IsSelected && tab.Kind != CatalogTabKind.All
+            && CatalogTabs.FirstOrDefault(t => t.Kind == CatalogTabKind.All) is { } all)
+            tab = all;
         foreach (var t in CatalogTabs) t.IsSelected = ReferenceEquals(t, tab);
         CatalogSubTabs.Clear();
         foreach (var c in tab.Children) CatalogSubTabs.Add(c);
@@ -488,6 +495,10 @@ public class BuildEditorViewModel : ViewModelBase
     {
         switch (tab.Kind)
         {
+            case CatalogTabKind.All:
+                Catalog.SelectedProfessionOption    = ProfessionOption.All;
+                Catalog.SelectedProfessionAttribute = GwAttributeData.AllAttributesLabel;
+                break;
             case CatalogTabKind.Profession:
                 Catalog.SelectedProfessionOption =
                     Catalog.Professions.FirstOrDefault(o => o.Value == tab.Profession) ?? ProfessionOption.All;
