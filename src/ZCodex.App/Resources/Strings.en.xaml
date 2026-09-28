@@ -181,6 +181,9 @@
     <sys:String x:Key="S.Band.NotCarried">Nobody in the party carries this skill: it only appears in the band once a character equips it.</sys:String>
     <sys:String x:Key="S.Boost.NoEffectEnchanted">No effect: this character is under an active enchantment.</sys:String>
     <sys:String x:Key="S.Boost.OtherAllyNote">On = the spell you cast targets another ally.</sys:String>
+    <sys:String x:Key="S.Boost.HelpNote">On = the other members target this ally: their spells cast 50% faster. Their own spells do not benefit.</sys:String>
+    <sys:String x:Key="S.Boost.AirOfEnchantmentNote">On = this ally is targeted: every enchantment cast on them costs 10 less Energy (minimum 1), their own included.</sys:String>
+    <sys:String x:Key="S.Boost.EnduringHarmonyNote">On = the shouts and chants this ally uses last 50% longer.</sys:String>
     <sys:String x:Key="S.Boost.SpiritNote">On = a spirit is within earshot.</sys:String>
     <sys:String x:Key="S.Boost.SelfEnchantmentNote">On = the enchantment is cast on this character.</sys:String>
     <sys:String x:Key="S.Boost.NoEffectWithoutBow">No effect: the active weapon set has no bow.</sys:String>
@@ -323,6 +326,7 @@
     <sys:String x:Key="S.Upd.Error">The update failed.</sys:String>
     <sys:String x:Key="S.Upd.Retry">You can restart the download from the Extras ▸ Update skills (wiki) menu.</sys:String>
     <sys:String x:Key="S.Misc.BuildNamePlaceholder">(Build Name)</sys:String>
+    <sys:String x:Key="S.Misc.BuildNameNumbered">Build Name {0}</sys:String>
 
     <!-- ── Menus built in code ────────────────────────────────────────── -->
     <sys:String x:Key="S.Flux.None">None (disabled)</sys:String>

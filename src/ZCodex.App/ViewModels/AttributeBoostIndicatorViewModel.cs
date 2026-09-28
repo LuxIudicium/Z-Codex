@@ -72,6 +72,11 @@ public class AttributeBoostIndicatorViewModel : ViewModelBase
                 ? T("S.Boost.NoEffectNonPhysical")
             : skill.Id is EnergyCostBoostData.SelflessSpiritKurzickSkillId or EnergyCostBoostData.SelflessSpiritLuxonSkillId
                 ? T("S.Boost.OtherAllyNote")
+            // Effets posés sur un allié (lot 7a) : l'icône agit chez les AUTRES membres pour deux d'entre eux —
+            // sans un mot, rien ne bouge sur la carte où l'on clique.
+            : TargetedAllyEffectData.ToggleIdOf(skill.Id) == TargetedAllyEffectData.HelpSkillId ? T("S.Boost.HelpNote")
+            : skill.Id == TargetedAllyEffectData.AirOfEnchantmentSkillId ? T("S.Boost.AirOfEnchantmentNote")
+            : skill.Id == SkillDurationBoostData.EnduringHarmonySkillId ? T("S.Boost.EnduringHarmonyNote")
             : skill.Id == AttributeSubstitutionData.SymbolicCeleritySkillId && owner.FastCastingRank == 0
                 ? T("S.Boost.ZeroFastCasting")
             : skill.Id == SkillSpeedBoostData.GhostlyHasteSkillId ? T("S.Boost.SpiritNote")

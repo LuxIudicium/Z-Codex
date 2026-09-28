@@ -184,6 +184,9 @@
     <sys:String x:Key="S.Band.NotCarried">Personne dans l'équipe ne porte cette compétence : elle n'apparaît dans le bandeau que si un personnage l'équipe.</sys:String>
     <sys:String x:Key="S.Boost.NoEffectEnchanted">Sans effet : ce personnage est sous un enchantement actif.</sys:String>
     <sys:String x:Key="S.Boost.OtherAllyNote">Allumée = le sort lancé vise un autre allié.</sys:String>
+    <sys:String x:Key="S.Boost.HelpNote">Allumée = les autres membres visent cet allié : leurs sorts s'incantent 50 % plus vite. Les siens n'en profitent pas.</sys:String>
+    <sys:String x:Key="S.Boost.AirOfEnchantmentNote">Allumée = on vise cet allié : tout enchantement lancé sur lui coûte 10 d'énergie de moins (minimum 1), les siens compris.</sys:String>
+    <sys:String x:Key="S.Boost.EnduringHarmonyNote">Allumée = les cris et chants que lance cet allié durent 50 % plus longtemps.</sys:String>
     <sys:String x:Key="S.Boost.SpiritNote">Allumée = un esprit est à portée de voix.</sys:String>
     <sys:String x:Key="S.Boost.SelfEnchantmentNote">Allumée = l'enchantement est lancé sur ce personnage.</sys:String>
     <sys:String x:Key="S.Boost.NoEffectWithoutBow">Sans effet : le set d'armes actif ne porte pas d'arc.</sys:String>
@@ -326,6 +329,7 @@
     <sys:String x:Key="S.Upd.Error">Erreur lors de la mise à jour.</sys:String>
     <sys:String x:Key="S.Upd.Retry">Vous pouvez relancer le téléchargement par le menu Extras ▸ Mettre à jour les compétences (wiki).</sys:String>
     <sys:String x:Key="S.Misc.BuildNamePlaceholder">(Libellé build)</sys:String>
+    <sys:String x:Key="S.Misc.BuildNameNumbered">Libellé build {0}</sys:String>
 
     <!-- ── Menus construits en code ───────────────────────────────────── -->
     <sys:String x:Key="S.Flux.None">Aucun (désactivé)</sys:String>

@@ -87,7 +87,7 @@ public class TeamBuildViewModel : ViewModelBase, IRenamableTab
                        + $"|{JudgesInsight?.Id}|{string.Join(";", TeamAdrenaline.Effects)}"
                        + $"|{EnergizingChorusReduction}|{TeamSpeed}"
                        + $"|{CharacterSlotViewModel.GreatDwarfWeaponFor(EnumerateTree())?.Id}"
-                       + $"|{ReceivedDamageBoostsSignature}|{BandDamageRanksSignature}";
+                       + $"|{ReceivedDamageBoostsSignature}|{BandDamageRanksSignature}|{TargetedAllyEffectsSignature}";
             if (sig == _heroicRefrainSig) return;
             _heroicRefrainSig = sig;
             _heroicRefrainTimer.Stop();
@@ -108,6 +108,22 @@ public class TeamBuildViewModel : ViewModelBase, IRenamableTab
     // signature, leurs infobulles gardent l'ancien chiffre jusqu'à ce qu'autre chose bouge.
     private string BandDamageRanksSignature =>
         string.Join(",", BandRanks.OrderBy(kv => (int)kv.Key).Select(kv => $"{(int)kv.Key}:{kv.Value}"));
+
+    // Lot 7a : l'apparition d'un porteur de « A l'aide ! », d'Atmosphère ou d'Harmonie doit réveiller les bandeaux de
+    // TOUS les persos (piège du lot 4c). Sans receveur précis : on demande qui porte quoi, et combien de persos il y a
+    // (« A l'aide ! » n'est proposée que s'il existe un autre membre).
+    private string TargetedAllyEffectsSignature
+    {
+        get
+        {
+            var tree = EnumerateTree().ToList();
+            var ids = tree.SelectMany(c => c.SkillSlots).Select(sl => sl.Skill?.Id ?? 0)
+                .Where(id => ZCodex.Core.Data.TargetedAllyEffectData.ToggleIdOf(id) is not null
+                             || id == ZCodex.Core.Data.SkillDurationBoostData.EnduringHarmonySkillId)
+                .Distinct().OrderBy(id => id);
+            return $"{tree.Count}:{string.Join(",", ids)}";
+        }
+    }
 
     private string _heroicRefrainSig = "";
     private readonly DispatcherTimer _heroicRefrainTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
@@ -172,6 +188,23 @@ public class TeamBuildViewModel : ViewModelBase, IRenamableTab
     // descripteurs. Le receveur est passé parce que deux d'entre elles ne peuvent pas venir de soi-même.
     public IReadOnlyDictionary<int, (Skill Skill, int Rank)> ReceivedDamageBoostsFor(CharacterSlotViewModel receiver) =>
         CharacterSlotViewModel.ReceivedDamageBoostsFor(EnumerateTree(), receiver);
+
+    // Effets posés sur un allié (lot 7a) : « A l'aide ! », Atmosphère enchanteresse, Harmonie persistante.
+    public IReadOnlyDictionary<int, Skill> TargetedAllyEffectsFor(CharacterSlotViewModel receiver) =>
+        CharacterSlotViewModel.TargetedAllyEffectsFor(EnumerateTree(), receiver);
+
+    /// <summary>Noms affichés des AUTRES persos de l'arbre que <paramref name="me"/> qui portent l'effet allumé (et proposé).</summary>
+    public IReadOnlyList<string> OthersWithLitTargetedAllyEffect(CharacterSlotViewModel me, int toggleId) =>
+        EnumerateTree().Where(c => !ReferenceEquals(c, me) && c.HasLitTargetedAllyEffect(toggleId))
+            .Select(c => c.DisplayName).Distinct().ToList();
+
+    /// <summary>Rafraîchit les infobulles de compétences de tous les persos SAUF <paramref name="source"/> (qui s'est
+    /// déjà rafraîchi) : une icône du lot 7a allumée sur un perso change les sorts des autres.</summary>
+    public void RefreshOtherSkillTooltips(CharacterSlotViewModel source)
+    {
+        foreach (var n in EnumerateTree())
+            if (!ReferenceEquals(n, source)) n.RefreshSkillTooltips();
+    }
 
     // Rangs des effets de dégâts PORTÉS du bandeau (lot 6c-2) : rang du porteur le plus fort de l'arbre pour
     // chacun ; absent = personne ne le porte, et l'effet ne joue alors pas, même resté allumé dans un fichier.
@@ -332,6 +365,11 @@ public class TeamBuildViewModel : ViewModelBase, IRenamableTab
             foreach (var c in n.Variants) Walk(c, depth + 1, n);
         }
         foreach (var root in Characters) Walk(root, 0, null);
+        // Placeholders numérotés (« Build Name 2.1 ») : ils suivent la place dans l'arbre.
+        foreach (var n in EnumerateTree()) n.RaiseDisplayNameChanged();
+        // … et les phrases du lot 7a qui les citent : seulement si l'une d'elles existe (pas de coût sinon).
+        if (EnumerateTree().Any(n => n.HasAnyLitTargetedAllyEffect))
+            foreach (var n in EnumerateTree()) n.RefreshSkillTooltips();
     }
 
     private void RebuildVisibleRows()

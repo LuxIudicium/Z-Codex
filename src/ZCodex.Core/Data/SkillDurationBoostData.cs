@@ -16,10 +16,11 @@ public enum DurationFamily { None, Enchantment, Stance, Preparation, Hex, Shout,
 /// (icône allumée = effet actif, comme les lots 1 à 3). Pourcentage fixe (<paramref name="Percent"/>) ou lu dans
 /// <c>Progression[<paramref name="PercentIndex"/>]</c> au rang de <paramref name="ScalingAttribute"/>.
 /// <paramref name="BaseSkillId"/> = id PvE d'une variante « (PvP) » : l'icône est mémorisée sur l'id de base.
+/// <paramref name="Received"/> : effet reçu d'un allié (Harmonie persistante, lot 7a) — jamais une icône personnelle.
 /// </summary>
 public sealed record SkillDurationBoostDescriptor(
     int SkillId, Func<Skill, bool> Applies,
-    int Percent = 0, int PercentIndex = -1, string? ScalingAttribute = null, int BaseSkillId = 0)
+    int Percent = 0, int PercentIndex = -1, string? ScalingAttribute = null, int BaseSkillId = 0, bool Received = false)
 {
     /// <summary>Id sous lequel l'icône est mémorisée (et persistée) : l'id de base.</summary>
     public int ToggleId => BaseSkillId != 0 ? BaseSkillId : SkillId;
@@ -34,9 +35,12 @@ public static class SkillDurationBoostData
     private static bool IsRitualistHex(Skill s) => NatureRitualData.IsHex(s) && s.Profession == Profession.Ritualist;
 
     // SkillId, colonnes de progression et caractéristiques relevés dans la base réelle (16/09/2026).
-    // Les cinq allongeurs visent des familles DISJOINTES, et les deux paires qui pourraient se croiser sont déjà
-    // exclusives côté carte du perso (Mantra de persévérance et Pose de pratique sont deux poses ; Lingwah et
-    // Sogolon deux sorts d'objet) → au plus UN pourcentage s'applique à une compétence donnée.
+    // Les cinq allongeurs personnels visent des familles DISJOINTES, et les deux paires qui pourraient se croiser
+    // sont déjà exclusives côté carte du perso (Mantra de persévérance et Pose de pratique sont deux poses ; Lingwah
+    // et Sogolon deux sorts d'objet) → au plus UN pourcentage personnel s'applique à une compétence donnée. Harmonie
+    // persistante (reçue, lot 7a) peut s'y ajouter sur les cris et chants : elle se MULTIPLIE avec Sogolon (contre-test
+    // en jeu de Philippe le 28/09/2026 : Chanson de purification 20 s, Restauration 12 → 43 s = 20 × 1,5 × 1,44 ;
+    // l'addition aurait donné 38 s).
     public static readonly IReadOnlyList<SkillDurationBoostDescriptor> All = new SkillDurationBoostDescriptor[]
     {
         new(14,   IsIllusionHex,  PercentIndex: 1, ScalingAttribute: "Inspiration Magic"),   // Mantra of Persistence : +10…34…40 %
@@ -45,7 +49,11 @@ public static class SkillDurationBoostData
         new(449,  IsPreparation,  PercentIndex: 1, ScalingAttribute: "Expertise"),           // Practiced Stance : +30…246…300 % (lot 3 pour la recharge)
         new(1731, NatureRitualData.IsChantOrShout, PercentIndex: 0,
             ScalingAttribute: "Restoration Magic"),                                          // Vocal Was Sogolon : +20…44…50 %
+        new(EnduringHarmonySkillId, NatureRitualData.IsChantOrShout, Percent: 50, Received: true), // Enduring Harmony (reçue) : +50 %
     };
+
+    /// <summary>Harmonie persistante : allonge les cris et chants que LANCE l'allié qui la porte (pas ceux qu'il reçoit).</summary>
+    public const int EnduringHarmonySkillId = 1574;
 
     private static readonly Dictionary<int, SkillDurationBoostDescriptor> _bySkillId = All.ToDictionary(d => d.SkillId);
     private static readonly HashSet<int> _toggleIds = All.Select(d => d.ToggleId).ToHashSet();
@@ -70,19 +78,21 @@ public static class SkillDurationBoostData
 
     /// <summary>Pourcentage cumulé (0 = rien) des allongeurs ACTIFS qui touchent <paramref name="target"/>. Chaque
     /// actif = le descripteur, la compétence équipée qui le porte (pour sa progression) et le rang de sa
-    /// caractéristique d'échelle. Les familles étant disjointes, la somme ne compte en pratique qu'un seul terme.</summary>
+    /// caractéristique d'échelle. Les rallonges se MULTIPLIENT (Harmonie × Sogolon, testé en jeu). Le résultat reste
+    /// entier dans tous les cas réels : le seul cumul possible est 50 % × un rang de Sogolon, toujours pair.</summary>
     public static int PercentFor(
         Skill target, IEnumerable<(SkillDurationBoostDescriptor Descriptor, Skill Source, int Rank)> active)
     {
-        int total = 0;
+        decimal factor = 1m;
         foreach (var (d, source, rank) in active.DistinctBy(a => a.Descriptor.ToggleId))
         {
             if (!d.Applies(target)) continue;
-            total += d.PercentIndex < 0
+            int pct = d.PercentIndex < 0
                 ? d.Percent
                 : SkillProgression.IntAt(source.Progression is { } p && d.PercentIndex < p.Length ? p[d.PercentIndex] : null, rank) ?? 0;
+            factor *= 1m + Math.Max(0, pct) / 100m;
         }
-        return Math.Max(0, total);
+        return (int)Math.Floor((factor - 1m) * 100m);
     }
 
     /// <summary>Durée rallongée : plancher(base × (1 + %)). Arrondi vers le bas, comme les enchantements

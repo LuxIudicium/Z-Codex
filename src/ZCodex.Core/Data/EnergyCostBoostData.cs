@@ -25,9 +25,12 @@ public sealed record EnergyCostBoostDescriptor(
 
 /// <summary>Réductions cumulées qui s'appliquent à UNE compétence. PercentOfBase : somme des % ;
 /// Flat : points retirés ; Minimum : plus haut « minimum N » des réductions en points actives ;
-/// Free : coût ramené à 0 ; RemovesOvercast : la compétence ne cause pas d'afflux (Glyph of Energy).</summary>
+/// Free : coût ramené à 0 ; RemovesOvercast : la compétence ne cause pas d'afflux (Glyph of Energy).
+/// AirOfEnchantmentAlly : Atmosphère enchanteresse joue (lot 7a) — nom de l'allié visé, "" si elle est sur le lanceur,
+/// null si elle ne joue pas ; l'infobulle en tire sa phrase d'explication et sa couleur (ambre, source extérieure).</summary>
 public readonly record struct EnergyReduction(
-    int PercentOfBase = 0, int Flat = 0, int Minimum = 0, bool Free = false, bool RemovesOvercast = false)
+    int PercentOfBase = 0, int Flat = 0, int Minimum = 0, bool Free = false, bool RemovesOvercast = false,
+    string? AirOfEnchantmentAlly = null)
 {
     public bool LowersCost => Free || PercentOfBase > 0 || Flat > 0;
 }

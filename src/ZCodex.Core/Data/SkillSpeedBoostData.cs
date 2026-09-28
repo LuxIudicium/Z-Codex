@@ -36,11 +36,12 @@ public sealed record SkillSpeedBoostDescriptor(
 /// eux (0 = aucune) ; <c>…Strongest</c> = plus forte réduction seule, qui peut franchir le plafond de 50 % ;
 /// <c>RechargeBlock</c> = secondes de blocage des attaques (Deadly Paradox), affichées à part ;
 /// <c>AttackSpeedCut</c> = part de la DURÉE d'attaque retirée par les effets de vitesse d'attaque (0,33 = « attaquer
-/// 33 % plus vite »), qui raccourcit d'autant l'incantation des attaques.</summary>
+/// 33 % plus vite »), qui raccourcit d'autant l'incantation des attaques. <c>HelpAlly</c> : « A l'aide ! » joue (lot 7a),
+/// nom de l'allié visé qui la porte, null sinon — pour la phrase d'explication et la couleur ambre de l'infobulle.</summary>
 public readonly record struct SkillSpeed(
     decimal RechargeCut = 0m, int RechargeStrongest = 0, bool RechargeInstant = false, int RechargeAdded = 0,
     decimal CastCut = 0m, int CastStrongest = 0, bool CastInstant = false, bool CastQuarter = false, int CastFlat = 0,
-    int RechargeBlock = 0, decimal AttackSpeedCut = 0m)
+    int RechargeBlock = 0, decimal AttackSpeedCut = 0m, string? HelpAlly = null)
 {
     public bool ChangesRecharge => RechargeCut > 0m || RechargeInstant || RechargeAdded != 0 || RechargeBlock > 0;
     public bool ChangesCast => CastCut > 0m || CastInstant || CastQuarter || CastFlat > 0 || AttackSpeedCut > 0m;

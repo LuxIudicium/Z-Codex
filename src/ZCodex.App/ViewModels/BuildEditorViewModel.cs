@@ -113,6 +113,10 @@ public class BuildEditorViewModel : ViewModelBase
             CharacterSlotViewModel.ReceivedDamageBoostsFor(new[] { Character }, receiver);
         Character.GreatDwarfWeaponProvider = receiver =>
             CharacterSlotViewModel.GreatDwarfWeaponFor(new[] { Character }, receiver);
+        // Effets posés sur un allié (lot 7a) : un seul perso. « A l'aide ! » ne sert à rien (ses propres sorts n'en
+        // profitent pas) et Atmosphère ne peut pas venir de lui : seule Harmonie persistante peut y avoir une icône.
+        Character.TargetedAllyEffectsProvider = receiver =>
+            CharacterSlotViewModel.TargetedAllyEffectsFor(new[] { Character }, receiver);
         // Saignement de Ronces (lot 4c) : un seul perso, donc porteur éventuel = lui, sinon rang de simulation.
         Character.BramblesBleedProvider = () => CharacterSlotViewModel.BramblesBleedFor(
             NatureRituals.Active, new[] { Character }, NatureRituals.BramblesRank);

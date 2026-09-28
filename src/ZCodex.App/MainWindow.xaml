@@ -692,14 +692,18 @@
                     <!-- Left: Character info — clic droit = opérations personnage -->
                     <StackPanel Grid.Column="0" Orientation="Vertical" VerticalAlignment="Center"
                                 Margin="6,4,4,4" Tag="{Binding}">
-                        <!-- Nom + indicateur de variante -->
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="↳" FontSize="12" Foreground="{DynamicResource TextMutedBrush}" Margin="0,0,3,0"
+                        <!-- Nom + indicateur de variante. DockPanel et non StackPanel horizontal : celui-ci donne
+                             une largeur INFINIE au nom, qui était alors coupé net sans jamais montrer l'ellipse. Nom
+                             trop long → « … » et infobulle du nom complet, seulement s'il est tronqué (28/09/2026). -->
+                        <DockPanel LastChildFill="True">
+                            <TextBlock DockPanel.Dock="Left" Text="↳" FontSize="12" Foreground="{DynamicResource TextMutedBrush}" Margin="0,0,3,0"
                                        VerticalAlignment="Center"
                                        Visibility="{Binding IsVariant, Converter={StaticResource BoolToVisibilityConverter}}"/>
                             <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" FontSize="12"
-                                       TextTrimming="CharacterEllipsis"/>
-                        </StackPanel>
+                                       TextTrimming="CharacterEllipsis"
+                                       ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"
+                                       beh:TrimmedToolTip.IsEnabled="True"/>
+                        </DockPanel>
                         <!-- Rangée d'icônes : deux blocs 2×2 côte à côte (grille → alignement colonne garanti).
                              Bloc gauche = PR/SEC (haut) · repli-ou-gestion hiérarchie (bas).
                              Bloc droit  = crayon/étoile (haut) · armes/copier (bas).

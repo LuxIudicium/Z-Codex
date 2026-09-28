@@ -789,7 +789,9 @@ public partial class SkillTooltipControl : UserControl
         EnergyVisibility = r.Final > 0 || baseCost > 0 ? Visibility.Visible : Visibility.Collapsed;
         if (r.Final == baseCost) { EnergyText = baseCost.ToString(); return; }
 
-        string shown = r.RitualChanged ? RitualMark(r.Final.ToString())
+        // Atmosphère enchanteresse (lot 7a) : source EXTÉRIEURE à la carte → ambre, comme le bandeau d'équipe.
+        bool fromAlly = EnergyReduction.AirOfEnchantmentAlly is not null;
+        string shown = r.RitualChanged || (r.SkillChanged && fromAlly) ? RitualMark(r.Final.ToString())
                      : r.SkillChanged  ? $"{SkillProgression.MarkSkillBoost}{r.Final}{SkillProgression.MarkSkillBoost}"
                      : r.FluxLowered   ? $"{SkillProgression.MarkFlux}{r.Final}{SkillProgression.MarkFlux}"
                      :                    r.Final.ToString();
@@ -811,7 +813,9 @@ public partial class SkillTooltipControl : UserControl
 
         // Fast Casting ne colore rien (caractéristique toujours active, comme l'Expertise sur l'énergie) : si rien d'autre
         // n'a joué, la valeur s'affiche sans marque.
-        string shown = r.RitualChanged ? RitualMark(r.Final.ToString("0.##"))
+        // « A l'aide ! » (lot 7a) : source EXTÉRIEURE à la carte → ambre, comme le bandeau d'équipe.
+        bool fromAlly = SkillSpeed.HelpAlly is not null;
+        string shown = r.RitualChanged || (r.SkillChanged && fromAlly) ? RitualMark(r.Final.ToString("0.##"))
                      : r.SkillChanged  ? $"{SkillProgression.MarkSkillBoost}{r.Final.ToString("0.##")}{SkillProgression.MarkSkillBoost}"
                      : r.FluxChanged   ? $"{SkillProgression.MarkFlux}{r.Final.ToString("0.##")}{SkillProgression.MarkFlux}"
                      :                    r.Final.ToString("0.##");
@@ -882,6 +886,17 @@ public partial class SkillTooltipControl : UserControl
         if (Skill is not { } s || DescriptionOverride is not { } resolved) return;   // catalogue → rien
 
         var lines = new List<string>();
+        // Effets posés sur un allié (lot 7a) : la phrase qui dit D'OÙ vient le chiffre changé, toute en ambre
+        // (demande de Philippe du 28/09/2026 : sans elle, la source est invisible sur la carte qu'on regarde).
+        if (SkillSpeed.HelpAlly is { } helpAlly)
+            lines.Add(RitualMark(L($"Cible sous « A l'aide ! » ({helpAlly}) : incantation 50 % plus rapide",
+                                   $"Target under \"Help!\" ({helpAlly}): casts 50% faster")));
+        if (EnergyReduction.AirOfEnchantmentAlly is { } aoeAlly)
+            lines.Add(RitualMark(aoeAlly.Length == 0
+                ? L("Sur vous : Atmosphère enchanteresse : −10 d'énergie (minimum 1)",
+                    "On you: Air of Enchantment: −10 Energy (minimum 1)")
+                : L($"Cible sous Atmosphère enchanteresse ({aoeAlly}) : −10 d'énergie (minimum 1)",
+                    $"Target under Air of Enchantment ({aoeAlly}): −10 Energy (minimum 1)")));
         if (OwnDurationLine(s, resolved) is { } own) lines.Add(own);
         foreach (var line in ConditionDurationData.Lines(s, resolved, ConditionDurations))
             lines.Add($"{ConditionDurationLabel(line.Condition)} : "

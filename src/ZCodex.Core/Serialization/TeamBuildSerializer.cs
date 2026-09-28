@@ -477,7 +477,7 @@ public static class TeamBuildSerializer
                              || ConditionDurationData.IsToggleId(id)
                              || id == KnockdownData.GreatDwarfWeaponSkillId
                              || AttributeSubstitutionData.IsToggleId(id)
-                             || DamageBoostData.IsToggleId(id))
+                             || DamageBoostData.IsToggleId(id) || TargetedAllyEffectData.IsToggleId(id))
                 .Distinct().ToList(),
             Variants = dto.Variants.Select(v => CharFromDto(v, skillsById, unresolvedIds)).ToList(),
         };

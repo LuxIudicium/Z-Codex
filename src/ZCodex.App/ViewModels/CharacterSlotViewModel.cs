@@ -470,6 +470,9 @@ public class CharacterSlotViewModel : ViewModelBase
         if (changed)
         {
             NotifyTooltipsChanged();
+            // « A l'aide ! » et Atmosphère enchanteresse (lot 7a) changent les infobulles des AUTRES membres.
+            if (TargetedAllyEffectData.IsToggleId(skillId))
+                OwnerBuild?.RefreshOtherSkillTooltips(this);
             // AttributeBoostToggles construit des instances FRAÎCHES à chaque lecture (IsActive lu au
             // constructeur) : sans cette notification, l'ItemsControl du bandeau garde ses anciens
             // conteneurs et le cadre vert ne bascule jamais visuellement (skills ≠ changées, donc le
@@ -526,6 +529,9 @@ public class CharacterSlotViewModel : ViewModelBase
                 if (ReceivedDamageBoosts.TryGetValue(toggleId, out var recv))
                     items = items.Append(new AttributeBoostIndicatorViewModel(this, recv.Skill, toggleId, received: true));
             }
+            // Effets posés sur un allié (lot 7a) : « A l'aide ! », Atmosphère enchanteresse, Harmonie persistante.
+            foreach (var (toggleId, skill) in TargetedAllyEffects.OrderBy(kv => kv.Key))
+                items = items.Append(new AttributeBoostIndicatorViewModel(this, skill, toggleId, received: true));
             if (HasFuriousMod)
                 items = items.Append(new AttributeBoostIndicatorViewModel(this, null, AdrenalineBoostData.FuriousModToggleId, received: false));
             if (HasSunderingMod)
@@ -546,7 +552,7 @@ public class CharacterSlotViewModel : ViewModelBase
         : AdrenalineBoostData.BySkillId(skill.Id) is { Scope: AdrenalineBoostScope.Self } d ? d.ToggleId
         : EnergyCostBoostData.BySkillId(skill.Id) is { } e ? e.ToggleId
         : SkillSpeedBoostData.BySkillId(skill.Id) is { Received: false } v ? v.ToggleId
-        : SkillDurationBoostData.BySkillId(skill.Id) is { } u ? u.ToggleId
+        : SkillDurationBoostData.BySkillId(skill.Id) is { Received: false } u ? u.ToggleId
         : ConditionDurationData.BySkillId(skill.Id) is { Received: false } c ? c.ToggleId
         : ConditionDurationData.ConverterBySkillId(skill.Id) is { Received: false } k ? k.ToggleId
         : skill.Id == ConditionDurationData.ArcherSignetSkillId ? skill.Id
@@ -770,6 +776,53 @@ public class CharacterSlotViewModel : ViewModelBase
     public Skill? GreatDwarfWeapon =>
         GreatDwarfWeaponProvider is { } p ? p(this) : OwnerBuild?.GreatDwarfWeaponFor(this);
 
+    // ── Effets posés sur un ALLIÉ (chantier infobulle, lot 7a) ──────────────
+    // « A l'aide ! », Atmosphère enchanteresse et Harmonie persistante : l'icône vit sur la carte de l'allié qui
+    // REÇOIT l'effet, proposée dès qu'un membre de l'équipe porte la compétence. ⚠ Les deux premières changent les
+    // infobulles des AUTRES membres (les sorts qui visent cet allié) : c'est la première fois qu'une icône de carte
+    // agit hors de son perso, d'où OthersHaveLit et le rafraîchissement d'équipe de SetAttributeBoost.
+
+    /// <summary>Les effets du lot 7a que <paramref name="receiver"/> peut recevoir, par id d'icône (compétence d'un
+    /// porteur, pour l'icône et son infobulle). « A l'aide ! » n'est proposée que s'il existe un AUTRE membre : ses
+    /// propres sorts n'en profitent pas, donc seul, l'icône ne ferait rien. Atmosphère : « Cannot self-target ».</summary>
+    public static IReadOnlyDictionary<int, Skill> TargetedAllyEffectsFor(
+        IEnumerable<CharacterSlotViewModel> characters, CharacterSlotViewModel receiver)
+    {
+        var list = characters as IReadOnlyCollection<CharacterSlotViewModel> ?? characters.ToList();
+        Dictionary<int, Skill>? found = null;
+        bool hasOther = list.Any(c => !ReferenceEquals(c, receiver));
+        foreach (var c in list)
+            foreach (var slot in c.SkillSlots)
+            {
+                if (slot.Skill is not { } sk) continue;
+                int? toggleId = TargetedAllyEffectData.ToggleIdOf(sk.Id)
+                    ?? (sk.Id == SkillDurationBoostData.EnduringHarmonySkillId ? sk.Id : null);
+                if (toggleId is not { } id || (found?.ContainsKey(id) ?? false)) continue;
+                if (TargetedAllyEffectData.CannotSelfTarget(id) && ReferenceEquals(c, receiver)) continue;
+                if (id == TargetedAllyEffectData.HelpSkillId && !hasOther) continue;
+                (found ??= [])[id] = sk;
+            }
+        return found ?? EmptyTargetedAllyEffects;
+    }
+
+    private static readonly Dictionary<int, Skill> EmptyTargetedAllyEffects = [];
+
+    public Func<CharacterSlotViewModel, IReadOnlyDictionary<int, Skill>>? TargetedAllyEffectsProvider { get; set; }
+
+    public IReadOnlyDictionary<int, Skill> TargetedAllyEffects =>
+        TargetedAllyEffectsProvider is { } p ? p(this)
+        : OwnerBuild?.TargetedAllyEffectsFor(this) ?? EmptyTargetedAllyEffects;
+
+    /// <summary>Effet du lot 7a allumé sur CE perso ET encore proposé (un porteur existe) — sinon une icône restée
+    /// allumée dans un fichier enregistré agirait sans rien à l'écran pour l'éteindre.</summary>
+    public bool HasLitTargetedAllyEffect(int toggleId) =>
+        IsAttributeBoostActive(toggleId) && TargetedAllyEffects.ContainsKey(toggleId);
+
+    /// <summary>Noms des AUTRES membres qui portent cet effet allumé, joints (null = personne ; build simple : jamais).
+    /// Le nom sert à la phrase de l'infobulle : sans lui, rien ne dit d'où vient le chiffre changé.</summary>
+    private string? OthersWithLit(int toggleId) =>
+        OwnerBuild?.OthersWithLitTargetedAllyEffect(this, toggleId) is { Count: > 0 } names ? string.Join(", ", names) : null;
+
     // ── Effets de dégâts du BANDEAU D'ÉQUIPE (chantier infobulle, lot 6c) ────
     // Le bandeau est un environnement GLOBAL : ses effets touchent tous les persos à la fois, et leur
     // compétence n'est sur la barre de personne. Il faut donc pouvoir la retrouver dans le catalogue —
@@ -982,7 +1035,18 @@ public class CharacterSlotViewModel : ViewModelBase
             if (slot.Skill is { } sk && EnergyCostBoostData.BySkillId(sk.Id) is { } d && IsAttributeBoostActive(d.ToggleId))
                 active.Add((d, EnergyCostBoostData.ValueOf(d, sk,
                     d.ScalingAttribute is { } attr ? AttributeLevel(attr) ?? 0 : 0)));
-        return active.Count == 0 ? default : EnergyCostBoostData.ReductionFor(target, active);
+        // Atmosphère enchanteresse (lot 7a) : posée sur CE perso (ses enchantements sur lui-même) ou sur un AUTRE
+        // membre (ses enchantements qui visent un allié) — icône allumée = on vise l'allié qui la porte.
+        // Le nom de l'allié visé part avec la réduction : un autre membre si l'enchantement peut le viser, sinon soi ("").
+        bool onMe = HasLitTargetedAllyEffect(TargetedAllyEffectData.AirOfEnchantmentSkillId);
+        string? others = OthersWithLit(TargetedAllyEffectData.AirOfEnchantmentSkillId);
+        string? aoeAlly = null;
+        if (TargetedAllyEffectData.AirOfEnchantmentReaches(target, onMe: false, onOther: others is not null)) aoeAlly = others;
+        else if (TargetedAllyEffectData.AirOfEnchantmentReaches(target, onMe, onOther: false)) aoeAlly = "";
+        if (aoeAlly is not null)
+            active.Add((TargetedAllyEffectData.AirOfEnchantmentCost, TargetedAllyEffectData.AirOfEnchantmentCost.FixedValue));
+        return active.Count == 0 ? default
+            : EnergyCostBoostData.ReductionFor(target, active) with { AirOfEnchantmentAlly = aoeAlly };
     }
 
     // ── Recharge et incantation (chantier infobulle, lot 3) ───────────────────
@@ -1001,7 +1065,14 @@ public class CharacterSlotViewModel : ViewModelBase
         if (IsAttributeBoostActive(SkillSpeedBoostData.WeaponOfQuickeningSkillId) && WeaponOfQuickening is { } woq
             && SkillSpeedBoostData.BySkillId(woq.Id) is { } wd)
             active.Add((wd, woq, 0));
-        return active.Count == 0 ? default : SkillSpeedBoostData.SpeedFor(target, active);
+        // « A l'aide ! » (lot 7a) : allumée chez un AUTRE membre = ses sorts qui visent cet allié s'incantent 50 % plus
+        // vite. Jamais les siens propres (« other allies' spells »), d'où l'absence de test sur CE perso.
+        string? helpAlly = OthersWithLit(TargetedAllyEffectData.HelpSkillId) is { } names
+            && TargetedAllyEffects.ContainsKey(TargetedAllyEffectData.HelpSkillId)
+            && TargetedAllyEffectData.HelpCast.Applies(target) ? names : null;
+        if (helpAlly is not null)
+            active.Add((TargetedAllyEffectData.HelpCast, TargetedAllyEffects[TargetedAllyEffectData.HelpSkillId], 0));
+        return active.Count == 0 ? default : SkillSpeedBoostData.SpeedFor(target, active) with { HelpAlly = helpAlly };
     }
 
     // ── Allongeurs de durée propre (chantier infobulle, lot 4a) ───────────────
@@ -1013,8 +1084,12 @@ public class CharacterSlotViewModel : ViewModelBase
     {
         var active = new List<(SkillDurationBoostDescriptor, Skill, int)>();
         foreach (var slot in SkillSlots)
-            if (slot.Skill is { } sk && SkillDurationBoostData.BySkillId(sk.Id) is { } d && IsAttributeBoostActive(d.ToggleId))
+            if (slot.Skill is { } sk && SkillDurationBoostData.BySkillId(sk.Id) is { Received: false } d && IsAttributeBoostActive(d.ToggleId))
                 active.Add((d, sk, d.ScalingAttribute is { } attr ? AttributeLevel(attr) ?? 0 : 0));
+        // Harmonie persistante reçue (lot 7a) : allonge les cris et chants que CE perso lance.
+        if (HasLitTargetedAllyEffect(SkillDurationBoostData.EnduringHarmonySkillId)
+            && SkillDurationBoostData.BySkillId(SkillDurationBoostData.EnduringHarmonySkillId) is { } eh)
+            active.Add((eh, TargetedAllyEffects[SkillDurationBoostData.EnduringHarmonySkillId], 0));
         return active.Count == 0 ? 0 : SkillDurationBoostData.PercentFor(target, active);
     }
 
@@ -2054,15 +2129,42 @@ public class CharacterSlotViewModel : ViewModelBase
     public string Name
     {
         get => _name;
-        set { if (SetField(ref _name, value)) { OnPropertyChanged(nameof(IsEmptyBuild)); OnPropertyChanged(nameof(DisplayName)); } }
+        set
+        {
+            if (!SetField(ref _name, value)) return;
+            OnPropertyChanged(nameof(IsEmptyBuild));
+            OnPropertyChanged(nameof(DisplayName));
+            // Les phrases du lot 7a chez les autres membres NOMMENT ce perso : elles doivent suivre le renommage.
+            if (HasAnyLitTargetedAllyEffect) OwnerBuild?.RefreshOtherSkillTooltips(this);
+        }
     }
 
     // Nom AFFICHÉ : le nom réel, ou un placeholder localisé quand le build n'est pas nommé.
     // « (unnamed) » reste la sentinelle interne (IsEmptyBuild, .pn3) ; seul l'affichage change.
+    // Dans un teambuild, le placeholder est NUMÉROTÉ par la place dans l'arbre — « Build Name 2 », variantes
+    // « Build Name 2.1 » (demande de Philippe du 28/09/2026) : les phrases du lot 7a nomment l'allié source, et
+    // tous les persos s'appelaient pareil. Build simple : pas d'arbre, placeholder d'origine.
     public string DisplayName =>
-        string.IsNullOrWhiteSpace(_name) || _name == "(unnamed)"
-            ? ZCodex.App.LanguageManager.T("S.Misc.BuildNamePlaceholder")
-            : _name;
+        !(string.IsNullOrWhiteSpace(_name) || _name == "(unnamed)") ? _name
+        : TreeNumber() is { } n ? string.Format(ZCodex.App.LanguageManager.T("S.Misc.BuildNameNumbered"), n)
+        : ZCodex.App.LanguageManager.T("S.Misc.BuildNamePlaceholder");
+
+    // « 2 » pour la 2e racine, « 2.1 » pour sa 1re variante ; null hors teambuild.
+    private string? TreeNumber()
+    {
+        if (_parent is { } p)
+            return p.TreeNumber() is { } pn ? $"{pn}.{p.Variants.IndexOf(this) + 1}" : null;
+        int i = OwnerBuild?.Characters.IndexOf(this) ?? -1;
+        return i < 0 ? null : (i + 1).ToString();
+    }
+
+    /// <summary>« A l'aide ! » ou Atmosphère allumée (et proposée) sur ce perso : les autres membres le nomment.</summary>
+    public bool HasAnyLitTargetedAllyEffect =>
+        HasLitTargetedAllyEffect(TargetedAllyEffectData.HelpSkillId)
+        || HasLitTargetedAllyEffect(TargetedAllyEffectData.AirOfEnchantmentSkillId);
+
+    /// <summary>Le numéro du placeholder dépend de la place dans l'arbre : à renotifier après toute mutation.</summary>
+    public void RaiseDisplayNameChanged() => OnPropertyChanged(nameof(DisplayName));
 
     // Build "vierge" du point de vue du chat code : une profession principale seule ne compte
     // pas (état de base des templates pré-remplis). Vide = pas de secondaire, nom par défaut,
