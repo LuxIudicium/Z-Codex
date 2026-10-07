@@ -64,11 +64,23 @@ public class TeamBuildViewModel : ViewModelBase, IRenamableTab
         _heroicRefrainTimer.Tick += (_, _) =>
         {
             _heroicRefrainTimer.Stop();
-            foreach (var n in EnumerateTree())
+            // Ce rafraîchissement lève un Mutated par propriété d'infobulle de chaque slot (des
+            // milliers), et chacun recalculait la signature ci-dessous — qui parcourt tout l'arbre.
+            // Mesuré le 29/09/2026 : jusqu'à 7 s de gel de l'interface sur R-Spike Variants
+            // (7 840 recalculs). Or la signature ne dépend que du contenu de l'arbre, que ce
+            // rafraîchissement ne modifie pas : on la suspend pendant, et on la vérifie UNE fois
+            // après — même verdict que la dernière des milliers de vérifications d'avant.
+            _refreshingHeroic = true;
+            try
             {
-                n.RefreshAttributeBoostBand();
-                n.RefreshTooltips();
+                foreach (var n in EnumerateTree())
+                {
+                    n.RefreshAttributeBoostBand();
+                    n.RefreshTooltips();
+                }
             }
+            finally { _refreshingHeroic = false; }
+            CheckHeroicSignature();
         };
         // Weapon of Fury (chantier infobulle, lot 1a) suit le même chemin : son apparition ou sa
         // disparition dans l'arbre change l'icône « recevoir » de chaque perso. Les effets
@@ -82,18 +94,25 @@ public class TeamBuildViewModel : ViewModelBase, IRenamableTab
         // (sans receveur) : c'est l'apparition de la diffusion dans l'arbre qui doit réveiller les bandeaux.
         Mutated += () =>
         {
-            var (skill, bonus) = HeroicRefrain;
-            string sig = $"{skill?.Id}|{bonus}|{WeaponOfFury?.Id}|{WeaponOfQuickening?.Id}|{SunderingWeapon}"
-                       + $"|{JudgesInsight?.Id}|{string.Join(";", TeamAdrenaline.Effects)}"
-                       + $"|{EnergizingChorusReduction}|{TeamSpeed}"
-                       + $"|{CharacterSlotViewModel.GreatDwarfWeaponFor(EnumerateTree())?.Id}"
-                       + $"|{ReceivedDamageBoostsSignature}|{BandDamageRanksSignature}|{TargetedAllyEffectsSignature}"
-                       + $"|{TargetedFoeEffectsSignature}";
-            if (sig == _heroicRefrainSig) return;
-            _heroicRefrainSig = sig;
-            _heroicRefrainTimer.Stop();
-            _heroicRefrainTimer.Start();
+            if (!_refreshingHeroic) CheckHeroicSignature();
         };
+    }
+
+    private bool _refreshingHeroic;
+
+    private void CheckHeroicSignature()
+    {
+        var (skill, bonus) = HeroicRefrain;
+        string sig = $"{skill?.Id}|{bonus}|{WeaponOfFury?.Id}|{WeaponOfQuickening?.Id}|{SunderingWeapon}"
+                   + $"|{JudgesInsight?.Id}|{string.Join(";", TeamAdrenaline.Effects)}"
+                   + $"|{EnergizingChorusReduction}|{TeamSpeed}"
+                   + $"|{CharacterSlotViewModel.GreatDwarfWeaponFor(EnumerateTree())?.Id}"
+                   + $"|{ReceivedDamageBoostsSignature}|{BandDamageRanksSignature}|{TargetedAllyEffectsSignature}"
+                   + $"|{TargetedFoeEffectsSignature}";
+        if (sig == _heroicRefrainSig) return;
+        _heroicRefrainSig = sig;
+        _heroicRefrainTimer.Stop();
+        _heroicRefrainTimer.Start();
     }
 
     // ⚠ Les 9 effets du lot 6b passent TOUS par cette seule chaîne : c'est ce qui rend le piège du lot 4c
@@ -957,6 +976,10 @@ public class TeamBuildViewModel : ViewModelBase, IRenamableTab
     private void OnChildChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(CharacterSlotViewModel.ShowAttributeEditor)
+                           // Dérivé du nom et de la place dans l'arbre (placeholder « Build Name 2.1 »),
+                           // renotifié par RefreshTree : le compter salissait l'onglet DÈS SON OUVERTURE
+                           // (constaté le 29/09/2026). Un vrai renommage passe par Name, suivi, lui.
+                           or nameof(CharacterSlotViewModel.DisplayName)
                            or nameof(CharacterSlotViewModel.TotalAttributePoints)
                            or nameof(CharacterSlotViewModel.IsOverAttributeBudget)
                            or nameof(CharacterSlotViewModel.Depth)
