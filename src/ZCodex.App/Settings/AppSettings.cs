@@ -58,6 +58,11 @@ public class AppSettings
     public List<string> GwRankTags { get; set; } = [];
     public DateTime? GwRankTagsFetchedUtc { get; set; }
 
+    // Pseudo affiché aux autres participants d'une session partagée (Extras ▸ Partager ce
+    // teambuild en direct / Rejoindre une session), repris d'une session sur l'autre. Null =
+    // jamais saisi : le champ s'ouvre vide plutôt que d'exposer le nom du compte Windows.
+    public string? CollabNickname { get; set; }
+
     // Géométrie de MainWindow, sauvegardée à la fermeture. Null = valeurs par défaut du XAML.
     public double? WindowWidth { get; set; }
     public double? WindowHeight { get; set; }

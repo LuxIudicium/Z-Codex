@@ -869,10 +869,67 @@
                                    Background="Transparent" Cursor="Hand"
                                    MouseLeftButtonUp="AssignmentLabel_Click"
                                    Visibility="{Binding IsAssigned, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                        <!-- Session partagée : badge de prise, sur les lignes RACINES seulement (la prise
+                             couvre toute la famille). Libre → « + Prendre » ; à moi → mon pseudo de
+                             couleur ; à un autre → cadenas + son pseudo, dans sa couleur. Un clic prend
+                             ou rend ; sur le personnage d'un autre, le bandeau dit qui l'a. -->
+                        <Border Tag="{Binding}" Margin="0,3,0,0" Padding="4,0" CornerRadius="2" BorderThickness="1"
+                                HorizontalAlignment="Left" Cursor="Hand" Background="Transparent"
+                                MouseLeftButtonUp="CollabClaim_Click"
+                                Visibility="{Binding CollabShowBadge, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}"/>
+                                    <Setter Property="ToolTip" Value="{DynamicResource S.Row.CollabFreeTip}"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding CollabIsMine}" Value="True">
+                                            <Setter Property="BorderBrush" Value="{Binding CollabBrush}"/>
+                                            <Setter Property="ToolTip" Value="{DynamicResource S.Row.CollabMineTip}"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding CollabIsOther}" Value="True">
+                                            <Setter Property="BorderBrush" Value="{Binding CollabBrush}"/>
+                                            <Setter Property="ToolTip" Value="{DynamicResource S.Row.CollabOtherTip}"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <TextBlock FontSize="10" TextTrimming="CharacterEllipsis" MaxWidth="96">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="{DynamicResource S.Row.CollabTake}"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding CollabIsMine}" Value="True">
+                                                <Setter Property="Text" Value="{DynamicResource S.Row.CollabMine}"/>
+                                                <Setter Property="Foreground" Value="{Binding CollabBrush}"/>
+                                                <Setter Property="FontWeight" Value="SemiBold"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding CollabIsOther}" Value="True">
+                                                <Setter Property="Text" Value="{Binding CollabOwner, StringFormat='&#x1F512; {0}'}"/>
+                                                <Setter Property="Foreground" Value="{Binding CollabBrush}"/>
+                                                <Setter Property="FontWeight" Value="SemiBold"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Border>
                     </StackPanel>
 
                     <!-- Right: 8 skill slots + overlay attributs (groupe calé à gauche → overlay au bord droit du slot 8) -->
                     <Grid Grid.Column="1" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="4,4,4,4">
+                        <!-- Session partagée : personnage pris par un AUTRE participant, estompé. Pas
+                             bloqué : ses infobulles doivent rester lisibles ; une retouche y serait
+                             de toute façon annulée avant envoi (SharedTeamDoc.CommitLocal). -->
+                        <Grid.Style>
+                            <Style TargetType="Grid">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CollabIsOther}" Value="True">
+                                        <Setter Property="Opacity" Value="0.6"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Grid.Style>
                     <ItemsControl x:Name="SlotsItemsControl" ItemsSource="{Binding SkillSlots}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
@@ -1269,7 +1326,7 @@
                      sont construits dynamiquement dans SelectionMenu_SubmenuOpened. Environnement global au build. -->
                 <MenuItem x:Name="NatureRitualMenuItem" Header="{DynamicResource S.Menu.SelRituals}"/>
             </MenuItem>
-            <!-- Cinq familles, séparées par un trait. Le menu reste À PLAT : tout ce qu'il contient
+            <!-- Six familles, séparées par un trait. Le menu reste À PLAT : tout ce qu'il contient
                  s'atteint d'un seul clic, et une entrée cherchée se lit sans ouvrir de sous-menu.
                  L'ordre à l'intérieur de chaque famille est celui d'avant, pour ne pas défaire les
                  habitudes acquises. -->
@@ -1307,7 +1364,17 @@
 
                 <Separator/>
 
-                <!-- 4. Sites de builds ouverts dans le navigateur (rien n'est téléchargé ici).
+                <!-- 4. Session partagée : co-édition EN DIRECT d'un teambuild, par le serveur de
+                     GWRank (seul l'hôte a besoin d'une clé). Famille à part des quatre gestes
+                     GWRank ci-dessus : rien n'y est déposé dans la bibliothèque. -->
+                <MenuItem Header="{DynamicResource S.Menu.CollabHost}" Click="CollabHost_Click"/>
+                <MenuItem Header="{DynamicResource S.Menu.CollabJoin}" Click="CollabJoin_Click"/>
+                <MenuItem x:Name="CollabLeaveMenuItem" Header="{DynamicResource S.Menu.CollabLeave}"
+                          Click="CollabLeave_Click"/>
+
+                <Separator/>
+
+                <!-- 5. Sites de builds ouverts dans le navigateur (rien n'est téléchargé ici).
                      Les deux qui se consultent sans compte ; la liste complète, GWRank et
                      GvG Report compris, est sous le bouton « Partager le build ». -->
                 <MenuItem Header="GW1 Builds" Click="OpenGw1Builds_Click"/>
@@ -1315,7 +1382,7 @@
 
                 <Separator/>
 
-                <!-- 5. Outil à part : ni donnée, ni réseau. -->
+                <!-- 6. Outil à part : ni donnée, ni réseau. -->
                 <MenuItem Header="{DynamicResource S.Menu.ExtrasArmorCalc}" Click="ArmorCalculator_Click"/>
             </MenuItem>
             <MenuItem Header="{DynamicResource S.Menu.Window}" SubmenuOpened="WindowMenu_SubmenuOpened">
@@ -2909,6 +2976,77 @@
                      racine) : couleur = un perso l'inflige, grisée = un combo le pourrait.
                      Toggle : menu View > Afficher les conditions. -->
                 <StackPanel Grid.Row="0">
+                    <!-- Bandeau de session partagée : n'existe que sur l'onglet lié à une session.
+                         Le Border PREND la session pour DataContext, et sa visibilité se lit sur
+                         ce même DataContext (null = pas de session = replié) : c'est voulu, les
+                         liaisons du contenu visent toutes la session.
+                         MaxWidth : la colonne est en Width="Auto", sans bord le texte ne passerait
+                         jamais à la ligne (même raison que le bandeau des rituels). -->
+                    <Border DataContext="{Binding ActiveTeamBuild.Collab}"
+                            Visibility="{Binding Converter={StaticResource NullToVis}}"
+                            MaxWidth="{Binding ViewportWidth, ElementName=TeamScroll}" HorizontalAlignment="Stretch"
+                            Background="{DynamicResource InsetBackgroundBrush}"
+                            BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="0,0,0,1"
+                            Padding="8,5">
+                        <DockPanel>
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top">
+                                <Button Content="{DynamicResource S.Collab.CopyCode}" Padding="8,1" Margin="6,0,0,0"
+                                        Click="CollabCopyCode_Click"
+                                        Visibility="{Binding IsLive, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                <Button Content="{DynamicResource S.Collab.Leave}" Padding="8,1" Margin="6,0,0,0"
+                                        Click="CollabLeave_Click"
+                                        Visibility="{Binding IsLive, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                <Button Content="{DynamicResource S.Common.Close}" Padding="8,1" Margin="6,0,0,0"
+                                        Click="CollabDismiss_Click"
+                                        Visibility="{Binding IsEnded, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                            </StackPanel>
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE716;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                               Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"
+                                               Margin="0,0,6,0"/>
+                                    <TextBlock FontWeight="SemiBold" VerticalAlignment="Center">
+                                        <Run Text="{DynamicResource S.Collab.BannerTitle}"/>
+                                        <Run Text="{Binding Code, Mode=OneWay}" FontFamily="Consolas"/>
+                                    </TextBlock>
+                                    <TextBlock Text="{Binding ExpiresText}" Margin="10,0,0,0" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource TextMutedBrush}" FontSize="11"/>
+                                </StackPanel>
+                                <!-- Sur sa propre ligne : en fin de session, c'est une phrase entière
+                                     (pourquoi, et que faire du build) qui doit pouvoir passer à la ligne. -->
+                                <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" FontSize="11" Margin="0,2,0,0"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                <!-- Participants : pastille de couleur (la même que sur le badge des
+                                     personnages qu'ils ont pris) + pseudo. -->
+                                <ItemsControl ItemsSource="{Binding Participants}" Margin="0,3,0,0" Focusable="False"
+                                              Visibility="{Binding IsLive, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,12,0">
+                                                <Ellipse Width="8" Height="8" Fill="{Binding Brush}" VerticalAlignment="Center"
+                                                         Margin="0,0,4,0"/>
+                                                <TextBlock Text="{Binding Label}" FontSize="11" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <!-- Présents selon le serveur mais pas encore annoncés (arrivant, retour
+                                     de coupure) : on les compte sans pouvoir les nommer. -->
+                                <TextBlock Text="{Binding UnknownText}" FontSize="11" Margin="0,2,0,0"
+                                           Foreground="{DynamicResource TextMutedBrush}"
+                                           Visibility="{Binding HasUnknown, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                <TextBlock Text="{Binding ReadOnlyText}" TextWrapping="Wrap" FontSize="11" Margin="0,3,0,0"
+                                           Foreground="{DynamicResource ErrorTextBrush}"
+                                           Visibility="{Binding IsReadOnly, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                <TextBlock Text="{Binding NoticeText}" TextWrapping="Wrap" FontSize="11" Margin="0,3,0,0"
+                                           FontStyle="Italic" Foreground="{DynamicResource TextSecondaryBrush}"
+                                           Visibility="{Binding HasNotice, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
                     <Border Background="{DynamicResource ContentBackgroundBrush}"
                             BorderBrush="{DynamicResource BorderLightBrush}" BorderThickness="0,0,0,1"
                             Padding="8,4"

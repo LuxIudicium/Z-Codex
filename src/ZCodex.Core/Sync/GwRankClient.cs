@@ -318,6 +318,68 @@ public sealed class GwRankClient : IDisposable
         return r.IsOk ? GwRankResult<bool>.Ok(true) : GwRankResult<bool>.Fail(r.Status, r.Message);
     }
 
+    /// <summary>
+    /// Crée un salon de session partagée (<c>POST /api/v1/rooms</c>). Jeton exigé : seul le
+    /// créateur doit avoir un compte GWRank, les autres rejoignent avec le code seul.
+    ///
+    /// ⚠ UNE seule tentative, contrairement au reste du client : ce POST n'est PAS idempotent.
+    /// Rejouer une requête dont la réponse s'est perdue créerait un second salon, dont personne
+    /// ne connaîtrait le code. Un salon orphelin expire de lui-même, mais l'utilisateur doit
+    /// voir l'échec plutôt que d'attendre trois tentatives.
+    ///
+    /// Le <c>503 rooms_full</c> est distingué d'une panne : le serveur va bien, il n'a juste plus
+    /// de place — réessayer tout de suite ne servirait à rien.
+    /// </summary>
+    public async Task<ZCodex.Core.Collab.RoomCreateResult> CreateRoomAsync(CancellationToken ct = default)
+    {
+        if (!HasToken) return new(GwRankStatus.NoToken, null, false, null);
+        string text;
+        HttpStatusCode code;
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Post, $"{_baseUrl}/api/v1/rooms");
+            req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            using var res = await _http.SendAsync(req, ct);
+            code = res.StatusCode;
+            text = await res.Content.ReadAsStringAsync(ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch (Exception ex) when (ex is TaskCanceledException or HttpRequestException)
+        {
+            return new(GwRankStatus.Offline, null, false, ex.Message);
+        }
+
+        if ((int)code is >= 200 and < 300)
+        {
+            try
+            {
+                var room = JsonSerializer.Deserialize<ZCodex.Core.Collab.GwRankRoom>(text, Json);
+                return room is { Code.Length: > 0, WebsocketUrl.Length: > 0 }
+                    ? new(GwRankStatus.Ok, room, false, null)
+                    : new(GwRankStatus.ServerError, null, false, "réponse incomplète");
+            }
+            catch (JsonException ex)
+            {
+                Debug.WriteLine($"[GwRank] création de salon, réponse illisible : {ex.Message}");
+                return new(GwRankStatus.ServerError, null, false,
+                           "réponse inattendue du serveur (page d'erreur ou portail de connexion ?)");
+            }
+        }
+
+        var status = code switch
+        {
+            HttpStatusCode.Unauthorized    => GwRankStatus.Unauthorized,
+            HttpStatusCode.Forbidden       => GwRankStatus.Forbidden,
+            HttpStatusCode.NotFound        => GwRankStatus.NotFound,   // serveur antérieur aux salons
+            HttpStatusCode.TooManyRequests => GwRankStatus.RateLimited,
+            _                              => GwRankStatus.ServerError,
+        };
+        // Le code machine se lit dans le corps BRUT : DescribeError n'en garde que le message.
+        bool full = code == HttpStatusCode.ServiceUnavailable
+                    && text.Contains("rooms_full", StringComparison.OrdinalIgnoreCase);
+        return new(status, null, full, DescribeError(text, code));
+    }
+
     // ── Plomberie ─────────────────────────────────────────────────────────────
 
     private async Task<GwRankResult<T>> SendAsync<T>(HttpMethod method, string url, string? body,

@@ -19,6 +19,14 @@ public static class TeamBuildSerializer
     /// </summary>
     public const string LegacyExtension = ".pn3";
 
+    /// <summary>
+    /// Version du format ÉCRITE par cette build (l'historique des versions est sur le champ
+    /// <c>Version</c> du DTO). Lue par la session partagée : un participant dont l'application est
+    /// plus ancienne que le document reçu perdrait les champs qu'il ne connaît pas en le
+    /// renvoyant — il passe donc en lecture seule (cf. <c>RoomCompat</c>).
+    /// </summary>
+    public const int FormatVersion = 25;
+
     /// <summary>Vrai pour les deux extensions du format natif (courante ou héritée).</summary>
     public static bool IsNativeExtension(string extension) =>
         extension.Equals(Extension, StringComparison.OrdinalIgnoreCase)
@@ -113,7 +121,7 @@ public static class TeamBuildSerializer
 
     private sealed class Pn3Dto
     {
-        public int Version { get; set; } = 25; // v25 = case « Critique » par ligne d'attaque du spike (par attaque et par ligne d'attaque normale), la case « Tout en critique » devenant leur maîtresse — demande de Philippe du 28/09/2026 ; v24 = renversements comptés pour la ligne de Ronces du spike (l'esprit frappe chaque créature renversée, compteur laissé à l'utilisateur — demande de Philippe du 28/09/2026) ; v23 = lignes d’attaques NORMALES du spike (case maîtresse du build + case, compteur de coups, mod de préfixe, proc du fractionnement et arc corne par perso — lot 6d-2 du chantier infobulle) ; v22 = rang de simulation Ronces (durée du saignement posé sur les créatures assommées, lot 4c du chantier infobulle) ; Ronces et Lien terrestre rejoignent la liste NatureRituals sans nouveau champ ; v21 = rangs de simulation Infuriating Heat (PvP) et Mark of Fury ; Infuriating Heat, Dark Fury, Mark of Fury et Soothing rejoignent la liste NatureRituals sans nouveau champ, comme les icônes d'adrénaline du perso (lot 1a du chantier infobulle) la liste ActiveAttributeBoosts ; v20 = rang de simulation Nature's Renewal (son surcoût d'incantation dépend du rang en PvP) ; v19 = compteur de projectiles du spike (sorts multi-projectiles) ; v18 = mods d'arme du spike (fractionnement / vampirique / arc corne) + compteurs d'attaques vampiriques ; v17 = mode de jeu PvE/PvP enregistré avec le build ; v16 = boosts d'attribut de compétences équipées par perso ; v15 = rang de simulation Tranquility + toggle prolongateurs de durée par perso ; v14 = rang de simulation Roaring Winds ; v13 = rituels de la nature actifs ; v12 = PV lanceur Grenth's Balance ; v11 = buffs d'arme spike ; v10 = seuil spike ; v9 = part conditionnelle spike ; v8 = procs spike ; v7 = flux ; v6 = roster Spike ; v5 = genre du perso
+        public int Version { get; set; } = FormatVersion; // v25 = case « Critique » par ligne d'attaque du spike (par attaque et par ligne d'attaque normale), la case « Tout en critique » devenant leur maîtresse — demande de Philippe du 28/09/2026 ; v24 = renversements comptés pour la ligne de Ronces du spike (l'esprit frappe chaque créature renversée, compteur laissé à l'utilisateur — demande de Philippe du 28/09/2026) ; v23 = lignes d’attaques NORMALES du spike (case maîtresse du build + case, compteur de coups, mod de préfixe, proc du fractionnement et arc corne par perso — lot 6d-2 du chantier infobulle) ; v22 = rang de simulation Ronces (durée du saignement posé sur les créatures assommées, lot 4c du chantier infobulle) ; Ronces et Lien terrestre rejoignent la liste NatureRituals sans nouveau champ ; v21 = rangs de simulation Infuriating Heat (PvP) et Mark of Fury ; Infuriating Heat, Dark Fury, Mark of Fury et Soothing rejoignent la liste NatureRituals sans nouveau champ, comme les icônes d'adrénaline du perso (lot 1a du chantier infobulle) la liste ActiveAttributeBoosts ; v20 = rang de simulation Nature's Renewal (son surcoût d'incantation dépend du rang en PvP) ; v19 = compteur de projectiles du spike (sorts multi-projectiles) ; v18 = mods d'arme du spike (fractionnement / vampirique / arc corne) + compteurs d'attaques vampiriques ; v17 = mode de jeu PvE/PvP enregistré avec le build ; v16 = boosts d'attribut de compétences équipées par perso ; v15 = rang de simulation Tranquility + toggle prolongateurs de durée par perso ; v14 = rang de simulation Roaring Winds ; v13 = rituels de la nature actifs ; v12 = PV lanceur Grenth's Balance ; v11 = buffs d'arme spike ; v10 = seuil spike ; v9 = part conditionnelle spike ; v8 = procs spike ; v7 = flux ; v6 = roster Spike ; v5 = genre du perso
         public Guid Id { get; set; }
         public string Name { get; set; } = string.Empty;
         public List<string> Tags { get; set; } = [];

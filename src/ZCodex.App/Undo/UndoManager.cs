@@ -56,6 +56,19 @@ public sealed class UndoManager : IDisposable
         CommandManager.InvalidateRequerySuggested();
     }
 
+    // Session partagée : un état reçu d'un autre participant vient de remplacer l'écran. Les
+    // instantanés antérieurs ne décrivent plus que le passé du build ; les restaurer défairait
+    // le travail des autres, puis le leur renverrait. L'historique repart donc de l'état reçu.
+    public void Reset()
+    {
+        _timer.Stop();
+        _burst = false;
+        _undo.Clear();
+        _redo.Clear();
+        _baseline = _capture();
+        CommandManager.InvalidateRequerySuggested();
+    }
+
     public void Undo()
     {
         CommitPending();

@@ -1,0 +1,61 @@
+<Window x:Class="ZCodex.App.Views.CollabRoomWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Width="520" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Background="{DynamicResource DialogBackgroundBrush}"
+        Foreground="{DynamicResource TextPrimaryBrush}">
+
+    <!-- Session partagée : créer un salon (hôte) ou en rejoindre un avec son code (invité).
+         Les deux gestes partagent la fenêtre : même pseudo, même ligne d'état, même façon
+         d'afficher un refus du serveur. La connexion se fait ICI, fenêtre ouverte, pour qu'un
+         code erroné se corrige sur place au lieu de rouvrir la fenêtre. -->
+    <StackPanel Margin="22,18">
+        <TextBlock x:Name="IntroText" TextWrapping="Wrap" FontSize="12"/>
+
+        <StackPanel x:Name="FormPanel">
+            <TextBlock Text="{DynamicResource S.Collab.NickLabel}" FontWeight="SemiBold" Margin="0,14,0,0"/>
+            <TextBox x:Name="NickBox" Margin="0,4,0,0" Padding="4,3" MaxLength="24"/>
+            <TextBlock Text="{DynamicResource S.Collab.NickHint}" TextWrapping="Wrap" FontSize="11"
+                       Margin="0,4,0,0" Foreground="{DynamicResource TextSecondaryBrush}"/>
+
+            <StackPanel x:Name="CodePanel">
+                <TextBlock Text="{DynamicResource S.Collab.CodeLabel}" FontWeight="SemiBold" Margin="0,14,0,0"/>
+                <!-- CharacterCasing : un code dicté ou tapé en minuscules reste valide. -->
+                <TextBox x:Name="CodeBox" Margin="0,4,0,0" Padding="4,3" FontFamily="Consolas" FontSize="16"
+                         CharacterCasing="Upper" MaxLength="12"/>
+                <TextBlock Text="{DynamicResource S.Collab.CodeHint}" TextWrapping="Wrap" FontSize="11"
+                           Margin="0,4,0,0" Foreground="{DynamicResource TextSecondaryBrush}"/>
+            </StackPanel>
+        </StackPanel>
+
+        <!-- Hôte, salon créé : le code à transmettre, en grand, avec de quoi le copier. -->
+        <Border x:Name="ResultPanel" Visibility="Collapsed"
+                Background="{DynamicResource InsetBackgroundBrush}"
+                BorderBrush="{DynamicResource BorderLightBrush}" BorderThickness="1"
+                CornerRadius="4" Padding="14,12" Margin="0,14,0,0">
+            <StackPanel>
+                <TextBlock Text="{DynamicResource S.Collab.CodeReady}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                    <!-- TextBox en lecture seule plutôt que TextBlock : le code reste sélectionnable
+                         à la souris si le bouton de copie échoue (presse-papier verrouillé). -->
+                    <TextBox x:Name="CodeResult" IsReadOnly="True" FontFamily="Consolas" FontSize="22"
+                             FontWeight="Bold" Padding="6,2" VerticalAlignment="Center"/>
+                    <Button Content="{DynamicResource S.Collab.CopyCode}" Padding="10,3" Margin="12,0,0,0"
+                            VerticalAlignment="Center" Click="CopyCode_Click"/>
+                </StackPanel>
+                <TextBlock Text="{DynamicResource S.Collab.CodeReadyHint}" TextWrapping="Wrap" FontSize="11"
+                           Margin="0,8,0,0" Foreground="{DynamicResource TextSecondaryBrush}"/>
+            </StackPanel>
+        </Border>
+
+        <TextBlock x:Name="StatusText" TextWrapping="Wrap" Margin="0,12,0,0"/>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+            <Button x:Name="CancelButton" Content="{DynamicResource S.Common.Cancel}" Padding="14,4"
+                    IsCancel="True" Click="Cancel_Click"/>
+            <Button x:Name="OkButton" Padding="14,4" Margin="8,0,0,0" IsDefault="True" Click="Ok_Click"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

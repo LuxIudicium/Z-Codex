@@ -6,7 +6,7 @@ using System.Windows.Threading;
 
 namespace ZCodex.App.ViewModels;
 
-public class TeamBuildViewModel : ViewModelBase, IRenamableTab
+public partial class TeamBuildViewModel : ViewModelBase, IRenamableTab
 {
     private string _name = DefaultName(1);
 
@@ -810,7 +810,9 @@ public class TeamBuildViewModel : ViewModelBase, IRenamableTab
                                and not nameof(HasLocks)
                                and not nameof(LockSelectionPrompt)
                                and not nameof(IsRenaming)
-                               and not nameof(EditName))
+                               and not nameof(EditName)
+                // Session partagée (TeamBuildViewModel.Collab.cs) : état de connexion, pas le build.
+                && e.PropertyName?.StartsWith("Collab", StringComparison.Ordinal) != true)
                 MarkDirty();
         };
         Tags.CollectionChanged += (_, _) => MarkDirty();
@@ -975,6 +977,9 @@ public class TeamBuildViewModel : ViewModelBase, IRenamableTab
 
     private void OnChildChanged(object? sender, PropertyChangedEventArgs e)
     {
+        // Session partagée : la prise d'un personnage (CollabClaim, CollabOwner…) n'est pas une
+        // édition du build — cf. CharacterSlotViewModel.Collab.cs, d'où le préfixe commun.
+        if (e.PropertyName?.StartsWith("Collab", StringComparison.Ordinal) == true) return;
         if (e.PropertyName is nameof(CharacterSlotViewModel.ShowAttributeEditor)
                            // Dérivé du nom et de la place dans l'arbre (placeholder « Build Name 2.1 »),
                            // renotifié par RefreshTree : le compter salissait l'onglet DÈS SON OUVERTURE

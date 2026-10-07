@@ -6,7 +6,7 @@ using System.ComponentModel;
 
 namespace ZCodex.App.ViewModels;
 
-public class CharacterSlotViewModel : ViewModelBase
+public partial class CharacterSlotViewModel : ViewModelBase
 {
     private string _name = "(unnamed)";
     private string _notes = string.Empty;

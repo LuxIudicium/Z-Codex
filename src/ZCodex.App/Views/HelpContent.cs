@@ -33,8 +33,8 @@ public static class HelpContent
 {
     // Version du CONTENU de l'aide (indépendante de la version applicative de l'À propos) :
     // à incrémenter et redater à chaque mise à jour.
-    public const string VersionFr = "Aide v30 — 28/09/2026";
-    public const string VersionEn = "Help v30 — 2026-09-28";
+    public const string VersionFr = "Aide v32 — 07/10/2026";
+    public const string VersionEn = "Help v32 — 2026-10-07";
 
     public static string Version => AppLanguage.IsFr ? VersionFr : VersionEn;
 
@@ -198,6 +198,15 @@ public static class HelpContent
             R("Extras" + M + "Envoyer ma bibliothèque sur GWRank…", "Extras" + M + "Send my library to GWRank…",
               "Dépose d'un seul coup tous les builds des dossiers que vous cochez. Aucun dossier ne l'est d'avance : votre dossier de templates contient aussi les gabarits des packs téléchargés, qui n'ont rien à faire sur GWRank. Cocher un dossier coche tout son contenu ; la petite flèche le déplie pour en décocher les builds que vous ne voulez pas envoyer, et ce tri est retenu d'une fois sur l'autre. Z-Codex analyse d'abord et vous montre ce qui partirait — rien n'est envoyé avant que vous ne validiez. Après l'analyse, chaque build déplié affiche son sort (nouveau, modifié, déjà à jour, écarté), et en décocher un ne vous oblige pas à tout réanalyser. Un build déjà déposé et inchangé ne déclenche aucun envoi. Trois cas sont écartés et vous sont listés plutôt que d'être forcés : deux fichiers qui partagent la même identité interne, un build modifié entre-temps sur GWRank, et un build contenant des compétences absentes de votre catalogue. Chacun se règle ensuite à l'unité, avec le bouton d'envoi normal. Les builds neufs partent en privé ; ceux que vous aviez déjà partagés le restent. Si GWRank cesse de répondre en cours de route, Z-Codex réessaie brièvement puis arrête le lot en vous disant combien sont partis : ceux-là sont acquis, et relancer plus tard n'enverra que le reste.",
               "Sends every build in the folders you tick, in one go. None is ticked in advance: your templates folder also holds the templates from downloaded build packs, which have no business on GWRank. Ticking a folder ticks everything inside it; the small arrow unfolds it so you can untick the builds you would rather keep to yourself, and that sorting is remembered from one time to the next. Z-Codex analyses first and shows you what would be sent — nothing leaves before you confirm. After the analysis, each unfolded build shows what will happen to it (new, modified, already up to date, set aside), and unticking one does not force you to analyse everything again. A build already uploaded and unchanged triggers no upload at all. Three cases are set aside and listed rather than forced through: two files sharing the same internal identity, a build changed on GWRank in the meantime, and a build holding skills your catalogue does not know. Each is then settled one at a time, with the normal send button. New builds go up private; the ones you had already shared stay shared. If GWRank stops answering partway through, Z-Codex retries briefly then stops the batch and tells you how many went up: those are kept, and starting again later only sends the rest."),
+            R("Extras" + M + "Partager ce teambuild en direct…", "Extras" + M + "Share this teambuild live…",
+              "Ouvre une session partagée sur le teambuild affiché et donne le code à transmettre aux autres joueurs (voir « Session partagée »). Demande une clé d'API GWRank.",
+              "Opens a shared session on the displayed teambuild and gives the code to pass on to the other players (see “Shared session”). Requires a GWRank API key."),
+            R("Extras" + M + "Rejoindre une session partagée…", "Extras" + M + "Join a shared session…",
+              "Rejoint une session avec le code reçu de son hôte ; le teambuild s'ouvre dans un nouvel onglet. Aucun compte GWRank n'est nécessaire.",
+              "Joins a session with the code received from its host; the teambuild opens in a new tab. No GWRank account is needed."),
+            R("Extras" + M + "Quitter la session partagée", "Extras" + M + "Leave the shared session",
+              "Quitte la session en cours ; l'onglet reste ouvert. Elle continue pour les autres, même si vous en êtes l'hôte.",
+              "Leaves the current session; the tab stays open. It carries on for the others, even if you are its host."),
             R("Extras" + M + "Réglages GWRank…", "Extras" + M + "GWRank settings…",
               "Clé d'API GWRank, serveur, et visibilité des envois (privés par défaut). La clé se crée sur votre page de profil GWRank ; « Tester la connexion » la vérifie sans rien envoyer. Elle est enregistrée en clair dans vos réglages locaux — avec une copie de secours dans le même dossier — et reste révocable depuis GWRank. Elle n'est à saisir QU'UNE FOIS : une fois enregistrée, Z-Codex ne la redemande plus, même si une ancienne version de l'application, ouverte en parallèle, vient effacer les réglages qu'elle ne connaît pas. Fermer cette fenêtre sans avoir cliqué sur « Enregistrer » perdrait une clé fraîchement collée : Z-Codex vous prévient alors et propose de l'enregistrer.",
               "GWRank API key, server, and visibility of uploads (private by default). The key is created on your GWRank profile page; “Test connection” checks it without sending anything. It is stored in plain text in your local settings — with a backup copy in the same folder — and can be revoked from GWRank at any time. You only ever enter it ONCE: after it is saved, Z-Codex never asks again, even if an older version of the application, running alongside, wipes the settings it does not know about. Closing this window without clicking “Save” would throw away a freshly pasted key: Z-Codex warns you and offers to save it."),
@@ -464,6 +473,32 @@ public static class HelpContent
             R("Clic droit sur une barre de cadenas", "Right-click a lock bar",
               "Éditer / Supprimer le cadenas, ou l'Exporter (membres seuls) en .pn3, .png ou chat codes .txt (O+P).",
               "Edit / Remove the lock, or Export it (members only) as .pn3, .png or .txt chat codes (O+P).")),
+
+        // ═══════════════ SESSION PARTAGÉE ═══════════════
+        S("Session partagée (co-édition en direct)", "Shared session (live co-editing)",
+          "Plusieurs joueurs travaillent sur le même teambuild en même temps, chacun sur son propre Z-Codex : les modifications des uns arrivent chez les autres en une seconde environ. Seul celui qui ouvre la session a besoin d'un compte GWRank.",
+          "Several players work on the same teambuild at the same time, each on their own Z-Codex: one player's changes reach the others in about a second. Only the player who opens the session needs a GWRank account.",
+            R("Ouvrir une session", "Open a session",
+              "Extras ▸ Partager ce teambuild en direct… : Z-Codex crée la session sur GWRank et donne un code court (du type KURZ-7T4), déjà copié dans le presse-papier, à transmettre aux autres. Votre onglet et son fichier restent les vôtres : vous enregistrez quand vous le décidez.",
+              "Extras ▸ Share this teambuild live…: Z-Codex creates the session on GWRank and gives a short code (like KURZ-7T4), already copied to the clipboard, to pass on to the others. Your tab and its file stay yours: you save whenever you choose."),
+            R("Rejoindre une session", "Join a session",
+              "Extras ▸ Rejoindre une session partagée… : saisissez le code et votre pseudo. Le teambuild s'ouvre dans un NOUVEL onglet, relié à aucun de vos fichiers — la session ne peut rien écraser dans votre bibliothèque. « Enregistrer » en fait une copie à vous.",
+              "Extras ▸ Join a shared session…: enter the code and your nickname. The teambuild opens in a NEW tab, tied to none of your files — the session cannot overwrite anything in your library. “Save” makes a copy of your own."),
+            R("Bandeau de session", "Session bar",
+              "Au-dessus des personnages : le code, l'état de la connexion, les participants (chacun avec sa couleur) et les derniers événements. « Copier le code » et « Quitter » y sont toujours à portée.",
+              "Above the characters: the code, the connection status, the participants (each with their colour) and the latest events. “Copy code” and “Leave” are always at hand there."),
+            R("+ Prendre / À vous / 🔒 pseudo", "+ Take / Yours / 🔒 nickname",
+              "Sous le nom de chaque personnage. Prendre un personnage (et ses variantes) dit aux autres que vous travaillez dessus : leurs modifications y sont refusées et annulées chez eux, avec un message. Un personnage pris par un autre apparaît estompé, mais ses infobulles restent lisibles. Recliquez pour le rendre ; un joueur qui part rend les siens.",
+              "Under each character's name. Taking a character (and its variants) tells the others you are working on it: their changes to it are refused and undone on their side, with a message. A character taken by someone else is shown faded, but its tooltips stay readable. Click again to give it back; a player who leaves gives theirs back."),
+            R("Modifications simultanées", "Simultaneous changes",
+              "Deux joueurs qui modifient deux personnages différents en même temps gardent tous les deux leur travail. Sur un même personnage non pris, c'est la dernière modification qui l'emporte — d'où l'intérêt de le prendre. Le nom de l'onglet et le mode PvE/PvP restent propres à chacun. Ctrl+Z ne remonte pas au-delà de la dernière modification reçue d'un autre.",
+              "Two players changing two different characters at the same time both keep their work. On the same untaken character, the latest change wins — hence the point of taking it. The tab name and the PvE/PvP mode stay each player's own. Ctrl+Z does not go back past the last change received from someone else."),
+            R("Coupure et fin", "Connection loss and end",
+              "Une coupure réseau n'arrête pas la session : Z-Codex se reconnecte seul et fusionne ce qui a été fait entre-temps. Quand la session se termine pour vous (vous la quittez, ou elle expire — l'heure est dans le bandeau), l'onglet reste ouvert tel quel et le bandeau dit pourquoi. Le départ de l'hôte ne la ferme pas : les autres continuent entre eux.",
+              "A network drop does not end the session: Z-Codex reconnects on its own and merges what was done in the meantime. When the session ends for you (you leave, or it expires — the time is in the bar), the tab stays open as it is and the bar says why. The host leaving does not close it: the others carry on among themselves."),
+            R("Lecture seule", "Read-only",
+              "Si votre catalogue de compétences ou votre Z-Codex sont plus anciens que ceux des autres, vous suivez la session sans pouvoir y envoyer quoi que ce soit : vos envois effaceraient ce que votre version ne connaît pas. Le bandeau dit quoi mettre à jour.",
+              "If your skill catalog or your Z-Codex is older than the others', you follow the session without being able to send anything to it: what you sent would erase whatever your version does not know. The bar says what to update.")),
 
         // ═══════════════ CATALOGUE ═══════════════
         S("Catalogue de compétences", "Skill catalog",

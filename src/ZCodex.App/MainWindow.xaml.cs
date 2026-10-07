@@ -631,6 +631,7 @@ public partial class MainWindow : Window
 
     private bool TryCloseTab(TeamBuildViewModel tb)
     {
+        if (!ConfirmCollabTabClose(tb)) return false;   // onglet en session partagée
         if (tb.IsDirty)
         {
             var result = MessageBox.Show(
@@ -643,6 +644,7 @@ public partial class MainWindow : Window
             if (result == MessageBoxResult.Yes && !SaveTeamBuild(tb)) return false;
         }
 
+        EndCollabForClosedTab(tb);
         CloseTab(tb);
         return true;
     }
@@ -1961,7 +1963,10 @@ public partial class MainWindow : Window
     // Le reglage de synchro GWRank est persiste : la case doit refleter settings.json a chaque
     // ouverture du menu, pas l'etat pose au demarrage.
     private void ExtrasMenu_SubmenuOpened(object sender, RoutedEventArgs e)
-        => GwRankStartupMenuItem.IsChecked = _settings.GwRankSyncOnStartup;
+    {
+        GwRankStartupMenuItem.IsChecked = _settings.GwRankSyncOnStartup;
+        CollabLeaveMenuItem.IsEnabled = _collab is { IsLive: true };
+    }
 
     private void ViewMenu_SubmenuOpened(object sender, RoutedEventArgs e)
     {
@@ -4347,6 +4352,7 @@ public partial class MainWindow : Window
 
         if (!e.Cancel)
         {
+            LeaveCollabOnExit();
             SaveWindowBounds();
             base.OnClosing(e);
         }

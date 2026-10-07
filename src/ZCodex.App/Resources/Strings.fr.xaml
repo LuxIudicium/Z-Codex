@@ -841,4 +841,75 @@
     <sys:String x:Key="S.GwRank.CollisionFixed">Une identité neuve a été attribuée et le fichier a été enregistré.</sys:String>
     <sys:String x:Key="S.GwRank.CollisionUnsaved">Une identité neuve a été attribuée. Enregistrez ce build pour la conserver.</sys:String>
 
+    <!-- ── Session partagée (Extras ▸ Partager ce teambuild en direct / Rejoindre) ───── -->
+    <sys:String x:Key="S.Menu.CollabHost">Partager ce teambuild en direct…</sys:String>
+    <sys:String x:Key="S.Menu.CollabJoin">Rejoindre une session partagée…</sys:String>
+    <sys:String x:Key="S.Menu.CollabLeave">Quitter la session partagée</sys:String>
+    <sys:String x:Key="S.Collab.Title">Session partagée</sys:String>
+    <sys:String x:Key="S.Collab.HostTitle">Partager ce teambuild en direct</sys:String>
+    <sys:String x:Key="S.Collab.HostIntro">Ouvrez une session sur « {0} » : les joueurs à qui vous donnerez le code verront vos modifications arriver en direct, et vous les leurs. Chacun peut prendre un personnage, pour que personne d'autre ne le modifie en même temps. Votre fichier reste le vôtre : les autres reçoivent une copie.</sys:String>
+    <sys:String x:Key="S.Collab.HostCreate">Créer la session</sys:String>
+    <sys:String x:Key="S.Collab.HostStart">Commencer</sys:String>
+    <sys:String x:Key="S.Collab.JoinTitle">Rejoindre une session partagée</sys:String>
+    <sys:String x:Key="S.Collab.JoinIntro">Saisissez le code que l'hôte vous a donné. Le teambuild s'ouvrira dans un nouvel onglet, relié à aucun de vos fichiers : enregistrez-le si vous voulez en garder une copie. Pas besoin de compte GWRank pour rejoindre.</sys:String>
+    <sys:String x:Key="S.Collab.JoinGo">Rejoindre</sys:String>
+    <sys:String x:Key="S.Collab.NickLabel">Votre pseudo</sys:String>
+    <sys:String x:Key="S.Collab.NickHint">C'est le nom que verront les autres participants.</sys:String>
+    <sys:String x:Key="S.Collab.NickMissing">Choisissez un pseudo.</sys:String>
+    <sys:String x:Key="S.Collab.CodeLabel">Code de la session</sys:String>
+    <sys:String x:Key="S.Collab.CodeHint">Il a la forme ABCD-EFG ; majuscules et tiret sont facultatifs.</sys:String>
+    <sys:String x:Key="S.Collab.CodeInvalid">Ce code n'a pas la bonne forme : il en faut un du type ABCD-EFG, sans 0, O, 1 ni I.</sys:String>
+    <sys:String x:Key="S.Collab.CodeReady">Session ouverte. Donnez ce code aux autres joueurs :</sys:String>
+    <sys:String x:Key="S.Collab.CodeReadyHint">Ils le saisissent dans Extras ▸ Rejoindre une session partagée — pas besoin de compte GWRank pour eux.</sys:String>
+    <sys:String x:Key="S.Collab.CopyCode">Copier le code</sys:String>
+    <sys:String x:Key="S.Collab.CodeCopied">Code copié dans le presse-papier.</sys:String>
+    <sys:String x:Key="S.Collab.Creating">Création de la session sur GWRank…</sys:String>
+    <sys:String x:Key="S.Collab.Connecting">Connexion…</sys:String>
+    <sys:String x:Key="S.Collab.Receiving">Connecté — réception du teambuild…</sys:String>
+    <sys:String x:Key="S.Collab.ErrToken">GWRank a refusé votre clé d'API. Vérifiez-la dans Extras ▸ Réglages GWRank.</sys:String>
+    <sys:String x:Key="S.Collab.ErrRoomsFull">GWRank n'a plus de place pour une nouvelle session. Réessayez dans un moment.</sys:String>
+    <sys:String x:Key="S.Collab.ErrNoRooms">Ce serveur GWRank ne propose pas les sessions partagées.</sys:String>
+    <sys:String x:Key="S.Collab.ErrOffline">GWRank est injoignable. Vérifiez votre connexion, puis réessayez.</sys:String>
+    <sys:String x:Key="S.Collab.ErrOther">Le serveur a refusé : {0}</sys:String>
+    <sys:String x:Key="S.Collab.ErrNotFound">Aucune session ne porte ce code : il a pu expirer, ou l'hôte l'a fermée. Vérifiez-le auprès de lui.</sys:String>
+    <sys:String x:Key="S.Collab.ErrFull">Cette session est complète.</sys:String>
+    <sys:String x:Key="S.Collab.ErrUnauthorized">Le serveur a refusé l'accès à cette session.</sys:String>
+    <sys:String x:Key="S.Collab.ErrNoState">Vous êtes dans la session, mais personne ne vous a envoyé le teambuild. L'hôte est-il toujours connecté ?</sys:String>
+    <sys:String x:Key="S.Collab.ErrUnreadable">Le teambuild reçu est illisible. Vous avez quitté la session.</sys:String>
+    <sys:String x:Key="S.Collab.AlreadyInSession">Une session partagée est déjà en cours, sur « {0} ». Quittez-la avant d'en ouvrir une autre.</sys:String>
+    <sys:String x:Key="S.Collab.NeedTeamBuild">Ouvrez d'abord le teambuild à partager.</sys:String>
+    <sys:String x:Key="S.Collab.LeaveConfirmHost" xml:space="preserve">Quitter la session ?&#10;&#10;Vous en êtes l'hôte, mais elle continue sans vous jusqu'à son expiration : les autres peuvent poursuivre entre eux.&#10;&#10;Votre teambuild reste tel qu'il est à l'écran.</sys:String>
+    <sys:String x:Key="S.Collab.LeaveConfirmGuest" xml:space="preserve">Quitter la session ?&#10;&#10;L'onglet reste ouvert, en copie sur votre ordinateur : enregistrez-le si vous voulez le garder.</sys:String>
+    <sys:String x:Key="S.Collab.BannerTitle">Session partagée</sys:String>
+    <sys:String x:Key="S.Collab.Leave">Quitter</sys:String>
+    <sys:String x:Key="S.Collab.Expires">expire à {0}</sys:String>
+    <sys:String x:Key="S.Collab.You">vous</sys:String>
+    <sys:String x:Key="S.Collab.HostTag">hôte</sys:String>
+    <sys:String x:Key="S.Collab.ReadOnlyTag">lecture seule</sys:String>
+    <sys:String x:Key="S.Collab.StatusConnecting">Connexion…</sys:String>
+    <sys:String x:Key="S.Collab.StatusConnected">Connecté — les modifications partent et arrivent en direct.</sys:String>
+    <sys:String x:Key="S.Collab.StatusReconnecting">Connexion perdue — nouvelle tentative… Continuez à travailler : ce que vous faites sera fusionné au retour.</sys:String>
+    <sys:String x:Key="S.Collab.EndedHost">Session terminée — {0} Votre teambuild reste tel qu'il est à l'écran.</sys:String>
+    <sys:String x:Key="S.Collab.EndedGuest">Session terminée — {0} Cet onglet est maintenant une copie sur votre ordinateur : enregistrez-le pour la garder.</sys:String>
+    <sys:String x:Key="S.Collab.EndLeft">vous l'avez quittée.</sys:String>
+    <sys:String x:Key="S.Collab.EndClosed">elle a expiré, ou a été fermée.</sys:String>
+    <sys:String x:Key="S.Collab.EndFull">elle est complète.</sys:String>
+    <sys:String x:Key="S.Collab.EndUnauthorized">le serveur a refusé l'accès.</sys:String>
+    <sys:String x:Key="S.Collab.EndNetwork">la connexion n'a pas pu être rétablie.</sys:String>
+    <sys:String x:Key="S.Collab.EndOther">motif donné par le serveur : {0}.</sys:String>
+    <sys:String x:Key="S.Collab.ReadOnlyCatalog">Lecture seule : votre catalogue de compétences ne connaît pas {0} compétence(s) de ce build. Mettez-le à jour (Extras ▸ Mettre à jour les compétences), puis rejoignez de nouveau la session — sinon vos envois effaceraient ces compétences chez tout le monde.</sys:String>
+    <sys:String x:Key="S.Collab.ReadOnlyNewerApp">Lecture seule : ce build a été écrit par une version plus récente de Z-Codex. Mettez Z-Codex à jour pour participer — sinon vos envois effaceraient ce que votre version ne connaît pas.</sys:String>
+    <sys:String x:Key="S.Collab.NoticeJoined">{0} a rejoint la session.</sys:String>
+    <sys:String x:Key="S.Collab.NoticeLeft">{0} a quitté la session.</sys:String>
+    <sys:String x:Key="S.Collab.NoticeClaimLost">{0} a pris ce personnage juste avant vous.</sys:String>
+    <sys:String x:Key="S.Collab.NoticeReverted">Ce personnage est pris par {0} : votre modification a été annulée.</sys:String>
+    <sys:String x:Key="S.Collab.NoticeAlreadyTaken">Ce personnage est déjà pris par {0}.</sys:String>
+    <sys:String x:Key="S.Collab.NoticeReadOnlyEdit">Lecture seule : cette modification ne sera pas partagée, et le prochain état reçu la remplacera.</sys:String>
+    <sys:String x:Key="S.Row.CollabTake">+ Prendre</sys:String>
+    <sys:String x:Key="S.Row.CollabMine">À vous</sys:String>
+    <sys:String x:Key="S.Row.CollabFreeTip">Prendre ce personnage et ses variantes : vos modifications y feront foi, celles des autres y seront refusées. Recliquez pour le rendre.</sys:String>
+    <sys:String x:Key="S.Row.CollabMineTip">Vous avez pris ce personnage et ses variantes. Cliquez pour le rendre.</sys:String>
+    <sys:String x:Key="S.Row.CollabOtherTip">Personnage pris par un autre participant : vos modifications y seront annulées.</sys:String>
+    <sys:String x:Key="S.Collab.Unknown">+ {0} participant(s) en cours de connexion</sys:String>
+
 </ResourceDictionary>
