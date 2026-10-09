@@ -880,6 +880,9 @@
     <sys:String x:Key="S.Collab.AlreadyInSession">A shared session is already running, on “{0}”. Leave it before opening another one.</sys:String>
     <sys:String x:Key="S.Collab.NeedTeamBuild">Open the teambuild to share first.</sys:String>
     <sys:String x:Key="S.Collab.LeaveConfirmHost" xml:space="preserve">Leave the session?&#10;&#10;You are its host: without you, it closes for everyone 5 minutes after you leave.&#10;&#10;Your teambuild stays as it is on screen.</sys:String>
+    <sys:String x:Key="S.Collab.CloseTabGuest" xml:space="preserve">Closing this tab makes you leave the session.&#10;&#10;This teambuild is not saved anywhere on your computer. Save a copy before closing?</sys:String>
+    <sys:String x:Key="S.Collab.CloseTabHost" xml:space="preserve">Closing this tab makes you leave the session.&#10;&#10;You are its host: without you, it closes for everyone 5 minutes after you leave.</sys:String>
+    <sys:String x:Key="S.Collab.CloseTabSaved">Closing this tab makes you leave the session.</sys:String>
     <sys:String x:Key="S.Collab.LeaveConfirmGuest" xml:space="preserve">Leave the session?&#10;&#10;The tab stays open, as a copy on your computer: save it if you want to keep it.</sys:String>
     <sys:String x:Key="S.Collab.BannerTitle">Shared session</sys:String>
     <sys:String x:Key="S.Collab.Leave">Leave</sys:String>

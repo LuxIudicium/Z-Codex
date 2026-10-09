@@ -631,8 +631,8 @@ public partial class MainWindow : Window
 
     private bool TryCloseTab(TeamBuildViewModel tb)
     {
-        if (!ConfirmCollabTabClose(tb)) return false;   // onglet en session partagée
-        if (tb.IsDirty)
+        if (!ConfirmCollabTabClose(tb, out bool saveHandled)) return false;   // onglet en session partagée
+        if (tb.IsDirty && !saveHandled)
         {
             var result = MessageBox.Show(
                 string.Format(T("S.Msg.UnsavedBuild"), tb.Name),

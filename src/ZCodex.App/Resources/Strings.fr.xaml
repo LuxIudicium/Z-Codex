@@ -881,6 +881,9 @@
     <sys:String x:Key="S.Collab.AlreadyInSession">Une session partagée est déjà en cours, sur « {0} ». Quittez-la avant d'en ouvrir une autre.</sys:String>
     <sys:String x:Key="S.Collab.NeedTeamBuild">Ouvrez d'abord le teambuild à partager.</sys:String>
     <sys:String x:Key="S.Collab.LeaveConfirmHost" xml:space="preserve">Quitter la session ?&#10;&#10;Vous en êtes l'hôte : sans vous, elle se fermera pour tout le monde 5 minutes après votre départ.&#10;&#10;Votre teambuild reste tel qu'il est à l'écran.</sys:String>
+    <sys:String x:Key="S.Collab.CloseTabGuest" xml:space="preserve">Fermer cet onglet vous fait quitter la session.&#10;&#10;Ce teambuild n'est enregistré nulle part sur votre ordinateur. Enregistrer une copie avant de fermer ?</sys:String>
+    <sys:String x:Key="S.Collab.CloseTabHost" xml:space="preserve">Fermer cet onglet vous fait quitter la session.&#10;&#10;Vous en êtes l'hôte : sans vous, elle se fermera pour tout le monde 5 minutes après votre départ.</sys:String>
+    <sys:String x:Key="S.Collab.CloseTabSaved">Fermer cet onglet vous fait quitter la session.</sys:String>
     <sys:String x:Key="S.Collab.LeaveConfirmGuest" xml:space="preserve">Quitter la session ?&#10;&#10;L'onglet reste ouvert, en copie sur votre ordinateur : enregistrez-le si vous voulez le garder.</sys:String>
     <sys:String x:Key="S.Collab.BannerTitle">Session partagée</sys:String>
     <sys:String x:Key="S.Collab.Leave">Quitter</sys:String>

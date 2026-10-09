@@ -240,13 +240,27 @@ public partial class MainWindow
         if (ReferenceEquals(_collab, collab)) _collab = null;
     }
 
-    /// <summary>Fermeture d'un onglet en session : on le dit, et le départ ne se fait qu'une fois
-    /// la fermeture confirmée (la question « enregistrer ? » peut encore l'annuler).</summary>
-    private bool ConfirmCollabTabClose(TeamBuildViewModel tb)
+    /// <summary>
+    /// Fermeture d'un onglet en session : on le dit, et le départ ne se fait qu'une fois la
+    /// fermeture confirmée. ⚠ Pas les textes de « Quitter », qui promettent que l'onglet reste.
+    /// L'invité dont l'onglet n'existe sur aucun disque se voit proposer d'en enregistrer une
+    /// copie : <paramref name="saveHandled"/> dit alors que la question « enregistrer ? » est posée.
+    /// </summary>
+    private bool ConfirmCollabTabClose(TeamBuildViewModel tb, out bool saveHandled)
     {
+        saveHandled = false;
         if (tb.Collab is not { IsLive: true } c) return true;
+        if (!c.IsHost && tb.FilePath is null)
+        {
+            saveHandled = true;
+            var answer = MessageBox.Show(T("S.Collab.CloseTabGuest"), T("S.Collab.Title"),
+                                         MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+            if (answer == MessageBoxResult.Cancel) return false;
+            // « Enregistrer sous » abandonné : on reste dans la session plutôt que de tout perdre.
+            return answer == MessageBoxResult.No || SaveTeamBuild(tb);
+        }
         return MessageBox.Show(
-            T(c.IsHost ? "S.Collab.LeaveConfirmHost" : "S.Collab.LeaveConfirmGuest"),
+            T(c.IsHost ? "S.Collab.CloseTabHost" : "S.Collab.CloseTabSaved"),
             T("S.Collab.Title"), MessageBoxButton.OKCancel, MessageBoxImage.Question) == MessageBoxResult.OK;
     }
 
