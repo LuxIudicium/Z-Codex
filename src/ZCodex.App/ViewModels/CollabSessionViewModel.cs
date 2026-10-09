@@ -71,11 +71,17 @@ public sealed class CollabSessionViewModel : ViewModelBase
     private readonly DispatcherTimer _debounce = new() { Interval = TimeSpan.FromMilliseconds(500) };
     private readonly DispatcherTimer _deferTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
     private readonly DispatcherTimer _noticeTimer = new() { Interval = TimeSpan.FromSeconds(8) };
+    // L'heure de fin du bandeau change toute seule (approche des 2 h) : relue à chaque tic.
+    private readonly DispatcherTimer _clockTimer = new() { Interval = TimeSpan.FromSeconds(15) };
     private readonly Queue<DateTime> _republishes = new();
     private RoomStateEventArgs? _pendingRemote;
     private long _lastSerial;
     private bool _detached;
     private bool _readOnlyNoticeShown;
+    private bool _expiringNoticeShown;
+
+    /// <summary>Avance de l'avertissement avant la limite des 2 h.</summary>
+    private static readonly TimeSpan ExpiryWarningLead = TimeSpan.FromMinutes(10);
 
     private string _statusText = string.Empty;
     private string _noticeText = string.Empty;
@@ -93,9 +99,35 @@ public sealed class CollabSessionViewModel : ViewModelBase
     public bool HasNotice => _noticeText.Length > 0;
     public ObservableCollection<CollabParticipant> Participants { get; } = new();
 
-    public string ExpiresText => _session.ExpiresAt is { } exp && !IsEnded
-        ? string.Format(T("S.Collab.Expires"), exp.ToLocalTime().ToString("t"))
-        : string.Empty;
+    public string ExpiresText => Expiry().Text;
+
+    /// <summary>Fermeture proche (hôte parti, ou moins de 10 min avant les 2 h) : l'heure de fin
+    /// passe en couleur d'avertissement, et y reste tant que la situation dure.</summary>
+    public bool ExpiresWarning => Expiry().Warning;
+
+    private (string Text, bool Warning) Expiry()
+    {
+        if (IsEnded || _session.ExpiresAt is not { } end) return (string.Empty, false);
+        static string Clock(DateTime utc) => utc.ToLocalTime().ToString("t");
+        if (_session.HostAbsentSince is { } since && since + RoomSession.HostGraceDelay < end)
+            return (string.Format(T("S.Collab.ClosesHostGone"), Clock(since + RoomSession.HostGraceDelay)), true);
+        if (end - DateTime.UtcNow <= ExpiryWarningLead)
+            return (string.Format(T("S.Collab.ClosesSoon"), Clock(end)), true);
+        return (string.Format(T("S.Collab.Expires"), Clock(end)), false);
+    }
+
+    private void RefreshExpiry()
+    {
+        OnPropertyChanged(nameof(ExpiresText));
+        OnPropertyChanged(nameof(ExpiresWarning));
+        // Une seule fois par session : l'heure orange reste, le message, lui, s'efface.
+        if (!_expiringNoticeShown && !IsEnded && _session.ExpiresAt is { } end
+            && end - DateTime.UtcNow <= ExpiryWarningLead)
+        {
+            _expiringNoticeShown = true;
+            SetNotice(string.Format(T("S.Collab.NoticeExpiring"), end.ToLocalTime().ToString("t")));
+        }
+    }
 
     /// <summary>Connexions présentes qui ne se sont pas encore annoncées (arrivant, ou participant
     /// qui revient d'une coupure) : le serveur les compte, on n'a pas encore leur pseudo.</summary>
@@ -130,6 +162,8 @@ public sealed class CollabSessionViewModel : ViewModelBase
         };
         _deferTimer.Tick += (_, _) => TryApplyPending();
         _noticeTimer.Tick += (_, _) => { _noticeTimer.Stop(); SetNotice(string.Empty); };
+        _clockTimer.Tick += (_, _) => RefreshExpiry();
+        _clockTimer.Start();
 
         _tb.Mutated += OnMutated;
         _session.StatusChanged += OnStatusChanged;
@@ -430,7 +464,7 @@ public sealed class CollabSessionViewModel : ViewModelBase
         Participants.Clear();
         foreach (var p in peers)
             Participants.Add(new CollabParticipant(p.Nick, BrushFor(p.ClientId), p.IsMe, p.IsHost, p.ReadOnly));
-        OnPropertyChanged(nameof(ExpiresText));
+        RefreshExpiry();
         OnPropertyChanged(nameof(UnknownText));
         OnPropertyChanged(nameof(HasUnknown));
         RefreshClaims();
@@ -443,6 +477,9 @@ public sealed class CollabSessionViewModel : ViewModelBase
         {
             RoomNoticeKind.PeerJoined => string.Format(T("S.Collab.NoticeJoined"), n.Nick ?? "?"),
             RoomNoticeKind.PeerLeft   => string.Format(T("S.Collab.NoticeLeft"), n.Nick ?? "?"),
+            RoomNoticeKind.HostLeft   => string.Format(T("S.Collab.NoticeHostLeft"), n.Nick ?? "?",
+                                             ((_session.HostAbsentSince ?? DateTime.UtcNow) + RoomSession.HostGraceDelay)
+                                             .ToLocalTime().ToString("t")),
             RoomNoticeKind.ClaimLost  => string.Format(T("S.Collab.NoticeClaimLost"), n.Nick ?? "?"),
             _                         => string.Empty,
         };
@@ -457,6 +494,7 @@ public sealed class CollabSessionViewModel : ViewModelBase
         {
             _debounce.Stop();
             _deferTimer.Stop();
+            _clockTimer.Stop();
             _tb.Mutated -= OnMutated;
             RefreshClaims();
             Ended?.Invoke();
@@ -477,6 +515,7 @@ public sealed class CollabSessionViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsEnded));
         OnPropertyChanged(nameof(IsLive));
         OnPropertyChanged(nameof(ExpiresText));
+        OnPropertyChanged(nameof(ExpiresWarning));
     }
 
     private string EndedText()
@@ -556,6 +595,7 @@ public sealed class CollabSessionViewModel : ViewModelBase
         _debounce.Stop();
         _deferTimer.Stop();
         _noticeTimer.Stop();
+        _clockTimer.Stop();
         _tb.Mutated -= OnMutated;
         _session.StatusChanged -= OnStatusChanged;
         _session.PeersChanged -= OnPeersChanged;

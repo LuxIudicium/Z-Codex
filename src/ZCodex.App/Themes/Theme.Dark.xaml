@@ -42,6 +42,7 @@
     <!-- États -->
     <SolidColorBrush x:Key="WarningBackgroundBrush" Color="#453D1E"/>
     <SolidColorBrush x:Key="WarningBorderBrush"     Color="#99801F"/>
+    <SolidColorBrush x:Key="WarningTextBrush"       Color="#F0A040"/>
     <SolidColorBrush x:Key="ErrorTextBrush"         Color="#FF6B6B"/>
     <SolidColorBrush x:Key="StatHpBrush"            Color="#FF7575"/>
     <SolidColorBrush x:Key="StatEnergyBrush"        Color="#7FAFFF"/>

@@ -175,6 +175,9 @@ public enum RoomNoticeKind
 {
     PeerJoined,
     PeerLeft,
+    /// <summary>L'hôte est parti : sans son retour, le serveur ferme le salon au bout de
+    /// <see cref="RoomSession.HostGraceDelay"/>.</summary>
+    HostLeft,
     /// <summary>Un personnage que je croyais prendre l'a été avant moi par quelqu'un d'autre.</summary>
     ClaimLost,
 }

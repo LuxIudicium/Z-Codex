@@ -885,6 +885,8 @@
     <sys:String x:Key="S.Collab.BannerTitle">Session partagée</sys:String>
     <sys:String x:Key="S.Collab.Leave">Quitter</sys:String>
     <sys:String x:Key="S.Collab.Expires">expire à {0}</sys:String>
+    <sys:String x:Key="S.Collab.ClosesHostGone">⚠ se ferme vers {0} — l'hôte est parti</sys:String>
+    <sys:String x:Key="S.Collab.ClosesSoon">⚠ se ferme à {0} — limite de 2 heures</sys:String>
     <sys:String x:Key="S.Collab.You">vous</sys:String>
     <sys:String x:Key="S.Collab.HostTag">hôte</sys:String>
     <sys:String x:Key="S.Collab.ReadOnlyTag">lecture seule</sys:String>
@@ -906,6 +908,8 @@
     <sys:String x:Key="S.Collab.ReadOnlyNewerApp">Lecture seule : ce build a été écrit par une version plus récente de Z-Codex. Mettez Z-Codex à jour pour participer — sinon vos envois effaceraient ce que votre version ne connaît pas.</sys:String>
     <sys:String x:Key="S.Collab.NoticeJoined">{0} a rejoint la session.</sys:String>
     <sys:String x:Key="S.Collab.NoticeLeft">{0} a quitté la session.</sys:String>
+    <sys:String x:Key="S.Collab.NoticeHostLeft">{0}, l'hôte, a quitté la session : sans son retour, elle se fermera pour tout le monde vers {1}.</sys:String>
+    <sys:String x:Key="S.Collab.NoticeExpiring">La session atteindra sa limite de 2 heures à {0}. Le teambuild restera à l'écran ; pour continuer ensemble, il faudra en ouvrir une nouvelle.</sys:String>
     <sys:String x:Key="S.Collab.NoticeClaimLost">{0} a pris ce personnage juste avant vous.</sys:String>
     <sys:String x:Key="S.Collab.NoticeReverted">Ce personnage est pris par {0} : votre modification a été annulée.</sys:String>
     <sys:String x:Key="S.Collab.NoticeAlreadyTaken">Ce personnage est déjà pris par {0}.</sys:String>

@@ -884,6 +884,8 @@
     <sys:String x:Key="S.Collab.BannerTitle">Shared session</sys:String>
     <sys:String x:Key="S.Collab.Leave">Leave</sys:String>
     <sys:String x:Key="S.Collab.Expires">expires at {0}</sys:String>
+    <sys:String x:Key="S.Collab.ClosesHostGone">⚠ closes around {0} — the host has left</sys:String>
+    <sys:String x:Key="S.Collab.ClosesSoon">⚠ closes at {0} — 2-hour limit</sys:String>
     <sys:String x:Key="S.Collab.You">you</sys:String>
     <sys:String x:Key="S.Collab.HostTag">host</sys:String>
     <sys:String x:Key="S.Collab.ReadOnlyTag">read-only</sys:String>
@@ -905,6 +907,8 @@
     <sys:String x:Key="S.Collab.ReadOnlyNewerApp">Read-only: this build was written by a newer version of Z-Codex. Update Z-Codex to take part — otherwise what you send would erase whatever your version does not know.</sys:String>
     <sys:String x:Key="S.Collab.NoticeJoined">{0} joined the session.</sys:String>
     <sys:String x:Key="S.Collab.NoticeLeft">{0} left the session.</sys:String>
+    <sys:String x:Key="S.Collab.NoticeHostLeft">{0}, the host, left the session: unless they come back, it closes for everyone around {1}.</sys:String>
+    <sys:String x:Key="S.Collab.NoticeExpiring">The session reaches its 2-hour limit at {0}. The teambuild will stay on screen; to carry on together, a new one will have to be opened.</sys:String>
     <sys:String x:Key="S.Collab.NoticeClaimLost">{0} took this character just before you.</sys:String>
     <sys:String x:Key="S.Collab.NoticeReverted">This character is taken by {0}: your change was undone.</sys:String>
     <sys:String x:Key="S.Collab.NoticeAlreadyTaken">This character is already taken by {0}.</sys:String>

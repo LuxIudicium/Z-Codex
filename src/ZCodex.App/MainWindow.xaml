@@ -3009,8 +3009,21 @@
                                         <Run Text="{DynamicResource S.Collab.BannerTitle}"/>
                                         <Run Text="{Binding Code, Mode=OneWay}" FontFamily="Consolas"/>
                                     </TextBlock>
-                                    <TextBlock Text="{Binding ExpiresText}" Margin="10,0,0,0" VerticalAlignment="Center"
-                                               Foreground="{DynamicResource TextMutedBrush}" FontSize="11"/>
+                                    <!-- Orange tant que la fermeture approche (hôte parti, 10 dernières
+                                         minutes des 2 h) : le message ponctuel, lui, s'efface. -->
+                                    <TextBlock Text="{Binding ExpiresText}" Margin="10,0,0,0" VerticalAlignment="Center" FontSize="11">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding ExpiresWarning}" Value="True">
+                                                        <Setter Property="Foreground" Value="{DynamicResource WarningTextBrush}"/>
+                                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
                                 </StackPanel>
                                 <!-- Sur sa propre ligne : en fin de session, c'est une phrase entière
                                      (pourquoi, et que faire du build) qui doit pouvoir passer à la ligne. -->

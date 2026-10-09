@@ -117,6 +117,7 @@ public sealed class RoomSession : IAsyncDisposable
     private int _colorCounter;
     private GwRankRoomLimits _limits;
     private DateTime? _expiresAt;
+    private DateTime? _hostAbsentSince;
     private TimeSpan _minGap;
     private int _maxBytes;
     private DateTime _lastSendUtc = DateTime.MinValue;
@@ -136,6 +137,14 @@ public sealed class RoomSession : IAsyncDisposable
     public string ClientId => _self.ClientId;
     public string Nick => _self.Nick;
     public DateTime? ExpiresAt { get { lock (_gate) return _expiresAt; } }
+
+    /// <summary>Délai au-delà duquel le serveur ferme un salon dont le créateur est parti
+    /// (<c>creator_timeout</c> ; mesuré : 5 min 24 s, le balayage n'est pas instantané).</summary>
+    public static readonly TimeSpan HostGraceDelay = TimeSpan.FromMinutes(5);
+
+    /// <summary>Depuis quand l'hôte est absent (UTC), vu d'un invité ; null s'il est là, ou si
+    /// on est soi-même l'hôte.</summary>
+    public DateTime? HostAbsentSince { get { lock (_gate) return _hostAbsentSince; } }
     public GwRankRoomLimits Limits { get { lock (_gate) return _limits; } }
 
     /// <summary>
@@ -558,11 +567,10 @@ public sealed class RoomSession : IAsyncDisposable
                 foreach (var c in parts.EnumerateArray())
                     if (c.ValueKind == JsonValueKind.String) _present.Add(c.GetString()!);
             // Partis pendant notre absence (reconnexion) : le serveur ne nous l'a pas annoncé.
+            // L'heure de départ de l'hôte n'est pas connue : « maintenant » est la plus tardive
+            // possible, le bandeau dit donc « vers ».
             foreach (var gone in _peers.Values.Where(p => p.ConnectionId is { } c && !_present.Contains(c)).ToList())
-            {
-                _peers.Remove(gone.ClientId);
-                notices.Add(new RoomNotice(RoomNoticeKind.PeerLeft, gone.Nick));
-            }
+                notices.Add(Forget(gone));
             if (Str(message, "expiresAt") is { } exp && DateTime.TryParse(exp, null,
                     System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal, out var e))
                 _expiresAt = e;
@@ -597,15 +605,24 @@ public sealed class RoomSession : IAsyncDisposable
     private void OnLeft(string? connId)
     {
         if (connId is null) return;
-        RoomPeer? gone;
+        RoomNotice? notice = null;
         lock (_gate)
         {
             _present.Remove(connId);
-            gone = _peers.Values.FirstOrDefault(p => p.ConnectionId == connId);
-            if (gone is not null) _peers.Remove(gone.ClientId);
+            if (_peers.Values.FirstOrDefault(p => p.ConnectionId == connId) is { } gone) notice = Forget(gone);
         }
         Post(() => PeersChanged?.Invoke());
-        if (gone is not null) Post(() => Notice?.Invoke(new RoomNotice(RoomNoticeKind.PeerLeft, gone.Nick)));
+        if (notice is not null) Post(() => Notice?.Invoke(notice));
+    }
+
+    /// <summary>Retire un participant parti ; celui de l'hôte déclenche le compte à rebours de
+    /// fermeture du salon. Sous <see cref="_gate"/>.</summary>
+    private RoomNotice Forget(RoomPeer gone)
+    {
+        _peers.Remove(gone.ClientId);
+        if (!gone.IsHost) return new RoomNotice(RoomNoticeKind.PeerLeft, gone.Nick);
+        _hostAbsentSince = DateTime.UtcNow;
+        return new RoomNotice(RoomNoticeKind.HostLeft, gone.Nick);
     }
 
     private void ReceivePayload(string base64, string? sender, bool retained)
@@ -641,6 +658,7 @@ public sealed class RoomSession : IAsyncDisposable
                 }
                 if (packet.Nick is { Length: > 0 } nick) peer.Nick = nick.Length > 40 ? nick[..40] : nick;
                 peer.IsHost = packet.Host;
+                if (packet.Host) _hostAbsentSince = null;   // revenu (coupure réseau) : le salon vit
                 peer.ReadOnly = packet.ReadOnly;
                 peer.Claims = (packet.Claims ?? []).Where(c => c.Id != Guid.Empty)
                                 .GroupBy(c => c.Id).ToDictionary(g => g.Key, g => g.Min(c => c.At));
