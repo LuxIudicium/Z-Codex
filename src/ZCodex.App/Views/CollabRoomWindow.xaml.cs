@@ -205,6 +205,8 @@ public partial class CollabRoomWindow : Window
     {
         RoomEndReason.NotFound     => T("S.Collab.ErrNotFound"),
         RoomEndReason.Closed       => T("S.Collab.ErrNotFound"),
+        RoomEndReason.Expired      => T("S.Collab.ErrExpired"),
+        RoomEndReason.HostGone     => T("S.Collab.ErrHostGone"),
         RoomEndReason.Full         => T("S.Collab.ErrFull"),
         RoomEndReason.Unauthorized => T("S.Collab.ErrUnauthorized"),
         RoomEndReason.NetworkLost  => T("S.Collab.ErrOffline"),

@@ -526,6 +526,13 @@ public sealed class RoomSession : IAsyncDisposable
             case "room.left":
                 OnLeft(Str(message, "connectionId"));
                 break;
+            case "room.expired":
+                // La fermeture 4404 suit, avec le même motif ; la connexion qui DÉTECTE
+                // l'expiration, elle, ne reçoit que la fermeture — les deux chemins finissent ici.
+                var why = Str(message, "reason");
+                var kind = RoomCloseInfo.Classify(why, null);
+                End(kind is RoomEndReason.Expired or RoomEndReason.HostGone ? kind : RoomEndReason.Closed, why);
+                break;
             default:
                 // state.updated, ou toute enveloppe future : nos trames se reconnaissent partout.
                 var payloads = RoomCodec.ExtractPayloads(message);

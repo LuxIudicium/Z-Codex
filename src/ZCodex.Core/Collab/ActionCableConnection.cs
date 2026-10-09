@@ -55,7 +55,8 @@ public static class RoomEndpoints
 /// <item>abonnement : <c>{"command":"subscribe","identifier":"&lt;json&gt;"}</c>, réponse
 ///   <c>confirm_subscription</c> ou <c>reject_subscription</c> ;</item>
 /// <item>refus du salon : <c>{"type":"disconnect","reason":"room_not_found","reconnect":false}</c>
-///   puis fermeture WebSocket 4404 — les motifs sont donc des chaînes ET des codes 4xxx.</item>
+///   puis fermeture WebSocket 4404 — les motifs sont donc des chaînes ET des codes 4xxx (liste
+///   officielle : <see cref="RoomCloseInfo.Classify"/>).</item>
 /// </list>
 /// </summary>
 public sealed class ActionCableConnection : IAsyncDisposable
@@ -330,8 +331,9 @@ public sealed class ActionCableConnection : IAsyncDisposable
         var reason = root.TryGetProperty("reason", out var r) && r.ValueKind == JsonValueKind.String ? r.GetString() : null;
         bool reconnect = root.TryGetProperty("reconnect", out var rc) && rc.ValueKind == JsonValueKind.True;
         var kind = RoomCloseInfo.Classify(reason, null);
-        // « reconnect: false » sur un motif non reconnu : on respecte le serveur, pas de retour.
-        if (!reconnect && kind == RoomEndReason.NetworkLost) kind = RoomEndReason.Unknown;
+        // « reconnect: false » sans motif : on respecte le serveur, pas de retour. Un motif
+        // reconnu comme passager (stream_unavailable) l'emporte sur ce drapeau.
+        if (!reconnect && kind == RoomEndReason.NetworkLost && string.IsNullOrEmpty(reason)) kind = RoomEndReason.Unknown;
         return new RoomCloseInfo(kind, reason, null, reconnect);
     }
 

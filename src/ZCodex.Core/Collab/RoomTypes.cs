@@ -68,8 +68,14 @@ public enum RoomEndReason
     NotFound,
     /// <summary>Salon au complet, ou serveur sans place (création : <c>rooms_full</c>).</summary>
     Full,
-    /// <summary>Salon expiré ou fermé (départ de l'hôte, délai atteint).</summary>
+    /// <summary>Salon expiré ou fermé, sans plus de précision.</summary>
     Closed,
+    /// <summary>Durée de vie atteinte : 2 h ABSOLUES depuis la création, que l'activité ne
+    /// prolonge pas (<c>max_lifetime</c>).</summary>
+    Expired,
+    /// <summary>Le créateur est parti et n'est pas revenu dans les 5 minutes avec son secret
+    /// (<c>creator_timeout</c>).</summary>
+    HostGone,
     /// <summary>Secret de créateur ou clé refusés.</summary>
     Unauthorized,
     /// <summary>Trop de messages : le serveur demande de ralentir. Passager.</summary>
@@ -93,11 +99,14 @@ public static class RoomEndReasonExtensions
 public sealed record RoomCloseInfo(RoomEndReason Reason, string? RawReason, int? CloseCode, bool ServerAllowsReconnect)
 {
     /// <summary>
-    /// Classe un motif de fermeture. Le serveur n'en documente aucun ; mesurés sur gwrank.com le
-    /// 29/09/2026 : <c>room_not_found</c> (4404), <c>creator_secret_invalid</c>,
-    /// <c>invalid_payload</c>, <c>payload_too_large</c>, <c>rate_limited</c> (4429). Les autres sont
-    /// reconnus par mots-clés et par code (4000 + statut HTTP), et tout ce qui n'est pas reconnu
-    /// reste affiché tel quel plutôt que d'être réduit à « déconnecté ».
+    /// Classe un motif de fermeture. Liste officielle (OpenAPI de GWRank, 08/10/2026) :
+    /// 1008 <c>invalid_payload</c> ; 1009 <c>payload_too_large</c> ; 1013 <c>stream_unavailable</c> ;
+    /// 4401 <c>creator_secret_invalid</c> ou <c>creator_replaced</c> ; 4404 <c>room_not_found</c>,
+    /// <c>max_lifetime</c> ou <c>creator_timeout</c> ; 4409 <c>room_full</c> ; 4429 <c>rate_limited</c>.
+    /// Le motif arrive d'abord dans une trame <c>disconnect</c> SANS code, puis dans la fermeture
+    /// avec son code : il doit donc se suffire à lui-même. Les motifs inconnus sont reconnus par
+    /// mots-clés et par code, et tout ce qui n'est pas reconnu reste affiché tel quel plutôt que
+    /// d'être réduit à « déconnecté ».
     /// </summary>
     public static RoomEndReason Classify(string? reason, int? closeCode)
     {
@@ -105,11 +114,17 @@ public sealed record RoomCloseInfo(RoomEndReason Reason, string? RawReason, int?
         // Paquet mal formé : c'est notre faute, et le renvoyer à l'identique après reconnexion
         // donnerait le même refus en boucle. Fin de session, motif affiché.
         if (r.Contains("invalid_payload")) return RoomEndReason.Unknown;
+        // AVANT le 4404 : l'expiration partage ce code avec le code inconnu.
+        if (r.Contains("max_lifetime")) return RoomEndReason.Expired;
+        if (r.Contains("creator_timeout")) return RoomEndReason.HostGone;
+        // Serveur momentanément sans relais (1013 = « réessayez plus tard ») : on revient.
+        if (r.Contains("unavailable") || closeCode == 1013) return RoomEndReason.NetworkLost;
         if (r.Contains("not_found") || r.Contains("unknown_room") || closeCode == 4404) return RoomEndReason.NotFound;
         if (r.Contains("full") || r.Contains("capacity") || closeCode == 4409) return RoomEndReason.Full;
         if (r.Contains("expired") || r.Contains("closed") || r.Contains("ended") || r.Contains("gone")
             || closeCode is 4410 or 4408) return RoomEndReason.Closed;
         if (r.Contains("unauthor") || r.Contains("forbidden") || r.Contains("secret") || r.Contains("token")
+            || r.Contains("replaced")
             || closeCode is 4401 or 4403) return RoomEndReason.Unauthorized;
         if (r.Contains("rate") || r.Contains("too_many") || r.Contains("flood") || r.Contains("chatty")
             || r.Contains("throttl") || closeCode == 4429) return RoomEndReason.RateLimited;

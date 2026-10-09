@@ -871,13 +871,15 @@
     <sys:String x:Key="S.Collab.ErrOffline">GWRank cannot be reached. Check your connection, then try again.</sys:String>
     <sys:String x:Key="S.Collab.ErrOther">The server refused: {0}</sys:String>
     <sys:String x:Key="S.Collab.ErrNotFound">No session has this code: it may have expired, or the host closed it. Check it with them.</sys:String>
-    <sys:String x:Key="S.Collab.ErrFull">This session is full.</sys:String>
+    <sys:String x:Key="S.Collab.ErrFull">This session is full: 8 participants at most, host included.</sys:String>
+    <sys:String x:Key="S.Collab.ErrExpired">This session has reached its 2-hour limit. Ask the host to open a new one.</sys:String>
+    <sys:String x:Key="S.Collab.ErrHostGone">This session is closed: its host left it more than 5 minutes ago. Ask them to open a new one.</sys:String>
     <sys:String x:Key="S.Collab.ErrUnauthorized">The server refused access to this session.</sys:String>
     <sys:String x:Key="S.Collab.ErrNoState">You are in the session, but nobody sent you the teambuild. Is the host still connected?</sys:String>
     <sys:String x:Key="S.Collab.ErrUnreadable">The teambuild received cannot be read. You have left the session.</sys:String>
     <sys:String x:Key="S.Collab.AlreadyInSession">A shared session is already running, on “{0}”. Leave it before opening another one.</sys:String>
     <sys:String x:Key="S.Collab.NeedTeamBuild">Open the teambuild to share first.</sys:String>
-    <sys:String x:Key="S.Collab.LeaveConfirmHost" xml:space="preserve">Leave the session?&#10;&#10;You are its host, but it carries on without you until it expires: the others can keep going among themselves.&#10;&#10;Your teambuild stays as it is on screen.</sys:String>
+    <sys:String x:Key="S.Collab.LeaveConfirmHost" xml:space="preserve">Leave the session?&#10;&#10;You are its host: without you, it closes for everyone 5 minutes after you leave.&#10;&#10;Your teambuild stays as it is on screen.</sys:String>
     <sys:String x:Key="S.Collab.LeaveConfirmGuest" xml:space="preserve">Leave the session?&#10;&#10;The tab stays open, as a copy on your computer: save it if you want to keep it.</sys:String>
     <sys:String x:Key="S.Collab.BannerTitle">Shared session</sys:String>
     <sys:String x:Key="S.Collab.Leave">Leave</sys:String>
@@ -892,6 +894,9 @@
     <sys:String x:Key="S.Collab.EndedGuest">Session over — {0} This tab is now a copy on your computer: save it to keep it.</sys:String>
     <sys:String x:Key="S.Collab.EndLeft">you left it.</sys:String>
     <sys:String x:Key="S.Collab.EndClosed">it expired, or was closed.</sys:String>
+    <sys:String x:Key="S.Collab.EndExpired">it reached its 2-hour limit; to carry on, a new one has to be opened.</sys:String>
+    <sys:String x:Key="S.Collab.EndHostGone">its host left it more than 5 minutes ago.</sys:String>
+    <sys:String x:Key="S.Collab.EndHostGoneSelf">you were its host, and you stayed disconnected for more than 5 minutes.</sys:String>
     <sys:String x:Key="S.Collab.EndFull">it is full.</sys:String>
     <sys:String x:Key="S.Collab.EndUnauthorized">the server refused access.</sys:String>
     <sys:String x:Key="S.Collab.EndNetwork">the connection could not be restored.</sys:String>

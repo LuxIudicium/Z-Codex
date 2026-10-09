@@ -33,8 +33,8 @@ public static class HelpContent
 {
     // Version du CONTENU de l'aide (indépendante de la version applicative de l'À propos) :
     // à incrémenter et redater à chaque mise à jour.
-    public const string VersionFr = "Aide v32 — 07/10/2026";
-    public const string VersionEn = "Help v32 — 2026-10-07";
+    public const string VersionFr = "Aide v33 — 08/10/2026";
+    public const string VersionEn = "Help v33 — 2026-10-08";
 
     public static string Version => AppLanguage.IsFr ? VersionFr : VersionEn;
 
@@ -494,8 +494,8 @@ public static class HelpContent
               "Deux joueurs qui modifient deux personnages différents en même temps gardent tous les deux leur travail. Sur un même personnage non pris, c'est la dernière modification qui l'emporte — d'où l'intérêt de le prendre. Le nom de l'onglet et le mode PvE/PvP restent propres à chacun. Ctrl+Z ne remonte pas au-delà de la dernière modification reçue d'un autre.",
               "Two players changing two different characters at the same time both keep their work. On the same untaken character, the latest change wins — hence the point of taking it. The tab name and the PvE/PvP mode stay each player's own. Ctrl+Z does not go back past the last change received from someone else."),
             R("Coupure et fin", "Connection loss and end",
-              "Une coupure réseau n'arrête pas la session : Z-Codex se reconnecte seul et fusionne ce qui a été fait entre-temps. Quand la session se termine pour vous (vous la quittez, ou elle expire — l'heure est dans le bandeau), l'onglet reste ouvert tel quel et le bandeau dit pourquoi. Le départ de l'hôte ne la ferme pas : les autres continuent entre eux.",
-              "A network drop does not end the session: Z-Codex reconnects on its own and merges what was done in the meantime. When the session ends for you (you leave, or it expires — the time is in the bar), the tab stays open as it is and the bar says why. The host leaving does not close it: the others carry on among themselves."),
+              "Une coupure réseau n'arrête pas la session : Z-Codex se reconnecte seul et fusionne ce qui a été fait entre-temps. Une session dure au plus 2 heures (l'heure de fin est dans le bandeau) : pour continuer au-delà, il faut en ouvrir une nouvelle. Elle se ferme aussi pour tout le monde 5 minutes après le départ de l'hôte (il la quitte, ou ferme Z-Codex) ; une coupure réseau de son côté ne la ferme pas, s'il est reconnecté avant. Elle accueille 8 participants au plus, hôte compris. Quand la session se termine pour vous, l'onglet reste ouvert tel quel et le bandeau dit pourquoi.",
+              "A network drop does not end the session: Z-Codex reconnects on its own and merges what was done in the meantime. A session lasts 2 hours at most (the end time is in the bar): to carry on beyond that, a new one has to be opened. It also closes for everyone 5 minutes after the host leaves (they leave it, or close Z-Codex); a network drop on their side does not close it, if they are back before then. It holds 8 participants at most, host included. When the session ends for you, the tab stays open as it is and the bar says why."),
             R("Lecture seule", "Read-only",
               "Si votre catalogue de compétences ou votre Z-Codex sont plus anciens que ceux des autres, vous suivez la session sans pouvoir y envoyer quoi que ce soit : vos envois effaceraient ce que votre version ne connaît pas. Le bandeau dit quoi mettre à jour.",
               "If your skill catalog or your Z-Codex is older than the others', you follow the session without being able to send anything to it: what you sent would erase whatever your version does not know. The bar says what to update.")),

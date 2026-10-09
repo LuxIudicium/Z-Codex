@@ -486,6 +486,8 @@ public sealed class CollabSessionViewModel : ViewModelBase
             RoomEndReason.Left         => T("S.Collab.EndLeft"),
             RoomEndReason.Closed       => T("S.Collab.EndClosed"),
             RoomEndReason.NotFound     => T("S.Collab.EndClosed"),
+            RoomEndReason.Expired      => T("S.Collab.EndExpired"),
+            RoomEndReason.HostGone     => T(IsHost ? "S.Collab.EndHostGoneSelf" : "S.Collab.EndHostGone"),
             RoomEndReason.Full         => T("S.Collab.EndFull"),
             RoomEndReason.Unauthorized => T("S.Collab.EndUnauthorized"),
             RoomEndReason.NetworkLost  => T("S.Collab.EndNetwork"),

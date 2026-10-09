@@ -872,13 +872,15 @@
     <sys:String x:Key="S.Collab.ErrOffline">GWRank est injoignable. Vérifiez votre connexion, puis réessayez.</sys:String>
     <sys:String x:Key="S.Collab.ErrOther">Le serveur a refusé : {0}</sys:String>
     <sys:String x:Key="S.Collab.ErrNotFound">Aucune session ne porte ce code : il a pu expirer, ou l'hôte l'a fermée. Vérifiez-le auprès de lui.</sys:String>
-    <sys:String x:Key="S.Collab.ErrFull">Cette session est complète.</sys:String>
+    <sys:String x:Key="S.Collab.ErrFull">Cette session est complète : 8 participants au plus, hôte compris.</sys:String>
+    <sys:String x:Key="S.Collab.ErrExpired">Cette session a atteint sa durée maximale de 2 heures. Demandez à l'hôte d'en ouvrir une nouvelle.</sys:String>
+    <sys:String x:Key="S.Collab.ErrHostGone">Cette session est fermée : son hôte l'a quittée il y a plus de 5 minutes. Demandez-lui d'en ouvrir une nouvelle.</sys:String>
     <sys:String x:Key="S.Collab.ErrUnauthorized">Le serveur a refusé l'accès à cette session.</sys:String>
     <sys:String x:Key="S.Collab.ErrNoState">Vous êtes dans la session, mais personne ne vous a envoyé le teambuild. L'hôte est-il toujours connecté ?</sys:String>
     <sys:String x:Key="S.Collab.ErrUnreadable">Le teambuild reçu est illisible. Vous avez quitté la session.</sys:String>
     <sys:String x:Key="S.Collab.AlreadyInSession">Une session partagée est déjà en cours, sur « {0} ». Quittez-la avant d'en ouvrir une autre.</sys:String>
     <sys:String x:Key="S.Collab.NeedTeamBuild">Ouvrez d'abord le teambuild à partager.</sys:String>
-    <sys:String x:Key="S.Collab.LeaveConfirmHost" xml:space="preserve">Quitter la session ?&#10;&#10;Vous en êtes l'hôte, mais elle continue sans vous jusqu'à son expiration : les autres peuvent poursuivre entre eux.&#10;&#10;Votre teambuild reste tel qu'il est à l'écran.</sys:String>
+    <sys:String x:Key="S.Collab.LeaveConfirmHost" xml:space="preserve">Quitter la session ?&#10;&#10;Vous en êtes l'hôte : sans vous, elle se fermera pour tout le monde 5 minutes après votre départ.&#10;&#10;Votre teambuild reste tel qu'il est à l'écran.</sys:String>
     <sys:String x:Key="S.Collab.LeaveConfirmGuest" xml:space="preserve">Quitter la session ?&#10;&#10;L'onglet reste ouvert, en copie sur votre ordinateur : enregistrez-le si vous voulez le garder.</sys:String>
     <sys:String x:Key="S.Collab.BannerTitle">Session partagée</sys:String>
     <sys:String x:Key="S.Collab.Leave">Quitter</sys:String>
@@ -893,6 +895,9 @@
     <sys:String x:Key="S.Collab.EndedGuest">Session terminée — {0} Cet onglet est maintenant une copie sur votre ordinateur : enregistrez-le pour la garder.</sys:String>
     <sys:String x:Key="S.Collab.EndLeft">vous l'avez quittée.</sys:String>
     <sys:String x:Key="S.Collab.EndClosed">elle a expiré, ou a été fermée.</sys:String>
+    <sys:String x:Key="S.Collab.EndExpired">elle a atteint sa durée maximale de 2 heures ; pour continuer, il faut en ouvrir une nouvelle.</sys:String>
+    <sys:String x:Key="S.Collab.EndHostGone">son hôte l'a quittée il y a plus de 5 minutes.</sys:String>
+    <sys:String x:Key="S.Collab.EndHostGoneSelf">vous en étiez l'hôte, et vous êtes resté déconnecté plus de 5 minutes.</sys:String>
     <sys:String x:Key="S.Collab.EndFull">elle est complète.</sys:String>
     <sys:String x:Key="S.Collab.EndUnauthorized">le serveur a refusé l'accès.</sys:String>
     <sys:String x:Key="S.Collab.EndNetwork">la connexion n'a pas pu être rétablie.</sys:String>
