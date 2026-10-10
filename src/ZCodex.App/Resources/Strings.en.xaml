@@ -668,6 +668,9 @@
     <sys:String x:Key="S.Armor.ExternalSources">External sources (skills, penalties, consumables)</sys:String>
     <sys:String x:Key="S.Armor.ArmorPenetration">Armor penetration %</sys:String>
     <sys:String x:Key="S.Armor.CasterAttrRankTip">Caster's attribute rank (0–21)</sys:String>
+    <sys:String x:Key="S.Armor.HitNumberTip">Number of the hit taken under the shield (1–21): −5 per hit, 0-damage hits count</sys:String>
+    <sys:String x:Key="S.Armor.DefenderStrengthTip">Defender's Strength rank (0–21): −2 per rank, 15 at most</sys:String>
+    <sys:String x:Key="S.Armor.NeutralizedBy">no longer counts: cancelled by {0}</sys:String>
     <sys:String x:Key="S.Armor.EffectiveALTitle">Effective AL per piece and damage type</sys:String>
     <sys:String x:Key="S.Armor.ProfFilterTip">Profession (cross-profession always included)</sys:String>
     <sys:String x:Key="S.Armor.AttrFilterTip">Attribute</sys:String>

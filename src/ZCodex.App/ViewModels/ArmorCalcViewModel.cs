@@ -303,6 +303,18 @@ public class ArmorCalcViewModel : ViewModelBase
         OnPropertyChanged(nameof(ImpliedEnchantmentTip));
     }
 
+    // Lot 3 : une ligne cochée qui annule les critiques (Stoneflesh Aura, Stone Sheath : immunité ; Balanced Stance :
+    // plus de surplus) neutralise la ligne « Coup critique » de la grille, dont le −20 d'armure EST ce surplus (×√2).
+    private const string CriticalHitKey = "Critical hit";
+
+    private void RefreshCriticalNeutralization()
+    {
+        var names = Effects.Where(r => r.IsChecked && r.CancelsCriticalHits).Select(r => r.Name).ToList();
+        string? by = names.Count == 0 ? null : string.Join(", ", names);
+        foreach (var row in Effects)
+            if (row.Key == CriticalHitKey) row.SetNeutralizedBy(by);
+    }
+
     // Multiplicateur per-unit d'un effet de la zone 2 (IW ×comp. Illusion, Mantra ×signets).
     private int UnitCountFor(int skillId) => skillId switch
     {
@@ -627,7 +639,7 @@ public class ArmorCalcViewModel : ViewModelBase
     {
         var active = Effects.Where(r => r.IsChecked)
                             .SelectMany(r => r.ResolvedMitigations())
-                            .Where(a => a.Percent > 0).ToList();
+                            .Where(a => a.IsEffective).ToList();
         return active.Count == 0 ? DamageMitigation.Context.None : new DamageMitigation.Context(active);
     }
 
@@ -910,9 +922,10 @@ public class ArmorCalcViewModel : ViewModelBase
                 list.Add(new(string.IsNullOrWhiteSpace(cu.Label) ? L("(perso)", "(custom)") : cu.Label, cu.Category, cu.Value));
 
         // Effets externes cochés (globaux) — Bonus/Special. Une case = TOUTES les clauses du skill
-        // (Résistances : +40 d'un côté ET malus de l'autre, en un seul clic — rework 17/07).
+        // (Résistances : +40 d'un côté ET malus de l'autre, en un seul clic — rework 17/07). La ligne
+        // « Coup critique » neutralisée (Stoneflesh Aura, Balanced Stance… — lot 3) ne compte plus.
         foreach (var row in Effects)
-            if (row.IsChecked)
+            if (row.IsChecked && !row.IsNeutralized)
                 foreach (var (clause, value) in row.ResolvedClauses())
                     if (value != 0 && ScopeApplies(FromEffectScope(clause.Scope), col, includeProjectile))
                         list.Add(new(row.LabelFor(clause), clause.Category, value));
@@ -940,6 +953,7 @@ public class ArmorCalcViewModel : ViewModelBase
     {
         if (Pieces.Count < 5) return;
         RefreshImpliedStates();   // avant tout calcul : les clauses d'insignes lisent les états effectifs
+        RefreshCriticalNeutralization();
         ResultRows.Clear();
 
         // Ordre d'AFFICHAGE (demande Philippe) : Espérance EN PREMIER, puis les 5 localisations.
@@ -1902,9 +1916,40 @@ public class ArmorEffectRowVM : ViewModelBase
         _onChanged = onChanged; _unitCountFor = unitCountFor;
         _skillDisplayName = skillDisplayName; _skillById = skillById;
         _isEnemyInflicted = clauses.Any(c => c.IsEnemyInflicted);
+        _rankBox = mitigations.Select(m => m.RankBox).FirstOrDefault(b => b != MitigationRankBox.Attribute);
         IsProgressive = clauses.Any(c => c.ValuesByRank.Count > 1)
-                        || mitigations.Any(m => m.Fixed == 0 && m.Index >= 0);
+                        || mitigations.Any(m => m.ReadsProgression && m.Index >= 0)
+                        || _rankBox != MitigationRankBox.Attribute;
         UsesUnitCount = skillId is 33 or 18 or 3179;   // IW / Mantra of Signets (+ PvP)
+        // Shield of Absorption : la case est le n° du coup reçu, qui commence à 1 (lot 3).
+        if (_rankBox == MitigationRankBox.HitNumber) _rank = 1;
+    }
+
+    // Ce que porte la case du rang (lot 3) : rang d'attribut, n° du coup reçu ou rang de Force.
+    private readonly MitigationRankBox _rankBox;
+
+    /// <summary>Infobulle de la case du rang, selon ce qu'elle porte.</summary>
+    public string RankTip => LanguageManager.T(_rankBox switch
+    {
+        MitigationRankBox.HitNumber => "S.Armor.HitNumberTip",
+        MitigationRankBox.Strength  => "S.Armor.DefenderStrengthTip",
+        _ => "S.Armor.CasterAttrRankTip",
+    });
+
+    /// <summary>La ligne porte une immunité aux critiques ou leur annulation de surplus (lot 3).</summary>
+    public bool CancelsCriticalHits => Mitigations.Any(m => m.IsCritical);
+
+    // Ligne « Coup critique » neutralisée par une ligne cochée qui annule les critiques (lot 3) : noms de ces
+    // lignes, null sinon. La case reste à l'utilisateur ; seul son −20 cesse de compter.
+    private string? _neutralizedBy;
+    public bool IsNeutralized => _neutralizedBy is not null;
+
+    public void SetNeutralizedBy(string? names)
+    {
+        if (_neutralizedBy == names) return;
+        _neutralizedBy = names;
+        OnPropertyChanged(nameof(ConditionFr));
+        OnPropertyChanged(nameof(IsNeutralized));
     }
 
     // Nom affiché : SkillId != 0 → DisplayName de la compétence (catalogue) ; SkillId 0 → nom FR
@@ -1934,6 +1979,7 @@ public class ArmorEffectRowVM : ViewModelBase
     {
         MitigationScope.DamageType => $" (vs {SkillDamage.DisplayType(d.DamageType)})",
         MitigationScope.Spells     => L(" (sorts)", " (spells)"),
+        MitigationScope.Attacks    => L(" (attaques)", " (attacks)"),
         _ => "",
     };
 
@@ -1948,12 +1994,13 @@ public class ArmorEffectRowVM : ViewModelBase
     public string LabelFor(ArmorEffectsData.ArmorEffect clause) => Name + ScopeTag(clause.Scope);
 
     public string? ConditionFr =>
-        Clauses.Select(ArmorEffectsData.DisplayCondition).FirstOrDefault(c => c is not null)
+        _neutralizedBy is not null ? string.Format(LanguageManager.T("S.Armor.NeutralizedBy"), _neutralizedBy)
+        : Clauses.Select(ArmorEffectsData.DisplayCondition).FirstOrDefault(c => c is not null)
         ?? Mitigations.Select(m => ZCodex.Core.Models.AppLanguage.IsFr ? m.ConditionFr : m.ConditionEn)
                       .FirstOrDefault(c => c is not null);
 
     /// <summary>Rang du groupe dans la liste (ordre d'affichage des groupes) : alliées, malus subis,
-    /// consommables & effets, réductions de dégâts.</summary>
+    /// consommables & effets, modificateurs de dégâts reçus.</summary>
     public const int AlliedGroupRank = 0;
     public int GroupRank =>
         _isEnemyInflicted    ? 1
@@ -1961,11 +2008,13 @@ public class ArmorEffectRowVM : ViewModelBase
         : Clauses.Count == 0 ? 3
         :                      AlliedGroupRank;
 
+    // Groupe 3 : réductions ET hausses (Frenzy) depuis le lot 3 — nom choisi par Philippe le 11/10/2026, « reçus »
+    // pour ne pas le confondre avec les modificateurs de l'ATTAQUANT du lot 6 (inscriptions, Force).
     public string Group => GroupRank switch
     {
         1 => L("Malus subis", "Incurred penalties"),
         2 => L("Consommables & effets", "Consumables & effects"),
-        3 => L("Réductions de dégâts", "Damage reduction"),
+        3 => L("Modificateurs de dégâts reçus", "Damage taken modifiers"),
         _ => L("Compétences alliées", "Allied skills"),
     };
 
@@ -2022,23 +2071,28 @@ public class ArmorEffectRowVM : ViewModelBase
             yield return (c, ArmorEffectsData.ValueAt(c, _rank) * unit);
     }
 
-    /// <summary>Réductions de dégâts de la ligne, valeur lue dans la progression au rang courant.</summary>
+    /// <summary>Réductions de dégâts de la ligne, valeur lue à la case courante (rang, n° du coup ou Force).</summary>
     public IEnumerable<DamageMitigation.Active> ResolvedMitigations()
     {
         foreach (var m in Mitigations)
-            yield return new(m, DamageMitigationData.PercentOf(m, _skillById(m.SkillId), _rank));
+            yield return new(m, DamageMitigationData.ValueOf(m, _skillById(m.SkillId), _rank));
     }
 
-    // Valeur affichée : simple (« +40 », « −45 % ») pour une clause, composite (« +40 élém / −14 phys »)
-    // pour les skills fusionnés.
+    // Valeur affichée : simple (« +40 », « −45 % », « −25 ») pour une clause, composite (« +40 élém / −14 phys »)
+    // pour les skills fusionnés. Une ligne de critique n'a pas de valeur : sa condition le dit.
     public string ResolvedValueText
     {
         get
         {
             var parts = new List<string>();
             if (Clauses.Count > 0) parts.Add(ArmorValueText());
-            foreach (var a in ResolvedMitigations())
-                parts.Add(L($"−{a.Percent} %", $"−{a.Percent}%"));   // la portée est dans le Label
+            foreach (var a in ResolvedMitigations())   // la portée est dans le Label
+                switch (a.Descriptor.Kind)
+                {
+                    case MitigationKind.Percent:  parts.Add(L($"−{a.Value} %", $"−{a.Value}%")); break;
+                    case MitigationKind.Increase: parts.Add(L($"+{a.Value} %", $"+{a.Value}%")); break;
+                    case MitigationKind.Flat:     parts.Add($"−{a.Value}"); break;
+                }
             return string.Join(" / ", parts);
         }
     }

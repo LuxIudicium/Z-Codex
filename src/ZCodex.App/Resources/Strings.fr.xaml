@@ -671,6 +671,9 @@
     <sys:String x:Key="S.Armor.ExternalSources">Sources externes (compétences, malus, consommables)</sys:String>
     <sys:String x:Key="S.Armor.ArmorPenetration">Pénétration d'armure %</sys:String>
     <sys:String x:Key="S.Armor.CasterAttrRankTip">Rang de l'attribut du lanceur (0–21)</sys:String>
+    <sys:String x:Key="S.Armor.HitNumberTip">N° du coup reçu sous le bouclier (1–21) : −5 par coup, coups à 0 dégât compris</sys:String>
+    <sys:String x:Key="S.Armor.DefenderStrengthTip">Rang de Force du défenseur (0–21) : −2 par rang, 15 au plus</sys:String>
+    <sys:String x:Key="S.Armor.NeutralizedBy">ne compte plus : neutralisé par {0}</sys:String>
     <sys:String x:Key="S.Armor.EffectiveALTitle">AL effective par pièce et type de dégâts</sys:String>
     <sys:String x:Key="S.Armor.ProfFilterTip">Profession (cross-profession toujours incluse)</sys:String>
     <sys:String x:Key="S.Armor.AttrFilterTip">Caractéristique</sys:String>

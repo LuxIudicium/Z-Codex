@@ -33,8 +33,8 @@ public static class HelpContent
 {
     // Version du CONTENU de l'aide (indépendante de la version applicative de l'À propos) :
     // à incrémenter et redater à chaque mise à jour.
-    public const string VersionFr = "Aide v36 — 10/10/2026";
-    public const string VersionEn = "Help v36 — 2026-10-10";
+    public const string VersionFr = "Aide v37 — 11/10/2026";
+    public const string VersionEn = "Help v37 — 2026-10-11";
 
     public static string Version => AppLanguage.IsFr ? VersionFr : VersionEn;
 
@@ -617,11 +617,14 @@ public static class HelpContent
               "Les cases (enchanté, maléfice, pose de combat, en attaque…) et les compteurs (PV %, enchantements, recharges, serviteurs, esprits, sceaux, compétences Illusion) déclenchent les insignes conditionnelles. Une case se coche seule, grisée, quand un effet coché dans « Sources externes » l'implique (Mantra de la terre → pose de combat) ; son infobulle dit lequel. Le compteur d'enchantements reçoit en plus les enchantements cochés (« +N »).",
               "The boxes (enchanted, hexed, in stance, attacking…) and counters (HP %, enchantments, recharging skills, minions, spirits, signets, Illusion skills) drive conditional insignia. A box ticks itself, greyed out, when an effect ticked under “External sources” implies it (Mantra of Earth → in stance); its tooltip says which one. The enchantment counter also gets the ticked enchantments (“+N”)."),
             R("Sources externes", "External sources",
-              "Compétences alliées (par ordre alphabétique), malus subis, consommables et effets, réductions de dégâts : cochez ce qui s'applique. Une seule pose de combat, transformation, sort d'altération d'arme ou sort d'altération d'objet à la fois : en cocher un décoche l'autre.",
-              "Allied skills (in alphabetical order), incoming penalties, consumables and effects, damage reduction: tick whatever applies. Only one stance, form, weapon spell or item spell at a time: ticking one unticks the other."),
-            R("Réductions de dégâts", "Damage reduction",
-              "Mantras, Ether Prism, Aura of Faith… : s'appliquent après l'armure, et se multiplient entre elles. Elles ne touchent ni les dégâts qui ignorent l'armure, ni le bonus « +X » d'une attaque.",
-              "Mantras, Ether Prism, Aura of Faith…: applied after armor, and they multiply with each other. They touch neither armor-ignoring damage nor the “+X” bonus of an attack."),
+              "Compétences alliées (par ordre alphabétique), malus subis, consommables et effets, modificateurs de dégâts reçus : cochez ce qui s'applique. Une seule pose de combat, transformation, sort d'altération d'arme ou sort d'altération d'objet à la fois : en cocher un décoche l'autre.",
+              "Allied skills (in alphabetical order), incoming penalties, consumables and effects, damage taken modifiers: tick whatever applies. Only one stance, form, weapon spell or item spell at a time: ticking one unticks the other."),
+            R("Modificateurs de dégâts reçus", "Damage taken modifiers",
+              "S'appliquent après l'armure, dans cet ordre : les pourcentages (réductions et hausses, qui se multiplient entre eux), puis les réductions fixes, retirées du coup entier sans descendre sous 0. Rien ne touche les dégâts qui ignorent l'armure ; le bonus « +X » d'une attaque ne reçoit que les réductions fixes, et le vol de vie seulement celles qui le citent. Quand la case d'une ligne n'est pas un rang, son infobulle dit ce qu'elle compte (n° du coup reçu, rang de Force).",
+              "Applied after armor, in this order: percentages (reductions and increases, which multiply together), then flat reductions, taken off the whole hit without going below 0. Nothing touches armor-ignoring damage; an attack's “+X” bonus only gets flat reductions, and life stealing only those that name it. When a row's box is not a rank, its tooltip says what it counts (hit number, Strength rank)."),
+            R("Immunité aux critiques", "Critical hit immunity",
+              "Une ligne cochée qui annule les critiques neutralise « Coup critique » : la case reste cochée, mais la ligne dit pourquoi elle ne compte plus. La note « critique » des attaques suit : plus de critique du tout, ou un critique ramené au coup maximal de l'arme.",
+              "A ticked row that cancels critical hits neutralizes “Critical hit”: the box stays ticked, but the row says why it no longer counts. The attacks' “critical” note follows: no critical at all, or a critical brought down to the weapon's maximum hit."),
             R("Grille d'AL effective", "Effective AL grid",
               "AL par pièce et par type de dégâts. Clic sur une cellule = détail pas à pas du calcul ; re-clic = retour à la moyenne.",
               "AL per piece and damage type. Click a cell for the step-by-step breakdown; click again to return to the mean."),

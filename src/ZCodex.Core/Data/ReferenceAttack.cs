@@ -110,17 +110,27 @@ public static class ReferenceAttack
         var analysis = SkillDamage.Analyze(resolved, skill.Name);
         int pen = analysis.ArmorPenetration;
 
-        // Réductions de dégâts reçus : facteur par paquet (type + sort ou non), passé au multiplicateur de
-        // DamageAt — un seul arrondi, puis la réduction fixe d'équipement (ordre armure → % → fixe confirmé
-        // en jeu, cf. DamageMitigation). Les pourcentages effectivement appliqués vont en note.
+        // Réductions de dégâts reçus : facteur par paquet (type, sort, attaque), passé au multiplicateur de
+        // DamageAt — un seul arrondi —, puis les réductions FIXES (compétences + équipement) retirées du paquet
+        // entier, plancher 0 (ordre armure → % → fixe confirmé en jeu, cf. DamageMitigation). Ce qui a été
+        // appliqué va en note.
         bool isSpell = DamageMitigation.IsSpell(skill);
-        var appliedPercents = new SortedSet<int>();
-        double Mitigate(string? type, bool spell)
+        bool isAttack = DamageMitigation.IsAttack(skill);
+        var applied = new AppliedMitigation();
+        double Mitigate(string? type, bool spell, bool attack)
         {
-            double f = DamageMitigation.Factor(mitigation, type, spell);
-            if (f < 1.0) appliedPercents.Add((int)Math.Round((1 - f) * 100, MidpointRounding.AwayFromZero));
+            double f = DamageMitigation.Factor(mitigation, type, spell, attack);
+            applied.AddFactor(f);
             return f;
         }
+        // Points retirés d'un paquet : réductions fixes des compétences + équipement (physique seulement).
+        int FlatFor(string type, bool spell, bool attack)
+        {
+            int skillFlat = DamageMitigation.Flat(mitigation, type, spell, attack);
+            applied.AddFlat(skillFlat);
+            return skillFlat + (IsPhysical(type) ? flatPhysical : 0);
+        }
+        var critRule = DamageMitigation.CriticalRule(mitigation);
 
         // Paquets « si bloqué » (Swift Chop, Irresistible Blow…) : le total affiché est le cas
         // SANS blocage (décision Philippe 16/07) — ces paquets sortent du total et passent en note.
@@ -158,17 +168,28 @@ public static class ReferenceAttack
         {
             string type = weapon!.DamageType;
             int alCalc = alForType(ColumnKey(type));
-            bool phys = IsPhysical(type);
-            // Un coup d'arme n'est jamais un sort, même porté par une attaque élémentaire.
-            double multCalc = mods.Multiplier * Mitigate(type, spell: false);
+            // Un coup d'arme n'est jamais un sort, même porté par une attaque élémentaire ; c'est toujours une attaque.
+            double multCalc = mods.Multiplier * Mitigate(type, spell: false, attack: true);
+            int flat = FlatFor(type, spell: false, attack: true);
+
+            // Critique côté build (lot 3) : ordinaire (max ×√2), sans surplus (Balanced Stance : max de l'arme), ou
+            // plus de critique du tout (Stoneflesh Aura, Stone Sheath). Le côté @AL 60 reste la référence nue.
+            int CritCalc() => critRule == DamageMitigation.CritRule.NoExtra
+                ? WeaponStrike.DamageAt(weapon.Max, rank, alCalc, pen, multCalc)
+                : WeaponStrike.CriticalAt(weapon, rank, alCalc, pen, multCalc);
 
             int lo60w, hi60w, loCw, hiCw;
             if (mods.AlwaysCritical)
             {
                 // Critique forcé (Keen Chop) : la valeur subie EST le critique — comme la tooltip
-                // (ligne critique seule) et le Spike (min = max = CriticalAt).
+                // (ligne critique seule) et le Spike (min = max = CriticalAt). Immunisé : un coup ordinaire.
                 lo60w = hi60w = WeaponStrike.CriticalAt(weapon, rank, 60, pen, mods.Multiplier);
-                loCw  = hiCw  = WeaponStrike.CriticalAt(weapon, rank, alCalc, pen, multCalc);
+                if (critRule == DamageMitigation.CritRule.Immune)
+                {
+                    loCw = WeaponStrike.DamageAt(weapon.Min, rank, alCalc, pen, multCalc);
+                    hiCw = WeaponStrike.DamageAt(weapon.Max, rank, alCalc, pen, multCalc);
+                }
+                else loCw = hiCw = CritCalc();
             }
             else
             {
@@ -177,25 +198,26 @@ public static class ReferenceAttack
                 loCw  = WeaponStrike.DamageAt(weapon.Min, rank, alCalc, pen, multCalc);
                 hiCw  = WeaponStrike.DamageAt(weapon.Max, rank, alCalc, pen, multCalc);
             }
-            if (phys) { loCw = Math.Max(0, loCw - flatPhysical); hiCw = Math.Max(0, hiCw - flatPhysical); }
 
-            // Bonus « +X » (ignore l'armure) ajouté APRÈS la réduction plate, des deux côtés.
+            // Bonus « +X » (ignore l'armure, aucun %) : il est dans le paquet, donc la réduction fixe porte sur le
+            // TOUT (arme + bonus), plancher 0 à la fin — réponse de Philippe du 10/10/2026.
             lo60 += lo60w + bonus; hi60 += hi60w + bonus;
-            loCalc += loCw + bonus; hiCalc += hiCw + bonus;
+            loCalc += Math.Max(0, loCw + bonus - flat); hiCalc += Math.Max(0, hiCw + bonus - flat);
 
             primaryTypeFr = SkillDamage.DisplayType(type); primaryWeight = weapon.Max;
 
             if (mods.AlwaysCritical)
-            {
-                notes.Add(L("critique forcé", "forced critical"));
-            }
+                notes.Add(critRule switch
+                {
+                    DamageMitigation.CritRule.Immune  => L("critique forcé annulé (immunité)", "forced critical cancelled (immunity)"),
+                    DamageMitigation.CritRule.NoExtra => L("critique forcé, sans surplus", "forced critical, no extra damage"),
+                    _ => L("critique forcé", "forced critical"),
+                });
+            else if (critRule == DamageMitigation.CritRule.Immune)
+                notes.Add(L("immunisé aux critiques", "immune to critical hits"));
             else
-            {
-                // Aligné sur le coup normal : réduction plate soustraite AVANT le bonus (physique).
-                int crit = WeaponStrike.CriticalAt(weapon, rank, alCalc, pen, multCalc);
-                if (phys) crit = Math.Max(0, crit - flatPhysical);
-                notes.Add($"{L("critique", "critical")} {crit + bonus}");
-            }
+                notes.Add($"{L("critique", "critical")} {Math.Max(0, CritCalc() + bonus - flat)}"
+                          + (critRule == DamageMitigation.CritRule.NoExtra ? L(" (sans surplus)", " (no extra damage)") : ""));
         }
 
         // ── Paquets armor-respecting (sorts typés) ──
@@ -203,11 +225,10 @@ public static class ReferenceAttack
         {
             string type = r.DamageType ?? "physical";
             int alCalc = alForType(ColumnKey(type));
-            bool phys = IsPhysical(type);
 
             int d60 = SkillDamage.DamageAt(r.Value, 60, pen);
-            int dC  = SkillDamage.DamageAt(r.Value, alCalc, pen, multiplier: Mitigate(type, isSpell));
-            if (phys) dC = Math.Max(0, dC - flatPhysical);
+            int dC  = SkillDamage.DamageAt(r.Value, alCalc, pen, multiplier: Mitigate(type, isSpell, isAttack));
+            dC = Math.Max(0, dC - FlatFor(type, isSpell, isAttack));
 
             lo60 += d60; hi60 += d60; loCalc += dC; hiCalc += dC;
             if (r.Value > primaryWeight) { primaryWeight = r.Value; primaryTypeFr = SkillDamage.DisplayType(type); }
@@ -235,8 +256,8 @@ public static class ReferenceAttack
                 string type = r.DamageType ?? "physical";
                 int alCalc = alForType(ColumnKey(type));
                 int d60 = SkillDamage.DamageAt(cap, 60, pen);
-                int dC  = SkillDamage.DamageAt(cap, alCalc, pen, multiplier: Mitigate(type, isSpell));
-                if (IsPhysical(type)) dC = Math.Max(0, dC - flatPhysical);
+                int dC  = SkillDamage.DamageAt(cap, alCalc, pen, multiplier: Mitigate(type, isSpell, isAttack));
+                dC = Math.Max(0, dC - FlatFor(type, isSpell, isAttack));
                 lo60 += d60; hi60 += d60; loCalc += dC; hiCalc += dC;
                 if (cap > primaryWeight) { primaryWeight = cap; primaryTypeFr = SkillDamage.DisplayType(type); }
             }
@@ -251,9 +272,19 @@ public static class ReferenceAttack
         }
 
         // ── Vol de vie / perte de vie sèche : total des deux côtés (ignore l'armure), avec note ──
+        // Q14 (10/10/2026) : le VOL de vie reçoit les seules réductions fixes qui le citent (Shielding Hands, Union).
+        int stealFlat = DamageMitigation.FlatLifeSteal(mitigation);
+        bool stealReduced = false;
         foreach (var r in steals)
         {
-            lo60 += r.Value; hi60 += r.Value; loCalc += r.Value; hiCalc += r.Value;
+            int taken = r.Value;
+            if (r.Kind == SkillDamage.RowKind.LifeSteal && stealFlat > 0)
+            {
+                taken = Math.Max(0, r.Value - stealFlat);
+                applied.AddFlat(stealFlat);
+                stealReduced = true;
+            }
+            lo60 += r.Value; hi60 += r.Value; loCalc += taken; hiCalc += taken;
             notes.Add($"{(r.Kind == SkillDamage.RowKind.LifeSteal ? L("vol de vie", "life steal") : L("perte de vie", "Health loss"))} {r.Value}");
         }
         if (holyAffected) notes.Add(L($"vulnérabilité sacrée +{holyIncrease}", $"holy vulnerability +{holyIncrease}"));
@@ -271,46 +302,78 @@ public static class ReferenceAttack
 
         // La vulnérabilité sacrée différencie les deux côtés → l'attaque n'est plus « égale des
         // deux côtés » et le Δ doit s'afficher.
+        // Idem pour un vol de vie réduit (Shielding Hands, Union).
         bool ignoresAll = !weaponTable && !freeWeapon && respecting.Count == 0
                           && thresholds.All(r => r.IgnoresArmor)
                           && ignoring.Count + thresholds.Count + steals.Count > 0
-                          && !holyAffected;
+                          && !holyAffected && !stealReduced;
         bool isRange = weaponTable && !mods.AlwaysCritical && hi60 != lo60;
         if (pen > 0) notes.Insert(0, L($"pénétration {pen} %", $"penetration {pen}%"));
-        if (MitigationNote(appliedPercents) is { } note) notes.Add(note);
+        notes.AddRange(applied.Notes());
 
         return new Result(ignoresAll, isRange, lo60, hi60, loCalc, hiCalc, pen, primaryTypeFr,
                           string.Join(" · ", notes));
     }
 
-    // Note des réductions de dégâts reçus effectivement appliquées (« réduction −45 % »), null sinon.
-    private static string? MitigationNote(IReadOnlyCollection<int> percents) =>
-        percents.Count == 0 ? null
-        : L($"réduction {string.Join(" / ", percents.Select(p => $"−{p} %"))}",
-            $"reduction {string.Join(" / ", percents.Select(p => $"−{p}%"))}");
+    /// <summary>Ce que les réductions de dégâts reçus ont effectivement changé sur une ligne, pour la note :
+    /// « réduction −45 % », « augmentation +75 % », « réduction fixe −25 ».</summary>
+    private sealed class AppliedMitigation
+    {
+        private readonly SortedSet<int> _percents = [];   // signé : négatif = réduction, positif = hausse
+        private readonly SortedSet<int> _flats = [];
+
+        public void AddFactor(double factor)
+        {
+            if (factor != 1.0) _percents.Add((int)Math.Round((factor - 1) * 100, MidpointRounding.AwayFromZero));
+        }
+
+        public void AddFlat(int points)
+        {
+            if (points > 0) _flats.Add(points);
+        }
+
+        public IEnumerable<string> Notes()
+        {
+            var down = _percents.Where(p => p < 0).ToList();
+            var up = _percents.Where(p => p > 0).ToList();
+            if (down.Count > 0)
+                yield return L($"réduction {string.Join(" / ", down.Select(p => $"−{-p} %"))}",
+                               $"reduction {string.Join(" / ", down.Select(p => $"−{-p}%"))}");
+            if (up.Count > 0)
+                yield return L($"augmentation {string.Join(" / ", up.Select(p => $"+{p} %"))}",
+                               $"increase {string.Join(" / ", up.Select(p => $"+{p}%"))}");
+            if (_flats.Count > 0)
+                yield return L($"réduction fixe {string.Join(" / ", _flats.Select(p => $"−{p}"))}",
+                               $"flat reduction {string.Join(" / ", _flats.Select(p => $"−{p}"))}");
+        }
+    }
 
     /// <summary>
     /// ATTAQUE LIBRE (chantier « réductions », lot 1) : un paquet de <paramref name="value"/> dégâts de type
     /// <paramref name="type"/> contre AL 60 (attaquant niveau 20), sans compétence derrière — pour tester un
     /// coup quelconque (« 1000 dégâts de terre »). Même formule que les sorts du catalogue
     /// (<see cref="SkillDamage.DamageAt"/>), mêmes réductions que <see cref="Compute"/>.
-    /// <paramref name="isSpell"/> = le coup vient d'un sort (Veil of Thorns ne réduit que ceux-là).
+    /// <paramref name="isSpell"/> = le coup vient d'un sort (Veil of Thorns ne réduit que ceux-là) ; sinon c'est une
+    /// attaque (Life Bond ne réduit que celles-là).
     /// </summary>
     public static Result ComputeFree(int value, string type, bool isSpell, Func<string, int> alForType,
                                      int flatPhysical, DamageMitigation.Context? mitigation = null)
     {
         int alCalc = alForType(ColumnKey(type));
-        double factor = DamageMitigation.Factor(mitigation, type, isSpell);
+        bool isAttack = !isSpell;
+        double factor = DamageMitigation.Factor(mitigation, type, isSpell, isAttack);
+        int skillFlat = DamageMitigation.Flat(mitigation, type, isSpell, isAttack);
 
         int d60 = SkillDamage.DamageAt(value, 60, 0);
         int dC  = SkillDamage.DamageAt(value, alCalc, 0, multiplier: factor);
-        if (IsPhysical(type)) dC = Math.Max(0, dC - flatPhysical);
+        dC = Math.Max(0, dC - skillFlat - (IsPhysical(type) ? flatPhysical : 0));
 
         var notes = new List<string>();
         if (isSpell) notes.Add(L("sort", "spell"));
-        if (factor < 1.0
-            && MitigationNote([(int)Math.Round((1 - factor) * 100, MidpointRounding.AwayFromZero)]) is { } note)
-            notes.Add(note);
+        var applied = new AppliedMitigation();
+        applied.AddFactor(factor);
+        applied.AddFlat(skillFlat);
+        notes.AddRange(applied.Notes());
         return new Result(false, false, d60, d60, dC, dC, 0, SkillDamage.DisplayType(type),
                           string.Join(" · ", notes));
     }

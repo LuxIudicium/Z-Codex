@@ -386,7 +386,7 @@
                                     <TextBox Grid.Column="1" FontSize="11" VerticalContentAlignment="Center"
                                              Text="{Binding Rank, UpdateSourceTrigger=PropertyChanged}"
                                              Visibility="{Binding IsProgressive, Converter={StaticResource BoolToVisibilityConverter}}"
-                                             ToolTip="{DynamicResource S.Armor.CasterAttrRankTip}"/>
+                                             ToolTip="{Binding RankTip}"/>
                                     <TextBlock Grid.Column="2" Text="{Binding ResolvedValueText}" FontSize="12"
                                                VerticalAlignment="Center" HorizontalAlignment="Right" FontWeight="SemiBold"/>
                                 </Grid>
