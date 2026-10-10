@@ -60,4 +60,21 @@ public static class MitigationCoverage
             !byId.TryGetValue(d.SkillId, out var s) || s.Name != d.Name
             || (d.Fixed == 0 && (s.Progression is not { } p || d.Index < 0 || d.Index >= p.Length)))];
     }
+
+    /// <summary>
+    /// <b>Verrou 3 — effet d'armure sans compétence (lot 2).</b> Les effets de <see cref="ArmorEffectsData.All"/>
+    /// qui se disent compétence (id ≠ 0) mais que <see cref="ArmorEffectsData.CatalogSkill"/> ne retrouve ni par
+    /// id ni par nom. <b>Doit rester VIDE.</b> Sans compétence, la ligne perd son type, donc l'état du perso
+    /// qu'elle coche (<see cref="CharacterStateLinks"/>) et sa famille exclusive, ainsi que son nom français —
+    /// sans erreur. Vécu le 10/10/2026 : les 4 variantes Kurzick/Luxon de « Save Yourselves! » et Shadow Sanctuary.
+    /// </summary>
+    public static IReadOnlyList<string> UnlinkedArmorEffects(IEnumerable<Skill> catalog)
+    {
+        var list = catalog.ToList();
+        var byId = list.GroupBy(s => s.Id).ToDictionary(g => g.Key, g => g.First());
+        var byName = list.GroupBy(s => s.Name, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
+        return [.. ArmorEffectsData.All
+            .Where(e => e.SkillId != 0 && ArmorEffectsData.CatalogSkill(e.SkillId, e.Name, byId, byName) is null)
+            .Select(e => e.Name).Distinct().Order(StringComparer.Ordinal)];
+    }
 }

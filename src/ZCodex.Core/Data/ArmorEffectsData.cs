@@ -34,6 +34,16 @@ public static class ArmorEffectsData
     public static int ValueAt(ArmorEffect e, int rank)
         => e.ValuesByRank[System.Math.Clamp(rank, 0, e.ValuesByRank.Count - 1)];
 
+    /// <summary>Competence du catalogue derriere un effet : par id si l'id porte bien ce nom, sinon par nom.
+    /// Le repli par nom sert aux variantes d'allegeance (Kurzick/Luxon), que la table ecrit avec leur id de
+    /// jeu alors que la base les range sous une cle maison 900000+ qui depend de l'ordre alphabetique.
+    /// null pour un effet qui n'est pas une competence (SkillId 0). Verrou : MitigationCoverage.UnlinkedArmorEffects.</summary>
+    public static Skill? CatalogSkill(int skillId, string name,
+                                      IReadOnlyDictionary<int, Skill> byId, IReadOnlyDictionary<string, Skill> byName)
+        => skillId == 0 ? null
+           : byId.TryGetValue(skillId, out var s) && s.Name == name ? s
+           : byName.GetValueOrDefault(name);
+
     // Les clauses ConditionFr (informatives) sont peu nombreuses et distinctes → table FR→EN plutôt
     // que d'ajouter un champ a chacune des ~66 entrees. Toute nouvelle clause FR doit etre ajoutee ici.
     private static readonly IReadOnlyDictionary<string, string> ConditionEnMap = new Dictionary<string, string>
@@ -113,6 +123,7 @@ public static class ArmorEffectsData
         new(2097, "\"Save Yourselves!\" (Kurzick)", ArmorCalculator.Category.Bonus, Scope.All, "sur les AUTRES membres du groupe", false, [100]),
         new(1954, "\"Save Yourselves!\" (Luxon)", ArmorCalculator.Category.Bonus, Scope.All, "sur les AUTRES membres du groupe", false, [100]),
         new(218, "Obsidian Flesh", ArmorCalculator.Category.Bonus, Scope.All, null, false, [20]),
+        new(216, "Iron Mist", ArmorCalculator.Category.Bonus, Scope.All, null, false, [15]),  // ajout du 10/10/2026 (lot 2 « réductions ») ; absent de la liste wiki par catégorie → Bonus comme les autres enchantements
         new(318, "Defy Pain", ArmorCalculator.Category.Bonus, Scope.All, null, false, [20]),
         new(3204, "Defy Pain (PvP)", ArmorCalculator.Category.Bonus, Scope.All, null, false, [20]),
         new(1540, "Conviction", ArmorCalculator.Category.Bonus, Scope.All, "sous l'effet d'une condition", false, [10]),
@@ -138,6 +149,7 @@ public static class ArmorEffectsData
         new(2356, "\"I Am Unstoppable!\"", ArmorCalculator.Category.Special, Scope.All, null, false, [24]),
         new(33, "Illusionary Weaponry", ArmorCalculator.Category.Special, Scope.All, "+5 × comp. Illusion équipées (IW comprise) — compte dans « État du personnage »", false, [5]),  // valeur UNITAIRE, multipliée par le VM
         new(18, "Mantra of Signets", ArmorCalculator.Category.Special, Scope.All, "+3 × sceaux équipés — compte dans « État du personnage »", false, [3]),  // valeur UNITAIRE, multipliée par le VM
+        new(3179, "Mantra of Signets (PvP)", ArmorCalculator.Category.Special, Scope.All, "+3 × sceaux équipés — compte dans « État du personnage »", false, [3]),  // ajout du 10/10/2026 (lot 2), même texte que la base
         new(1774, "Aggressive Refrain", ArmorCalculator.Category.Bonus, Scope.All, null, false, [-20]),  // malus permanent (bug possible, note⁶ wiki)
         new(1773, "Soldier's Fury", ArmorCalculator.Category.Bonus, Scope.All, null, false, [-20]),  // malus tant qu'actif (bug possible, note⁶ wiki)
         new(1470, "Barbed Arrows", ArmorCalculator.Category.Special, Scope.All, "pendant l'activation", false, [-40]),

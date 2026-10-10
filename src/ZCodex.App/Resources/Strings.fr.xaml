@@ -652,7 +652,9 @@
     <sys:String x:Key="S.Armor.ShoutChant">Cri/écho/chant</sys:String>
     <sys:String x:Key="S.Armor.UndertakerTip">Seuils Undertaker's : +5 sous 80/60/40/20 % de PV</sys:String>
     <sys:String x:Key="S.Armor.Enchant">Enchant.</sys:String>
-    <sys:String x:Key="S.Armor.WindwalkerTip">Windwalker : +5 par palier 1/2/3/4 enchantements (&gt; 0 vaut aussi « enchanté »)</sys:String>
+    <sys:String x:Key="S.Armor.WindwalkerTip">Windwalker : +5 par palier 1/2/3/4 enchantements (&gt; 0 vaut aussi « enchanté »). Saisir les AUTRES enchantements : ceux cochés dans « Sources externes » s'ajoutent d'eux-mêmes (+N à droite)</sys:String>
+    <sys:String x:Key="S.Armor.ImpliedBy">Activé par : {0}</sys:String>
+    <sys:String x:Key="S.Armor.AssumedMetTip">Supposé rempli, par choix (pas de case à cocher) : la condition du bonus d'armure d'une inscription (« La foi est mon bouclier » : enchanté, « Même affaibli, je ne m'avoue pas vaincu » : PV sous 50 %…) — le bonus compte toujours ; et l'attribut requis des insignes prismatique (9 dans chaque élément) et de sentinelle (13 en Force). Les conditions des autres insignes suivent « État du personnage ».</sys:String>
     <sys:String x:Key="S.Armor.Recharge">Recharge</sys:String>
     <sys:String x:Key="S.Armor.RechargeTip">Anchorite's/Prodigy's : +5 par palier 1/3/5 compétences en recharge</sys:String>
     <sys:String x:Key="S.Armor.Minions">Serviteurs</sys:String>

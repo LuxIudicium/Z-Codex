@@ -649,7 +649,9 @@
     <sys:String x:Key="S.Armor.ShoutChant">Shout/echo/chant</sys:String>
     <sys:String x:Key="S.Armor.UndertakerTip">Undertaker's thresholds: +5 below 80/60/40/20% HP</sys:String>
     <sys:String x:Key="S.Armor.Enchant">Enchant.</sys:String>
-    <sys:String x:Key="S.Armor.WindwalkerTip">Windwalker: +5 per tier 1/2/3/4 enchantments (&gt; 0 also counts as "enchanted")</sys:String>
+    <sys:String x:Key="S.Armor.WindwalkerTip">Windwalker: +5 per tier 1/2/3/4 enchantments (&gt; 0 also counts as "enchanted"). Enter your OTHER enchantments: the ones checked under "External sources" are added on their own (+N on the right)</sys:String>
+    <sys:String x:Key="S.Armor.ImpliedBy">Turned on by: {0}</sys:String>
+    <sys:String x:Key="S.Armor.AssumedMetTip">Assumed met, by design (no checkbox): the condition on an inscription's armor bonus ("Faith is My Shield": while Enchanted, "Down But Not Out": Health below 50%…) — the bonus always counts; and the attribute requirement of the Prismatic (9 in each element) and Sentinel's (13 Strength) insignia. The other insignia conditions follow "Character state".</sys:String>
     <sys:String x:Key="S.Armor.Recharge">Recharge</sys:String>
     <sys:String x:Key="S.Armor.RechargeTip">Anchorite's/Prodigy's: +5 per tier 1/3/5 recharging skills</sys:String>
     <sys:String x:Key="S.Armor.Minions">Minions</sys:String>

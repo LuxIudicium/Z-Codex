@@ -88,7 +88,11 @@
 
                     <!-- Insignes par pièce -->
                     <TextBlock Text="{DynamicResource S.Armor.InsigniaPerPiece}" FontSize="12" Margin="0,8,0,2"
-                               Foreground="{DynamicResource TextSecondaryBrush}"/>
+                               Foreground="{DynamicResource TextSecondaryBrush}">
+                        <TextBlock.ToolTip>
+                            <TextBlock Text="{DynamicResource S.Armor.AssumedMetTip}" TextWrapping="Wrap" MaxWidth="460"/>
+                        </TextBlock.ToolTip>
+                    </TextBlock>
                     <ItemsControl ItemsSource="{Binding Pieces}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
@@ -130,9 +134,17 @@
                     </WrapPanel>
 
                     <!-- Mods d'équipement réels (runes, mods d'armes, inscriptions) -->
+                    <!-- Infobulle : les limites, puis ce qui est supposé rempli (même texte que sur les
+                         insignes — Q16 de Philippe, 10/10/2026 : Prismatic et Sentinel's y figurent). -->
                     <TextBlock Text="{DynamicResource S.Armor.EquipMods}" FontSize="12"
-                               Margin="0,10,0,2" Foreground="{DynamicResource TextSecondaryBrush}"
-                               ToolTip="{DynamicResource S.Armor.EquipModsTip}"/>
+                               Margin="0,10,0,2" Foreground="{DynamicResource TextSecondaryBrush}">
+                        <TextBlock.ToolTip>
+                            <StackPanel MaxWidth="460">
+                                <TextBlock Text="{DynamicResource S.Armor.EquipModsTip}" TextWrapping="Wrap"/>
+                                <TextBlock Text="{DynamicResource S.Armor.AssumedMetTip}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                            </StackPanel>
+                        </TextBlock.ToolTip>
+                    </TextBlock>
                     <DockPanel Margin="0,0,0,2">
                         <Button DockPanel.Dock="Right" Content="{DynamicResource S.Common.Add}" Padding="8,2" FontSize="11"
                                 Click="AddMod_Click" Margin="4,0,0,0"/>
@@ -174,11 +186,15 @@
                          sont bien plus longs (« Sort d'altération d'arme » ≈ 132 px avec la
                          case) que les 129 px qu'offriraient 3 colonnes égales sur 420 px. -->
                     <Grid>
+                        <!-- Chaque case est un StateBoxVM (lot 2 « réductions ») : cochée et grisée quand un
+                             effet coché dans « Sources externes » implique l'état, et l'infobulle le dit —
+                             d'où ShowOnDisabled, sans quoi une case grisée n'en montre aucune. -->
                         <Grid.Resources>
                             <Style TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
                                 <Setter Property="FontSize" Value="11"/>
                                 <Setter Property="VerticalAlignment" Value="Center"/>
                                 <Setter Property="Margin" Value="0,2,12,2"/>
+                                <Setter Property="ToolTipService.ShowOnDisabled" Value="True"/>
                             </Style>
                         </Grid.Resources>
                         <Grid.ColumnDefinitions>
@@ -193,31 +209,31 @@
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
-                        <CheckBox Grid.Row="0" Grid.Column="0" Content="{DynamicResource S.Armor.Enchanted}"
-                                  IsChecked="{Binding IsEnchanted}" ToolTip="{DynamicResource S.Armor.EnchantedTip}"/>
-                        <CheckBox Grid.Row="0" Grid.Column="1" Content="{DynamicResource S.Armor.Hexed}"
-                                  IsChecked="{Binding IsHexed}" ToolTip="{DynamicResource S.Armor.HexedTip}"/>
-                        <CheckBox Grid.Row="0" Grid.Column="2" Content="{DynamicResource S.Armor.InStance}"
-                                  IsChecked="{Binding IsInStance}" ToolTip="{DynamicResource S.Armor.InStanceTip}"/>
+                        <CheckBox Grid.Row="0" Grid.Column="0" Content="{DynamicResource S.Armor.Enchanted}" DataContext="{Binding EnchantedBox}"
+                                  IsChecked="{Binding IsChecked}" IsEnabled="{Binding IsEnabled}" ToolTip="{Binding ToolTip}"/>
+                        <CheckBox Grid.Row="0" Grid.Column="1" Content="{DynamicResource S.Armor.Hexed}" DataContext="{Binding HexedBox}"
+                                  IsChecked="{Binding IsChecked}" IsEnabled="{Binding IsEnabled}" ToolTip="{Binding ToolTip}"/>
+                        <CheckBox Grid.Row="0" Grid.Column="2" Content="{DynamicResource S.Armor.InStance}" DataContext="{Binding InStanceBox}"
+                                  IsChecked="{Binding IsChecked}" IsEnabled="{Binding IsEnabled}" ToolTip="{Binding ToolTip}"/>
 
-                        <CheckBox Grid.Row="1" Grid.Column="0" Content="{DynamicResource S.Armor.Attacking}"
-                                  IsChecked="{Binding IsAttacking}" ToolTip="Brawler's, Nightstalker's"/>
-                        <CheckBox Grid.Row="1" Grid.Column="1" Content="{DynamicResource S.Armor.HoldingItem}"
-                                  IsChecked="{Binding IsHoldingItem}" ToolTip="Herald's"/>
-                        <CheckBox Grid.Row="1" Grid.Column="2" Content="{DynamicResource S.Armor.UsingPrep}"
-                                  IsChecked="{Binding IsUsingPreparation}" ToolTip="Scout's"/>
+                        <CheckBox Grid.Row="1" Grid.Column="0" Content="{DynamicResource S.Armor.Attacking}" DataContext="{Binding AttackingBox}"
+                                  IsChecked="{Binding IsChecked}" IsEnabled="{Binding IsEnabled}" ToolTip="{Binding ToolTip}"/>
+                        <CheckBox Grid.Row="1" Grid.Column="1" Content="{DynamicResource S.Armor.HoldingItem}" DataContext="{Binding HoldingItemBox}"
+                                  IsChecked="{Binding IsChecked}" IsEnabled="{Binding IsEnabled}" ToolTip="{Binding ToolTip}"/>
+                        <CheckBox Grid.Row="1" Grid.Column="2" Content="{DynamicResource S.Armor.UsingPrep}" DataContext="{Binding PreparationBox}"
+                                  IsChecked="{Binding IsChecked}" IsEnabled="{Binding IsEnabled}" ToolTip="{Binding ToolTip}"/>
 
-                        <CheckBox Grid.Row="2" Grid.Column="0" Content="{DynamicResource S.Armor.PetAlive}"
-                                  IsChecked="{Binding IsPetAlive}" ToolTip="Beastmaster's"/>
-                        <CheckBox Grid.Row="2" Grid.Column="1" Content="{DynamicResource S.Armor.HasCondition}"
-                                  IsChecked="{Binding HasCondition}" ToolTip="Disciple's"/>
-                        <CheckBox Grid.Row="2" Grid.Column="2" Content="{DynamicResource S.Armor.Activating}"
-                                  IsChecked="{Binding IsActivatingSkill}" ToolTip="Virtuoso's, Mystic's"/>
+                        <CheckBox Grid.Row="2" Grid.Column="0" Content="{DynamicResource S.Armor.PetAlive}" DataContext="{Binding PetAliveBox}"
+                                  IsChecked="{Binding IsChecked}" IsEnabled="{Binding IsEnabled}" ToolTip="{Binding ToolTip}"/>
+                        <CheckBox Grid.Row="2" Grid.Column="1" Content="{DynamicResource S.Armor.HasCondition}" DataContext="{Binding ConditionBox}"
+                                  IsChecked="{Binding IsChecked}" IsEnabled="{Binding IsEnabled}" ToolTip="{Binding ToolTip}"/>
+                        <CheckBox Grid.Row="2" Grid.Column="2" Content="{DynamicResource S.Armor.Activating}" DataContext="{Binding ActivatingBox}"
+                                  IsChecked="{Binding IsChecked}" IsEnabled="{Binding IsEnabled}" ToolTip="{Binding ToolTip}"/>
 
-                        <CheckBox Grid.Row="3" Grid.Column="0" Content="{DynamicResource S.Armor.WeaponSpell}"
-                                  IsChecked="{Binding HasWeaponSpell}" ToolTip="Ghost Forge"/>
-                        <CheckBox Grid.Row="3" Grid.Column="1" Content="{DynamicResource S.Armor.ShoutChant}"
-                                  IsChecked="{Binding HasShoutChant}" ToolTip="Centurion's"/>
+                        <CheckBox Grid.Row="3" Grid.Column="0" Content="{DynamicResource S.Armor.WeaponSpell}" DataContext="{Binding WeaponSpellBox}"
+                                  IsChecked="{Binding IsChecked}" IsEnabled="{Binding IsEnabled}" ToolTip="{Binding ToolTip}"/>
+                        <CheckBox Grid.Row="3" Grid.Column="1" Content="{DynamicResource S.Armor.ShoutChant}" DataContext="{Binding ShoutChantBox}"
+                                  IsChecked="{Binding IsChecked}" IsEnabled="{Binding IsEnabled}" ToolTip="{Binding ToolTip}"/>
                     </Grid>
 
                     <!-- Compteurs : même principe, 3 paires libellé/champ par ligne. Les colonnes
@@ -254,8 +270,14 @@
                         <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding HealthPercent, UpdateSourceTrigger=PropertyChanged}"
                                  ToolTip="{DynamicResource S.Armor.UndertakerTip}"/>
                         <TextBlock Grid.Row="0" Grid.Column="2" Text="{DynamicResource S.Armor.Enchant}"/>
-                        <TextBox Grid.Row="0" Grid.Column="3" Text="{Binding EnchantmentCount, UpdateSourceTrigger=PropertyChanged}"
-                                 ToolTip="{DynamicResource S.Armor.WindwalkerTip}"/>
+                        <!-- « +2 » : enchantements cochés dans « Sources externes », ajoutés à la saisie (lot 2). -->
+                        <StackPanel Grid.Row="0" Grid.Column="3" Orientation="Horizontal" Margin="0,0,12,0">
+                            <TextBox Text="{Binding EnchantmentCount, UpdateSourceTrigger=PropertyChanged}" Margin="0,2"
+                                     ToolTip="{DynamicResource S.Armor.WindwalkerTip}"/>
+                            <TextBlock Text="{Binding ImpliedEnchantmentText}" Margin="3,0,0,0"
+                                       Foreground="{DynamicResource TextMutedBrush}" ToolTip="{Binding ImpliedEnchantmentTip}"
+                                       Visibility="{Binding HasImpliedEnchantments, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                        </StackPanel>
                         <TextBlock Grid.Row="0" Grid.Column="4" Text="{DynamicResource S.Armor.Recharge}"/>
                         <TextBox Grid.Row="0" Grid.Column="5" HorizontalAlignment="Left"
                                  Text="{Binding RechargingSkillCount, UpdateSourceTrigger=PropertyChanged}"

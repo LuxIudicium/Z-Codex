@@ -223,15 +223,91 @@ public class ArmorCalcViewModel : ViewModelBase
         set { if (SetField(ref _illusionSkillCount, Math.Clamp(value, 0, 8))) { RefreshPerUnitRows(); Recompute(); } }
     }
 
-    // Enchanté « effectif » : la case OU un compte d'enchantements > 0 (Windwalker) — cohérence
-    // automatique entre les deux saisies.
-    private bool EffectivelyEnchanted => IsEnchanted || EnchantmentCount > 0;
+    // ── États effectifs (chantier « réductions », lot 2) : la case OU un effet coché qui implique l'état
+    // (CharacterStateLinks). Décision Q4 de Philippe (10/10/2026) : la case se coche visiblement, grisée,
+    // avec « activé par … » en infobulle. Les booléens ci-dessus restent la saisie de l'utilisateur (profil).
+    private CharacterState _impliedStates;
+    private int _impliedEnchantments;
+
+    private CharacterState ManualStates =>
+          (IsEnchanted        ? CharacterState.Enchanted   : 0)
+        | (IsHexed            ? CharacterState.Hexed       : 0)
+        | (IsInStance         ? CharacterState.Stance      : 0)
+        | (IsAttacking        ? CharacterState.Attacking   : 0)
+        | (IsHoldingItem      ? CharacterState.HoldingItem : 0)
+        | (IsUsingPreparation ? CharacterState.Preparation : 0)
+        | (IsPetAlive         ? CharacterState.PetAlive    : 0)
+        | (HasCondition       ? CharacterState.Condition   : 0)
+        | (IsActivatingSkill  ? CharacterState.Activating  : 0)
+        | (HasWeaponSpell     ? CharacterState.WeaponSpell : 0)
+        | (HasShoutChant      ? CharacterState.ShoutChant  : 0);
+
+    private bool In(CharacterState s) => ((ManualStates | _impliedStates) & s) != 0;
+
+    // Compte d'enchantements effectif : la saisie (les AUTRES enchantements) + les enchantements cochés
+    // dans « Sources externes ».
+    private int EffectiveEnchantmentCount => EnchantmentCount + _impliedEnchantments;
+
+    // Enchanté « effectif » : la case (ou un effet coché) OU un compte d'enchantements > 0 (Windwalker) —
+    // cohérence automatique entre les deux saisies.
+    private bool EffectivelyEnchanted => In(CharacterState.Enchanted) || EffectiveEnchantmentCount > 0;
+
+    // Les 11 cases de la vue, chacune avec son infobulle habituelle (noms d'insignes en dur, comme avant).
+    public StateBoxVM EnchantedBox { get; }
+    public StateBoxVM HexedBox { get; }
+    public StateBoxVM InStanceBox { get; }
+    public StateBoxVM AttackingBox { get; }
+    public StateBoxVM HoldingItemBox { get; }
+    public StateBoxVM PreparationBox { get; }
+    public StateBoxVM PetAliveBox { get; }
+    public StateBoxVM ConditionBox { get; }
+    public StateBoxVM ActivatingBox { get; }
+    public StateBoxVM WeaponSpellBox { get; }
+    public StateBoxVM ShoutChantBox { get; }
+    private readonly IReadOnlyList<(CharacterState State, StateBoxVM Box)> _stateBoxes;
+
+    // « +2 » à côté du compte d'enchantements, et qui les apporte.
+    public string ImpliedEnchantmentText => _impliedEnchantments > 0 ? $"+{_impliedEnchantments}" : "";
+    public bool HasImpliedEnchantments => _impliedEnchantments > 0;
+    public string? ImpliedEnchantmentTip { get; private set; }
+
+    // Relit les effets cochés : quels états ils mettent en place, et par qui. Appelé en tête de Recompute,
+    // donc à chaque case cochée, au chargement d'un profil, à l'arrivée du catalogue (types) et au
+    // changement de langue (noms dans l'infobulle).
+    private void RefreshImpliedStates()
+    {
+        var namesByState = new Dictionary<CharacterState, List<string>>();
+        var implied = CharacterState.None;
+        int enchantments = 0;
+        foreach (var row in Effects.Where(r => r.IsChecked))
+        {
+            var states = CharacterStateLinks.Implied(row.Key, SkillFor(row.SkillId, row.Key)?.SkillType);
+            if (states == CharacterState.None) continue;
+            implied |= states;
+            if ((states & CharacterState.Enchanted) != 0) enchantments++;
+            foreach (var (state, _) in _stateBoxes)
+                if ((states & state) != 0)
+                {
+                    if (!namesByState.TryGetValue(state, out var names)) namesByState[state] = names = [];
+                    names.Add(row.Name);
+                }
+        }
+        _impliedStates = implied;
+        _impliedEnchantments = enchantments;
+        foreach (var (state, box) in _stateBoxes)
+            box.Refresh(namesByState.TryGetValue(state, out var n) ? string.Join(", ", n) : null);
+        ImpliedEnchantmentTip = namesByState.TryGetValue(CharacterState.Enchanted, out var e)
+            ? string.Format(T("S.Armor.ImpliedBy"), string.Join(", ", e)) : null;
+        OnPropertyChanged(nameof(ImpliedEnchantmentText));
+        OnPropertyChanged(nameof(HasImpliedEnchantments));
+        OnPropertyChanged(nameof(ImpliedEnchantmentTip));
+    }
 
     // Multiplicateur per-unit d'un effet de la zone 2 (IW ×comp. Illusion, Mantra ×signets).
     private int UnitCountFor(int skillId) => skillId switch
     {
         33 => IllusionSkillCount,   // Illusionary Weaponry : +5/comp. Illusion équipée
-        18 => SignetCount,          // Mantra of Signets : +3/signet équipé
+        18 or 3179 => SignetCount,  // Mantra of Signets (et sa variante PvP) : +3/signet équipé
         _ => 1,
     };
 
@@ -246,8 +322,8 @@ public class ArmorCalcViewModel : ViewModelBase
         FlatCondition.None      => true,
         FlatCondition.Chance    => true,        // probabiliste → compté en espérance
         FlatCondition.Enchanted => EffectivelyEnchanted,
-        FlatCondition.Hexed     => IsHexed,
-        FlatCondition.Stance    => IsInStance,
+        FlatCondition.Hexed     => In(CharacterState.Hexed),
+        FlatCondition.Stance    => In(CharacterState.Stance),
         _ => false,
     };
 
@@ -256,23 +332,23 @@ public class ArmorCalcViewModel : ViewModelBase
     private bool ClauseActive(InsigniaClause c) => c.Cond switch
     {
         InsigniaCond.None or InsigniaCond.Requires or InsigniaCond.PerSignet => true,
-        InsigniaCond.Attacking          => IsAttacking,
+        InsigniaCond.Attacking          => In(CharacterState.Attacking),
         InsigniaCond.Enchanted          => EffectivelyEnchanted,
         InsigniaCond.NotEnchanted       => !EffectivelyEnchanted,
-        InsigniaCond.Hexed              => IsHexed,
-        InsigniaCond.Stance             => IsInStance,
-        InsigniaCond.HoldingItem        => IsHoldingItem,
-        InsigniaCond.Preparation        => IsUsingPreparation,
-        InsigniaCond.PetAlive           => IsPetAlive,
-        InsigniaCond.HasCondition       => HasCondition,
-        InsigniaCond.ActivatingSkill    => IsActivatingSkill,
-        InsigniaCond.WeaponSpell        => HasWeaponSpell,
-        InsigniaCond.ShoutChant         => HasShoutChant,
+        InsigniaCond.Hexed              => In(CharacterState.Hexed),
+        InsigniaCond.Stance             => In(CharacterState.Stance),
+        InsigniaCond.HoldingItem        => In(CharacterState.HoldingItem),
+        InsigniaCond.Preparation        => In(CharacterState.Preparation),
+        InsigniaCond.PetAlive           => In(CharacterState.PetAlive),
+        InsigniaCond.HasCondition       => In(CharacterState.Condition),
+        InsigniaCond.ActivatingSkill    => In(CharacterState.Activating),
+        InsigniaCond.WeaponSpell        => In(CharacterState.WeaponSpell),
+        InsigniaCond.ShoutChant         => In(CharacterState.ShoutChant),
         InsigniaCond.HealthBelow        => HealthPercent < c.Threshold,
         InsigniaCond.MinionsAtLeast     => MinionCount >= c.Threshold,
         InsigniaCond.SpiritsAtLeast     => SpiritCount >= c.Threshold,
         InsigniaCond.RechargingAtLeast  => RechargingSkillCount >= c.Threshold,
-        InsigniaCond.EnchantmentsAtLeast=> EnchantmentCount >= c.Threshold,
+        InsigniaCond.EnchantmentsAtLeast=> EffectiveEnchantmentCount >= c.Threshold,
         _ => false,
     };
 
@@ -434,6 +510,8 @@ public class ArmorCalcViewModel : ViewModelBase
     {
         _catalog = skills;
         _catalogById = skills.GroupBy(s => s.Id).ToDictionary(g => g.Key, g => g.First());
+        _catalogByName = skills.GroupBy(s => s.Name, StringComparer.Ordinal)
+                               .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
         // Les valeurs des réductions de dégâts se lisent dans la progression : elles apparaissent maintenant.
         foreach (var row in Effects) row.RaiseResolvedChanged();
         // Les noms affichés viennent d'arriver avec le catalogue : retri alphabétique des compétences alliées.
@@ -446,7 +524,9 @@ public class ArmorCalcViewModel : ViewModelBase
         // Défaut : toutes professions (le filtre pertinent ici est « dégâts », pas la profession).
         AttackCatalog.SelectedProfessionOption = AttackCatalog.Professions[0];
         ApplyDamageFilter();
-        RefreshAttacks();
+        // Recalcul complet, pas seulement les attaques : les types des compétences viennent d'arriver, donc
+        // les états que les effets cochés (profil déjà chargé) mettent en place.
+        Recompute();
     }
 
     public void AddAttack(Skill? skill)
@@ -626,6 +706,26 @@ public class ArmorCalcViewModel : ViewModelBase
 
     public ArmorCalcViewModel()
     {
+        EnchantedBox   = new(() => IsEnchanted,        v => IsEnchanted = v,        () => T("S.Armor.EnchantedTip"));
+        HexedBox       = new(() => IsHexed,            v => IsHexed = v,            () => T("S.Armor.HexedTip"));
+        InStanceBox    = new(() => IsInStance,         v => IsInStance = v,         () => T("S.Armor.InStanceTip"));
+        AttackingBox   = new(() => IsAttacking,        v => IsAttacking = v,        () => "Brawler's, Nightstalker's");
+        HoldingItemBox = new(() => IsHoldingItem,      v => IsHoldingItem = v,      () => "Herald's");
+        PreparationBox = new(() => IsUsingPreparation, v => IsUsingPreparation = v, () => "Scout's");
+        PetAliveBox    = new(() => IsPetAlive,         v => IsPetAlive = v,         () => "Beastmaster's");
+        ConditionBox   = new(() => HasCondition,       v => HasCondition = v,       () => "Disciple's");
+        ActivatingBox  = new(() => IsActivatingSkill,  v => IsActivatingSkill = v,  () => "Virtuoso's, Mystic's");
+        WeaponSpellBox = new(() => HasWeaponSpell,     v => HasWeaponSpell = v,     () => "Ghost Forge");
+        ShoutChantBox  = new(() => HasShoutChant,      v => HasShoutChant = v,      () => "Centurion's");
+        _stateBoxes =
+        [
+            (CharacterState.Enchanted, EnchantedBox), (CharacterState.Hexed, HexedBox),
+            (CharacterState.Stance, InStanceBox), (CharacterState.Attacking, AttackingBox),
+            (CharacterState.HoldingItem, HoldingItemBox), (CharacterState.Preparation, PreparationBox),
+            (CharacterState.PetAlive, PetAliveBox), (CharacterState.Condition, ConditionBox),
+            (CharacterState.Activating, ActivatingBox), (CharacterState.WeaponSpell, WeaponSpellBox),
+            (CharacterState.ShoutChant, ShoutChantBox),
+        ];
         BuildPieces();
         RebuildInsigniaOptions();
         BuildEffects();
@@ -695,9 +795,12 @@ public class ArmorCalcViewModel : ViewModelBase
         if (EffectsView is ListCollectionView sortable) sortable.CustomSort = new EffectRowOrder();
     }
 
+    // Les ids qu'une ligne demande désignent tous SA compétence : on la résout par id, sinon par nom (variantes
+    // d'allégeance, cf. ArmorEffectsData.CatalogSkill).
     private ArmorEffectRowVM NewEffectRow(int skillId, string key, IReadOnlyList<ArmorEffectsData.ArmorEffect> clauses,
                                           IReadOnlyList<DamageMitigationDescriptor> mitigations)
-        => new(skillId, key, clauses, mitigations, Recompute, UnitCountFor, SkillDisplayNameById, SkillById)
+        => new(skillId, key, clauses, mitigations, Recompute, UnitCountFor,
+               id => SkillFor(id, key)?.DisplayName, id => SkillFor(id, key))
         { OnCheckedTrue = ExcludeVariants, SourceOrder = Effects.Count };
 
     /// <summary>
@@ -726,14 +829,12 @@ public class ArmorCalcViewModel : ViewModelBase
         private static string SortName(string name) => name.TrimStart('"', '«', '»', '“', '”', '\'', ' ', ' ');
     }
 
-    // DisplayName (langue courante) de la compétence d'ID donné, ou null si absente du catalogue.
-    // Lit le catalogue en direct → un switch de langue change le résultat sans reconstruction.
-    private string? SkillDisplayNameById(int id)
-        => _catalogById.GetValueOrDefault(id)?.DisplayName;
-
-    // Compétence d'ID donné (valeurs de progression des réductions de dégâts), null hors catalogue.
+    // Compétence d'une ligne (nom affiché, type, valeurs de progression des réductions de dégâts), null hors
+    // catalogue. Lit le catalogue en direct → un switch de langue change le nom sans reconstruction.
     private Dictionary<int, Skill> _catalogById = new();
-    private Skill? SkillById(int id) => _catalogById.GetValueOrDefault(id);
+    private Dictionary<string, Skill> _catalogByName = new(StringComparer.Ordinal);
+    private Skill? SkillFor(int id, string englishName)
+        => ArmorEffectsData.CatalogSkill(id, englishName, _catalogById, _catalogByName);
 
     // Une compétence cochée décoche ses variantes PvE/PvP/faction (même nom de base, suffixe
     // différent) : mutuellement exclusives.
@@ -758,7 +859,7 @@ public class ArmorCalcViewModel : ViewModelBase
     }
 
     private string? FamilyOf(ArmorEffectRowVM row)
-        => row.SkillId == 0 ? null : SkillExclusivity.FamilyOf(SkillById(row.SkillId)?.SkillType);
+        => SkillExclusivity.FamilyOf(SkillFor(row.SkillId, row.Key)?.SkillType);
 
     // ── Assemblage des contributions pour (localisation, colonne) ─────────────────────────────
     // includeProjectile : inclut les sources Scope.Projectile (AL spécifique aux attaques à
@@ -838,6 +939,7 @@ public class ArmorCalcViewModel : ViewModelBase
     public void Recompute()
     {
         if (Pieces.Count < 5) return;
+        RefreshImpliedStates();   // avant tout calcul : les clauses d'insignes lisent les états effectifs
         ResultRows.Clear();
 
         // Ordre d'AFFICHAGE (demande Philippe) : Espérance EN PREMIER, puis les 5 localisations.
@@ -1234,6 +1336,43 @@ public class ArmorPieceVM : ViewModelBase
     {
         get => _selected;
         set { if (SetField(ref _selected, value)) _onChanged(); }
+    }
+}
+
+/// <summary>Une case « État du personnage » (chantier « réductions », lot 2). Cochée par l'utilisateur OU par un
+/// effet coché qui implique l'état ; dans ce cas elle est cochée, grisée, et son infobulle dit « activé par … »
+/// (décision Q4 de Philippe, 10/10/2026). La saisie de l'utilisateur est conservée à part : décocher l'effet
+/// rend à la case sa valeur d'avant.</summary>
+public class StateBoxVM : ViewModelBase
+{
+    private readonly Func<bool> _manual;
+    private readonly Action<bool> _setManual;
+    private readonly Func<string> _baseTip;
+    private string? _impliedBy;
+
+    public StateBoxVM(Func<bool> manual, Action<bool> setManual, Func<string> baseTip)
+    { _manual = manual; _setManual = setManual; _baseTip = baseTip; }
+
+    public bool IsImplied => _impliedBy is not null;
+
+    public bool IsChecked
+    {
+        get => _manual() || IsImplied;
+        set { if (!IsImplied) _setManual(value); }
+    }
+
+    public bool IsEnabled => !IsImplied;
+
+    public string ToolTip => IsImplied
+        ? $"{_baseTip()}\n{string.Format(LanguageManager.T("S.Armor.ImpliedBy"), _impliedBy)}"
+        : _baseTip();
+
+    /// <summary>Pose les noms des effets qui impliquent l'état (null = aucun) et relit tout : appelé à chaque
+    /// recalcul, il couvre aussi un profil chargé et un changement de langue.</summary>
+    public void Refresh(string? impliedBy)
+    {
+        _impliedBy = impliedBy;
+        OnPropertyChanged(string.Empty);
     }
 }
 
@@ -1765,7 +1904,7 @@ public class ArmorEffectRowVM : ViewModelBase
         _isEnemyInflicted = clauses.Any(c => c.IsEnemyInflicted);
         IsProgressive = clauses.Any(c => c.ValuesByRank.Count > 1)
                         || mitigations.Any(m => m.Fixed == 0 && m.Index >= 0);
-        UsesUnitCount = skillId is 33 or 18;   // IW / Mantra of Signets
+        UsesUnitCount = skillId is 33 or 18 or 3179;   // IW / Mantra of Signets (+ PvP)
     }
 
     // Nom affiché : SkillId != 0 → DisplayName de la compétence (catalogue) ; SkillId 0 → nom FR
