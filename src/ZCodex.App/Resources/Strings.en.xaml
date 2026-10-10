@@ -679,6 +679,15 @@
     <sys:String x:Key="S.Armor.ColAtAL60">@ AL 60</sys:String>
     <sys:String x:Key="S.Armor.ColAtALBuild">@ build AL</sys:String>
     <sys:String x:Key="S.Armor.AttackerAttrRankTip">Attacker's attribute rank (0–21)</sys:String>
+    <sys:String x:Key="S.Armor.AddFreeAttack">+ Free attack</sys:String>
+    <sys:String x:Key="S.Armor.AddFreeAttackTip">Adds a hit with no skill behind it: N damage of one type, set on the row</sys:String>
+    <sys:String x:Key="S.Armor.FreeAttack">Free attack</sys:String>
+    <sys:String x:Key="S.Armor.FreeAttackValueTip">Damage of the hit against AL 60 (level 20 attacker)</sys:String>
+    <sys:String x:Key="S.Armor.FreeAttackTypeTip">Damage type of the hit</sys:String>
+    <sys:String x:Key="S.Armor.FreeAttackSpell">Spell</sys:String>
+    <sys:String x:Key="S.Armor.FreeAttackSpellTip">The hit comes from a spell (Veil of Thorns only reduces spell damage)</sys:String>
+    <sys:String x:Key="S.Armor.FreeAttackProjectile">Projectile</sys:String>
+    <sys:String x:Key="S.Armor.FreeAttackProjectileTip">Projectile attack (bow, spear): "Shields Up!" applies</sys:String>
     <sys:String x:Key="S.Armor.DurationReductions">Condition duration reductions (stacked)</sys:String>
 
     <!-- ── Armor calculator — computed messages/labels (VM) ───────────── -->

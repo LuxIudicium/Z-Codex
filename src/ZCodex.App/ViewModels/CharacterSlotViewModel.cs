@@ -591,8 +591,8 @@ public partial class CharacterSlotViewModel : ViewModelBase
 
     // Familles dont un perso ne porte qu'un effet à la fois (wiki *Effect stacking* : « one stance, one preparation, one
     // glyph, one weapon spell, and one form at a time », plus un seul objet tenu). Null = icône hors de ces familles.
-    private static readonly HashSet<string> ExclusiveSkillTypes = new(StringComparer.Ordinal)
-        { "Glyph", "Stance", "Preparation", "Form", "Item Spell", "Weapon Spell" };
+    // La liste vit dans le Core (SkillExclusivity) : l'onglet Armure applique la même règle.
+    private static IReadOnlySet<string> ExclusiveSkillTypes => SkillExclusivity.Families;
 
     // Le SkillType des sorts d'arme, tel que la base l'écrit : la seule famille dont l'exclusivité
     // franchit la frontière icônes ↔ cases de la fenêtre Spike (cf. SetAttributeBoost).

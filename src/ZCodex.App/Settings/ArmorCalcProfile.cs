@@ -61,6 +61,20 @@ public class ArmorCalcProfile
     // Lot D — attaques de référence (skillId + rang). Liste VIDE (profil antérieur au Lot D) →
     // la liste par défaut en place est conservée, pas écrasée.
     public List<ReferenceAttackDto> ReferenceAttacks { get; set; } = new();
+
+    // Chantier « réductions de dégâts », lot 1 — attaques libres (sans compétence). Absent d'un profil
+    // ancien → liste vide, ce qui est exact : il n'en avait pas.
+    public List<FreeAttackDto> FreeAttacks { get; set; } = new();
+}
+
+// Une attaque libre : N dégâts d'un type contre AL 60. Type = clé de colonne du calculateur
+// (slashing, piercing, blunt, fire, cold, earth, lightning, dark).
+public class FreeAttackDto
+{
+    public int Value { get; set; } = 100;
+    public string Type { get; set; } = "slashing";
+    public bool IsSpell { get; set; }
+    public bool IsProjectile { get; set; }
 }
 
 // Une contribution saisie à la main. Category : 0=Core, 1=Bonus, 2=Special. Scope : chaîne de

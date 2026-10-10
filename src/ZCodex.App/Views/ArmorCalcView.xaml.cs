@@ -73,6 +73,14 @@ public partial class ArmorCalcView : UserControl
             Vm.RemoveAttack(a);
     }
 
+    private void AddFreeAttack_Click(object sender, RoutedEventArgs e) => Vm?.AddFreeAttack();
+
+    private void RemoveFreeAttack_Click(object sender, RoutedEventArgs e)
+    {
+        if (Vm != null && (sender as FrameworkElement)?.DataContext is FreeAttackVM f)
+            Vm.RemoveFreeAttack(f);
+    }
+
     private void AddCustom_Click(object sender, RoutedEventArgs e) => Vm?.AddCustom();
 
     private void RemoveCustom_Click(object sender, RoutedEventArgs e)

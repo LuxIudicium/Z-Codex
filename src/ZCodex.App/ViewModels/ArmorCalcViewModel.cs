@@ -432,6 +432,9 @@ public class ArmorCalcViewModel : ViewModelBase
     public void LoadSkills(IReadOnlyList<Skill> skills)
     {
         _catalog = skills;
+        _catalogById = skills.GroupBy(s => s.Id).ToDictionary(g => g.Key, g => g.First());
+        // Les valeurs des réductions de dégâts se lisent dans la progression : elles apparaissent maintenant.
+        foreach (var row in Effects) row.RaiseResolvedChanged();
         if (ReferenceAttacks.Count == 0)
             foreach (int id in DefaultAttackIds)
                 if (skills.FirstOrDefault(s => s.Id == id) is { } sk)
@@ -485,18 +488,51 @@ public class ArmorCalcViewModel : ViewModelBase
         int loc = AttackLocation;
         int holy = HolyVulnTotal;
         bool projSources = HasProjectileSources;
+        var mitigation = CurrentMitigation();
         foreach (var a in ReferenceAttacks)
         {
             bool proj = projSources && ReferenceAttack.IsProjectile(a.Skill);
             string? extra = proj ? T("S.ArmorVM.ProjectilesIncluded") : null;
-            if (loc >= 0)
-                a.Apply(ReferenceAttack.Compute(a.Skill, a.Rank, k => AlAt(loc, k, proj),
-                                                FlatPhysicalAt(loc), holy), extra);
-            else
-                a.Apply(ExpectedOver(a, proj, holy), extra);   // ligne Espérance : pondération sur les 5 localisations
+            ReferenceAttack.Result At(int l) =>
+                ReferenceAttack.Compute(a.Skill, a.Rank, k => AlAt(l, k, proj), FlatPhysicalAt(l), holy, mitigation);
+            // Ligne Espérance : pondération sur les 5 localisations.
+            a.Apply(loc >= 0 ? At(loc) : ExpectedOver(At), extra);
             RefreshAttackConditions(a);
         }
+        foreach (var f in FreeAttacks)
+        {
+            bool proj = projSources && f.IsProjectile;
+            string? extra = proj ? T("S.ArmorVM.ProjectilesIncluded") : null;
+            ReferenceAttack.Result At(int l) =>
+                ReferenceAttack.ComputeFree(f.Value, f.TypeKey, f.IsSpell, k => AlAt(l, k, proj), FlatPhysicalAt(l), mitigation);
+            f.Apply(loc >= 0 ? At(loc) : ExpectedOver(At), extra);
+        }
         OnPropertyChanged(nameof(AttackContextText));
+    }
+
+    // Réductions de dégâts reçus des lignes cochées, valeurs résolues à leur rang (chantier
+    // « réductions », lot 1). Exclusivités et variantes sont déjà réglées au cochage.
+    private DamageMitigation.Context CurrentMitigation()
+    {
+        var active = Effects.Where(r => r.IsChecked)
+                            .SelectMany(r => r.ResolvedMitigations())
+                            .Where(a => a.Percent > 0).ToList();
+        return active.Count == 0 ? DamageMitigation.Context.None : new DamageMitigation.Context(active);
+    }
+
+    // ── Attaques libres (chantier « réductions », lot 1) : un coup de N dégâts d'un type, sans compétence ──
+    public ObservableCollection<FreeAttackVM> FreeAttacks { get; } = new();
+
+    public void AddFreeAttack()
+    {
+        FreeAttacks.Add(new FreeAttackVM(RefreshAttacks));
+        RefreshAttacks();
+    }
+
+    public void RemoveFreeAttack(FreeAttackVM f)
+    {
+        FreeAttacks.Remove(f);
+        RefreshAttacks();
     }
 
     // Conditions infligées par une attaque de référence (durée de base au rang) + réduction
@@ -521,15 +557,15 @@ public class ArmorCalcViewModel : ViewModelBase
 
     // Espérance des dégâts : Σ p_loc × dégâts(loc) — on somme les DÉGÂTS par localisation, jamais
     // l'AL équivalente (la pénétration par attaque rendrait le raccourci log2 inexact).
-    private ReferenceAttack.Result ExpectedOver(ReferenceAttackVM a, bool vsProjectile, int holy)
+    // <paramref name="computeAt"/> = le calcul de la ligne pour une localisation (compétence ou attaque libre).
+    private static ReferenceAttack.Result ExpectedOver(Func<int, ReferenceAttack.Result> computeAt)
     {
         double lo = 0, hi = 0;
         ReferenceAttack.Result? representative = null;
         for (int loc = 0; loc < 5; loc++)
         {
             double p = ArmorCalculator.HitProbability((ArmorCalculator.HitLocation)loc);
-            var r = ReferenceAttack.Compute(a.Skill, a.Rank, k => AlAt(loc, k, vsProjectile),
-                                            FlatPhysicalAt(loc), holy);
+            var r = computeAt(loc);
             lo += p * r.LoCalc; hi += p * r.HiCalc;
             // Champs non chiffrés (type, notes dont le critique) : pris sur le TORSE, la
             // localisation la plus probable (3/8) — les dégâts @AL 60 sont eux indépendants du lieu.
@@ -608,20 +644,38 @@ public class ArmorCalcViewModel : ViewModelBase
     // Une ligne par SKILL : les entrées dédoublées d'un même skill (Elemental/Physical Resistance
     // bonus+malus, Ward Against Harm base+supplément élémentaire) sont FUSIONNÉES en une seule case
     // qui applique toutes les clauses à la fois (rework 17/07 — plus de « demi-effet » cochable).
+    // Les réductions de dégâts reçus (chantier « réductions », lot 1) suivent la même règle : une
+    // compétence qui a aussi un effet d'armure garde UNE ligne ; les autres forment leur propre groupe.
     private void BuildEffects()
     {
         Effects.Clear();
+        var mitigations = DamageMitigationData.All.GroupBy(d => d.Name)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<DamageMitigationDescriptor>)g.ToList(), StringComparer.Ordinal);
         foreach (var g in ArmorEffectsData.All.GroupBy(e => (e.SkillId, e.Name)))
-            Effects.Add(new ArmorEffectRowVM(g.ToList(), Recompute, UnitCountFor, SkillDisplayNameById)
-            { OnCheckedTrue = ExcludeVariants });
+        {
+            mitigations.Remove(g.Key.Name, out var own);
+            Effects.Add(NewEffectRow(g.Key.SkillId, g.Key.Name, g.ToList(), own ?? []));
+        }
+        foreach (var name in DamageMitigationData.All.Select(d => d.Name).Distinct())
+            if (mitigations.TryGetValue(name, out var list))
+                Effects.Add(NewEffectRow(list[0].SkillId, name, [], list));
         EffectsView = CollectionViewSource.GetDefaultView(Effects);
         EffectsView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(ArmorEffectRowVM.Group)));
     }
+
+    private ArmorEffectRowVM NewEffectRow(int skillId, string key, IReadOnlyList<ArmorEffectsData.ArmorEffect> clauses,
+                                          IReadOnlyList<DamageMitigationDescriptor> mitigations)
+        => new(skillId, key, clauses, mitigations, Recompute, UnitCountFor, SkillDisplayNameById, SkillById)
+        { OnCheckedTrue = ExcludeVariants };
 
     // DisplayName (langue courante) de la compétence d'ID donné, ou null si absente du catalogue.
     // Lit _catalog en direct → un switch de langue change le résultat sans reconstruction.
     private string? SkillDisplayNameById(int id)
         => _catalog.FirstOrDefault(s => s.Id == id)?.DisplayName;
+
+    // Compétence d'ID donné (valeurs de progression des réductions de dégâts), null hors catalogue.
+    private Dictionary<int, Skill> _catalogById = new();
+    private Skill? SkillById(int id) => _catalogById.GetValueOrDefault(id);
 
     // Une compétence cochée décoche ses variantes PvE/PvP/faction (même nom de base, suffixe
     // différent) : mutuellement exclusives.
@@ -632,13 +686,21 @@ public class ArmorCalcViewModel : ViewModelBase
         return name;
     }
 
+    // Une compétence cochée décoche aussi celles de sa FAMILLE exclusive (une seule posture, une seule
+    // préparation, un seul sort d'arme, une seule forme, un seul sort d'objet — SkillExclusivity, règle
+    // du chantier infobulle) : Mantra of Earth et Elemental Resistance ne tiennent pas ensemble.
     private void ExcludeVariants(ArmorEffectRowVM justChecked)
     {
         var baseName = StripVariant(justChecked.Name);
+        var family = FamilyOf(justChecked);
         foreach (var row in Effects)
-            if (!ReferenceEquals(row, justChecked) && StripVariant(row.Name) == baseName)
+            if (!ReferenceEquals(row, justChecked)
+                && (StripVariant(row.Name) == baseName || (family is not null && FamilyOf(row) == family)))
                 row.UncheckSilently();
     }
+
+    private string? FamilyOf(ArmorEffectRowVM row)
+        => row.SkillId == 0 ? null : SkillExclusivity.FamilyOf(SkillById(row.SkillId)?.SkillType);
 
     // ── Assemblage des contributions pour (localisation, colonne) ─────────────────────────────
     // includeProjectile : inclut les sources Scope.Projectile (AL spécifique aux attaques à
@@ -708,6 +770,7 @@ public class ArmorCalcViewModel : ViewModelBase
         foreach (var p in Pieces) p.RaiseLanguageChanged();   // noms de pièces (Tête/Head…)
         foreach (var e in Effects) e.RaiseLanguageChanged();  // libellés d'effets calculés
         foreach (var a in ReferenceAttacks) a.RaiseLanguageChanged();  // noms des attaques (DisplayName du skill)
+        foreach (var f in FreeAttacks) f.RaiseLanguageChanged();       // libellés de la liste des types
         EffectsView?.Refresh();                               // re-groupe (Group change de langue)
         OnPropertyChanged(nameof(ColumnList));                // en-têtes de colonnes (DamageColumn.Label)
         OnPropertyChanged(nameof(InherentDescription));
@@ -998,6 +1061,9 @@ public class ArmorCalcViewModel : ViewModelBase
         IllusionSkillCount = IllusionSkillCount,
         ReferenceAttacks = ReferenceAttacks
             .Select(a => new ReferenceAttackDto { SkillId = a.Skill.Id, Rank = a.Rank }).ToList(),
+        FreeAttacks = FreeAttacks
+            .Select(f => new FreeAttackDto { Value = f.Value, Type = f.TypeKey, IsSpell = f.IsSpell, IsProjectile = f.IsProjectile })
+            .ToList(),
     };
 
     private void LoadProfile(string name)
@@ -1077,6 +1143,11 @@ public class ArmorCalcViewModel : ViewModelBase
                 if (_catalog.FirstOrDefault(s => s.Id == a.SkillId) is { } sk)
                     ReferenceAttacks.Add(new ReferenceAttackVM(sk, a.Rank, RefreshAttacks));
         }
+
+        // Attaques libres : un profil antérieur au lot 1 n'en a pas, la liste vide est donc juste.
+        FreeAttacks.Clear();
+        foreach (var f in dto.FreeAttacks)
+            FreeAttacks.Add(new FreeAttackVM(RefreshAttacks, f.Value, f.Type, f.IsSpell, f.IsProjectile));
 
         Recompute();
     }
@@ -1613,24 +1684,38 @@ public class ArmorEffectRowVM : ViewModelBase
     private readonly Action _onChanged;
     private readonly Func<int, int> _unitCountFor;
     private readonly Func<int, string?> _skillDisplayName;
-    public IReadOnlyList<ArmorEffectsData.ArmorEffect> Clauses { get; }
-    private ArmorEffectsData.ArmorEffect Primary => Clauses[0];
+    private readonly Func<int, Skill?> _skillById;
+    private readonly string _key;
+    private readonly bool _isEnemyInflicted;
 
-    public ArmorEffectRowVM(IReadOnlyList<ArmorEffectsData.ArmorEffect> clauses, Action onChanged,
-                            Func<int, int> unitCountFor, Func<int, string?> skillDisplayName)
+    /// <summary>Id de la compétence (0 = effet non-skill : consommable, condition, flux…).</summary>
+    public int SkillId { get; }
+    /// <summary>Clauses d'ARMURE (vide pour une ligne qui ne porte qu'une réduction de dégâts).</summary>
+    public IReadOnlyList<ArmorEffectsData.ArmorEffect> Clauses { get; }
+    /// <summary>Réductions de dégâts REÇUS portées par la même compétence (chantier « réductions »,
+    /// lot 1) ; vide pour un effet d'armure seul.</summary>
+    public IReadOnlyList<DamageMitigationDescriptor> Mitigations { get; }
+
+    public ArmorEffectRowVM(int skillId, string key, IReadOnlyList<ArmorEffectsData.ArmorEffect> clauses,
+                            IReadOnlyList<DamageMitigationDescriptor> mitigations, Action onChanged,
+                            Func<int, int> unitCountFor, Func<int, string?> skillDisplayName,
+                            Func<int, Skill?> skillById)
     {
-        Clauses = clauses; _onChanged = onChanged; _unitCountFor = unitCountFor;
-        _skillDisplayName = skillDisplayName;
-        IsProgressive = clauses.Any(c => c.ValuesByRank.Count > 1);
-        UsesUnitCount = Primary.SkillId is 33 or 18;   // IW / Mantra of Signets
+        SkillId = skillId; _key = key; Clauses = clauses; Mitigations = mitigations;
+        _onChanged = onChanged; _unitCountFor = unitCountFor;
+        _skillDisplayName = skillDisplayName; _skillById = skillById;
+        _isEnemyInflicted = clauses.Any(c => c.IsEnemyInflicted);
+        IsProgressive = clauses.Any(c => c.ValuesByRank.Count > 1)
+                        || mitigations.Any(m => m.Fixed == 0 && m.Index >= 0);
+        UsesUnitCount = skillId is 33 or 18;   // IW / Mantra of Signets
     }
 
     // Nom affiché : SkillId != 0 → DisplayName de la compétence (catalogue) ; SkillId 0 → nom FR
     // du non-skill (map Core). Key (clé de profil) reste le nom EN — NE PAS traduire.
     public string Name =>
-        Primary.SkillId != 0 && _skillDisplayName(Primary.SkillId) is { } d ? d
-        : ArmorEffectsData.NonSkillDisplayName(Primary.Name);
-    public string Key => Primary.Name;   // clé de profil (anciens profils : « Name|Scope », migrés au Load)
+        SkillId != 0 && _skillDisplayName(SkillId) is { } d ? d
+        : ArmorEffectsData.NonSkillDisplayName(_key);
+    public string Key => _key;   // clé de profil (anciens profils : « Name|Scope », migrés au Load)
     public bool IsProgressive { get; }
     public bool UsesUnitCount { get; }
     public bool HasProjectileClause => Clauses.Any(c => c.Scope == ArmorEffectsData.Scope.Projectile);
@@ -1647,19 +1732,34 @@ public class ArmorEffectRowVM : ViewModelBase
         _ => "",
     };
 
+    // Portée d'une réduction de dégâts, au même format que ScopeTag.
+    private static string MitigationTag(DamageMitigationDescriptor d) => d.Scope switch
+    {
+        MitigationScope.DamageType => $" (vs {SkillDamage.DisplayType(d.DamageType)})",
+        MitigationScope.Spells     => L(" (sorts)", " (spells)"),
+        _ => "",
+    };
+
     // Libellé de la ligne : nom + portée si la ligne n'a qu'une clause (multi-clauses : le détail
     // est porté par la valeur composite et le détail de cellule).
-    public string Label => Clauses.Count == 1 ? Name + ScopeTag(Primary.Scope) : Name;
+    public string Label =>
+        Clauses.Count == 1 && Mitigations.Count == 0 ? Name + ScopeTag(Clauses[0].Scope)
+        : Clauses.Count == 0 && Mitigations.Count == 1 ? Name + MitigationTag(Mitigations[0])
+        : Name;
 
     /// <summary>Libellé d'une clause pour le détail de cellule (nom + portée de LA clause).</summary>
     public string LabelFor(ArmorEffectsData.ArmorEffect clause) => Name + ScopeTag(clause.Scope);
 
-    public string? ConditionFr => Clauses.Select(ArmorEffectsData.DisplayCondition).FirstOrDefault(c => c is not null);
+    public string? ConditionFr =>
+        Clauses.Select(ArmorEffectsData.DisplayCondition).FirstOrDefault(c => c is not null)
+        ?? Mitigations.Select(m => ZCodex.Core.Models.AppLanguage.IsFr ? m.ConditionFr : m.ConditionEn)
+                      .FirstOrDefault(c => c is not null);
 
     public string Group =>
-        Primary.IsEnemyInflicted ? L("Malus subis", "Incurred penalties")
-        : Primary.SkillId == 0   ? L("Consommables & effets", "Consumables & effects")
-        :                          L("Compétences alliées", "Allied skills");
+        _isEnemyInflicted   ? L("Malus subis", "Incurred penalties")
+        : SkillId == 0      ? L("Consommables & effets", "Consumables & effects")
+        : Clauses.Count == 0 ? L("Réductions de dégâts", "Damage reduction")
+        :                      L("Compétences alliées", "Allied skills");
 
     // Notifié quand la case passe à COCHÉE → le VM décoche les variantes PvE/PvP mutuellement
     // exclusives (Watch Yourself! vs (PvP), Save Yourselves! Kurzick vs Luxon…).
@@ -1706,32 +1806,48 @@ public class ArmorEffectRowVM : ViewModelBase
     /// <summary>Clauses avec leur valeur résolue au rang courant (× compte per-unit pour IW/Mantra).</summary>
     public IEnumerable<(ArmorEffectsData.ArmorEffect Clause, int Value)> ResolvedClauses()
     {
-        int unit = UsesUnitCount ? _unitCountFor(Primary.SkillId) : 1;
+        int unit = UsesUnitCount ? _unitCountFor(SkillId) : 1;
         foreach (var c in Clauses)
             yield return (c, ArmorEffectsData.ValueAt(c, _rank) * unit);
     }
 
-    // Valeur affichée : simple (« +40 ») pour une clause, composite (« +40 élém / −14 phys »)
+    /// <summary>Réductions de dégâts de la ligne, valeur lue dans la progression au rang courant.</summary>
+    public IEnumerable<DamageMitigation.Active> ResolvedMitigations()
+    {
+        foreach (var m in Mitigations)
+            yield return new(m, DamageMitigationData.PercentOf(m, _skillById(m.SkillId), _rank));
+    }
+
+    // Valeur affichée : simple (« +40 », « −45 % ») pour une clause, composite (« +40 élém / −14 phys »)
     // pour les skills fusionnés.
     public string ResolvedValueText
     {
         get
         {
-            if (Clauses.Count == 1)
-            {
-                int v = ResolvedClauses().First().Value;
-                return (v >= 0 ? "+" : "") + v;   // la portée est déjà dans le Label
-            }
-            return string.Join(" / ", ResolvedClauses().Select(rc =>
-                (rc.Value >= 0 ? "+" : "") + rc.Value + rc.Clause.Scope switch
-                {
-                    ArmorEffectsData.Scope.Physical   => L(" phys", " phys"),
-                    ArmorEffectsData.Scope.Elemental  => L(" élém", " elem"),
-                    ArmorEffectsData.Scope.Slashing   => L(" tranch", " slash"),
-                    ArmorEffectsData.Scope.Projectile => L(" proj", " proj"),
-                    _ => "",
-                }));
+            var parts = new List<string>();
+            if (Clauses.Count > 0) parts.Add(ArmorValueText());
+            foreach (var a in ResolvedMitigations())
+                parts.Add(L($"−{a.Percent} %", $"−{a.Percent}%"));   // la portée est dans le Label
+            return string.Join(" / ", parts);
         }
+    }
+
+    private string ArmorValueText()
+    {
+        if (Clauses.Count == 1)
+        {
+            int v = ResolvedClauses().First().Value;
+            return (v >= 0 ? "+" : "") + v;   // la portée est déjà dans le Label
+        }
+        return string.Join(" / ", ResolvedClauses().Select(rc =>
+            (rc.Value >= 0 ? "+" : "") + rc.Value + rc.Clause.Scope switch
+            {
+                ArmorEffectsData.Scope.Physical   => L(" phys", " phys"),
+                ArmorEffectsData.Scope.Elemental  => L(" élém", " elem"),
+                ArmorEffectsData.Scope.Slashing   => L(" tranch", " slash"),
+                ArmorEffectsData.Scope.Projectile => L(" proj", " proj"),
+                _ => "",
+            }));
     }
 
     public void RaiseResolvedChanged() => OnPropertyChanged(nameof(ResolvedValueText));
@@ -1800,10 +1916,122 @@ public class ResultCellVM : ViewModelBase
     public void RaiseSelectedChanged() => OnPropertyChanged(nameof(IsSelected));
 }
 
+// Ce qu'une ligne de la table d'attaques AFFICHE : dégâts subis à AL 60 vs à l'AL du build, Δ, notes.
+// Les valeurs sont poussées par le VM (Apply) : la ligne ne calcule rien elle-même. Partagé par les
+// attaques du catalogue et les attaques libres (chantier « réductions », lot 1).
+public abstract class AttackRowVM : ViewModelBase
+{
+    private ReferenceAttack.Result? _result;
+    private string? _extraNote;   // note posée par le VM (ex : AL projectile appliquée)
+
+    public void Apply(ReferenceAttack.Result r, string? extraNote = null)
+    {
+        _result = r;
+        _extraNote = extraNote;
+        OnPropertyChanged(nameof(Text60));
+        OnPropertyChanged(nameof(TextCalc));
+        OnPropertyChanged(nameof(DeltaText));
+        OnPropertyChanged(nameof(TypeText));
+        OnPropertyChanged(nameof(Notes));
+        OnPropertyChanged(nameof(IsMitigated));
+    }
+
+    private static string Fmt(int lo, int hi) => lo == hi ? hi.ToString() : $"{lo}–{hi}";
+
+    public string Text60   => _result is null ? "—" : Fmt(_result.Lo60, _result.Hi60);
+    public string TextCalc => _result is null ? "—" : Fmt(_result.LoCalc, _result.HiCalc);
+
+    public string TypeText => _result?.IgnoresArmor == true
+        ? (AppLanguage.IsFr ? "ignore l'armure" : "ignores armor")
+        : _result?.PrimaryTypeFr ?? "";
+
+    // Δ vs AL 60 : négatif = dégâts réduits par le build. Vide si l'attaque ignore l'armure.
+    public string DeltaText
+    {
+        get
+        {
+            if (_result is null || _result.IgnoresArmor) return "";
+            int d = _result.DeltaPercent;
+            return d == 0 ? "0 %" : $"{(d > 0 ? "+" : "")}{d} %";
+        }
+    }
+
+    public bool IsMitigated => _result is { IgnoresArmor: false } r && r.DeltaPercent < 0;
+    public string Notes
+    {
+        get
+        {
+            string baseNotes = _result?.Notes ?? "";
+            if (string.IsNullOrEmpty(_extraNote)) return baseNotes;
+            return baseNotes.Length == 0 ? _extraNote! : $"{baseNotes} · {_extraNote}";
+        }
+    }
+}
+
+// Une attaque LIBRE (chantier « réductions », lot 1) : N dégâts d'un type contre AL 60, sans
+// compétence derrière, pour tester un coup quelconque (« 1000 dégâts de terre »).
+public class FreeAttackVM : AttackRowVM
+{
+    public const int MaxValue = 10000;
+    private readonly Action _onChanged;
+
+    public FreeAttackVM(Action onChanged, int value = 100, string typeKey = "slashing",
+                        bool isSpell = false, bool isProjectile = false)
+    {
+        _onChanged = onChanged;
+        _value = Math.Clamp(value, 0, MaxValue);
+        _column = ArmorCalcViewModel.Columns.FirstOrDefault(c => c.Key == typeKey) ?? ArmorCalcViewModel.Columns[0];
+        _isSpell = isSpell;
+        _isProjectile = isProjectile;
+    }
+
+    private int _value;
+    public int Value
+    {
+        get => _value;
+        set { if (SetField(ref _value, Math.Clamp(value, 0, MaxValue))) _onChanged(); }
+    }
+
+    // Liste NEUVE à chaque lecture : au changement de langue, un ItemsSource identique ne serait pas
+    // relu et les libellés (DamageColumn.Label) resteraient dans l'ancienne langue. Les colonnes sont
+    // des records : la sélection se retrouve par égalité de valeur dans la nouvelle liste.
+    public IReadOnlyList<ArmorCalcViewModel.DamageColumn> ColumnChoices => [.. ArmorCalcViewModel.Columns];
+
+    private ArmorCalcViewModel.DamageColumn _column;
+    public ArmorCalcViewModel.DamageColumn Column
+    {
+        get => _column;
+        // null = la ComboBox se vide pendant un changement de liste : on l'ignore, sinon le type
+        // de l'attaque serait perdu.
+        set { if (value is not null && SetField(ref _column, value)) _onChanged(); }
+    }
+
+    public string TypeKey => _column.Key;
+
+    private bool _isSpell;
+    public bool IsSpell
+    {
+        get => _isSpell;
+        set { if (SetField(ref _isSpell, value)) _onChanged(); }
+    }
+
+    private bool _isProjectile;
+    public bool IsProjectile
+    {
+        get => _isProjectile;
+        set { if (SetField(ref _isProjectile, value)) _onChanged(); }
+    }
+
+    public void RaiseLanguageChanged()
+    {
+        OnPropertyChanged(nameof(ColumnChoices));
+        OnPropertyChanged(nameof(Column));
+    }
+}
+
 // Une ligne de la table d'attaques de référence (Lot D) : skill + rang éditable + dégâts subis
-// à AL 60 (catalogue) vs à l'AL du build. Les valeurs sont poussées par le VM (Apply) : la ligne
-// ne calcule rien elle-même, elle affiche.
-public class ReferenceAttackVM : ViewModelBase
+// à AL 60 (catalogue) vs à l'AL du build.
+public class ReferenceAttackVM : AttackRowVM
 {
     private readonly Action _onChanged;
     public Skill Skill { get; }
@@ -1849,52 +2077,6 @@ public class ReferenceAttackVM : ViewModelBase
         Conditions.Clear();
         foreach (var p in pills) Conditions.Add(p);
         OnPropertyChanged(nameof(HasConditions));
-    }
-
-    private ReferenceAttack.Result? _result;
-    private string? _extraNote;   // note posée par le VM (ex : AL projectile appliquée)
-
-    public void Apply(ReferenceAttack.Result r, string? extraNote = null)
-    {
-        _result = r;
-        _extraNote = extraNote;
-        OnPropertyChanged(nameof(Text60));
-        OnPropertyChanged(nameof(TextCalc));
-        OnPropertyChanged(nameof(DeltaText));
-        OnPropertyChanged(nameof(TypeText));
-        OnPropertyChanged(nameof(Notes));
-        OnPropertyChanged(nameof(IsMitigated));
-    }
-
-    private static string Fmt(int lo, int hi) => lo == hi ? hi.ToString() : $"{lo}–{hi}";
-
-    public string Text60   => _result is null ? "—" : Fmt(_result.Lo60, _result.Hi60);
-    public string TextCalc => _result is null ? "—" : Fmt(_result.LoCalc, _result.HiCalc);
-
-    public string TypeText => _result?.IgnoresArmor == true
-        ? (AppLanguage.IsFr ? "ignore l'armure" : "ignores armor")
-        : _result?.PrimaryTypeFr ?? "";
-
-    // Δ vs AL 60 : négatif = dégâts réduits par le build. Vide si l'attaque ignore l'armure.
-    public string DeltaText
-    {
-        get
-        {
-            if (_result is null || _result.IgnoresArmor) return "";
-            int d = _result.DeltaPercent;
-            return d == 0 ? "0 %" : $"{(d > 0 ? "+" : "")}{d} %";
-        }
-    }
-
-    public bool IsMitigated => _result is { IgnoresArmor: false } r && r.DeltaPercent < 0;
-    public string Notes
-    {
-        get
-        {
-            string baseNotes = _result?.Notes ?? "";
-            if (string.IsNullOrEmpty(_extraNote)) return baseNotes;
-            return baseNotes.Length == 0 ? _extraNote! : $"{baseNotes} · {_extraNote}";
-        }
     }
 }
 

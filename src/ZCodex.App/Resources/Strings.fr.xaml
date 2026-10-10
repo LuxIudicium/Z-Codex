@@ -682,6 +682,15 @@
     <sys:String x:Key="S.Armor.ColAtAL60">@ AL 60</sys:String>
     <sys:String x:Key="S.Armor.ColAtALBuild">@ AL build</sys:String>
     <sys:String x:Key="S.Armor.AttackerAttrRankTip">Rang de l'attribut de l'attaquant (0–21)</sys:String>
+    <sys:String x:Key="S.Armor.AddFreeAttack">+ Attaque libre</sys:String>
+    <sys:String x:Key="S.Armor.AddFreeAttackTip">Ajoute un coup sans compétence : N dégâts d'un type, à régler sur la ligne</sys:String>
+    <sys:String x:Key="S.Armor.FreeAttack">Attaque libre</sys:String>
+    <sys:String x:Key="S.Armor.FreeAttackValueTip">Dégâts du coup contre AL 60 (attaquant niveau 20)</sys:String>
+    <sys:String x:Key="S.Armor.FreeAttackTypeTip">Type de dégâts du coup</sys:String>
+    <sys:String x:Key="S.Armor.FreeAttackSpell">Sort</sys:String>
+    <sys:String x:Key="S.Armor.FreeAttackSpellTip">Le coup vient d'un sort (Veil of Thorns ne réduit que les dégâts de sort)</sys:String>
+    <sys:String x:Key="S.Armor.FreeAttackProjectile">Projectile</sys:String>
+    <sys:String x:Key="S.Armor.FreeAttackProjectileTip">Attaque à projectile (arc, lance) : « Shields Up! » s'applique</sys:String>
     <sys:String x:Key="S.Armor.DurationReductions">Réductions de durée d'altération (cumul)</sys:String>
 
     <!-- ── Calculateur d'armure — messages/labels calculés (VM) ───────── -->
