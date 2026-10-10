@@ -33,8 +33,8 @@ public static class HelpContent
 {
     // Version du CONTENU de l'aide (indépendante de la version applicative de l'À propos) :
     // à incrémenter et redater à chaque mise à jour.
-    public const string VersionFr = "Aide v35 — 10/10/2026";
-    public const string VersionEn = "Help v35 — 2026-10-10";
+    public const string VersionFr = "Aide v36 — 10/10/2026";
+    public const string VersionEn = "Help v36 — 2026-10-10";
 
     public static string Version => AppLanguage.IsFr ? VersionFr : VersionEn;
 
@@ -614,8 +614,8 @@ public static class HelpContent
               "Remplit les insignes et le bouclier depuis un code existant.",
               "Fills insignia and shield from an existing code."),
             R("État du personnage", "Character state",
-              "Les cases (enchanté, maléfice, pose de combat, en attaque…) et les compteurs (PV %, enchantements, recharges, serviteurs, esprits, sceaux, compétences Illusion) déclenchent les insignes conditionnelles.",
-              "The boxes (enchanted, hexed, in stance, attacking…) and counters (HP %, enchantments, recharging skills, minions, spirits, signets, Illusion skills) drive conditional insignia."),
+              "Les cases (enchanté, maléfice, pose de combat, en attaque…) et les compteurs (PV %, enchantements, recharges, serviteurs, esprits, sceaux, compétences Illusion) déclenchent les insignes conditionnelles. Une case se coche seule, grisée, quand un effet coché dans « Sources externes » l'implique (Mantra de la terre → pose de combat) ; son infobulle dit lequel. Le compteur d'enchantements reçoit en plus les enchantements cochés (« +N »).",
+              "The boxes (enchanted, hexed, in stance, attacking…) and counters (HP %, enchantments, recharging skills, minions, spirits, signets, Illusion skills) drive conditional insignia. A box ticks itself, greyed out, when an effect ticked under “External sources” implies it (Mantra of Earth → in stance); its tooltip says which one. The enchantment counter also gets the ticked enchantments (“+N”)."),
             R("Sources externes", "External sources",
               "Compétences alliées (par ordre alphabétique), malus subis, consommables et effets, réductions de dégâts : cochez ce qui s'applique. Une seule pose de combat, transformation, sort d'altération d'arme ou sort d'altération d'objet à la fois : en cocher un décoche l'autre.",
               "Allied skills (in alphabetical order), incoming penalties, consumables and effects, damage reduction: tick whatever applies. Only one stance, form, weapon spell or item spell at a time: ticking one unticks the other."),
