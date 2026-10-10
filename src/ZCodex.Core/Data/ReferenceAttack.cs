@@ -111,8 +111,8 @@ public static class ReferenceAttack
         int pen = analysis.ArmorPenetration;
 
         // Réductions de dégâts reçus : facteur par paquet (type + sort ou non), passé au multiplicateur de
-        // DamageAt — un seul arrondi, puis la réduction fixe d'équipement (Q1 et Q5 provisoires, cf.
-        // DamageMitigation). Les pourcentages effectivement appliqués vont en note.
+        // DamageAt — un seul arrondi, puis la réduction fixe d'équipement (ordre armure → % → fixe confirmé
+        // en jeu, cf. DamageMitigation). Les pourcentages effectivement appliqués vont en note.
         bool isSpell = DamageMitigation.IsSpell(skill);
         var appliedPercents = new SortedSet<int>();
         double Mitigate(string? type, bool spell)

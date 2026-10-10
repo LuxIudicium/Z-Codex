@@ -11,14 +11,15 @@ namespace ZCodex.Core.Data;
 /// Les pourcentages se MULTIPLIENT entre eux (wiki *Damage_reduction* : « stacks multiplicatively »).
 /// Un paquet qui ignore l'armure (sacré, ombre, perte de vie) n'en reçoit aucun (décision 6.2 de Philippe).
 ///
-/// ⚠ DEUX CHOIX PROVISOIRES, à confirmer par l'expérience en jeu P1 (§ 5 du plan) :
 /// <list type="bullet">
-/// <item><b>Q1, arrondi</b> : le facteur entre dans le multiplicateur de <c>DamageAt</c>, donc un seul
-/// arrondi tombe, à la fin (précédent du lot 6b du chantier infobulle).</item>
-/// <item><b>Q5, ordre</b> : les pourcentages passent AVANT les réductions fixes d'équipement (rune
-/// d'Absorption, Knight's, inscriptions), que <see cref="ReferenceAttack"/> retranche ensuite.</item>
+/// <item><b>Q5, ordre — CONFIRMÉ EN JEU</b> par l'expérience P1 de Philippe (10/10/2026, Mantra of Earth +
+/// Stoneflesh Aura) : l'armure d'abord, puis les pourcentages, puis les réductions fixes (rune d'Absorption,
+/// Knight's, inscriptions), que <see cref="ReferenceAttack"/> retranche ensuite. Ne pas rouvrir.</item>
+/// <item><b>Q1, arrondi — VALIDÉ par Philippe</b> (10/10/2026) : le facteur entre dans le multiplicateur de
+/// <c>DamageAt</c>, donc un seul arrondi tombe, à la fin (précédent du lot 6b du chantier infobulle).</item>
 /// </list>
-/// Si P1 dit autrement, c'est ici et dans <see cref="ReferenceAttack"/> que ça change, nulle part ailleurs.
+/// Le « +X » d'une attaque d'arme, compté sans armure depuis le chantier 10, ne reçoit AUCUNE réduction en %
+/// (confirmé par Philippe le 10/10/2026).
 /// </summary>
 public static class DamageMitigation
 {

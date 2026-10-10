@@ -691,6 +691,8 @@
     <sys:String x:Key="S.Armor.FreeAttackSpellTip">Le coup vient d'un sort (Veil of Thorns ne réduit que les dégâts de sort)</sys:String>
     <sys:String x:Key="S.Armor.FreeAttackProjectile">Projectile</sys:String>
     <sys:String x:Key="S.Armor.FreeAttackProjectileTip">Attaque à projectile (arc, lance) : « Shields Up! » s'applique</sys:String>
+    <sys:String x:Key="S.Armor.Total">Total</sys:String>
+    <sys:String x:Key="S.Armor.TotalTip">Somme de toutes les lignes de la table, sur la localisation de référence (la cellule choisie, sinon la moyenne)</sys:String>
     <sys:String x:Key="S.Armor.DurationReductions">Réductions de durée d'altération (cumul)</sys:String>
 
     <!-- ── Calculateur d'armure — messages/labels calculés (VM) ───────── -->

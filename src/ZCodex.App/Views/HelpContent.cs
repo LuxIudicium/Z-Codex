@@ -33,8 +33,8 @@ public static class HelpContent
 {
     // Version du CONTENU de l'aide (indépendante de la version applicative de l'À propos) :
     // à incrémenter et redater à chaque mise à jour.
-    public const string VersionFr = "Aide v34 — 09/10/2026";
-    public const string VersionEn = "Help v34 — 2026-10-09";
+    public const string VersionFr = "Aide v35 — 10/10/2026";
+    public const string VersionEn = "Help v35 — 2026-10-10";
 
     public static string Version => AppLanguage.IsFr ? VersionFr : VersionEn;
 
@@ -617,8 +617,11 @@ public static class HelpContent
               "Les cases (enchanté, maléfice, pose de combat, en attaque…) et les compteurs (PV %, enchantements, recharges, serviteurs, esprits, sceaux, compétences Illusion) déclenchent les insignes conditionnelles.",
               "The boxes (enchanted, hexed, in stance, attacking…) and counters (HP %, enchantments, recharging skills, minions, spirits, signets, Illusion skills) drive conditional insignia."),
             R("Sources externes", "External sources",
-              "Compétences alliées, malus subis, consommables et effets : cochez ce qui s'applique.",
-              "Allied skills, incoming penalties, consumables and effects: tick whatever applies."),
+              "Compétences alliées (par ordre alphabétique), malus subis, consommables et effets, réductions de dégâts : cochez ce qui s'applique. Une seule pose de combat, transformation, sort d'altération d'arme ou sort d'altération d'objet à la fois : en cocher un décoche l'autre.",
+              "Allied skills (in alphabetical order), incoming penalties, consumables and effects, damage reduction: tick whatever applies. Only one stance, form, weapon spell or item spell at a time: ticking one unticks the other."),
+            R("Réductions de dégâts", "Damage reduction",
+              "Mantras, Ether Prism, Aura of Faith… : s'appliquent après l'armure, et se multiplient entre elles. Elles ne touchent ni les dégâts qui ignorent l'armure, ni le bonus « +X » d'une attaque.",
+              "Mantras, Ether Prism, Aura of Faith…: applied after armor, and they multiply with each other. They touch neither armor-ignoring damage nor the “+X” bonus of an attack."),
             R("Grille d'AL effective", "Effective AL grid",
               "AL par pièce et par type de dégâts. Clic sur une cellule = détail pas à pas du calcul ; re-clic = retour à la moyenne.",
               "AL per piece and damage type. Click a cell for the step-by-step breakdown; click again to return to the mean."),
@@ -631,6 +634,12 @@ public static class HelpContent
             R("Attaques de référence", "Reference attacks",
               "Ajoutez des compétences depuis le catalogue (double-clic, Entrée ou « + Ajouter ») : dégâts @ AL 60 et @ AL du build, rang réglable, altérations infligées avec leur durée effective.",
               "Add skills from the catalog (double-click, Enter or “+ Add”): damage @ AL 60 and @ build AL, adjustable rank, inflicted conditions with their effective duration."),
+            R("+ Attaque libre", "+ Free attack",
+              "Ajoute un coup sans compétence derrière : sa valeur contre AL 60, son type de dégâts, et s'il vient d'un sort ou d'un projectile.",
+              "Adds a hit with no skill behind it: its value against AL 60, its damage type, and whether it comes from a spell or a projectile."),
+            R("Total", "Total",
+              "Dernière ligne de la table : somme de toutes les attaques, @ AL 60 et @ AL du build, sur la cellule choisie (sinon la moyenne).",
+              "Last row of the table: sum of every attack, @ AL 60 and @ build AL, on the selected cell (otherwise the mean)."),
             R("Filtres du catalogue d'attaques", "Attack catalog filters",
               "Profession, caractéristique, mode de jeu, « dégâts seulement », puis les mêmes catégories que le catalogue de compétences : Types de compétences et Mécaniques, ici en listes déroulantes toujours affichées.",
               "Profession, attribute, game mode, “damage only”, then the same categories as the skill catalog: Skill Types and Mechanics, here as dropdowns that are always on screen."),

@@ -1,5 +1,6 @@
 ﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
 using System.IO;
 using System.Text.RegularExpressions;
 using System.Windows.Data;
@@ -435,6 +436,8 @@ public class ArmorCalcViewModel : ViewModelBase
         _catalogById = skills.GroupBy(s => s.Id).ToDictionary(g => g.Key, g => g.First());
         // Les valeurs des réductions de dégâts se lisent dans la progression : elles apparaissent maintenant.
         foreach (var row in Effects) row.RaiseResolvedChanged();
+        // Les noms affichés viennent d'arriver avec le catalogue : retri alphabétique des compétences alliées.
+        EffectsView?.Refresh();
         if (ReferenceAttacks.Count == 0)
             foreach (int id in DefaultAttackIds)
                 if (skills.FirstOrDefault(s => s.Id == id) is { } sk)
@@ -507,7 +510,35 @@ public class ArmorCalcViewModel : ViewModelBase
                 ReferenceAttack.ComputeFree(f.Value, f.TypeKey, f.IsSpell, k => AlAt(l, k, proj), FlatPhysicalAt(l), mitigation);
             f.Apply(loc >= 0 ? At(loc) : ExpectedOver(At), extra);
         }
+        RefreshTotal();
         OnPropertyChanged(nameof(AttackContextText));
+    }
+
+    // ── Total de la table d'attaques (demande Philippe du 10/10/2026) ──
+    public bool HasAttackRows => FreeAttacks.Count + ReferenceAttacks.Count > 0;
+    public string TotalText60 { get; private set; } = "—";
+    public string TotalTextCalc { get; private set; } = "—";
+    public string TotalDeltaText { get; private set; } = "";
+    public bool TotalIsMitigated { get; private set; }
+
+    // Somme des lignes, fourchette comprise (somme des minima – somme des maxima) ; Δ sur la borne
+    // haute, exactement comme une ligne (ReferenceAttack.Result.DeltaPercent).
+    private void RefreshTotal()
+    {
+        var results = FreeAttacks.Select(f => f.Result).Concat(ReferenceAttacks.Select(a => a.Result))
+                                 .OfType<ReferenceAttack.Result>().ToList();
+        int lo60 = results.Sum(r => r.Lo60), hi60 = results.Sum(r => r.Hi60);
+        int loCalc = results.Sum(r => r.LoCalc), hiCalc = results.Sum(r => r.HiCalc);
+        int delta = hi60 <= 0 ? 0 : (int)Math.Round((hiCalc - hi60) * 100.0 / hi60);
+        TotalText60 = results.Count == 0 ? "—" : AttackRowVM.Fmt(lo60, hi60);
+        TotalTextCalc = results.Count == 0 ? "—" : AttackRowVM.Fmt(loCalc, hiCalc);
+        TotalDeltaText = results.Count == 0 ? "" : delta == 0 ? "0 %" : $"{(delta > 0 ? "+" : "")}{delta} %";
+        TotalIsMitigated = delta < 0;
+        OnPropertyChanged(nameof(HasAttackRows));
+        OnPropertyChanged(nameof(TotalText60));
+        OnPropertyChanged(nameof(TotalTextCalc));
+        OnPropertyChanged(nameof(TotalDeltaText));
+        OnPropertyChanged(nameof(TotalIsMitigated));
     }
 
     // Réductions de dégâts reçus des lignes cochées, valeurs résolues à leur rang (chantier
@@ -661,17 +692,44 @@ public class ArmorCalcViewModel : ViewModelBase
                 Effects.Add(NewEffectRow(list[0].SkillId, name, [], list));
         EffectsView = CollectionViewSource.GetDefaultView(Effects);
         EffectsView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(ArmorEffectRowVM.Group)));
+        if (EffectsView is ListCollectionView sortable) sortable.CustomSort = new EffectRowOrder();
     }
 
     private ArmorEffectRowVM NewEffectRow(int skillId, string key, IReadOnlyList<ArmorEffectsData.ArmorEffect> clauses,
                                           IReadOnlyList<DamageMitigationDescriptor> mitigations)
         => new(skillId, key, clauses, mitigations, Recompute, UnitCountFor, SkillDisplayNameById, SkillById)
-        { OnCheckedTrue = ExcludeVariants };
+        { OnCheckedTrue = ExcludeVariants, SourceOrder = Effects.Count };
+
+    /// <summary>
+    /// Ordre de la liste des sources externes : les groupes dans leur ordre habituel, les COMPÉTENCES
+    /// ALLIÉES par ordre alphabétique du nom affiché (demande Philippe du 10/10/2026), les autres groupes
+    /// dans l'ordre de leur table. La vue relit cet ordre à chaque Refresh — y compris celui du
+    /// changement de langue (RefreshLanguage) : la liste se retrie d'elle-même en anglais.
+    /// </summary>
+    private sealed class EffectRowOrder : System.Collections.IComparer
+    {
+        public int Compare(object? x, object? y)
+        {
+            if (x is not ArmorEffectRowVM a || y is not ArmorEffectRowVM b) return 0;
+            int byGroup = a.GroupRank.CompareTo(b.GroupRank);
+            if (byGroup != 0) return byGroup;
+            if (a.GroupRank == ArmorEffectRowVM.AlliedGroupRank)
+            {
+                var culture = CultureInfo.GetCultureInfo(AppLanguage.IsFr ? "fr-FR" : "en-US");
+                int byName = string.Compare(SortName(a.Name), SortName(b.Name), culture, CompareOptions.IgnoreCase);
+                if (byName != 0) return byName;
+            }
+            return a.SourceOrder.CompareTo(b.SourceOrder);
+        }
+
+        // Les cris s'écrivent entre guillemets (« "Watch Yourself!" ») : ils se rangent à leur première lettre.
+        private static string SortName(string name) => name.TrimStart('"', '«', '»', '“', '”', '\'', ' ', ' ');
+    }
 
     // DisplayName (langue courante) de la compétence d'ID donné, ou null si absente du catalogue.
-    // Lit _catalog en direct → un switch de langue change le résultat sans reconstruction.
+    // Lit le catalogue en direct → un switch de langue change le résultat sans reconstruction.
     private string? SkillDisplayNameById(int id)
-        => _catalog.FirstOrDefault(s => s.Id == id)?.DisplayName;
+        => _catalogById.GetValueOrDefault(id)?.DisplayName;
 
     // Compétence d'ID donné (valeurs de progression des réductions de dégâts), null hors catalogue.
     private Dictionary<int, Skill> _catalogById = new();
@@ -1755,11 +1813,25 @@ public class ArmorEffectRowVM : ViewModelBase
         ?? Mitigations.Select(m => ZCodex.Core.Models.AppLanguage.IsFr ? m.ConditionFr : m.ConditionEn)
                       .FirstOrDefault(c => c is not null);
 
-    public string Group =>
-        _isEnemyInflicted   ? L("Malus subis", "Incurred penalties")
-        : SkillId == 0      ? L("Consommables & effets", "Consumables & effects")
-        : Clauses.Count == 0 ? L("Réductions de dégâts", "Damage reduction")
-        :                      L("Compétences alliées", "Allied skills");
+    /// <summary>Rang du groupe dans la liste (ordre d'affichage des groupes) : alliées, malus subis,
+    /// consommables & effets, réductions de dégâts.</summary>
+    public const int AlliedGroupRank = 0;
+    public int GroupRank =>
+        _isEnemyInflicted    ? 1
+        : SkillId == 0       ? 2
+        : Clauses.Count == 0 ? 3
+        :                      AlliedGroupRank;
+
+    public string Group => GroupRank switch
+    {
+        1 => L("Malus subis", "Incurred penalties"),
+        2 => L("Consommables & effets", "Consumables & effects"),
+        3 => L("Réductions de dégâts", "Damage reduction"),
+        _ => L("Compétences alliées", "Allied skills"),
+    };
+
+    /// <summary>Position de la ligne dans sa table d'origine (ordre des groupes autres que les alliées).</summary>
+    public int SourceOrder { get; init; }
 
     // Notifié quand la case passe à COCHÉE → le VM décoche les variantes PvE/PvP mutuellement
     // exclusives (Watch Yourself! vs (PvP), Save Yourselves! Kurzick vs Luxon…).
@@ -1936,7 +2008,10 @@ public abstract class AttackRowVM : ViewModelBase
         OnPropertyChanged(nameof(IsMitigated));
     }
 
-    private static string Fmt(int lo, int hi) => lo == hi ? hi.ToString() : $"{lo}–{hi}";
+    internal static string Fmt(int lo, int hi) => lo == hi ? hi.ToString() : $"{lo}–{hi}";
+
+    /// <summary>Dernier résultat poussé par le VM (null avant le premier calcul) — lu par le total.</summary>
+    public ReferenceAttack.Result? Result => _result;
 
     public string Text60   => _result is null ? "—" : Fmt(_result.Lo60, _result.Hi60);
     public string TextCalc => _result is null ? "—" : Fmt(_result.LoCalc, _result.HiCalc);

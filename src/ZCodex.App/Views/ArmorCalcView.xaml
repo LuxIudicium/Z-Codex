@@ -837,6 +837,46 @@
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
+                                <!-- Total de la table (demande Philippe du 10/10/2026) : DANS la liste, pour
+                                     rester aligné sur les colonnes des lignes même quand l'ascenseur apparaît.
+                                     La dernière colonne réserve la place du bouton ✕ (20 + 4). -->
+                                <Border BorderBrush="{DynamicResource BorderLightBrush}" BorderThickness="0,1,0,0"
+                                        Margin="0,4,0,0" Padding="0,3,0,0"
+                                        Visibility="{Binding HasAttackRows, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="190"/>
+                                            <ColumnDefinition Width="40"/>
+                                            <ColumnDefinition Width="66"/>
+                                            <ColumnDefinition Width="66"/>
+                                            <ColumnDefinition Width="52"/>
+                                            <ColumnDefinition Width="24"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Grid.ColumnSpan="3" Text="{DynamicResource S.Armor.Total}"
+                                                   FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Right"
+                                                   VerticalAlignment="Center" Margin="0,0,6,0"
+                                                   ToolTip="{DynamicResource S.Armor.TotalTip}"/>
+                                        <TextBlock Grid.Column="3" Text="{Binding TotalText60}" FontSize="12"
+                                                   VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                                        <TextBlock Grid.Column="4" Text="{Binding TotalTextCalc}" FontSize="12"
+                                                   VerticalAlignment="Center" HorizontalAlignment="Right"
+                                                   FontWeight="SemiBold"/>
+                                        <TextBlock Grid.Column="5" Text="{Binding TotalDeltaText}" FontSize="11"
+                                                   VerticalAlignment="Center" HorizontalAlignment="Right">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding TotalIsMitigated}" Value="True">
+                                                            <Setter Property="Foreground" Value="{DynamicResource SkillVariableBrush}"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </Grid>
+                                </Border>
                                 </StackPanel>
                                 </ScrollViewer>
                             </DockPanel>

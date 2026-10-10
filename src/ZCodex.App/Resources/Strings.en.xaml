@@ -688,6 +688,8 @@
     <sys:String x:Key="S.Armor.FreeAttackSpellTip">The hit comes from a spell (Veil of Thorns only reduces spell damage)</sys:String>
     <sys:String x:Key="S.Armor.FreeAttackProjectile">Projectile</sys:String>
     <sys:String x:Key="S.Armor.FreeAttackProjectileTip">Projectile attack (bow, spear): "Shields Up!" applies</sys:String>
+    <sys:String x:Key="S.Armor.Total">Total</sys:String>
+    <sys:String x:Key="S.Armor.TotalTip">Sum of every row of the table, on the reference location (the selected cell, otherwise the mean)</sys:String>
     <sys:String x:Key="S.Armor.DurationReductions">Condition duration reductions (stacked)</sys:String>
 
     <!-- ── Armor calculator — computed messages/labels (VM) ───────────── -->
