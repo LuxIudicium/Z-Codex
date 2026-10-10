@@ -384,6 +384,11 @@ public class WikiSkillScraper(ILogger<WikiSkillScraper> logger)
         logger.LogInformation("Progression : {Matched} skills avec table ({Pages} pages, {Concurrency} en parallèle)",
             progMatched, progressionUrls.Count, ProgressionConcurrency);
 
+        // Progressions saisies à la main (pages sans table standard, ex. Rising Bile) : ICI, avant les textes
+        // français dont le contrôle des plages a besoin d'une progression (sinon page « suspecte »).
+        int manualProg = ManualProgression.FillGaps(results);
+        if (manualProg > 0) logger.LogInformation("Progressions manuelles appliquées : {Count}", manualProg);
+
         // ── 7. Textes français (gwiki.fr, jointure par ID GW1) ───────────────
         // Ne touche qu'aux champs *Fr : les stats/progressions EN restent la référence de
         // calcul. Rapport d'anomalies (pages FR périmées/absentes) → gwiki_fr_report.json.

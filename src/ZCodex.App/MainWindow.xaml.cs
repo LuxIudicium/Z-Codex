@@ -825,7 +825,7 @@ public partial class MainWindow : Window
         var repo = new SkillRepository(_db);
         var entities = await repo.GetAllAsync();
         var skills = entities
-            .Where(e => !SkillCatalogFilter.IsBuildUnusable(e.Name))
+            .Where(e => !SkillCatalogFilter.IsBuildUnusable(e.Name) && !SkillCatalogFilter.IsHiddenFromCatalog(e.Name))
             .Select(e => new Skill
         {
             Id = e.Id,
@@ -857,6 +857,7 @@ public partial class MainWindow : Window
             FrSuspect = e.FrSuspect,
             PveOnly = e.PveOnly,
         }).ToList();
+        GwSkillNamesFr.Apply(skills);   // noms FR PvE que gwiki.fr ne fournit pas (allégeance, Soul Ignition)
         DeriveFrenchPvpNames(skills);
         // Mécaniques dérivables recalculées À CHAQUE chargement, par-dessus ce que porte la colonne :
         // la colonne sert aux mécaniques qui viendront du wiki, mais les filtres Types/Mechanics ne

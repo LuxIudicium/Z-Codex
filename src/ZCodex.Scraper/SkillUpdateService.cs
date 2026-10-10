@@ -102,20 +102,8 @@ public class SkillUpdateService(WikiSkillScraper scraper, AppDbContext db, ILogg
         }
         logger.LogInformation("Mécaniques calculées pour {Count} skills", mechanicsApplied);
 
-        // ── Phase 1 ter : progressions saisies à la main (pages sans table standard) ──
-        // Repli : les rares skills dont le wiki n'expose pas de table skill-progression
-        // (Rising Bile…) gardaient une progression vide → plages non résolues. On ne remplit
-        // que les trous, donc aucun effet si le wiki finit par fournir la table. SkillEntity
-        // stocke la progression en JSON (comme la passe scraping) → on sérialise l'override.
-        int manualProg = 0;
-        foreach (var s in skills)
-            if (string.IsNullOrEmpty(s.Progression)
-                && ManualProgression.ByName.TryGetValue(s.Name, out var prog))
-            {
-                s.Progression = JsonSerializer.Serialize(prog);
-                manualProg++;
-            }
-        if (manualProg > 0) logger.LogInformation("Progressions manuelles appliquées : {Count}", manualProg);
+        // (Les progressions saisies à la main — Rising Bile… — sont posées par le scraper lui-même, avant
+        // les textes français : ManualProgression.FillGaps.)
 
         // ── Phase 2 : téléchargement des icônes ───────────────────────────
         var iconProgress = new Progress<(int done, int total, string current)>(p =>

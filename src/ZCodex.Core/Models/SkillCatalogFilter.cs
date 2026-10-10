@@ -14,4 +14,14 @@ public static class SkillCatalogFilter
         return n.Contains("Saul D'Alessio", System.StringComparison.OrdinalIgnoreCase)
             || n.Contains("Let's Get 'Em", System.StringComparison.OrdinalIgnoreCase);
     }
+
+    /// <summary>
+    /// Compétences gardées EN BASE mais masquées du catalogue chargé (décision de Philippe du 10/10/2026 :
+    /// Charm Animal (Codex) n'a rien à faire dans Z-Codex). ⚠ Ne PAS les déplacer dans
+    /// <see cref="IsBuildUnusable"/> : ce filtre-là s'applique AVANT l'attribution des clés maison 900000+
+    /// (SkillUpdateService), qui suit l'ordre alphabétique — retirer « Charm Animal (Codex) » (900004) décalerait
+    /// d'un cran toutes les clés suivantes (Elemental Lord 900005/900006 dans AttributeBoostData, builds enregistrés).
+    /// </summary>
+    public static bool IsHiddenFromCatalog(string name)
+        => name == "Charm Animal (Codex)";
 }

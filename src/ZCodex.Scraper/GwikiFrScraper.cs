@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using ZCodex.Core;
+using ZCodex.Core.Data;
 
 namespace ZCodex.Scraper;
 
@@ -265,7 +266,8 @@ public class GwikiFrScraper(ILogger logger)
 
         foreach (var e in skills)
         {
-            if (!fr.ById.TryGetValue(e.Id, out var p) && !fr.ByEnName.TryGetValue(e.Name, out p))
+            if (!fr.ById.TryGetValue(e.Id, out var p) && !fr.ByEnName.TryGetValue(e.Name, out p)
+                && !ByKnownFrenchTitle(e.Name, fr, out p))
             {
                 e.NameFr = e.DescriptionFr = e.AttributeFr = e.TypeFr = string.Empty;
                 e.FrSuspect = false;
@@ -295,6 +297,16 @@ public class GwikiFrScraper(ILogger logger)
             applied++;
         }
         return (applied, missing, report);
+    }
+
+    // Dernier repli : la page dont le TITRE est le nom français connu (GwSkillNamesFr). Les 20 variantes
+    // d'allégeance n'ont pas d'autre chemin (10/10/2026) : leur clé maison 900000+ n'est pas un id gwiki, et
+    // leur lien interlangue donne le nom anglais sans « (Kurzick) »/« (Luxon) » — voire « Summom Spirits ».
+    private static bool ByKnownFrenchTitle(string enName, FetchResult fr, out FrPage p)
+    {
+        p = null!;
+        return GwSkillNamesFr.ByEnglishName.TryGetValue(enName, out var title)
+               && fr.ByTitle.TryGetValue(title, out p!);
     }
 
     // Paires Kurzick/Luxon : gwiki et notre ID list ne s'accordent pas sur quel ID est K et

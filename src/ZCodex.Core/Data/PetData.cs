@@ -12,7 +12,7 @@ public static class PetData
     private static readonly HashSet<int> Grants = new()
     {
         411,    // Charm Animal
-        900004, // Charm Animal (Codex) — clé orpheline
+        900004, // Charm Animal (Codex) — clé orpheline ; masquée du catalogue depuis le 10/10/2026 (SkillCatalogFilter)
         436,    // Comfort Animal
         3045,   // Comfort Animal (PvP)
         1195,   // Heal as One — PvE seulement

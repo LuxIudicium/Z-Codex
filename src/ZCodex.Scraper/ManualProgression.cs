@@ -4,8 +4,9 @@
 /// Progressions saisies à la main pour les rares pages wiki sans table
 /// <c>table.skill-progression</c> standard (<see cref="WikiProgressionParser"/> renvoie null) :
 /// sinon leurs plages « a...b...c » de description ne se résolvent JAMAIS (ni tooltip, ni spike —
-/// la valeur reste affichée en plage). Repli appliqué dans <see cref="SkillUpdateService"/> : ne
-/// remplit QUE si la progression scrapée est vide, donc sans effet dès que le wiki fournit la table.
+/// la valeur reste affichée en plage). Repli appliqué par <see cref="FillGaps"/> dans le scraper, juste
+/// AVANT les textes français : ne remplit QUE si la progression scrapée est vide, donc sans effet dès que
+/// le wiki fournit la table.
 ///
 /// Valeurs prises du wiki (source brute), une variable = un tableau de 22 rangs (0..21) comme la
 /// sortie du parser. Ancres concises vérifiées : indices 0 / 12 / 15 = les 3 valeurs de la plage.
@@ -23,4 +24,21 @@ public static class ManualProgression
                  "5", "5", "5", "6", "6", "6", "7", "7", "7", "8", "8"],
             ],
         };
+
+    /// <summary>Remplit les progressions vides par la table ci-dessus (JSON, comme la passe de scraping) ;
+    /// renvoie le nombre de compétences remplies. À appeler AVANT <c>GwikiFrScraper.Apply</c> : son contrôle
+    /// des plages compare la description française à la progression, et une progression encore vide marquait
+    /// la page « suspecte » — la description de Rising Bile (Fiel) repassait alors en anglais à chaque mise à
+    /// jour du catalogue (corrigé le 10/10/2026).</summary>
+    public static int FillGaps(IEnumerable<ZCodex.Data.Entities.SkillEntity> skills)
+    {
+        int filled = 0;
+        foreach (var s in skills)
+            if (string.IsNullOrEmpty(s.Progression) && ByName.TryGetValue(s.Name, out var prog))
+            {
+                s.Progression = System.Text.Json.JsonSerializer.Serialize(prog);
+                filled++;
+            }
+        return filled;
+    }
 }
