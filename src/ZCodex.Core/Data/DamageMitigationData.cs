@@ -28,6 +28,25 @@ public enum MitigationKind
     CritImmune,
     /// <summary>Un critique fait le max de l'arme SANS le ×√2 (Balanced Stance, réponse de Philippe du 10/10/2026).</summary>
     CritNoExtra,
+    /// <summary>Change le type de dégâts REÇU (lot 4) : <see cref="DamageMitigationDescriptor.Conversion"/> dit lequel.</summary>
+    Conversion,
+}
+
+/// <summary>Les conversions de type du lot 4. La règle de chacune vit dans <see cref="DamageBoostData"/> (chaîne du
+/// chantier infobulle + <see cref="DamageBoostData.ReceivedType"/>) ; la ligne ne fait que l'allumer.</summary>
+public enum TypeConversion
+{
+    None,
+    /// <summary>Briseur de pierre, porté par le DÉFENSEUR : élém., physique, ténèbres, chaos et sacré reçus → terre.</summary>
+    StoneStriker,
+    /// <summary>Grand brasier (zone) : physique → feu.</summary>
+    GreaterConflagration,
+    /// <summary>Brasier (zone) : flèches → feu.</summary>
+    Conflagration,
+    /// <summary>Hiver (zone) : élémentaire → froid.</summary>
+    Winter,
+    /// <summary>Clairvoyance du juge, lancée sur l'ATTAQUANT : ses attaques → sacré, +20 % de pénétration.</summary>
+    JudgesInsight,
 }
 
 /// <summary>Ce que veut dire la case du rang de la ligne. Shield of Absorption et Shield Stance n'ont pas besoin de
@@ -45,7 +64,7 @@ public enum MitigationRankBox
 /// <summary>
 /// Une réduction de dégâts REÇUS, appliquée APRÈS l'armure (chantier « calculateur d'armure : réductions de
 /// dégâts », plan <c>docs/armor_calc_mitigation_plan.md</c>). Lot 1 = les pourcentages ; lot 3 = réductions fixes,
-/// dégâts augmentés, critiques, redirection.
+/// dégâts augmentés, critiques, redirection ; lot 4 = conversions de type.
 ///
 /// La valeur n'est jamais recopiée : <paramref name="Index"/> = colonne de progression SONDÉE dans la base
 /// (lue au rang, donc une variante PvP ou une mise à jour du catalogue sont justes d'office) ;
@@ -56,18 +75,22 @@ public enum MitigationRankBox
 /// effets d'armure, cocher la ligne veut dire que la condition est remplie.
 /// <paramref name="AlsoLifeSteal"/> = la réduction touche aussi le vol de vie (Q14 fermée le 10/10/2026 : Shielding
 /// Hands et Union seulement, comme le disent leurs textes).
+/// <paramref name="Conversion"/> = la conversion de type d'une ligne <see cref="MitigationKind.Conversion"/> (lot 4).
 /// </summary>
 public sealed record DamageMitigationDescriptor(
     int SkillId, string Name, MitigationScope Scope, string? DamageType = null,
     int Index = -1, int Fixed = 0, string? ConditionFr = null, string? ConditionEn = null,
     MitigationKind Kind = MitigationKind.Percent, MitigationRankBox RankBox = MitigationRankBox.Attribute,
-    int Offset = 0, int Cap = 0, bool AlsoLifeSteal = false)
+    int Offset = 0, int Cap = 0, bool AlsoLifeSteal = false, TypeConversion Conversion = TypeConversion.None)
 {
     /// <summary>Ligne de critique : elle n'a pas de valeur.</summary>
     public bool IsCritical => Kind is MitigationKind.CritImmune or MitigationKind.CritNoExtra;
 
+    /// <summary>Ligne sans valeur chiffrée : critique ou conversion de type.</summary>
+    public bool HasNoValue => IsCritical || Kind == MitigationKind.Conversion;
+
     /// <summary>La valeur se lit dans la progression de la base (colonne <see cref="Index"/>).</summary>
-    public bool ReadsProgression => Fixed == 0 && !IsCritical;
+    public bool ReadsProgression => Fixed == 0 && !HasNoValue;
 }
 
 public static class DamageMitigationData
@@ -177,6 +200,31 @@ public static class DamageMitigationData
         // « +1...24...30 armor and immunity to critical hits » (l'armure est déjà dans ArmorEffectsData).
         new(1373, "Stone Sheath", MitigationScope.All, Kind: MitigationKind.CritImmune,
             ConditionFr: "immunisé aux critiques", ConditionEn: "immune to critical hits"),
+
+        // ── Lot 4 — conversions de type : aucune valeur, la ligne change le type REÇU ; le rang ne change que la durée
+        // ou le niveau de l'esprit. Textes relus le 11/10/2026, conditions de zone tirées des notes du wiki.
+        // « Converts elemental and physical damage you take or deal to earth damage » — porté par le DÉFENSEUR ; il
+        // convertit aussi les ténèbres, le chaos et le sacré reçus (anomalie du wiki, confirmée par Philippe le 11/10).
+        new(1371, "Stone Striker", MitigationScope.All, Kind: MitigationKind.Conversion,
+            Conversion: TypeConversion.StoneStriker,
+            ConditionFr: "élém., physique, ténèbres, chaos et sacré reçus", ConditionEn: "elemental, physical, dark, chaos and holy taken"),
+        // « Converts physical damage to fire damage for creatures in range » — l'ATTAQUANT doit être dans la zone.
+        new(465, "Greater Conflagration", MitigationScope.All, Kind: MitigationKind.Conversion,
+            Conversion: TypeConversion.GreaterConflagration,
+            ConditionFr: "physique ; attaquant dans la zone de l'esprit", ConditionEn: "physical; attacker within the spirit's range"),
+        // « All arrows deal fire damage for creatures in range » — une flèche déjà élémentaire (corde) le reste.
+        new(466, "Conflagration", MitigationScope.All, Kind: MitigationKind.Conversion,
+            Conversion: TypeConversion.Conflagration,
+            ConditionFr: "flèches ; attaquant dans la zone de l'esprit", ConditionEn: "arrows; attacker within the spirit's range"),
+        // « Converts elemental damage to cold damage for creatures in range » — toi OU l'attaquant dans la zone.
+        new(462, "Winter", MitigationScope.All, Kind: MitigationKind.Conversion,
+            Conversion: TypeConversion.Winter,
+            ConditionFr: "élémentaire ; toi ou l'attaquant dans la zone de l'esprit", ConditionEn: "elemental; you or the attacker within the spirit's range"),
+        // « Converts target ally's attacks to holy damage and adds +20% armor penetration » — lancée sur l'ATTAQUANT.
+        // Le sacré d'une attaque d'arme RESPECTE l'armure, sans bonus typé (wiki *Holy_damage*) : armure de base.
+        new(267, "Judge's Insight", MitigationScope.All, Kind: MitigationKind.Conversion,
+            Conversion: TypeConversion.JudgesInsight,
+            ConditionFr: "lancée sur l'attaquant : ses attaques, +20 % de pénétration", ConditionEn: "cast on the attacker: their attacks, +20% armor penetration"),
     ];
 
     /// <summary>Valeur de la ligne (positive : % pour une réduction ou une hausse, points pour une réduction fixe) au
@@ -185,7 +233,7 @@ public static class DamageMitigationData
     /// absente, ou compétence introuvable dans le catalogue.</summary>
     public static int ValueOf(DamageMitigationDescriptor descriptor, Skill? source, int rank)
     {
-        if (descriptor.IsCritical) return 0;
+        if (descriptor.HasNoValue) return 0;
         int value;
         if (descriptor.RankBox == MitigationRankBox.HitNumber) value = descriptor.Fixed * Math.Max(1, rank);
         else if (descriptor.RankBox == MitigationRankBox.Strength) value = descriptor.Fixed * Math.Max(0, rank);

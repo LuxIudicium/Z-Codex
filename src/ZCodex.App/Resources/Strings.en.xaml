@@ -689,6 +689,7 @@
     <sys:String x:Key="S.Armor.FreeAttack">Free attack</sys:String>
     <sys:String x:Key="S.Armor.FreeAttackValueTip">Damage of the hit against AL 60 (level 20 attacker)</sys:String>
     <sys:String x:Key="S.Armor.FreeAttackTypeTip">Damage type of the hit</sys:String>
+    <sys:String x:Key="S.Armor.WeaponTypeTip">Damage type of the attacker's weapon: elemental mod (Icy, Ebon, Shocking, Fiery) or skin. "(auto)" = the weapon's native type. The conversions checked on the left apply afterwards.</sys:String>
     <sys:String x:Key="S.Armor.FreeAttackSpell">Spell</sys:String>
     <sys:String x:Key="S.Armor.FreeAttackSpellTip">The hit comes from a spell (Veil of Thorns only reduces spell damage)</sys:String>
     <sys:String x:Key="S.Armor.FreeAttackProjectile">Projectile</sys:String>

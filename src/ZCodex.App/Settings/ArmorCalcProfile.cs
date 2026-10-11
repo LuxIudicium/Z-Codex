@@ -100,4 +100,7 @@ public class ReferenceAttackDto
 {
     public int SkillId { get; set; }
     public int Rank { get; set; } = 15;   // rang par défaut (décision Philippe), éditable par ligne
+    // Type du coup d'arme choisi sur la ligne (lot 4 : mod élémentaire ou skin) ; "" = type natif. Absent d'un profil
+    // antérieur → "".
+    public string WeaponType { get; set; } = string.Empty;
 }

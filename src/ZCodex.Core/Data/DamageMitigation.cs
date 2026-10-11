@@ -4,7 +4,8 @@ namespace ZCodex.Core.Data;
 
 /// <summary>
 /// Moteur PUR des réductions de dégâts REÇUS, après l'armure (chantier « calculateur d'armure : réductions
-/// de dégâts », lots 1 et 3). Il ne calcule aucun dégât lui-même : il rend le facteur que
+/// de dégâts », lots 1, 3 et 4). Il ne calcule aucun dégât lui-même : il rend le type REÇU de chaque paquet
+/// (conversions du lot 4 — c'est lui qui choisit la colonne d'armure et les réductions par type), le facteur que
 /// <see cref="ReferenceAttack"/> passe au paramètre <c>multiplier</c> de <see cref="SkillDamage.DamageAt"/> /
 /// <see cref="WeaponStrike.DamageAt"/>, seul endroit où un dégât se calcule, puis les points à retirer du paquet.
 ///
@@ -31,9 +32,17 @@ public static class DamageMitigation
     /// l'écart au neutre, jamais un facteur : un <c>default</c> vaut 0, donc « rien ».</summary>
     public readonly record struct Active(DamageMitigationDescriptor Descriptor, int Value)
     {
-        /// <summary>La ligne agit : une valeur non nulle, ou une ligne de critique (qui n'en a pas).</summary>
-        public bool IsEffective => Descriptor is { } d && (Value > 0 || d.IsCritical);
+        /// <summary>La ligne agit : une valeur non nulle, ou une ligne sans valeur (critique, conversion de type).</summary>
+        public bool IsEffective => Descriptor is { } d && (Value > 0 || d.HasNoValue);
     }
+
+    /// <summary>Les conversions de type cochées (lot 4). Tout à faux = rien à convertir.</summary>
+    public readonly record struct Conversions(bool StoneStriker, bool GreaterConflagration, bool Conflagration,
+                                              bool Winter, bool JudgesInsight);
+
+    /// <summary>Type d'un paquet tel que le défenseur le REÇOIT ; <see cref="Converted"/> = une conversion l'a changé
+    /// (le type propre d'une compétence — Lightning Javelin, Judgment Strike — n'en est pas une).</summary>
+    public readonly record struct HitType(string Received, bool Converted);
 
     /// <summary>Les réductions qui agissent sur le défenseur.</summary>
     public sealed record Context(IReadOnlyList<Active> Reductions)
@@ -99,6 +108,57 @@ public static class DamageMitigation
              : kinds.Contains(MitigationKind.CritNoExtra) ? CritRule.NoExtra
              : CritRule.Normal;
     }
+
+    /// <summary>Conversions de type allumées par les lignes cochées.</summary>
+    public static Conversions ConversionsOf(Context? context)
+    {
+        bool On(TypeConversion c) => (context?.Reductions ?? []).Any(a => a.Descriptor?.Conversion == c);
+        return new(On(TypeConversion.StoneStriker), On(TypeConversion.GreaterConflagration),
+                   On(TypeConversion.Conflagration), On(TypeConversion.Winter), On(TypeConversion.JudgesInsight));
+    }
+
+    /// <summary>Type REÇU d'un paquet qui n'est pas un coup d'arme (sort, paquet typé d'une compétence) : seules les
+    /// conversions de zone et du défenseur s'y appliquent. Null pour un paquet sans type.</summary>
+    public static string? ReceivedType(Conversions c, string? type) =>
+        DamageBoostData.ReceivedType(type, c.GreaterConflagration, c.Winter, c.StoneStriker);
+
+    /// <summary>
+    /// Type REÇU du coup d'arme de <paramref name="skill"/>. <paramref name="picked"/> = la liste de type de la ligne
+    /// (mod élémentaire Icy / Ebon / Shocking / Fiery, ou skin — mêmes choix que le Spike) ; vide ou hors des choix de
+    /// l'arme = le type natif de l'arme.
+    ///
+    /// Le type INFLIGÉ sort de la chaîne du chantier infobulle (<see cref="DamageBoostData.EffectiveElement"/> : type
+    /// propre de la compétence, mod de la ligne, Clairvoyance du juge, Brasier), sans recopie ; le type REÇU ajoute
+    /// Grand brasier, Hiver et le Briseur de pierre du défenseur (<see cref="DamageBoostData.ReceivedType"/>).
+    /// </summary>
+    public static HitType WeaponHitType(Conversions c, Skill skill, WeaponStrike.Weapon weapon, string? picked)
+    {
+        if (string.IsNullOrEmpty(picked) || !WeaponStrike.DamageTypeChoices(weapon).Contains(picked)) picked = null;
+        var state = new DamageBoostData.ConversionState(
+            ElementalMod: WeaponStrike.IsElementalType(picked) ? picked : null,
+            JudgesInsight: c.JudgesInsight,
+            Conflagration: c.Conflagration);
+        string declared = picked ?? weapon.DamageType;
+        string inflicted = DamageBoostData.EffectiveElement(state, skill, WeaponStrike.KindOf(weapon)) ?? declared;
+        string received = ReceivedType(c, inflicted) ?? inflicted;
+        string natural = DamageBoostData.IntrinsicType(skill) ?? declared;
+        return new(received, received != natural);
+    }
+
+    /// <summary>Type REÇU d'une ATTAQUE LIBRE de type <paramref name="type"/> : la Clairvoyance du juge rend une attaque
+    /// (pas un sort) sacrée, puis les conversions de zone et du défenseur. Brasier n'y touche pas : une attaque libre
+    /// ne dit pas si c'est une flèche.</summary>
+    public static HitType FreeAttackType(Conversions c, string type, bool isSpell)
+    {
+        string inflicted = c.JudgesInsight && !isSpell ? "holy" : type;
+        string received = ReceivedType(c, inflicted) ?? inflicted;
+        return new(received, received != type);
+    }
+
+    /// <summary>Pénétration BONUS de la Clairvoyance du juge (+20 %), sur les attaques de l'attaquant qu'elle touche —
+    /// même constante et même règle que le Spike (cumulée par-dessus la pénétration propre).</summary>
+    public static int JudgesBonusPen(Conversions c, bool isAttack) =>
+        c.JudgesInsight && isAttack ? SpikeWeaponBuffs.JudgesBonusPen : 0;
 
     /// <summary>Les dégâts de cette compétence sont-ils des dégâts de SORT ? Tout type qui contient
     /// « Spell » : sorts, maléfices, enchantements, sorts d'arme et d'objet, puits, protections.</summary>

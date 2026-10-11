@@ -62,6 +62,8 @@ public static class CharacterStateLinks
             ["Conviction"]     = CharacterState.Enchanted | CharacterState.Condition,
             // L'Armure brisée EST une condition.
             ["Cracked Armor"]  = CharacterState.Condition,
+            // Enchantement posé sur l'ATTAQUANT (lot 4) : le défenseur n'est pas enchanté.
+            ["Judge's Insight"] = CharacterState.None,
         };
 
     /// <summary>États mis en place par l'effet de nom anglais <paramref name="englishName"/> et de type

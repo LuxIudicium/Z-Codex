@@ -589,7 +589,8 @@ public class ArmorCalcViewModel : ViewModelBase
             bool proj = projSources && ReferenceAttack.IsProjectile(a.Skill);
             string? extra = proj ? T("S.ArmorVM.ProjectilesIncluded") : null;
             ReferenceAttack.Result At(int l) =>
-                ReferenceAttack.Compute(a.Skill, a.Rank, k => AlAt(l, k, proj), FlatPhysicalAt(l), holy, mitigation);
+                ReferenceAttack.Compute(a.Skill, a.Rank, k => AlAt(l, k, proj), FlatPhysicalAt(l), holy, mitigation,
+                                        a.WeaponType);
             // Ligne Espérance : pondération sur les 5 localisations.
             a.Apply(loc >= 0 ? At(loc) : ExpectedOver(At), extra);
             RefreshAttackConditions(a);
@@ -599,7 +600,8 @@ public class ArmorCalcViewModel : ViewModelBase
             bool proj = projSources && f.IsProjectile;
             string? extra = proj ? T("S.ArmorVM.ProjectilesIncluded") : null;
             ReferenceAttack.Result At(int l) =>
-                ReferenceAttack.ComputeFree(f.Value, f.TypeKey, f.IsSpell, k => AlAt(l, k, proj), FlatPhysicalAt(l), mitigation);
+                ReferenceAttack.ComputeFree(f.Value, f.TypeKey, f.IsSpell, k => AlAt(l, k, proj), FlatPhysicalAt(l), mitigation,
+                                            holy);
             f.Apply(loc >= 0 ? At(loc) : ExpectedOver(At), extra);
         }
         RefreshTotal();
@@ -1234,7 +1236,7 @@ public class ArmorCalcViewModel : ViewModelBase
         SignetCount = SignetCount,
         IllusionSkillCount = IllusionSkillCount,
         ReferenceAttacks = ReferenceAttacks
-            .Select(a => new ReferenceAttackDto { SkillId = a.Skill.Id, Rank = a.Rank }).ToList(),
+            .Select(a => new ReferenceAttackDto { SkillId = a.Skill.Id, Rank = a.Rank, WeaponType = a.WeaponType }).ToList(),
         FreeAttacks = FreeAttacks
             .Select(f => new FreeAttackDto { Value = f.Value, Type = f.TypeKey, IsSpell = f.IsSpell, IsProjectile = f.IsProjectile })
             .ToList(),
@@ -1315,7 +1317,7 @@ public class ArmorCalcViewModel : ViewModelBase
             ReferenceAttacks.Clear();
             foreach (var a in dto.ReferenceAttacks)
                 if (_catalog.FirstOrDefault(s => s.Id == a.SkillId) is { } sk)
-                    ReferenceAttacks.Add(new ReferenceAttackVM(sk, a.Rank, RefreshAttacks));
+                    ReferenceAttacks.Add(new ReferenceAttackVM(sk, a.Rank, RefreshAttacks, a.WeaponType));
         }
 
         // Attaques libres : un profil antérieur au lot 1 n'en a pas, la liste vide est donc juste.
@@ -2000,21 +2002,24 @@ public class ArmorEffectRowVM : ViewModelBase
                       .FirstOrDefault(c => c is not null);
 
     /// <summary>Rang du groupe dans la liste (ordre d'affichage des groupes) : alliées, malus subis,
-    /// consommables & effets, modificateurs de dégâts reçus.</summary>
+    /// consommables & effets, modificateurs de dégâts reçus, conversions de type.</summary>
     public const int AlliedGroupRank = 0;
     public int GroupRank =>
         _isEnemyInflicted    ? 1
         : SkillId == 0       ? 2
+        : Clauses.Count == 0 && Mitigations.All(m => m.Kind == MitigationKind.Conversion) ? 4
         : Clauses.Count == 0 ? 3
         :                      AlliedGroupRank;
 
     // Groupe 3 : réductions ET hausses (Frenzy) depuis le lot 3 — nom choisi par Philippe le 11/10/2026, « reçus »
     // pour ne pas le confondre avec les modificateurs de l'ATTAQUANT du lot 6 (inscriptions, Force).
+    // Groupe 4 : conversions de type (lot 4, maquette validée par Philippe le 11/10/2026).
     public string Group => GroupRank switch
     {
         1 => L("Malus subis", "Incurred penalties"),
         2 => L("Consommables & effets", "Consumables & effects"),
         3 => L("Modificateurs de dégâts reçus", "Damage taken modifiers"),
+        4 => L("Conversions de type", "Damage type conversions"),
         _ => L("Compétences alliées", "Allied skills"),
     };
 
@@ -2092,10 +2097,21 @@ public class ArmorEffectRowVM : ViewModelBase
                     case MitigationKind.Percent:  parts.Add(L($"−{a.Value} %", $"−{a.Value}%")); break;
                     case MitigationKind.Increase: parts.Add(L($"+{a.Value} %", $"+{a.Value}%")); break;
                     case MitigationKind.Flat:     parts.Add($"−{a.Value}"); break;
+                    case MitigationKind.Conversion:
+                        parts.Add("→ " + SkillDamage.DisplayType(ConvertedTo(a.Descriptor.Conversion))); break;
                 }
             return string.Join(" / ", parts);
         }
     }
+
+    // Type qui sort d'une conversion (lot 4) ; ce qu'elle convertit est écrit dans la condition de la ligne.
+    private static string ConvertedTo(TypeConversion c) => c switch
+    {
+        TypeConversion.StoneStriker  => "earth",
+        TypeConversion.Winter        => "cold",
+        TypeConversion.JudgesInsight => "holy",
+        _                            => "fire",   // Grand brasier, Brasier
+    };
 
     private string ArmorValueText()
     {
@@ -2304,17 +2320,58 @@ public class ReferenceAttackVM : AttackRowVM
     private readonly Action _onChanged;
     public Skill Skill { get; }
 
-    public ReferenceAttackVM(Skill skill, int rank, Action onChanged)
-    { Skill = skill; _rank = rank; _onChanged = onChanged; }
+    public ReferenceAttackVM(Skill skill, int rank, Action onChanged, string? weaponType = null)
+    {
+        Skill = skill; _rank = rank; _onChanged = onChanged;
+        // La liste de type (lot 4) n'a de sens que sur un coup d'arme compté, et pas sur une attaque qui impose son
+        // propre type (Lightning Javelin, Judgment Strike : le mod de l'arme n'y peut rien).
+        _weapon = WeaponStrike.For(skill);
+        HasWeaponTypeChoice = _weapon is not null && DamageBoostData.IntrinsicType(skill) is null
+                              && ReferenceAttack.HasWeaponTable(skill, ResolvedDescription);
+        if (HasWeaponTypeChoice && WeaponStrike.DamageTypeChoices(_weapon!).Contains(weaponType))
+            _weaponType = weaponType!;
+    }
 
     public string Name => Skill.DisplayName;
     public string IconPath => Skill.IconPath;
 
-    // Bascule de langue : le nom (DisplayName du skill) et la description résolue rebindent.
+    // Bascule de langue : le nom (DisplayName du skill), la description résolue et la liste de type rebindent.
     public void RaiseLanguageChanged()
     {
         OnPropertyChanged(nameof(Name));
         OnPropertyChanged(nameof(ResolvedDescription));
+        OnPropertyChanged(nameof(WeaponTypeChoices));
+        OnPropertyChanged(nameof(SelectedWeaponType));
+    }
+
+    // ── Type du coup d'arme de la ligne (chantier « réductions », lot 4) : mod élémentaire Icy / Ebon / Shocking /
+    // Fiery ou skin, mêmes choix que la liste du Spike (WeaponStrike.DamageTypeChoices). "" = (auto) : type natif.
+    public sealed record WeaponTypeOption(string Label, string Value);
+
+    private readonly WeaponStrike.Weapon? _weapon;
+    public bool HasWeaponTypeChoice { get; }
+
+    // Liste NEUVE à chaque lecture (patron de FreeAttackVM.ColumnChoices) : relue au changement de langue ; les options
+    // sont des records, la sélection se retrouve par égalité de valeur.
+    public IReadOnlyList<WeaponTypeOption> WeaponTypeChoices => !HasWeaponTypeChoice ? [] :
+        [new("(auto)", ""),
+         .. WeaponStrike.DamageTypeChoices(_weapon!).Select(t => new WeaponTypeOption(SkillDamage.DisplayType(t), t))];
+
+    private string _weaponType = "";
+    /// <summary>Type choisi pour le coup d'arme, "" = type natif de l'arme.</summary>
+    public string WeaponType => _weaponType;
+
+    public WeaponTypeOption? SelectedWeaponType
+    {
+        get => WeaponTypeChoices.FirstOrDefault(o => o.Value == _weaponType);
+        // null = la ComboBox se vide pendant un changement de liste : on l'ignore, sinon le choix serait perdu.
+        set
+        {
+            if (value is null || value.Value == _weaponType) return;
+            _weaponType = value.Value;
+            OnPropertyChanged();
+            _onChanged();
+        }
     }
 
     // Tooltip « calculée » (contexte build) : description RÉSOLUE au rang + table de dégâts d'arme.

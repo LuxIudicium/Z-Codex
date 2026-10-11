@@ -692,6 +692,7 @@
     <sys:String x:Key="S.Armor.FreeAttack">Attaque libre</sys:String>
     <sys:String x:Key="S.Armor.FreeAttackValueTip">Dégâts du coup contre AL 60 (attaquant niveau 20)</sys:String>
     <sys:String x:Key="S.Armor.FreeAttackTypeTip">Type de dégâts du coup</sys:String>
+    <sys:String x:Key="S.Armor.WeaponTypeTip">Type de dégâts de l'arme de l'attaquant : mod élémentaire (Icy, Ebon, Shocking, Fiery) ou skin. « (auto) » = type natif de l'arme. Les conversions cochées à gauche s'appliquent ensuite.</sys:String>
     <sys:String x:Key="S.Armor.FreeAttackSpell">Sort</sys:String>
     <sys:String x:Key="S.Armor.FreeAttackSpellTip">Le coup vient d'un sort (Veil of Thorns ne réduit que les dégâts de sort)</sys:String>
     <sys:String x:Key="S.Armor.FreeAttackProjectile">Projectile</sys:String>

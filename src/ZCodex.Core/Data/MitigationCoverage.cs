@@ -6,7 +6,7 @@ namespace ZCodex.Core.Data;
 /// <summary>
 /// VERROUS du chantier « calculateur d'armure : réductions de dégâts » (patron <see cref="SpikeBoostCoverage"/>).
 /// Les harnais de ce projet meurent avec la session : le contrôle d'exhaustivité vit donc ici, dans le code,
-/// et la prochaine passe le retrouve. Les quatre listes <b>doivent rester VIDES</b>.
+/// et la prochaine passe le retrouve. Les cinq listes <b>doivent rester VIDES</b>.
 /// </summary>
 public static class MitigationCoverage
 {
@@ -32,6 +32,19 @@ public static class MitigationCoverage
         + @"|damage[^.]{0,40}redirected",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+    // Lot 4 (11/10/2026) : les tournures d'une CONVERSION de type de dégâts, relevées sur toute la base — 5 conversions
+    // couvertes + les écarts ci-dessous (dont les 3 conversions en soin, déjà renvoyées au lot 5).
+    private static readonly Regex Conversion = new(
+        @"\bconverts?\b[^.]{0,80}\bdamage\b"
+        + @"|\b(?:attacks|arrows) (?:deal|do) (?:holy|fire|cold|earth|lightning|dark|chaos|shadow) damage\b"
+        + @"|\bdamage is (?:holy|fire|cold|earth|lightning|dark|chaos) damage\b",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private const string AttackerConverter =
+        "convertit les attaques de l'ATTAQUANT : la liste de type de la ligne d'attaque le couvre (lot 4)";
+    private const string AttackerHolyConverter =
+        "rend sacrées les attaques de l'ATTAQUANT, sans la pénétration de Judge's Insight : reporté (lot 6)";
+
     /// <summary>Compétences que les motifs attrapent mais qui ne réduisent PAS les dégâts que le perso reçoit (ou que
     /// le calculateur ne traite pas encore), chacune avec sa raison (clé = nom anglais de la base).</summary>
     public static readonly IReadOnlyDictionary<string, string> Excluded = new Dictionary<string, string>(StringComparer.Ordinal)
@@ -54,8 +67,18 @@ public static class MitigationCoverage
         ["Mark of Protection"]    = "conversion en soin : lot 5",
         ["Reversal of Fortune"]   = "conversion en soin : lot 5",
         ["Life Sheath"]           = "conversion en soin : lot 5",
-        ["Stone Striker"]         = "conversion de type : lot 4",
         ["Dulled Weapon"]         = "malus porté par l'attaquant : reporté (décision de Philippe du 15/09/2026)",
+        // Lot 4 (11/10/2026) — convertisseurs propres à l'attaquant (Stone Striker, lui, est couvert côté défenseur).
+        ["Avatar of Grenth"]         = AttackerConverter,
+        ["Avatar of Melandru"]       = AttackerConverter,
+        ["Avatar of Melandru (PvP)"] = AttackerConverter,
+        ["Dust Cloak"]               = AttackerConverter,
+        ["Dust Cloak (PvP)"]         = AttackerConverter,
+        ["Grenth's Fingers"]         = AttackerConverter,
+        ["Staggering Force"]         = AttackerConverter,
+        ["Kindle Arrows"]            = AttackerConverter,
+        ["Avatar of Balthazar"]      = AttackerHolyConverter,
+        ["Heart of Holy Flame"]      = AttackerHolyConverter,
     };
 
     /// <summary>
@@ -96,6 +119,20 @@ public static class MitigationCoverage
         var covered = DamageMitigationData.All.Select(d => d.Name).ToHashSet(StringComparer.Ordinal);
         return [.. catalog
             .Where(s => OtherReduction.IsMatch(s.Description)
+                        && !covered.Contains(s.Name) && !Excluded.ContainsKey(s.Name))
+            .Select(s => s.Name).Distinct().Order(StringComparer.Ordinal)];
+    }
+
+    /// <summary>
+    /// <b>Verrou 5 — conversion de type oubliée (lot 4).</b> Les compétences du catalogue dont la description annonce
+    /// une conversion du type de dégâts, sans descripteur ni raison écrite dans <see cref="Excluded"/>.
+    /// <b>Doit rester VIDE.</b>
+    /// </summary>
+    public static IReadOnlyList<string> UncoveredConversions(IEnumerable<Skill> catalog)
+    {
+        var covered = DamageMitigationData.All.Select(d => d.Name).ToHashSet(StringComparer.Ordinal);
+        return [.. catalog
+            .Where(s => Conversion.IsMatch(s.Description)
                         && !covered.Contains(s.Name) && !Excluded.ContainsKey(s.Name))
             .Select(s => s.Name).Distinct().Order(StringComparer.Ordinal)];
     }

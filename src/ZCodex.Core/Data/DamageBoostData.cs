@@ -1114,6 +1114,28 @@ public static class DamageBoostData
         return elementalToCold && IsElemental(type) ? "cold" : type;
     }
 
+    /// <summary>
+    /// Type de dégâts que le DÉFENSEUR REÇOIT (calculateur d'armure, chantier « réductions », lot 4), à partir du
+    /// type que l'attaque inflige. Ordre : Grand brasier (physique → feu), puis Hiver (élémentaire → froid), puis le
+    /// Briseur de pierre du défenseur, qui garde le dernier mot.
+    ///
+    /// ⚠ Ce n'est PAS <see cref="DisplayedType"/> : porté par celui qui REÇOIT, Briseur de pierre convertit AUSSI les
+    /// ténèbres, le chaos et le sacré (anomalie de la page wiki *Stone_Striker*, confirmée par Philippe le 11/10/2026 :
+    /// « le wiki a raison »). Côté INFLIGÉ (infobulle, Spike), la règle du 16/09 reste : élémentaire et physique
+    /// seulement — le wiki dit d'ailleurs que le sacré de sort sortant n'est pas converti. L'ombre et les dégâts sans
+    /// type ne sont jamais convertis.
+    ///
+    /// Grand brasier passe ici et non par <see cref="EffectiveElement"/> : il ne regarde que le type, donc une faux
+    /// « Sufferer » (ténèbres) reste ténèbres.
+    /// </summary>
+    public static string? ReceivedType(string? type, bool greaterConflagration, bool winter, bool stoneStriker)
+    {
+        if (greaterConflagration && IsPhysicalType(type)) type = "fire";
+        if (stoneStriker && (IsElemental(type) || IsPhysicalType(type) || type is "dark" or "chaos" or "holy"))
+            return "earth";
+        return DisplayedType(type, winter);
+    }
+
     /// <summary>Cet id est-il celui d'un effet du BANDEAU (lot 6c) ? Sert à ne mettre en cache que les
     /// compétences utiles quand on cherche leur nom d'affichage.</summary>
     public static bool IsBandSkillId(int skillId) => _bandSkillIds.Contains(skillId);

@@ -36,6 +36,9 @@ public static class ReferenceAttack
         "physical" => "slashing",                 // physique générique → colonne physique
         "fire" => "fire", "cold" => "cold", "earth" => "earth", "lightning" => "lightning",
         "dark" or "chaos" => "dark",
+        // Coup d'ARME sacré (Clairvoyance du juge, Judgment Strike — lot 4) : il respecte l'armure, mais aucun bonus
+        // typé ne joue contre lui (wiki *Holy_damage*) → armure de base, comme ténèbres / chaos.
+        "holy" => "dark",
         _ => "dark",
     };
 
@@ -101,14 +104,39 @@ public static class ReferenceAttack
     /// aux paquets armor-ignoring. <paramref name="holyIncrease"/> : vulnérabilité sacrée GLOBALE
     /// (Tormentor's, cumul des pièces, ≥ 0) AJOUTÉE aux paquets de type sacré côté build seulement.
     /// <paramref name="mitigation"/> : réductions de dégâts reçus cochées (chantier « réductions », lot 1),
-    /// appliquées côté build aux seuls paquets qui respectent l'armure ; null = comportement d'avant.
+    /// appliquées côté build aux seuls paquets qui respectent l'armure ; null = comportement d'avant. Elle porte aussi
+    /// les conversions de type (lot 4) : le type REÇU de chaque paquet choisit sa colonne d'armure, ses réductions par
+    /// type, la réduction physique de l'équipement et la vulnérabilité sacrée.
+    /// <paramref name="weaponType"/> : type choisi sur la ligne pour le coup d'arme (mod élémentaire ou skin, lot 4) ;
+    /// null ou vide = type natif de l'arme.
     /// </summary>
     public static Result Compute(Skill skill, int rank, Func<string, int> alForType, int flatPhysical,
-                                 int holyIncrease = 0, DamageMitigation.Context? mitigation = null)
+                                 int holyIncrease = 0, DamageMitigation.Context? mitigation = null,
+                                 string? weaponType = null)
     {
         string resolved = Resolve(skill, rank);
         var analysis = SkillDamage.Analyze(resolved, skill.Name);
         int pen = analysis.ArmorPenetration;
+
+        // Conversions de type (lot 4). La Clairvoyance du juge ajoute +20 % de pénétration BONUS aux attaques, des deux
+        // côtés (c'est une propriété de l'attaque, comme sa pénétration propre) ; son sacré passe par le type reçu.
+        var conv = DamageMitigation.ConversionsOf(mitigation);
+        pen += DamageMitigation.JudgesBonusPen(conv, WeaponStrike.IsWeaponAttack(skill));
+        var convertedTo = new List<string>();   // types reçus après une conversion, pour la note
+        string? Received(string? type)
+        {
+            string? t = DamageMitigation.ReceivedType(conv, type);
+            if (t is not null && t != type && !convertedTo.Contains(t)) convertedTo.Add(t);
+            return t;
+        }
+        // Vulnérabilité sacrée (Tormentor's) d'un paquet selon son type REÇU — un sacré passé en terre n'y est plus.
+        bool holyAffected = false;
+        int HolyOn(string? receivedType)
+        {
+            if (holyIncrease <= 0 || receivedType != "holy") return 0;
+            holyAffected = true;
+            return holyIncrease;
+        }
 
         // Réductions de dégâts reçus : facteur par paquet (type, sort, attaque), passé au multiplicateur de
         // DamageAt — un seul arrondi —, puis les réductions FIXES (compétences + équipement) retirées du paquet
@@ -163,14 +191,18 @@ public static class ReferenceAttack
         string? primaryTypeFr = null; int primaryWeight = -1;
         var notes = new List<string>();
 
-        // ── Coup d'arme (armor-respecting, type natif de l'arme, customisée ×1.2) ──
-        if (weaponTable)
+        // ── Coup d'arme (armor-respecting, customisée ×1.2) : type REÇU = type de l'arme ou choisi sur la ligne, type
+        // propre de la compétence, puis les conversions (lot 4) ──
+        if (weaponTable && weapon is not null)
         {
-            string type = weapon!.DamageType;
+            var hit = DamageMitigation.WeaponHitType(conv, skill, weapon, weaponType);
+            string type = hit.Received;
+            if (hit.Converted && !convertedTo.Contains(type)) convertedTo.Add(type);
             int alCalc = alForType(ColumnKey(type));
             // Un coup d'arme n'est jamais un sort, même porté par une attaque élémentaire ; c'est toujours une attaque.
             double multCalc = mods.Multiplier * Mitigate(type, spell: false, attack: true);
-            int flat = FlatFor(type, spell: false, attack: true);
+            // La vulnérabilité sacrée est un ajout de points : elle va avec les réductions fixes (plancher 0 à la fin).
+            int flat = FlatFor(type, spell: false, attack: true) - HolyOn(type);
 
             // Critique côté build (lot 3) : ordinaire (max ×√2), sans surplus (Balanced Stance : max de l'arme), ou
             // plus de critique du tout (Stoneflesh Aura, Stone Sheath). Le côté @AL 60 reste la référence nue.
@@ -223,24 +255,23 @@ public static class ReferenceAttack
         // ── Paquets armor-respecting (sorts typés) ──
         foreach (var r in respecting.Where(r => !r.Conditional && !r.IsThreshold))
         {
-            string type = r.DamageType ?? "physical";
+            string type = Received(r.DamageType ?? "physical")!;
             int alCalc = alForType(ColumnKey(type));
 
             int d60 = SkillDamage.DamageAt(r.Value, 60, pen);
             int dC  = SkillDamage.DamageAt(r.Value, alCalc, pen, multiplier: Mitigate(type, isSpell, isAttack));
-            dC = Math.Max(0, dC - FlatFor(type, isSpell, isAttack));
+            dC = Math.Max(0, dC - FlatFor(type, isSpell, isAttack) + HolyOn(type));
 
             lo60 += d60; hi60 += d60; loCalc += dC; hiCalc += dC;
             if (r.Value > primaryWeight) { primaryWeight = r.Value; primaryTypeFr = SkillDamage.DisplayType(type); }
         }
 
         // ── Paquets armor-ignoring (sacré/ombre/sans type ; bonus déjà retiré pour les armes) ──
-        // Vulnérabilité sacrée (Tormentor's) : +N sur les paquets SACRÉS, côté build seulement.
-        bool holyAffected = false;
+        // Vulnérabilité sacrée (Tormentor's) : +N sur les paquets SACRÉS, côté build seulement. Sous le Briseur de pierre
+        // du défenseur, un sacré reçu devient terre (lot 4) : il ignore toujours l'armure, mais n'est plus sacré.
         foreach (var r in ignoring.Where(r => !r.Conditional && !r.IsThreshold))
         {
-            int holy = holyIncrease > 0 && r.DamageType == "holy" ? holyIncrease : 0;
-            if (holy > 0) holyAffected = true;
+            int holy = HolyOn(Received(r.DamageType));
             lo60 += r.Value; hi60 += r.Value; loCalc += r.Value + holy; hiCalc += r.Value + holy;
         }
 
@@ -253,18 +284,17 @@ public static class ReferenceAttack
             {
                 // Seuil armor-respecting (Doom : foudre/rituel en recharge) : le plafond porte sur
                 // les dégâts LISTÉS, l'armure/pénétration s'appliquent au total (comme le Spike).
-                string type = r.DamageType ?? "physical";
+                string type = Received(r.DamageType ?? "physical")!;
                 int alCalc = alForType(ColumnKey(type));
                 int d60 = SkillDamage.DamageAt(cap, 60, pen);
                 int dC  = SkillDamage.DamageAt(cap, alCalc, pen, multiplier: Mitigate(type, isSpell, isAttack));
-                dC = Math.Max(0, dC - FlatFor(type, isSpell, isAttack));
+                dC = Math.Max(0, dC - FlatFor(type, isSpell, isAttack) + HolyOn(type));
                 lo60 += d60; hi60 += d60; loCalc += dC; hiCalc += dC;
                 if (cap > primaryWeight) { primaryWeight = cap; primaryTypeFr = SkillDamage.DisplayType(type); }
             }
             else
             {
-                int holy = holyIncrease > 0 && r.DamageType == "holy" ? holyIncrease : 0;
-                if (holy > 0) holyAffected = true;
+                int holy = HolyOn(Received(r.DamageType));
                 lo60 += cap; hi60 += cap; loCalc += cap + holy; hiCalc += cap + holy;
             }
             notes.Add(L($"seuil {(r.IsBonus ? "+" : "")}{r.Value}/unité — plafond {cap} compté",
@@ -308,11 +338,19 @@ public static class ReferenceAttack
                           && ignoring.Count + thresholds.Count + steals.Count > 0
                           && !holyAffected && !stealReduced;
         bool isRange = weaponTable && !mods.AlwaysCritical && hi60 != lo60;
+        if (convertedTo.Count > 0) notes.Insert(0, ReceivedAsNote(convertedTo));
         if (pen > 0) notes.Insert(0, L($"pénétration {pen} %", $"penetration {pen}%"));
         notes.AddRange(applied.Notes());
 
         return new Result(ignoresAll, isRange, lo60, hi60, loCalc, hiCalc, pen, primaryTypeFr,
                           string.Join(" · ", notes));
+    }
+
+    /// <summary>Note « reçu en terre » d'une ligne dont une conversion a changé le type (lot 4).</summary>
+    private static string ReceivedAsNote(IEnumerable<string> types)
+    {
+        string list = string.Join(" / ", types.Select(SkillDamage.DisplayType));
+        return L($"reçu en {list}", $"taken as {list}");
     }
 
     /// <summary>Ce que les réductions de dégâts reçus ont effectivement changé sur une ligne, pour la note :
@@ -354,27 +392,38 @@ public static class ReferenceAttack
     /// coup quelconque (« 1000 dégâts de terre »). Même formule que les sorts du catalogue
     /// (<see cref="SkillDamage.DamageAt"/>), mêmes réductions que <see cref="Compute"/>.
     /// <paramref name="isSpell"/> = le coup vient d'un sort (Veil of Thorns ne réduit que ceux-là) ; sinon c'est une
-    /// attaque (Life Bond ne réduit que celles-là).
+    /// attaque (Life Bond ne réduit que celles-là). Lot 4 : le type REÇU (Clairvoyance du juge sur une attaque,
+    /// conversions de zone et du défenseur) choisit la colonne et les réductions ; <paramref name="holyIncrease"/> =
+    /// vulnérabilité sacrée, qui touche une attaque passée en sacré.
     /// </summary>
     public static Result ComputeFree(int value, string type, bool isSpell, Func<string, int> alForType,
-                                     int flatPhysical, DamageMitigation.Context? mitigation = null)
+                                     int flatPhysical, DamageMitigation.Context? mitigation = null,
+                                     int holyIncrease = 0)
     {
-        int alCalc = alForType(ColumnKey(type));
         bool isAttack = !isSpell;
-        double factor = DamageMitigation.Factor(mitigation, type, isSpell, isAttack);
-        int skillFlat = DamageMitigation.Flat(mitigation, type, isSpell, isAttack);
+        var conv = DamageMitigation.ConversionsOf(mitigation);
+        var hit = DamageMitigation.FreeAttackType(conv, type, isSpell);
+        string received = hit.Received;
+        int pen = DamageMitigation.JudgesBonusPen(conv, isAttack);
+        int alCalc = alForType(ColumnKey(received));
+        double factor = DamageMitigation.Factor(mitigation, received, isSpell, isAttack);
+        int skillFlat = DamageMitigation.Flat(mitigation, received, isSpell, isAttack);
+        int holy = holyIncrease > 0 && received == "holy" ? holyIncrease : 0;
 
-        int d60 = SkillDamage.DamageAt(value, 60, 0);
-        int dC  = SkillDamage.DamageAt(value, alCalc, 0, multiplier: factor);
-        dC = Math.Max(0, dC - skillFlat - (IsPhysical(type) ? flatPhysical : 0));
+        int d60 = SkillDamage.DamageAt(value, 60, pen);
+        int dC  = SkillDamage.DamageAt(value, alCalc, pen, multiplier: factor);
+        dC = Math.Max(0, dC - skillFlat - (IsPhysical(received) ? flatPhysical : 0) + holy);
 
         var notes = new List<string>();
         if (isSpell) notes.Add(L("sort", "spell"));
+        if (pen > 0) notes.Add(L($"pénétration {pen} %", $"penetration {pen}%"));
+        if (hit.Converted) notes.Add(ReceivedAsNote([received]));
         var applied = new AppliedMitigation();
         applied.AddFactor(factor);
         applied.AddFlat(skillFlat);
         notes.AddRange(applied.Notes());
-        return new Result(false, false, d60, d60, dC, dC, 0, SkillDamage.DisplayType(type),
+        if (holy > 0) notes.Add(L($"vulnérabilité sacrée +{holy}", $"holy vulnerability +{holy}"));
+        return new Result(false, false, d60, d60, dC, dC, pen, SkillDamage.DisplayType(received),
                           string.Join(" · ", notes));
     }
 }
