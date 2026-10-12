@@ -1851,8 +1851,9 @@ public partial class CharacterSlotViewModel : ViewModelBase
     public SpikeDamageType SpikeDamageTypeFor(Skill target, string? picked, string? native,
                                               bool judgesInsight)
     {
-        var state = ConversionState(target);
-        if (WeaponStrike.IsElementalType(picked)) state = state with { ElementalMod = picked };
+        // Le type choisi entre dans la chaîne pour l'arme de la LIGNE, set actif ou non : sans quoi, faute d'arme
+        // renseignée, Grand brasier passait en feu une faux « Sufferer » ou un mod de froid (corrigé le 12/10/2026).
+        var state = ConversionState(target) with { LineType = string.IsNullOrEmpty(picked) ? null : picked };
         if (judgesInsight) state = state with { JudgesInsight = true };
 
         string? declared = string.IsNullOrEmpty(picked) ? native : picked;

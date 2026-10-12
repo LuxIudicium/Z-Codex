@@ -993,6 +993,10 @@ public static class DamageBoostData
     /// <paramref name="ElementalMod"/> = l'élément du mod d'arme du set actif (null s'il n'y en a pas) ;
     /// <paramref name="JudgesInsight"/> = Clairvoyance du juge reçue et allumée ; les deux brasiers et
     /// Briseur de pierre sont à part parce que la chaîne leur donne une place FIXE, pas celle de la barre.
+    /// <paramref name="LineType"/> = type choisi à la main sur la ligne du Spike pour CE coup : un élémentaire y prend la
+    /// place du mod de préfixe, un skin ni physique ni élémentaire (faux « Sufferer » : ténèbres) donne le type de départ,
+    /// qu'un mod du set ou un convertisseur peuvent encore écraser. Il vaut pour l'arme de la LIGNE, qu'elle soit ou non
+    /// celle du set actif ; un skin physique n'y change rien.
     /// </summary>
     public readonly record struct ConversionState(
         IReadOnlyList<DamageConverterDescriptor>? LitConverters = null,
@@ -1000,7 +1004,8 @@ public static class DamageBoostData
         bool JudgesInsight = false,
         bool GreaterConflagration = false,
         bool Conflagration = false,
-        bool StoneStriker = false);
+        bool StoneStriker = false,
+        string? LineType = null);
 
     /// <summary>
     /// Type de dégâts EFFECTIF des attaques de <paramref name="target"/> ; null = rien ne les a
@@ -1051,8 +1056,21 @@ public static class DamageBoostData
 
         // Un mod élémentaire ne convertit QUE les attaques de l'arme qui le porte — et il ne peut rien
         // contre une attaque qui impose déjà son type.
+        // Le type choisi sur la ligne du Spike décrit l'arme de CE coup : il entre dans la chaîne même quand le set actif
+        // n'a pas cette arme (ou pas d'arme du tout). Sans ces deux étapes, la chaîne croyait l'arme physique : Grand
+        // brasier passait en feu une faux « Sufferer » (ténèbres) ou un mod de froid choisi, et Briseur de pierre la faux
+        // en terre, alors que l'un ne convertit que le physique et que l'autre épargne les ténèbres (bug trouvé au lot 4
+        // du calculateur d'armure, corrigé le 12/10/2026 à la demande de Philippe).
+        if (element is null && WeaponStrike.IsElementalType(state.LineType))
+            element = state.LineType;
+
         if (element is null && state.ElementalMod is { } mod && usesEquippedWeapon)
             element = mod;
+
+        // Un skin ni physique ni élémentaire : le mod du set, s'il y en a un, l'a déjà emporté (une faux « Sufferer »
+        // Icy inflige du froid).
+        if (element is null && state.LineType is { } skin && !IsPhysicalType(skin))
+            element = skin;
 
         foreach (var k in state.LitConverters ?? [])
             // ⚠ Briseur de pierre est ÉCARTÉ d'ici : il a sa propre étape tout à la fin de la chaîne
