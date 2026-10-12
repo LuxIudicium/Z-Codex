@@ -69,8 +69,20 @@ public static class ReferenceAttack
     private static bool IsPhysical(string type)
         => type is "slashing" or "piercing" or "blunt" or "physical";
 
+    /// <summary>Condition d'attribut d'une arme max. En dessous, l'arme ne fait que le TIERS de ses dégâts (wiki
+    /// *Damage_calculation*, « Weapon requirement ») — Q31, Philippe, 12/10/2026 : dès que le rang EFFECTIF d'une attaque
+    /// d'arme passe sous 9, quelle qu'en soit la cause (Faiblesse, Wail of Doom, rang tapé). Calculateur seulement.</summary>
+    public const int WeaponRequirement = 9;
+
+    /// <summary>Le calcul d'un paquet par <c>DamageAt</c> : multiplicateur avant l'armure, points retirés après l'armure
+    /// puis facteur (lot 6b), plafond puis facteur (lot 5). La formule n'est jamais recopiée ici.</summary>
+    private delegate int DamageFn(double multiplier, double subtract, double afterSubtract, double cap, double afterCap);
+
     // Note d'attaque dans la langue affichee (les notes sont construites cote Core).
     private static string L(string fr, string en) => AppLanguage.IsFr ? fr : en;
+
+    private static string Factor(double f) =>
+        f.ToString("0.###", System.Globalization.CultureInfo.GetCultureInfo(AppLanguage.IsFr ? "fr-FR" : "en-US"));
 
     /// <summary>Attaque à PROJECTILE (arc, lance, jet) — cible de « Shields Up! » et des autres
     /// sources d'armure Scope.Projectile. « Spear Melee Attack » est un coup de mêlée, exclu ;
@@ -135,14 +147,18 @@ public static class ReferenceAttack
     /// null ou vide = type natif de l'arme.
     /// <paramref name="attacker"/> : l'attaquant (lot 6), des deux côtés ; null = niveau 20 sans rien de spécial.
     /// <paramref name="gridPenetration"/> : le champ « Pénétration % » de la grille, côté build seulement (Q25).
+    /// Lot 6b : les malus de l'attaquant, des deux côtés — rang EFFECTIF (Faiblesse −1, Wail of Doom 0) pour tout le calcul
+    /// de la ligne, % sur l'arme, points retirés après l'armure et avant tout ce qui vient du défenseur, vol de vie, plus de
+    /// critique ; et la condition de l'arme (÷3 sous le rang 9, Q31).
     /// </summary>
     public static Result Compute(Skill skill, int rank, Func<string, BuildArmor> armorFor, int flatPhysical,
                                  int holyIncrease = 0, DamageMitigation.Context? mitigation = null,
                                  string? weaponType = null, Attacker? attacker = null, int gridPenetration = 0)
     {
-        string resolved = Resolve(skill, rank);
-        var analysis = SkillDamage.Analyze(resolved, skill.Name);
         attacker ??= Attacker.Default;
+        int effRank = attacker.EffectiveRank(rank);
+        string resolved = Resolve(skill, effRank);
+        var analysis = SkillDamage.Analyze(resolved, skill.Name);
         int level = attacker.Level;
         var weapon = WeaponStrike.For(skill);
 
@@ -181,10 +197,20 @@ public static class ReferenceAttack
         bool isAttack = DamageMitigation.IsAttack(skill);
         var applied = new AppliedMitigation();
         int healLo = 0, healHi = 0;
+        // Malus de l'attaquant (lot 6b) : points retirés à chaque paquet d'ATTAQUE qui respecte l'armure, des deux côtés.
+        bool scythe = weapon is { IsScythe: true };
+        int attackerFlat = attacker.FlatOn(isAttack: true, scythe);
+        bool attackerFlatUsed = false;
+        int AttFlat(bool attack)
+        {
+            if (!attack || attackerFlat == 0) return 0;
+            attackerFlatUsed = true;
+            return attackerFlat;
+        }
         // Un paquet qui respecte l'armure, tout le pipeline (lot 5) — voir Packet.
-        DamageMitigation.Outcome Hit(Func<double, double, double, int> at, double baseMult, string type, bool spell,
+        DamageMitigation.Outcome Hit(DamageFn at, double baseMult, string type, bool spell,
                                      bool attack, int extra, int flats, bool record = true)
-            => Packet(mitigation, applied, at, baseMult, type, spell, attack, extra, flats, record);
+            => Packet(mitigation, applied, at, baseMult, type, spell, attack, extra, flats, AttFlat(attack), record);
         // Points retirés d'un paquet : réductions fixes des compétences + équipement (physique seulement).
         int FlatFor(string type, bool spell, bool attack)
         {
@@ -192,7 +218,9 @@ public static class ReferenceAttack
             applied.AddFlat(skillFlat);
             return skillFlat + (IsPhysical(type) ? flatPhysical : 0);
         }
-        var critRule = DamageMitigation.CriticalRule(mitigation);
+        // Plus de critique (Dulled Weapon, lot 6b) : même rendu que l'immunité du défenseur, mais des deux côtés.
+        var critRule = attacker.NoCritical ? DamageMitigation.CritRule.Immune : DamageMitigation.CriticalRule(mitigation);
+        bool forcedCrit = false;
 
         // Paquets « si bloqué » (Swift Chop, Irresistible Blow…) : le total affiché est le cas
         // SANS blocage (décision Philippe 16/07) — ces paquets sortent du total et passent en note.
@@ -206,6 +234,10 @@ public static class ReferenceAttack
             if (r.Kind != SkillDamage.RowKind.Damage) { steals.Add(r); continue; }
             (InBlockedSegment(resolved, r.Index) ? blocked : damage).Add(r);
         }
+        // Nightmare Weapon, Grenth's Aura (lot 6b) : l'attaque vole aussi de la vie, quels que soient ses dégâts — un vol
+        // comme les autres (réductions qui le citent, conversions en soin).
+        if (attacker.LifeStealOn(isAttack, scythe) is > 0 and var attackerSteal)
+            steals.Add(new SkillDamage.Row(attackerSteal, null, false, true, SkillDamage.RowKind.LifeSteal));
         // Paquets à SEUIL (« X for each … », liste blanche SpikeThresholdSkills) : comptés à leur
         // PLAFOND (décision Philippe 16/07) — même « défaut optimiste » que le Spike. Traités à
         // part : jamais absorbés dans le total d'arme, note « seuil » systématique.
@@ -239,27 +271,44 @@ public static class ReferenceAttack
             // de Philippe du 10/10/2026 —, et le plafond aussi (lot 5).
             int extra = bonus + HolyOn(type);
             // L'inscription de l'attaquant (lot 6) grossit la valeur de base de l'ARME, avant l'armure, comme le malus
-            // « 25% less damage » de la compétence ; le « +X » n'en profite pas (wiki *Inscription*, note 2).
-            double weaponMult = mods.Multiplier * attacker.WeaponMultiplier;
+            // « 25% less damage » de la compétence ; le « +X » n'en profite pas (wiki *Inscription*, note 2). Ses malus en %
+            // (Faiblesse, Flurry, Life Attunement — lot 6b) au même endroit, et l'arme dont on ne remplit plus la condition
+            // ne fait que le tiers de ses dégâts (Q31).
+            bool belowRequirement = effRank < WeaponRequirement;
+            double weaponMult = mods.Multiplier * attacker.WeaponMultiplier * attacker.WeaponPenaltyFactor
+                                * (belowRequirement ? 1 / 3.0 : 1.0);
             if (attacker.InscriptionPercent > 0) notes.Add(L($"inscription +{attacker.InscriptionPercent} %",
                                                              $"inscription +{attacker.InscriptionPercent}%"));
-            int AtMin(double m, double c, double a)
-                => WeaponStrike.DamageAt(weapon.Min, rank, alCalc, penCalc, m, level, spCalc, cap: c, afterCap: a);
-            int AtMax(double m, double c, double a)
-                => WeaponStrike.DamageAt(weapon.Max, rank, alCalc, penCalc, m, level, spCalc, cap: c, afterCap: a);
+            if (attacker.WeaponPenaltyFactor != 1.0)
+                notes.Add(L($"arme ×{Factor(attacker.WeaponPenaltyFactor)}", $"weapon ×{Factor(attacker.WeaponPenaltyFactor)}"));
+            if (belowRequirement)
+                notes.Add(L($"condition de l'arme ({WeaponRequirement}) non remplie : ÷3",
+                            $"weapon requirement ({WeaponRequirement}) not met: ÷3"));
+            int AtMin(double m, double s, double sa, double c, double a)
+                => WeaponStrike.DamageAt(weapon.Min, effRank, alCalc, penCalc, m, level, spCalc, cap: c, afterCap: a,
+                                         subtract: s, afterSubtract: sa);
+            int AtMax(double m, double s, double sa, double c, double a)
+                => WeaponStrike.DamageAt(weapon.Max, effRank, alCalc, penCalc, m, level, spCalc, cap: c, afterCap: a,
+                                         subtract: s, afterSubtract: sa);
             // Critique côté build (lot 3) : ordinaire (max ×√2), sans surplus (Balanced Stance : max de l'arme), ou
             // plus de critique du tout (Stoneflesh Aura, Stone Sheath). Le côté @AL 60 reste la référence nue.
-            Func<double, double, double, int> atCrit = critRule == DamageMitigation.CritRule.NoExtra
+            DamageFn atCrit = critRule == DamageMitigation.CritRule.NoExtra
                 ? AtMax
-                : (m, c, a) => WeaponStrike.CriticalAt(weapon, rank, alCalc, penCalc, m, level, spCalc, cap: c, afterCap: a);
+                : (m, s, sa, c, a) => WeaponStrike.CriticalAt(weapon, effRank, alCalc, penCalc, m, level, spCalc, cap: c, afterCap: a,
+                                                             subtract: s, afterSubtract: sa);
 
+            // Le côté @AL 60 reçoit aussi les points de l'attaquant (lot 6b) : sans rien derrière, les retirer du coup
+            // entier, plancher 0, revient exactement au calcul paquet par paquet.
+            int at60Flat = AttFlat(attack: true);
             int lo60w, hi60w;
             DamageMitigation.Outcome loC, hiC;
-            if (mods.AlwaysCritical)
+            // Plus de critique (Dulled Weapon) : le critique forcé de Keen Chop redevient un coup ordinaire, des deux côtés.
+            forcedCrit = mods.AlwaysCritical && !attacker.NoCritical;
+            if (forcedCrit)
             {
                 // Critique forcé (Keen Chop) : la valeur subie EST le critique — comme la tooltip
                 // (ligne critique seule) et le Spike (min = max = CriticalAt). Immunisé : un coup ordinaire.
-                lo60w = hi60w = WeaponStrike.CriticalAt(weapon, rank, 60, pen, weaponMult, level);
+                lo60w = hi60w = WeaponStrike.CriticalAt(weapon, effRank, 60, pen, weaponMult, level);
                 if (critRule == DamageMitigation.CritRule.Immune)
                 {
                     loC = Hit(AtMin, weaponMult, type, false, true, extra, flats);
@@ -269,27 +318,30 @@ public static class ReferenceAttack
             }
             else
             {
-                lo60w = WeaponStrike.DamageAt(weapon.Min, rank, 60, pen, weaponMult, level);
-                hi60w = WeaponStrike.DamageAt(weapon.Max, rank, 60, pen, weaponMult, level);
+                lo60w = WeaponStrike.DamageAt(weapon.Min, effRank, 60, pen, weaponMult, level);
+                hi60w = WeaponStrike.DamageAt(weapon.Max, effRank, 60, pen, weaponMult, level);
                 loC = Hit(AtMin, weaponMult, type, false, true, extra, flats);
                 hiC = Hit(AtMax, weaponMult, type, false, true, extra, flats);
             }
 
-            lo60 += lo60w + bonus; hi60 += hi60w + bonus;
+            lo60 += Math.Max(0, lo60w + bonus - at60Flat); hi60 += Math.Max(0, hi60w + bonus - at60Flat);
             loCalc += loC.Taken; hiCalc += hiC.Taken;
             healLo += loC.Heal; healHi += hiC.Heal;
 
             primaryTypeFr = SkillDamage.DisplayType(type); primaryWeight = weapon.Max;
 
             if (mods.AlwaysCritical)
-                notes.Add(critRule switch
-                {
-                    DamageMitigation.CritRule.Immune  => L("critique forcé annulé (immunité)", "forced critical cancelled (immunity)"),
-                    DamageMitigation.CritRule.NoExtra => L("critique forcé, sans surplus", "forced critical, no extra damage"),
-                    _ => L("critique forcé", "forced critical"),
-                });
+                notes.Add(attacker.NoCritical
+                    ? L("critique forcé annulé (pas de critique)", "forced critical cancelled (no critical hits)")
+                    : critRule switch
+                    {
+                        DamageMitigation.CritRule.Immune  => L("critique forcé annulé (immunité)", "forced critical cancelled (immunity)"),
+                        DamageMitigation.CritRule.NoExtra => L("critique forcé, sans surplus", "forced critical, no extra damage"),
+                        _ => L("critique forcé", "forced critical"),
+                    });
             else if (critRule == DamageMitigation.CritRule.Immune)
-                notes.Add(L("immunisé aux critiques", "immune to critical hits"));
+                notes.Add(attacker.NoCritical ? L("pas de critique", "no critical hits")
+                                              : L("immunisé aux critiques", "immune to critical hits"));
             else
                 notes.Add($"{L("critique", "critical")} {Hit(atCrit, weaponMult, type, false, true, extra, flats, record: false).Taken}"
                           + (critRule == DamageMitigation.CritRule.NoExtra ? L(" (sans surplus)", " (no extra damage)") : ""));
@@ -301,9 +353,9 @@ public static class ReferenceAttack
             string type = Received(r.DamageType ?? "physical")!;
             var (alCalc, penCalc, spCalc) = Build(type);
 
-            int d60 = SkillDamage.DamageAt(r.Value, 60, pen, level);
-            var dC = Hit((m, c, a) => SkillDamage.DamageAt(r.Value, alCalc, penCalc, level, multiplier: m, specialArmor: spCalc,
-                                                           cap: c, afterCap: a),
+            int d60 = Math.Max(0, SkillDamage.DamageAt(r.Value, 60, pen, level) - AttFlat(isAttack));
+            var dC = Hit((m, s, sa, c, a) => SkillDamage.DamageAt(r.Value, alCalc, penCalc, level, multiplier: m, specialArmor: spCalc,
+                                                                  cap: c, afterCap: a, subtract: s, afterSubtract: sa),
                          1.0, type, isSpell, isAttack, HolyOn(type), FlatFor(type, isSpell, isAttack));
 
             lo60 += d60; hi60 += d60; loCalc += dC.Taken; hiCalc += dC.Taken; healLo += dC.Heal; healHi += dC.Heal;
@@ -336,9 +388,9 @@ public static class ReferenceAttack
                 // les dégâts LISTÉS, l'armure/pénétration s'appliquent au total (comme le Spike).
                 string type = Received(r.DamageType ?? "physical")!;
                 var (alCalc, penCalc, spCalc) = Build(type);
-                int d60 = SkillDamage.DamageAt(cap, 60, pen, level);
-                var dC = Hit((m, c, a) => SkillDamage.DamageAt(cap, alCalc, penCalc, level, multiplier: m, specialArmor: spCalc,
-                                                               cap: c, afterCap: a),
+                int d60 = Math.Max(0, SkillDamage.DamageAt(cap, 60, pen, level) - AttFlat(isAttack));
+                var dC = Hit((m, s, sa, c, a) => SkillDamage.DamageAt(cap, alCalc, penCalc, level, multiplier: m, specialArmor: spCalc,
+                                                                      cap: c, afterCap: a, subtract: s, afterSubtract: sa),
                              1.0, type, isSpell, isAttack, HolyOn(type), FlatFor(type, isSpell, isAttack));
                 lo60 += d60; hi60 += d60; loCalc += dC.Taken; hiCalc += dC.Taken; healLo += dC.Heal; healHi += dC.Heal;
                 if (cap > primaryWeight) { primaryWeight = cap; primaryTypeFr = SkillDamage.DisplayType(type); }
@@ -350,24 +402,17 @@ public static class ReferenceAttack
 
         // ── Vol de vie / perte de vie sèche : total des deux côtés (ignore l'armure), avec note ──
         // Q14 (10/10/2026) : le VOL de vie reçoit les seules réductions fixes qui le citent (Shielding Hands, Union).
-        int stealFlat = DamageMitigation.FlatLifeSteal(mitigation);
         bool stealReduced = false;
         foreach (var r in steals)
         {
             int taken = r.Value, heal = 0;
-            if (r.Kind == SkillDamage.RowKind.LifeSteal && stealFlat > 0)
-            {
-                taken = Math.Max(0, r.Value - stealFlat);
-                applied.AddFlat(stealFlat);
-                stealReduced = true;
-            }
             // Lot 5 : Reversal of Fortune et Life Sheath convertissent aussi le vol de vie, Weapon of Remedy se déclenche
             // dessus ; jamais de plafond (ce ne sont pas des dégâts). La perte de vie sèche n'est touchée par rien.
             if (r.Kind == SkillDamage.RowKind.LifeSteal)
             {
-                var o = DamageMitigation.Heal(mitigation, taken, taken, lifeSteal: true);
-                if (o.Taken != taken) stealReduced = true;
+                var o = LifeSteal(mitigation, applied, r.Value);
                 (taken, heal) = (o.Taken, o.Heal);
+                stealReduced |= o.Reduced;
             }
             lo60 += r.Value; hi60 += r.Value; loCalc += taken; hiCalc += taken; healLo += heal; healHi += heal;
             notes.Add($"{(r.Kind == SkillDamage.RowKind.LifeSteal ? L("vol de vie", "life steal") : L("perte de vie", "Health loss"))} {r.Value}");
@@ -393,9 +438,11 @@ public static class ReferenceAttack
                           && thresholds.All(r => r.IgnoresArmor)
                           && ignoring.Count + thresholds.Count + steals.Count > 0
                           && !holyAffected && !stealReduced && !ignoringChanged;
-        bool isRange = weaponTable && !mods.AlwaysCritical && hi60 != lo60;
+        bool isRange = weaponTable && !forcedCrit && hi60 != lo60;
         if (convertedTo.Count > 0) notes.Insert(0, ReceivedAsNote(convertedTo));
         if (pen > 0) notes.Insert(0, L($"pénétration {pen} %", $"penetration {pen}%"));
+        if (effRank != rank) notes.Insert(0, L($"rang effectif {effRank}", $"effective rank {effRank}"));
+        if (attackerFlatUsed) notes.Add(L($"attaquant −{attackerFlat}", $"attacker −{attackerFlat}"));
         notes.AddRange(applied.Notes());
 
         return new Result(ignoresAll, isRange, lo60, hi60, loCalc, hiCalc, pen, primaryTypeFr,
@@ -410,9 +457,13 @@ public static class ReferenceAttack
     /// vulnérabilité sacrée) ; ils comptent dans le plafond (paquet entier : la part d'arme est plafonnée à
     /// plafond − extra), dans les fixes et dans les soins. <paramref name="flats"/> = réductions fixes (compétences et
     /// équipement). Sans plafond, le calcul est exactement celui des lots 1 à 4.
+    /// Lot 6b : <paramref name="attackerFlat"/> = points retirés par les malus de l'ATTAQUANT, juste après l'armure et avant
+    /// tout ce qui vient du défenseur, hausses comprises (Q29 et Q32, Philippe, 12/10/2026 : « Arme émoussée est comptée
+    /// avant ; ensuite Lien Spirituel, car il se base sur ce que l'attaquant peut output »). Ils mangent d'abord la part
+    /// d'arme, puis le « +X ». 0 = le calcul d'avant, à l'identique.
     /// </summary>
     private static DamageMitigation.Outcome Packet(DamageMitigation.Context? mitigation, AppliedMitigation applied,
-        Func<double, double, double, int> at, double baseMult, string type, bool spell, bool attack, int extra, int flats,
+        DamageFn at, double baseMult, string type, bool spell, bool attack, int extra, int flats, int attackerFlat = 0,
         bool record = true)
     {
         const double None = double.PositiveInfinity;
@@ -420,17 +471,26 @@ public static class ReferenceAttack
         if (record) applied.AddFactor(factor);
         double? cap = DamageMitigation.Cap(mitigation, type, spell, attack);
         bool heals = DamageMitigation.HasHeals(mitigation);
-        // Le paquet après l'armure et les hausses, AVANT plafond et réductions : seuil de Spirit Bond, et test du plafond.
+        // La part soumise à l'armure, suivie d'un facteur (hausses, %) : sans malus de l'attaquant, il entre dans le
+        // multiplicateur comme avant ; avec, il passe après les points retirés.
+        int Part(double after, double c, double a) => attackerFlat == 0
+            ? at(baseMult * after, 0, 1.0, c, a)
+            : at(baseMult, attackerFlat, after, c, a);
+        // Ce que la part d'arme n'absorbe pas sort du « +X ». Exact au point près : les points sont entiers, donc
+        // ⌊coup − F⌋ = ⌊coup⌋ − F.
+        if (attackerFlat > 0) extra -= Math.Max(0, attackerFlat - at(baseMult, 0, 1.0, None, 1.0));
+        // Le paquet après l'armure, l'attaquant et les hausses, AVANT plafond et réductions : seuil de Spirit Bond, et test
+        // du plafond.
         int before = cap is null && !heals ? 0
-            : at(baseMult * DamageMitigation.IncreaseFactor(mitigation, type, spell, attack), None, 1.0) + extra;
+            : Part(DamageMitigation.IncreaseFactor(mitigation, type, spell, attack), None, 1.0) + extra;
 
         int taken;
-        if (cap is not { } c) taken = Math.Max(0, at(baseMult * factor, None, 1.0) + extra - flats);
+        if (cap is not { } c) taken = Math.Max(0, Part(factor, None, 1.0) + extra - flats);
         else
         {
             double weaponCap = Math.Max(0, c - extra);
-            int part = at(baseMult * DamageMitigation.IncreaseFactor(mitigation, type, spell, attack), weaponCap,
-                          DamageMitigation.PercentFactor(mitigation, type, spell, attack));
+            int part = Part(DamageMitigation.IncreaseFactor(mitigation, type, spell, attack), weaponCap,
+                            DamageMitigation.PercentFactor(mitigation, type, spell, attack));
             taken = Math.Max(0, part + (int)Math.Floor(Math.Min(extra, c)) - flats);
             if (record && before > c) applied.AddCap(c);
         }
@@ -527,26 +587,59 @@ public static class ReferenceAttack
         int pen = basePen + bonusPen;
         int penBuild = Math.Max(basePen, gridPenetration) + bonusPen;
         int inscription = isAttack ? attacker.InscriptionPercent : 0;
-        double mult = 1 + inscription / 100.0;
+        // Lot 6b, attaque seulement : malus en % sur tout le coup (comme l'inscription), points retirés après l'armure,
+        // vol de vie de Nightmare Weapon (Grenth's Aura jamais : une attaque libre n'est pas un coup de faux).
+        double penalty = isAttack ? attacker.WeaponPenaltyFactor : 1.0;
+        double mult = (1 + inscription / 100.0) * penalty;
+        int attackerFlat = attacker.FlatOn(isAttack, scythe: false);
+        int attackerSteal = attacker.LifeStealOn(isAttack, scythe: false);
         var (alCalc, penCalc, spCalc) = BuildSide(armorFor(ColumnKey(received)), penBuild, gridPenetration);
         int skillFlat = DamageMitigation.Flat(mitigation, received, isSpell, isAttack);
         int holy = holyIncrease > 0 && received == "holy" ? holyIncrease : 0;
 
         var applied = new AppliedMitigation();
-        int d60 = SkillDamage.DamageAt(value, 60, pen, level, mult);
-        var dC = Packet(mitigation, applied, (m, c, a) => SkillDamage.DamageAt(value, alCalc, penCalc, level, multiplier: m,
-                                                                              specialArmor: spCalc, cap: c, afterCap: a),
-                        mult, received, isSpell, isAttack, holy, skillFlat + (IsPhysical(received) ? flatPhysical : 0));
+        int d60 = Math.Max(0, SkillDamage.DamageAt(value, 60, pen, level, mult) - attackerFlat);
+        var dC = Packet(mitigation, applied, (m, s, sa, c, a) => SkillDamage.DamageAt(value, alCalc, penCalc, level, multiplier: m,
+                                                                                    specialArmor: spCalc, cap: c, afterCap: a,
+                                                                                    subtract: s, afterSubtract: sa),
+                        mult, received, isSpell, isAttack, holy, skillFlat + (IsPhysical(received) ? flatPhysical : 0),
+                        attackerFlat);
+        int lo60 = d60, taken = dC.Taken, heal = dC.Heal;
+        var steal = attackerSteal > 0 ? LifeSteal(mitigation, applied, attackerSteal) : default;
+        if (attackerSteal > 0) { lo60 += attackerSteal; taken += steal.Taken; heal += steal.Heal; }
 
         var notes = new List<string>();
         if (isSpell) notes.Add(L("sort", "spell"));
         if (pen > 0) notes.Add(L($"pénétration {pen} %", $"penetration {pen}%"));
         if (inscription > 0) notes.Add(L($"inscription +{inscription} %", $"inscription +{inscription}%"));
+        if (penalty != 1.0) notes.Add(L($"malus ×{Factor(penalty)}", $"penalty ×{Factor(penalty)}"));
         if (hit.Converted) notes.Add(ReceivedAsNote([received]));
+        if (attackerFlat > 0) notes.Add(L($"attaquant −{attackerFlat}", $"attacker −{attackerFlat}"));
+        if (attackerSteal > 0) notes.Add($"{L("vol de vie", "life steal")} {attackerSteal}");
         applied.AddFlat(skillFlat);
         notes.AddRange(applied.Notes());
         if (holy > 0) notes.Add(L($"vulnérabilité sacrée +{holy}", $"holy vulnerability +{holy}"));
-        return new Result(false, false, d60, d60, dC.Taken, dC.Taken, pen, SkillDamage.DisplayType(received),
-                          string.Join(" · ", notes), dC.Heal, dC.Heal);
+        return new Result(false, false, lo60, lo60, taken, taken, pen, SkillDamage.DisplayType(received),
+                          string.Join(" · ", notes), heal, heal);
+    }
+
+    /// <summary>Un VOL DE VIE côté build : les seules réductions fixes qui le citent (Q14 : Shielding Hands, Union), puis les
+    /// conversions en soin et les soins qui s'y déclenchent (lot 5) ; jamais de plafond, ce ne sont pas des dégâts.
+    /// <see cref="Reduced"/> = quelque chose l'a changé.</summary>
+    private readonly record struct StealOutcome(int Taken, int Heal, bool Reduced);
+
+    private static StealOutcome LifeSteal(DamageMitigation.Context? mitigation, AppliedMitigation applied, int value)
+    {
+        int stealFlat = DamageMitigation.FlatLifeSteal(mitigation);
+        int taken = value;
+        bool reduced = false;
+        if (stealFlat > 0)
+        {
+            taken = Math.Max(0, value - stealFlat);
+            applied.AddFlat(stealFlat);
+            reduced = true;
+        }
+        var o = DamageMitigation.Heal(mitigation, taken, taken, lifeSteal: true);
+        return new(o.Taken, o.Heal, reduced || o.Taken != taken);
     }
 }

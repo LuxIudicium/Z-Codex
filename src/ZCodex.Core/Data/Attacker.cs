@@ -24,8 +24,13 @@ namespace ZCodex.Core.Data;
 /// <param name="PenetrationSkillIds">Sorts de pénétration actifs (ids de <see cref="PenetrationSkills"/>).</param>
 /// <param name="SunderingMod">Le mod d'arme « de fractionnement » a fonctionné sur ce coup (Q17 : case « a fonctionné »).</param>
 /// <param name="Hornbow">L'arc est un arc corne.</param>
+/// <param name="Penalties">Malus qu'il porte (lot 6b, <see cref="AttackerPenaltyData"/>), valeurs résolues aux cases ; null =
+/// aucun. Ils valent des deux côtés, comme le reste du bloc. Faiblesse et Wail of Doom baissent ses ATTRIBUTS : le rang
+/// effectif de chaque ligne et sa Force (« Exact », Philippe, 12/10/2026) ; le rang affiché n'est jamais modifié, décocher
+/// remet tout.</param>
 public sealed record Attacker(int Level, int StrengthRank, int InscriptionPercent,
-                              IReadOnlyCollection<int> PenetrationSkillIds, bool SunderingMod, bool Hornbow)
+                              IReadOnlyCollection<int> PenetrationSkillIds, bool SunderingMod, bool Hornbow,
+                              IReadOnlyList<AttackerPenalty>? Penalties = null)
 {
     public const int MinLevel = 1;
     /// <summary>Niveau le plus haut qu'on rencontre (wiki *Level*) — Q10, Philippe, 12/10/2026.</summary>
@@ -57,6 +62,44 @@ public sealed record Attacker(int Level, int StrengthRank, int InscriptionPercen
     /// <summary>Multiplicateur de l'inscription, à poser sur le coup d'arme seulement.</summary>
     public double WeaponMultiplier => 1 + InscriptionPercent / 100.0;
 
+    private IEnumerable<AttackerPenalty> Active => (Penalties ?? []).Where(p => p.IsEffective);
+
+    /// <summary>Rang EFFECTIF d'une ligne (ou de la Force) sous les malus d'attributs : Wail of Doom → 0 ; Faiblesse → −1,
+    /// jamais sous 0 (wiki *Weakness* : un attribut à 0 n'est pas touché). Sans malus, le rang tel quel.</summary>
+    public int EffectiveRank(int rank)
+    {
+        if (Active.Any(p => p.Descriptor.Kind == AttackerPenaltyKind.AttributesToZero)) return 0;
+        int loss = Active.Sum(p => p.Descriptor.AttributeLoss);
+        return loss == 0 ? rank : Math.Max(0, rank - loss);
+    }
+
+    /// <summary>Rang de Force qui compte (Faiblesse, Wail of Doom).</summary>
+    public int EffectiveStrength => EffectiveRank(StrengthRank);
+
+    /// <summary>Malus en % sur les dégâts de base de l'arme (Faiblesse ×0,34, Flurry ×0,75, Life Attunement ×0,70),
+    /// multipliés entre eux. 1.0 = aucun. ⚠ (100 − p) / 100, comme le malus propre d'une compétence
+    /// (<see cref="WeaponStrike.ModsFor"/>) : 1 − 66 / 100 vaut 0,33999… en virgule flottante, et 1000 × 0,34 tomberait à
+    /// 339 (vu au harnais du lot 6b).</summary>
+    public double WeaponPenaltyFactor => Active
+        .Where(p => p.Descriptor.Kind == AttackerPenaltyKind.WeaponPercent)
+        .Aggregate(1.0, (f, p) => f * ((100 - Math.Min(p.Value, 100)) / 100.0));
+
+    /// <summary>Plus aucun critique (Dulled Weapon).</summary>
+    public bool NoCritical => Active.Any(p => p.Descriptor.NoCritical);
+
+    private IEnumerable<AttackerPenalty> FlatsOn(bool isAttack, bool scythe) => !isAttack ? [] : Active.Where(p =>
+        p.Descriptor.Kind is AttackerPenaltyKind.Flat or AttackerPenaltyKind.FlatToLifeSteal
+        && (!p.Descriptor.ScytheOnly || scythe));
+
+    /// <summary>Points retirés à un paquet d'attaque (<paramref name="scythe"/> = coup à la faux), après l'armure et avant
+    /// tout ce qui vient du défenseur (Q29, Q32). 0 sur un sort.</summary>
+    public int FlatOn(bool isAttack, bool scythe) => FlatsOn(isAttack, scythe).Sum(p => p.Value);
+
+    /// <summary>Vie volée par une attaque (Nightmare Weapon, Grenth's Aura) : une fois par attaque, quels que soient ses
+    /// dégâts.</summary>
+    public int LifeStealOn(bool isAttack, bool scythe) =>
+        FlatsOn(isAttack, scythe).Where(p => p.Descriptor.Kind == AttackerPenaltyKind.FlatToLifeSteal).Sum(p => p.Value);
+
     /// <summary>
     /// Pénétration que l'attaquant apporte à <paramref name="skill"/> : (base, bonus). <paramref name="weapon"/> = l'arme
     /// du coup (null si la compétence n'en a pas ou si elle est indéterminée) ; <paramref name="weaponType"/> = le type
@@ -66,7 +109,7 @@ public sealed record Attacker(int Level, int StrengthRank, int InscriptionPercen
     public (int Base, int Bonus) PenetrationFor(Skill skill, WeaponStrike.Weapon? weapon, string? weaponType)
     {
         bool weaponAttack = WeaponStrike.IsWeaponAttack(skill);
-        int basePen = weaponAttack ? StrengthRank : 0, bonus = 0;
+        int basePen = weaponAttack ? EffectiveStrength : 0, bonus = 0;
         var kind = weapon is null ? WeaponKind.None : WeaponStrike.KindOf(weapon);
         foreach (int id in PenetrationSkillIds)
             foreach (var d in DamageBoostData.DescriptorsFor(id))
@@ -92,7 +135,7 @@ public sealed record Attacker(int Level, int StrengthRank, int InscriptionPercen
     public (int Base, int Bonus) PenetrationForFreeAttack(bool isAttack, string type, bool projectile)
     {
         if (!isAttack) return (0, 0);
-        int basePen = StrengthRank, bonus = 0;
+        int basePen = EffectiveStrength, bonus = 0;
         foreach (int id in PenetrationSkillIds)
             foreach (var d in DamageBoostData.DescriptorsFor(id).Where(d => d.Scope == DamageBoostScope.Attacks))
             {
@@ -103,4 +146,12 @@ public sealed record Attacker(int Level, int StrengthRank, int InscriptionPercen
         if (Hornbow && projectile) bonus += SpikeWeaponMods.HornbowBonusPen;
         return (basePen, bonus);
     }
+}
+
+/// <summary>Un malus coché du bloc Attaquant, valeur résolue à sa case (points, ou % pour un malus sur l'arme). On
+/// stocke l'écart au neutre : un <c>default</c> vaut « rien ».</summary>
+public readonly record struct AttackerPenalty(AttackerPenaltyDescriptor Descriptor, int Value)
+{
+    /// <summary>La ligne agit : une valeur non nulle, ou Wail of Doom (sans valeur).</summary>
+    public bool IsEffective => Descriptor is { } d && (Value > 0 || d.Kind == AttackerPenaltyKind.AttributesToZero);
 }

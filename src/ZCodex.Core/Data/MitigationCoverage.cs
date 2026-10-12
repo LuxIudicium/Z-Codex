@@ -6,7 +6,7 @@ namespace ZCodex.Core.Data;
 /// <summary>
 /// VERROUS du chantier « calculateur d'armure : réductions de dégâts » (patron <see cref="SpikeBoostCoverage"/>).
 /// Les harnais de ce projet meurent avec la session : le contrôle d'exhaustivité vit donc ici, dans le code,
-/// et la prochaine passe le retrouve. Les six listes <b>doivent rester VIDES</b>.
+/// et la prochaine passe le retrouve. Les huit listes <b>doivent rester VIDES</b>.
 /// </summary>
 public static class MitigationCoverage
 {
@@ -50,6 +50,38 @@ public static class MitigationCoverage
         + @"|\b(?:whenever|the next time|each time|every time)\b(?:(?!\.\s).){0,40}\btakes? (?:more than \d+ )?damage\b(?:(?!\.\s).){0,60}\b(?:heals?|gains? \d|steals? \d)",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+    // Lot 6b (12/10/2026) : les tournures d'un MALUS porté par l'attaquant — dégâts infligés réduits, plus de critique,
+    // attributs baissés, dégâts plafonnés —, relevées sur toute la base le 12/10/2026.
+    private static readonly Regex AttackerPenalty = new(
+        @"\b(?:deals?|do(?:es|ing)?)\s(?:-?\d+(?:\.\.\.\d+)*%?\s)?less damage"
+        + @"|\bdeals? -\d+(?:\.\.\.\d+)* attack damage"
+        + @"|\d+% of normal damage"
+        + @"|\bremoves ability to land a critical|\bcannot (?:land|score|achieve) (?:a )?critical"
+        + @"|\battributes are (?:set to )?0\b|\battributes are reduced by"
+        + @"|\bcannot deal more than",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private const string OwnSkillPenalty = "malus propre de la compétence : déjà dans son calcul (WeaponStrike.ModsFor)";
+    private const string AttackerBlock = "malus porté par l'attaquant : bloc Attaquant (lot 6b, AttackerPenaltyData)";
+
+    /// <summary>Compétences que le motif des malus de l'attaquant attrape mais que <see cref="AttackerPenaltyData"/> ne
+    /// couvre pas, chacune avec sa raison (lot 6b, clé = nom anglais de la base).</summary>
+    public static readonly IReadOnlyDictionary<string, string> ExcludedAttackerPenalties =
+        new Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        ["Dual Shot"]             = OwnSkillPenalty,
+        ["Triple Shot (Kurzick)"] = OwnSkillPenalty,
+        ["Triple Shot (Luxon)"]   = OwnSkillPenalty,
+        ["Twin Moon Sweep (PvP)"] = OwnSkillPenalty,
+        ["Lyssa's Assault"]       = OwnSkillPenalty,
+        ["Spiritleech Aura"]      = "touche les esprits de l'attaquant, pas l'attaquant (écartée au cadrage du 12/10/2026)",
+        ["Shadow Form"]           = "plafond des dégâts de l'attaquant (PvE) : écarté (Q30, Philippe, 12/10/2026)",
+        ["Shadow Theft"]          = "attributs de l'attaquant −1…5 (PvE) : le rang de la ligne le simule (Q28 ne cite que Faiblesse et Wail of Doom)",
+        ["Ursan Blessing"]        = "forme PvE : l'attaquant perd ses compétences, hors calculateur",
+        ["Volfen Blessing"]       = "forme PvE : l'attaquant perd ses compétences, hors calculateur",
+        ["Raven Blessing"]        = "forme PvE : l'attaquant perd ses compétences, hors calculateur",
+    };
+
     private const string AttackerConverter =
         "convertit les attaques de l'ATTAQUANT : la liste de type de la ligne d'attaque le couvre (lot 4)";
     private const string AttackerHolyConverter =
@@ -64,15 +96,15 @@ public static class MitigationCoverage
         ["Triple Shot (Kurzick)"] = "réduit les dégâts que l'attaquant inflige",
         ["Triple Shot (Luxon)"]   = "réduit les dégâts que l'attaquant inflige",
         ["Twin Moon Sweep (PvP)"] = "réduit les dégâts que l'attaquant inflige",
-        ["Flurry"]                = "réduit les dégâts que l'attaquant inflige",
+        ["Flurry"]                = AttackerBlock,
         ["Vapor Blade"]           = "réduit les dégâts que l'attaquant inflige",
-        ["Life Attunement"]       = "malus porté par l'attaquant : reporté (décision de Philippe du 15/09/2026)",
+        ["Life Attunement"]       = AttackerBlock,
         // Lot 3 (10/10/2026).
         ["Call of Protection"]    = "protège le familier, pas le perso (Q7, accord de Philippe du 10/10/2026)",
         ["Symbiotic Bond"]        = "redirige vers le perso des dégâts subis par le familier (Q7, écartée le 10/10/2026)",
         ["Divine Intervention"]   = "n'annule qu'un coup FATAL : dépend de la vie restante, hors calculateur",
         ["Judge's Intervention"]  = "n'annule qu'un coup FATAL : dépend de la vie restante, hors calculateur",
-        ["Dulled Weapon"]         = "malus porté par l'attaquant : reporté (décision de Philippe du 15/09/2026)",
+        ["Dulled Weapon"]         = AttackerBlock,
         // Lot 5 (11/10/2026).
         ["Shadow Form (PvP)"]     = "sorts qui échouent, attaques qui ratent : de l'esquive, hors calculateur comme le blocage (Q24)",
         // Lot 4 (11/10/2026) — convertisseurs propres à l'attaquant (Stone Striker, lui, est couvert côté défenseur).
@@ -156,6 +188,35 @@ public static class MitigationCoverage
             .Where(s => CapOrHeal.IsMatch(s.Description)
                         && !covered.Contains(s.Name) && !Excluded.ContainsKey(s.Name))
             .Select(s => s.Name).Distinct().Order(StringComparer.Ordinal)];
+    }
+
+    /// <summary>
+    /// <b>Verrou 7 — malus de l'attaquant oublié (lot 6b).</b> Les compétences du catalogue dont la description annonce des
+    /// dégâts INFLIGÉS réduits, plus de critique, des attributs baissés ou des dégâts plafonnés, sans descripteur dans
+    /// <see cref="AttackerPenaltyData.All"/> ni <see cref="DamageMitigationData.All"/> (une réduction du défenseur peut
+    /// partager la tournure), ni raison écrite. <b>Doit rester VIDE.</b>
+    /// </summary>
+    public static IReadOnlyList<string> UncoveredAttackerPenalties(IEnumerable<Skill> catalog)
+    {
+        var covered = AttackerPenaltyData.All.Select(d => d.Name)
+            .Concat(DamageMitigationData.All.Select(d => d.Name)).ToHashSet(StringComparer.Ordinal);
+        return [.. catalog
+            .Where(s => AttackerPenalty.IsMatch(s.Description) && !covered.Contains(s.Name)
+                        && !ExcludedAttackerPenalties.ContainsKey(s.Name) && !Excluded.ContainsKey(s.Name))
+            .Select(s => s.Name).Distinct().Order(StringComparer.Ordinal)];
+    }
+
+    /// <summary>
+    /// <b>Verrou 8 — malus orphelin (lot 6b).</b> Les descripteurs de <see cref="AttackerPenaltyData.All"/> (hors Faiblesse,
+    /// qui n'est pas une compétence) dont l'id ne désigne plus une compétence du même nom, ou dont la colonne de progression
+    /// n'existe pas. <b>Doit rester VIDE.</b> Sans lui, une compétence renommée ferait une case qui vaut silencieusement 0.
+    /// </summary>
+    public static IReadOnlyList<AttackerPenaltyDescriptor> OrphanAttackerPenalties(IEnumerable<Skill> catalog)
+    {
+        var byId = catalog.GroupBy(s => s.Id).ToDictionary(g => g.Key, g => g.First());
+        return [.. AttackerPenaltyData.All.Where(d => !d.IsWeakness && (
+            !byId.TryGetValue(d.SkillId, out var s) || s.Name != d.Name
+            || (d.ReadsProgression && (s.Progression is not { } p || d.Index < 0 || d.Index >= p.Length))))];
     }
 
     /// <summary>

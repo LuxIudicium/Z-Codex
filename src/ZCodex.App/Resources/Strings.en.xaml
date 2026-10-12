@@ -684,6 +684,8 @@
     <sys:String x:Key="S.Armor.SearchCatalogTip">Search by name across the whole catalog (Enter or double-click to add)</sys:String>
     <sys:String x:Key="S.Armor.ColAttack">Attack</sys:String>
     <sys:String x:Key="S.Armor.ColConditions">Conditions inflicted</sys:String>
+    <sys:String x:Key="S.Armor.ColDamageType">Damage type</sys:String>
+    <sys:String x:Key="S.Armor.ColFreeAttackType">Free attack type</sys:String>
     <sys:String x:Key="S.Armor.ColRank">Rank</sys:String>
     <sys:String x:Key="S.Armor.ColAtAL60">@ AL 60</sys:String>
     <sys:String x:Key="S.Armor.ColAtALBuild">@ build AL</sys:String>
@@ -692,7 +694,7 @@
     <sys:String x:Key="S.Armor.Attacker">Modify Attacker</sys:String>
     <sys:String x:Key="S.Armor.AttackerTip" xml:space="preserve">Checked: the attacker's settings show up and apply to every skill attack, in both columns (@AL 60 and build); for free attacks, see "Apply to Free Attack".&#10;Unchecked: a level 20 attacker with nothing special.</sys:String>
     <sys:String x:Key="S.Armor.AttackerOnFree">Apply to Free Attack</sys:String>
-    <sys:String x:Key="S.Armor.AttackerOnFreeTip" xml:space="preserve">Free attacks follow the attacker too: its level (3 × level, like a spell);&#10;and unless it is a spell: the inscription on the whole hit, Strength, Sundering Weapon, the Sundering mod (not with an elemental type), the hornbow if "Projectile" is checked.&#10;Destructive Was Glaive and Cruel Was Daoshen (Ritualist skills) never apply.</sys:String>
+    <sys:String x:Key="S.Armor.AttackerOnFreeTip" xml:space="preserve">Free attacks follow the attacker too: its level (3 × level, like a spell);&#10;and unless it is a spell: the inscription on the whole hit, Strength, Sundering Weapon, the Sundering mod (not with an elemental type), the hornbow if "Projectile" is checked.&#10;Destructive Was Glaive and Cruel Was Daoshen (Ritualist skills) never apply.&#10;Penalties, unless it is a spell: the percentages on the whole hit, flat reductions and life steal; never the scythe-only ones.</sys:String>
     <sys:String x:Key="S.Armor.AttackerLevel">Level</sys:String>
     <sys:String x:Key="S.Armor.AttackerLevelTip" xml:space="preserve">Attacker's level (1–33).&#10;Spells: strike at 3 × level. Weapons: rank threshold (level + 4) / 2, i.e. 12 at level 20.</sys:String>
     <sys:String x:Key="S.Armor.AttackerStrength">Strength</sys:String>
@@ -709,6 +711,9 @@
     <sys:String x:Key="S.Armor.AttackerPenBonus">Bonus penetration +{0}%, stacking</sys:String>
     <sys:String x:Key="S.Armor.AttackerScopeRitualist">Ritualist skills</sys:String>
     <sys:String x:Key="S.Armor.AttackerScopeAttacks">weapon attacks</sys:String>
+    <sys:String x:Key="S.Armor.AttackerPenalties">Penalties:</sys:String>
+    <sys:String x:Key="S.Armor.AttackerPenaltyRankTip">Attribute rank of whoever casts the effect (0–21), at cast time — Weakness and Wail of Doom do not change it</sys:String>
+    <sys:String x:Key="S.Armor.AttackerPenaltySteal">steal {0}</sys:String>
     <sys:String x:Key="S.Armor.AddFreeAttack">+ Free attack</sys:String>
     <sys:String x:Key="S.Armor.AddFreeAttackTip">Adds a hit with no skill behind it: N damage of one type, set on the row</sys:String>
     <sys:String x:Key="S.Armor.FreeAttack">Free attack</sys:String>

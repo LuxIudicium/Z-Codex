@@ -687,6 +687,8 @@
     <sys:String x:Key="S.Armor.SearchCatalogTip">Recherche par nom dans tout le catalogue (Entrée ou double-clic pour ajouter)</sys:String>
     <sys:String x:Key="S.Armor.ColAttack">Attaque</sys:String>
     <sys:String x:Key="S.Armor.ColConditions">Altérations infligées</sys:String>
+    <sys:String x:Key="S.Armor.ColDamageType">Type de dégâts</sys:String>
+    <sys:String x:Key="S.Armor.ColFreeAttackType">Type d'attaque libre</sys:String>
     <sys:String x:Key="S.Armor.ColRank">Rang</sys:String>
     <sys:String x:Key="S.Armor.ColAtAL60">@ AL 60</sys:String>
     <sys:String x:Key="S.Armor.ColAtALBuild">@ AL build</sys:String>
@@ -695,7 +697,7 @@
     <sys:String x:Key="S.Armor.Attacker">Modifier l'attaquant</sys:String>
     <sys:String x:Key="S.Armor.AttackerTip" xml:space="preserve">Cochée : les réglages de l'attaquant s'affichent et valent pour toutes les attaques de compétences, dans les deux colonnes (@AL 60 et build) ; pour les attaques libres, voir « Appliquer à l'attaque libre ».&#10;Décochée : attaquant de niveau 20, sans rien de spécial.</sys:String>
     <sys:String x:Key="S.Armor.AttackerOnFree">Appliquer à l'attaque libre</sys:String>
-    <sys:String x:Key="S.Armor.AttackerOnFreeTip" xml:space="preserve">Les attaques libres suivent aussi l'attaquant : son niveau (3 × niveau, comme un sort) ;&#10;et si ce n'est pas un sort : l'inscription sur tout le coup, la Force, l'Arme de fractionnement, le mod « de fractionnement » (pas en type élémentaire), l'arc corne si « Projectile » est coché.&#10;Glaive et Daoshen (compétences de Ritualiste) ne les touchent jamais.</sys:String>
+    <sys:String x:Key="S.Armor.AttackerOnFreeTip" xml:space="preserve">Les attaques libres suivent aussi l'attaquant : son niveau (3 × niveau, comme un sort) ;&#10;et si ce n'est pas un sort : l'inscription sur tout le coup, la Force, l'Arme de fractionnement, le mod « de fractionnement » (pas en type élémentaire), l'arc corne si « Projectile » est coché.&#10;Glaive et Daoshen (compétences de Ritualiste) ne les touchent jamais.&#10;Malus, si ce n'est pas un sort : les % sur tout le coup, les réductions fixes et le vol de vie ; jamais ceux réservés à la faux.</sys:String>
     <sys:String x:Key="S.Armor.AttackerLevel">Niveau</sys:String>
     <sys:String x:Key="S.Armor.AttackerLevelTip" xml:space="preserve">Niveau de l'attaquant (1–33).&#10;Sorts : frappe à 3 × le niveau. Armes : seuil de rang (niveau + 4) / 2, soit 12 au niveau 20.</sys:String>
     <sys:String x:Key="S.Armor.AttackerStrength">Force</sys:String>
@@ -712,6 +714,9 @@
     <sys:String x:Key="S.Armor.AttackerPenBonus">Pénétration bonus +{0} %, cumulée</sys:String>
     <sys:String x:Key="S.Armor.AttackerScopeRitualist">compétences de Ritualiste</sys:String>
     <sys:String x:Key="S.Armor.AttackerScopeAttacks">attaques d'arme</sys:String>
+    <sys:String x:Key="S.Armor.AttackerPenalties">Malus :</sys:String>
+    <sys:String x:Key="S.Armor.AttackerPenaltyRankTip">Rang d'attribut de celui qui lance l'effet (0–21), au lancement — Faiblesse et Complainte funeste n'y touchent pas</sys:String>
+    <sys:String x:Key="S.Armor.AttackerPenaltySteal">vol {0}</sys:String>
     <sys:String x:Key="S.Armor.AddFreeAttack">+ Attaque libre</sys:String>
     <sys:String x:Key="S.Armor.AddFreeAttackTip">Ajoute un coup sans compétence : N dégâts d'un type, à régler sur la ligne</sys:String>
     <sys:String x:Key="S.Armor.FreeAttack">Attaque libre</sys:String>

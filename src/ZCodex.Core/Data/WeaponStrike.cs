@@ -265,18 +265,25 @@ public static class WeaponStrike
     /// <paramref name="specialArmor"/> = armure retirée APRÈS la pénétration (Fardeau nébuleux, lot 7b-2).
     /// <paramref name="cap"/> / <paramref name="afterCap"/> = plafond en points puis les % (calculateur d'armure, lot 5),
     /// comme <see cref="SkillDamage.DamageAt"/> ; par défaut, calcul identique à l'ancien.
+    /// <paramref name="subtract"/> / <paramref name="afterSubtract"/> = points retirés après l'armure puis facteur (lot 6b),
+    /// comme <see cref="SkillDamage.DamageAt"/>.
     public static int DamageAt(int baseDamage, int masteryRank, int armorLevel, int armorPenetration,
                                double multiplier = 1.0, int characterLevel = 20, int specialArmor = 0,
-                               double cap = double.PositiveInfinity, double afterCap = 1.0)
-        => (int)Math.Floor(SkillDamage.Capped(baseDamage * Customized * multiplier
-                           * Factor(masteryRank, armorLevel, armorPenetration, characterLevel, specialArmor), cap, afterCap));
+                               double cap = double.PositiveInfinity, double afterCap = 1.0,
+                               double subtract = 0, double afterSubtract = 1.0)
+        => (int)Math.Floor(SkillDamage.Capped(SkillDamage.Subtracted(baseDamage * Customized * multiplier
+                           * Factor(masteryRank, armorLevel, armorPenetration, characterLevel, specialArmor),
+                           subtract, afterSubtract), cap, afterCap));
 
     /// <summary>Dégâts d'un critique : max de l'arme customisée ×√2 (faux : ×1.09), tronqués.</summary>
     public static int CriticalAt(Weapon weapon, int masteryRank, int armorLevel, int armorPenetration,
                                  double multiplier = 1.0, int characterLevel = 20, int specialArmor = 0,
-                                 double cap = double.PositiveInfinity, double afterCap = 1.0)
-        => (int)Math.Floor(SkillDamage.Capped(weapon.Max * Customized * multiplier * (weapon.IsScythe ? 1.09 : Math.Sqrt(2))
-                           * Factor(masteryRank, armorLevel, armorPenetration, characterLevel, specialArmor), cap, afterCap));
+                                 double cap = double.PositiveInfinity, double afterCap = 1.0,
+                                 double subtract = 0, double afterSubtract = 1.0)
+        => (int)Math.Floor(SkillDamage.Capped(SkillDamage.Subtracted(weapon.Max * Customized * multiplier
+                           * (weapon.IsScythe ? 1.09 : Math.Sqrt(2))
+                           * Factor(masteryRank, armorLevel, armorPenetration, characterLevel, specialArmor),
+                           subtract, afterSubtract), cap, afterCap));
 
     /// <summary>
     /// Probabilité (0–1) de critique contre une cible de niveau <paramref name="targetLevel"/> —

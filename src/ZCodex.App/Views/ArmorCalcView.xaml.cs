@@ -35,6 +35,14 @@ public partial class ArmorCalcView : UserControl
         }
     }
 
+    // L'en-tête de la table des attaques est hors de la zone qui défile : il réserve à droite la largeur de la barre de
+    // défilement quand elle est là, sinon ses titres partent à droite de leurs valeurs (QA de Philippe du 12/10/2026).
+    private void AttackScroll_ScrollChanged(object sender, ScrollChangedEventArgs e)
+    {
+        double bar = Math.Max(0, AttackScroll.ActualWidth - AttackScroll.ViewportWidth);
+        if (AttackHeader.Margin.Right != bar) AttackHeader.Margin = new Thickness(0, 0, bar, 2);
+    }
+
     private void Splitter_DragCompleted(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e)
         => Vm?.SaveLayout(new(LeftColumn.ActualWidth, TopRow.ActualHeight, AttacksRow.ActualHeight,
                               CatalogRow.ActualHeight, TableRow.ActualHeight));

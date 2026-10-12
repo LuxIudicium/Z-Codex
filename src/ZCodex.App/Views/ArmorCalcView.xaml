@@ -685,7 +685,7 @@
                                           Background="{DynamicResource BorderLightBrush}" Margin="0,2"
                                           DragCompleted="Splitter_DragCompleted"/>
 
-                            <DockPanel Grid.Row="4">
+                            <DockPanel Grid.Row="4" Grid.IsSharedSizeScope="True">
                                 <!-- Attaquant (chantier « réductions », lot 6) : un seul pour toutes les lignes de
                                      compétences, des deux côtés ; l'attaque libre seulement si « Appliquer à l'attaque
                                      libre » est cochée. Case décochée = niveau 20 sans rien de spécial, et les réglages
@@ -725,52 +725,124 @@
                                                       ToolTip="{DynamicResource S.Armor.AttackerOnFreeTip}"/>
                                         </StackPanel>
                                     </WrapPanel>
-                                    <DockPanel Margin="0,1,0,0"
-                                               Visibility="{Binding AttackerEnabled, Converter={StaticResource BoolToVisibilityConverter}}">
-                                        <TextBlock DockPanel.Dock="Left" Text="{DynamicResource S.Armor.AttackerPenetration}" FontSize="11"
-                                                   VerticalAlignment="Top" Margin="0,2,6,0"/>
-                                        <ItemsControl ItemsSource="{Binding AttackerPenSources}">
+                                    <!-- Pénétration (lot 6) et malus (lot 6b) sur une GRILLE (demande de Philippe du 12/10/2026) :
+                                         les deux étiquettes partagent leur colonne, donc les deux listes partent du même bord ;
+                                         chaque case prend la largeur de la plus large des deux listes (groupe partagé
+                                         « AtkCell »), donc les colonnes s'alignent d'une ligne à l'autre ; dans les malus, nom,
+                                         rang et valeur ont aussi leurs colonnes. -->
+                                    <Grid Margin="0,1,0,0" Grid.IsSharedSizeScope="True"
+                                          Visibility="{Binding AttackerEnabled, Converter={StaticResource BoolToVisibilityConverter}}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Text="{DynamicResource S.Armor.AttackerPenetration}" FontSize="11"
+                                                   VerticalAlignment="Top" Margin="0,3,6,0"/>
+                                        <ItemsControl Grid.Column="1" ItemsSource="{Binding AttackerPenSources}">
                                             <ItemsControl.ItemsPanel>
                                                 <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
                                             </ItemsControl.ItemsPanel>
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
-                                                    <CheckBox Content="{Binding Name}" IsChecked="{Binding IsChecked}"
-                                                              ToolTip="{Binding ToolTip}" FontSize="11"
-                                                              VerticalAlignment="Center" Margin="0,1,12,1"/>
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto" SharedSizeGroup="AtkCell"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <CheckBox Content="{Binding Name}" IsChecked="{Binding IsChecked}"
+                                                                  ToolTip="{Binding ToolTip}" FontSize="11" Height="22"
+                                                                  VerticalAlignment="Center" VerticalContentAlignment="Center"
+                                                                  Margin="0,1,12,1"/>
+                                                    </Grid>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
-                                    </DockPanel>
+                                        <!-- Malus portés par l'attaquant (lot 6b) : case, rang du lanceur si la valeur en dépend,
+                                             valeur à ce rang. -->
+                                        <TextBlock Grid.Row="1" Text="{DynamicResource S.Armor.AttackerPenalties}" FontSize="11"
+                                                   VerticalAlignment="Top" Margin="0,3,6,0"/>
+                                        <ItemsControl Grid.Row="1" Grid.Column="1" ItemsSource="{Binding AttackerPenalties}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto" SharedSizeGroup="AtkCell"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <Grid Margin="0,1,12,1" Height="22">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="Auto" SharedSizeGroup="AtkPenName"/>
+                                                                <ColumnDefinition Width="32"/>
+                                                                <ColumnDefinition Width="Auto" SharedSizeGroup="AtkPenValue"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <CheckBox Content="{Binding Name}" IsChecked="{Binding IsChecked}"
+                                                                      ToolTip="{Binding ToolTip}" FontSize="11"
+                                                                      VerticalAlignment="Center" VerticalContentAlignment="Center"/>
+                                                            <TextBox Grid.Column="1" Width="28" Height="20" FontSize="11"
+                                                                     VerticalContentAlignment="Center" HorizontalAlignment="Right"
+                                                                     Text="{Binding Rank, UpdateSourceTrigger=PropertyChanged}"
+                                                                     ToolTip="{DynamicResource S.Armor.AttackerPenaltyRankTip}"
+                                                                     Visibility="{Binding HasRank, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                                            <TextBlock Grid.Column="2" Text="{Binding ValueText}" FontSize="11"
+                                                                       VerticalAlignment="Center" Margin="4,0,0,0"
+                                                                       Foreground="{DynamicResource TextMutedBrush}"/>
+                                                        </Grid>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Grid>
                                 </StackPanel>
 
-                                <!-- En-tête (fixe en haut) -->
-                                <Grid DockPanel.Dock="Top" Margin="0,0,0,2">
+                                <!-- En-tête (fixe en haut). Mêmes 9 colonnes que les lignes, ✕ compris (24 px) ; la marge
+                                     droite suit la barre de défilement des lignes (AttackScroll_ScrollChanged), sinon les
+                                     titres partent à droite de leurs valeurs (QA de Philippe du 12/10/2026). La colonne du
+                                     milieu : type de dégâts (liste), type d'attaque libre (Sort / Projectile), altérations. -->
+                                <Grid x:Name="AttackHeader" DockPanel.Dock="Top" Margin="0,0,0,2">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="190"/>
+                                        <ColumnDefinition Width="98"/>
+                                        <ColumnDefinition Width="Auto" SharedSizeGroup="FreeAttackType"/>
+                                        <ColumnDefinition Width="150"/>
                                         <ColumnDefinition Width="40"/>
                                         <ColumnDefinition Width="66"/>
                                         <ColumnDefinition Width="66"/>
                                         <ColumnDefinition Width="52"/>
-                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="24"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="{DynamicResource S.Armor.ColAttack}" FontSize="10" FontWeight="SemiBold"
+                                               VerticalAlignment="Bottom" Foreground="{DynamicResource TextMutedBrush}"/>
+                                    <TextBlock Grid.Column="1" Text="{DynamicResource S.Armor.ColDamageType}" FontSize="10" FontWeight="SemiBold"
+                                               TextWrapping="Wrap" Margin="2,0,4,0" VerticalAlignment="Bottom"
                                                Foreground="{DynamicResource TextMutedBrush}"/>
-                                    <TextBlock Grid.Column="1" Text="{DynamicResource S.Armor.ColConditions}" FontSize="10" FontWeight="SemiBold"
+                                    <!-- « Type d'attaque libre » : colonne partagée (FreeAttackType, Auto) qui n'existe que s'il y
+                                         a une attaque libre (demande de Philippe du 12/10/2026) — titre masqué et aucune ligne
+                                         n'y met rien → 0 px. -->
+                                    <TextBlock Grid.Column="2" Text="{DynamicResource S.Armor.ColFreeAttackType}" FontSize="10" FontWeight="SemiBold"
+                                               Margin="0,0,8,0" VerticalAlignment="Bottom"
+                                               Visibility="{Binding HasFreeAttacks, Converter={StaticResource BoolToVisibilityConverter}}"
                                                Foreground="{DynamicResource TextMutedBrush}"/>
-                                    <TextBlock Grid.Column="2" Text="{DynamicResource S.Armor.ColRank}" FontSize="10" FontWeight="SemiBold"
+                                    <TextBlock Grid.Column="3" Text="{DynamicResource S.Armor.ColConditions}" FontSize="10" FontWeight="SemiBold"
+                                               TextWrapping="Wrap" VerticalAlignment="Bottom"
                                                Foreground="{DynamicResource TextMutedBrush}"/>
-                                    <TextBlock Grid.Column="3" Text="{DynamicResource S.Armor.ColAtAL60}" FontSize="10" FontWeight="SemiBold"
-                                               HorizontalAlignment="Right" Foreground="{DynamicResource TextMutedBrush}"/>
-                                    <TextBlock Grid.Column="4" Text="{DynamicResource S.Armor.ColAtALBuild}" FontSize="10" FontWeight="SemiBold"
-                                               HorizontalAlignment="Right" Foreground="{DynamicResource TextMutedBrush}"/>
-                                    <TextBlock Grid.Column="5" Text="Δ" FontSize="10" FontWeight="SemiBold"
-                                               HorizontalAlignment="Right" Foreground="{DynamicResource TextMutedBrush}"/>
+                                    <TextBlock Grid.Column="4" Text="{DynamicResource S.Armor.ColRank}" FontSize="10" FontWeight="SemiBold"
+                                               VerticalAlignment="Bottom" Foreground="{DynamicResource TextMutedBrush}"/>
+                                    <TextBlock Grid.Column="5" Text="{DynamicResource S.Armor.ColAtAL60}" FontSize="10" FontWeight="SemiBold"
+                                               VerticalAlignment="Bottom" HorizontalAlignment="Right" Foreground="{DynamicResource TextMutedBrush}"/>
+                                    <TextBlock Grid.Column="6" Text="{DynamicResource S.Armor.ColAtALBuild}" FontSize="10" FontWeight="SemiBold"
+                                               VerticalAlignment="Bottom" HorizontalAlignment="Right" Foreground="{DynamicResource TextMutedBrush}"/>
+                                    <TextBlock Grid.Column="7" Text="Δ" FontSize="10" FontWeight="SemiBold"
+                                               VerticalAlignment="Bottom" HorizontalAlignment="Right" Foreground="{DynamicResource TextMutedBrush}"/>
                                 </Grid>
 
                                 <!-- Lignes des attaques ajoutées (remplit + défilement) -->
-                                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <ScrollViewer x:Name="AttackScroll" VerticalScrollBarVisibility="Auto"
+                                              ScrollChanged="AttackScroll_ScrollChanged">
                                 <StackPanel>
                                 <!-- Attaques libres (chantier « réductions », lot 1) : mêmes colonnes que les
                                      attaques du catalogue ; valeur, type, sort et projectile se règlent sur la ligne. -->
@@ -780,12 +852,14 @@
                                             <Grid Margin="0,2">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="190"/>
+                                                    <ColumnDefinition Width="98"/>
+                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="FreeAttackType"/>
+                                                    <ColumnDefinition Width="150"/>
                                                     <ColumnDefinition Width="40"/>
                                                     <ColumnDefinition Width="66"/>
                                                     <ColumnDefinition Width="66"/>
                                                     <ColumnDefinition Width="52"/>
-                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="24"/>
                                                 </Grid.ColumnDefinitions>
 
                                                 <StackPanel VerticalAlignment="Center">
@@ -801,35 +875,36 @@
                                                                TextTrimming="CharacterEllipsis"/>
                                                 </StackPanel>
 
-                                                <WrapPanel Grid.Column="1" VerticalAlignment="Center" Margin="2,0">
-                                                    <ComboBox Width="92" FontSize="11" Margin="0,1,6,1" VerticalContentAlignment="Center"
-                                                              ItemsSource="{Binding ColumnChoices}"
-                                                              SelectedItem="{Binding Column}"
-                                                              ToolTip="{DynamicResource S.Armor.FreeAttackTypeTip}">
-                                                        <ComboBox.ItemTemplate>
-                                                            <DataTemplate><TextBlock Text="{Binding Label}"/></DataTemplate>
-                                                        </ComboBox.ItemTemplate>
-                                                    </ComboBox>
+                                                <ComboBox Grid.Column="1" Width="92" FontSize="11" Margin="2,1,4,1" HorizontalAlignment="Left"
+                                                          VerticalAlignment="Center" VerticalContentAlignment="Center"
+                                                          ItemsSource="{Binding ColumnChoices}"
+                                                          SelectedItem="{Binding Column}"
+                                                          ToolTip="{DynamicResource S.Armor.FreeAttackTypeTip}">
+                                                    <ComboBox.ItemTemplate>
+                                                        <DataTemplate><TextBlock Text="{Binding Label}"/></DataTemplate>
+                                                    </ComboBox.ItemTemplate>
+                                                </ComboBox>
+                                                <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="0,0,8,0">
                                                     <CheckBox Content="{DynamicResource S.Armor.FreeAttackSpell}" IsChecked="{Binding IsSpell}"
-                                                              FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"
+                                                              FontSize="11" Margin="0,1"
                                                               ToolTip="{DynamicResource S.Armor.FreeAttackSpellTip}"/>
                                                     <CheckBox Content="{DynamicResource S.Armor.FreeAttackProjectile}" IsChecked="{Binding IsProjectile}"
-                                                              FontSize="11" VerticalAlignment="Center"
+                                                              FontSize="11" Margin="0,1"
                                                               ToolTip="{DynamicResource S.Armor.FreeAttackProjectileTip}"/>
-                                                </WrapPanel>
+                                                </StackPanel>
 
-                                                <TextBlock Grid.Column="3" Text="{Binding Text60}" FontSize="12"
+                                                <TextBlock Grid.Column="5" Text="{Binding Text60}" FontSize="12"
                                                            VerticalAlignment="Center" HorizontalAlignment="Right"/>
                                                 <!-- Dégâts subis, et en dessous le soin qu'on en tire (lot 5 :
                                                      « 0 (soin 49) ») ; la colonne fait 66 px, d'où deux lignes. -->
-                                                <StackPanel Grid.Column="4" VerticalAlignment="Center" HorizontalAlignment="Right">
+                                                <StackPanel Grid.Column="6" VerticalAlignment="Center" HorizontalAlignment="Right">
                                                     <TextBlock Text="{Binding TextCalc}" FontSize="12" HorizontalAlignment="Right"
                                                                FontWeight="SemiBold"/>
                                                     <TextBlock Text="{Binding HealText}" FontSize="10" HorizontalAlignment="Right"
                                                                Foreground="{DynamicResource SkillVariableBrush}"
                                                                Visibility="{Binding HealText, Converter={StaticResource NullToVis}}"/>
                                                 </StackPanel>
-                                                <TextBlock Grid.Column="5" Text="{Binding DeltaText}" FontSize="11"
+                                                <TextBlock Grid.Column="7" Text="{Binding DeltaText}" FontSize="11"
                                                            VerticalAlignment="Center" HorizontalAlignment="Right">
                                                     <TextBlock.Style>
                                                         <Style TargetType="TextBlock">
@@ -842,7 +917,7 @@
                                                         </Style>
                                                     </TextBlock.Style>
                                                 </TextBlock>
-                                                <Button Grid.Column="6" Content="✕" Width="20" FontSize="10" Padding="0"
+                                                <Button Grid.Column="8" Content="✕" Width="20" FontSize="10" Padding="0"
                                                         Margin="4,0,0,0" Click="RemoveFreeAttack_Click"/>
                                             </Grid>
                                         </DataTemplate>
@@ -854,12 +929,14 @@
                                             <Grid Margin="0,2">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="190"/>
+                                                    <ColumnDefinition Width="98"/>
+                                                    <ColumnDefinition Width="Auto" SharedSizeGroup="FreeAttackType"/>
+                                                    <ColumnDefinition Width="150"/>
                                                     <ColumnDefinition Width="40"/>
                                                     <ColumnDefinition Width="66"/>
                                                     <ColumnDefinition Width="66"/>
                                                     <ColumnDefinition Width="52"/>
-                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="24"/>
                                                 </Grid.ColumnDefinitions>
 
                                                 <!-- Nom + note. Tooltip « calculée » (description résolue au rang
@@ -882,11 +959,11 @@
                                                 </StackPanel>
 
                                                 <!-- Type du coup d'arme (lot 4 : mod élémentaire ou skin, même liste que
-                                                     le Spike) puis altérations infligées : pilules « icône + durée
-                                                     effective (base) » (max 3 : Shockwave/Virulence). Colonne fixe →
-                                                     alignées verticalement. -->
-                                                <WrapPanel Grid.Column="1" VerticalAlignment="Center" Margin="2,0">
-                                                <ComboBox Width="84" FontSize="11" Margin="0,1,6,1" VerticalContentAlignment="Center"
+                                                     le Spike), colonne « Type de dégâts » ; altérations infligées, colonne à
+                                                     part : pilules « icône + durée effective (base) » (max 3 :
+                                                     Shockwave/Virulence). Colonnes fixes → alignées verticalement. -->
+                                                <ComboBox Grid.Column="1" Width="92" FontSize="11" Margin="2,1,4,1" HorizontalAlignment="Left"
+                                                          VerticalAlignment="Center" VerticalContentAlignment="Center"
                                                           ItemsSource="{Binding WeaponTypeChoices}"
                                                           SelectedItem="{Binding SelectedWeaponType}"
                                                           Visibility="{Binding HasWeaponTypeChoice, Converter={StaticResource BoolToVisibilityConverter}}"
@@ -895,7 +972,7 @@
                                                         <DataTemplate><TextBlock Text="{Binding Label}"/></DataTemplate>
                                                     </ComboBox.ItemTemplate>
                                                 </ComboBox>
-                                                <ItemsControl ItemsSource="{Binding Conditions}"
+                                                <ItemsControl Grid.Column="3" ItemsSource="{Binding Conditions}"
                                                               VerticalAlignment="Center">
                                                     <ItemsControl.ItemsPanel>
                                                         <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
@@ -919,24 +996,23 @@
                                                         </DataTemplate>
                                                     </ItemsControl.ItemTemplate>
                                                 </ItemsControl>
-                                                </WrapPanel>
 
-                                                <TextBox Grid.Column="2" FontSize="11" VerticalContentAlignment="Center"
+                                                <TextBox Grid.Column="4" FontSize="11" VerticalContentAlignment="Center"
                                                          Margin="0,0,4,0" Height="20"
                                                          Text="{Binding Rank, UpdateSourceTrigger=PropertyChanged}"
                                                          ToolTip="{DynamicResource S.Armor.AttackerAttrRankTip}"/>
-                                                <TextBlock Grid.Column="3" Text="{Binding Text60}" FontSize="12"
+                                                <TextBlock Grid.Column="5" Text="{Binding Text60}" FontSize="12"
                                                            VerticalAlignment="Center" HorizontalAlignment="Right"/>
                                                 <!-- Dégâts subis, et en dessous le soin qu'on en tire (lot 5 :
                                                      « 0 (soin 49) ») ; la colonne fait 66 px, d'où deux lignes. -->
-                                                <StackPanel Grid.Column="4" VerticalAlignment="Center" HorizontalAlignment="Right">
+                                                <StackPanel Grid.Column="6" VerticalAlignment="Center" HorizontalAlignment="Right">
                                                     <TextBlock Text="{Binding TextCalc}" FontSize="12" HorizontalAlignment="Right"
                                                                FontWeight="SemiBold"/>
                                                     <TextBlock Text="{Binding HealText}" FontSize="10" HorizontalAlignment="Right"
                                                                Foreground="{DynamicResource SkillVariableBrush}"
                                                                Visibility="{Binding HealText, Converter={StaticResource NullToVis}}"/>
                                                 </StackPanel>
-                                                <TextBlock Grid.Column="5" Text="{Binding DeltaText}" FontSize="11"
+                                                <TextBlock Grid.Column="7" Text="{Binding DeltaText}" FontSize="11"
                                                            VerticalAlignment="Center" HorizontalAlignment="Right">
                                                     <TextBlock.Style>
                                                         <Style TargetType="TextBlock">
@@ -949,7 +1025,7 @@
                                                         </Style>
                                                     </TextBlock.Style>
                                                 </TextBlock>
-                                                <Button Grid.Column="6" Content="✕" Width="20" FontSize="10" Padding="0"
+                                                <Button Grid.Column="8" Content="✕" Width="20" FontSize="10" Padding="0"
                                                         Margin="4,0,0,0" Click="RemoveAttack_Click"/>
                                             </Grid>
                                         </DataTemplate>
@@ -964,27 +1040,29 @@
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="190"/>
+                                            <ColumnDefinition Width="98"/>
+                                            <ColumnDefinition Width="Auto" SharedSizeGroup="FreeAttackType"/>
+                                            <ColumnDefinition Width="150"/>
                                             <ColumnDefinition Width="40"/>
                                             <ColumnDefinition Width="66"/>
                                             <ColumnDefinition Width="66"/>
                                             <ColumnDefinition Width="52"/>
                                             <ColumnDefinition Width="24"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Grid.Column="0" Grid.ColumnSpan="3" Text="{DynamicResource S.Armor.Total}"
+                                        <TextBlock Grid.Column="0" Grid.ColumnSpan="5" Text="{DynamicResource S.Armor.Total}"
                                                    FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Right"
                                                    VerticalAlignment="Center" Margin="0,0,6,0"
                                                    ToolTip="{DynamicResource S.Armor.TotalTip}"/>
-                                        <TextBlock Grid.Column="3" Text="{Binding TotalText60}" FontSize="12"
+                                        <TextBlock Grid.Column="5" Text="{Binding TotalText60}" FontSize="12"
                                                    VerticalAlignment="Center" HorizontalAlignment="Right"/>
-                                        <StackPanel Grid.Column="4" VerticalAlignment="Center" HorizontalAlignment="Right">
+                                        <StackPanel Grid.Column="6" VerticalAlignment="Center" HorizontalAlignment="Right">
                                             <TextBlock Text="{Binding TotalTextCalc}" FontSize="12" HorizontalAlignment="Right"
                                                        FontWeight="SemiBold"/>
                                             <TextBlock Text="{Binding TotalHealText}" FontSize="10" HorizontalAlignment="Right"
                                                        Foreground="{DynamicResource SkillVariableBrush}"
                                                        Visibility="{Binding TotalHealText, Converter={StaticResource NullToVis}}"/>
                                         </StackPanel>
-                                        <TextBlock Grid.Column="5" Text="{Binding TotalDeltaText}" FontSize="11"
+                                        <TextBlock Grid.Column="7" Text="{Binding TotalDeltaText}" FontSize="11"
                                                    VerticalAlignment="Center" HorizontalAlignment="Right">
                                             <TextBlock.Style>
                                                 <Style TargetType="TextBlock">

@@ -512,7 +512,83 @@ public class ArmorCalcViewModel : ViewModelBase
     private Attacker CurrentAttacker() => !_attackerEnabled
         ? Attacker.Default
         : new Attacker(_attackerLevel, _attackerStrength, _attackerInscription, _attackerPenIds.ToList(),
-                       _attackerSunderingMod, _attackerHornbow);
+                       _attackerSunderingMod, _attackerHornbow,
+                       [.. _penaltyOn.Select(AttackerPenaltyData.For).OfType<AttackerPenaltyDescriptor>()
+                                     .Select(d => new AttackerPenalty(d, PenaltyValue(d)))]);
+
+    // ── Malus portés par l'attaquant (lot 6b) : case + rang du LANCEUR (défaut 12), par skillId (0 = Faiblesse). Source de
+    // vérité = ces champs ; les lignes de la liste les lisent et les écrivent (rebâties au changement de langue). ──
+    private readonly HashSet<int> _penaltyOn = new();
+    private readonly Dictionary<int, int> _penaltyRanks = new();
+    public ObservableCollection<AttackerPenaltyVM> AttackerPenalties { get; } = new();
+
+    private int PenaltyRank(int skillId) => _penaltyRanks.GetValueOrDefault(skillId, AttackerPenaltyData.DefaultRank);
+
+    private int PenaltyValue(AttackerPenaltyDescriptor d) =>
+        AttackerPenaltyData.ValueOf(d, _catalogById.GetValueOrDefault(d.SkillId), PenaltyRank(d.SkillId));
+
+    // Famille exclusive d'un malus (Nightmare Weapon est un sort d'arme, comme l'Arme de fractionnement des sources de
+    // pénétration : un seul à la fois, SkillExclusivity) ; null = aucune.
+    private string? PenaltyFamily(int skillId) =>
+        skillId != 0 && _catalogById.GetValueOrDefault(skillId) is { } s ? SkillExclusivity.FamilyOf(s.SkillType) : null;
+
+    private void SetPenalty(int skillId, bool on)
+    {
+        if (on)
+        {
+            if (PenaltyFamily(skillId) is { } family)
+            {
+                _penaltyOn.RemoveWhere(id => id != skillId && PenaltyFamily(id) == family);
+                _attackerPenIds.RemoveWhere(id => PenFamily(id) == family);
+                foreach (var s in AttackerPenSources) s.Raise();
+            }
+            _penaltyOn.Add(skillId);
+        }
+        else _penaltyOn.Remove(skillId);
+        foreach (var p in AttackerPenalties) p.Raise();
+        RefreshAttacks();
+    }
+
+    private void SetPenaltyRank(int skillId, int rank)
+    {
+        _penaltyRanks[skillId] = Math.Clamp(rank, 0, MaxStrengthRank);
+        foreach (var p in AttackerPenalties) p.Raise();
+        RefreshAttacks();
+    }
+
+    // Lignes de la liste, dans l'ordre alphabétique de la langue affichée (comme les sources de pénétration).
+    private void RebuildAttackerPenalties()
+    {
+        AttackerPenalties.Clear();
+        var culture = CultureInfo.GetCultureInfo(AppLanguage.IsFr ? "fr-FR" : "en-US");
+        string NameOf(AttackerPenaltyDescriptor d) => d.IsWeakness
+            ? GwConditionData.DisplayName(AttackerPenaltyData.WeaknessName)
+            : _catalogById.GetValueOrDefault(d.SkillId)?.DisplayName ?? d.Name;
+        foreach (var d in AttackerPenaltyData.All
+                     .Where(d => d.IsWeakness || _catalogById.ContainsKey(d.SkillId))
+                     .OrderBy(NameOf, StringComparer.Create(culture, ignoreCase: true)))
+        {
+            int id = d.SkillId;
+            AttackerPenalties.Add(new AttackerPenaltyVM(
+                NameOf(d), (AppLanguage.IsFr ? d.ConditionFr : d.ConditionEn) ?? "", d.ReadsProgression,
+                () => _penaltyOn.Contains(id), v => SetPenalty(id, v),
+                () => PenaltyRank(id), r => SetPenaltyRank(id, r),
+                () => PenaltyValueText(d)));
+        }
+    }
+
+    // « −17 », « −66 % », « −42, vol 42 » : la valeur de la case au rang saisi ; rien pour Wail of Doom.
+    private string PenaltyValueText(AttackerPenaltyDescriptor d)
+    {
+        int v = PenaltyValue(d);
+        return d.Kind switch
+        {
+            AttackerPenaltyKind.WeaponPercent   => AppLanguage.IsFr ? $"−{v} %" : $"−{v}%",
+            AttackerPenaltyKind.Flat            => $"−{v}",
+            AttackerPenaltyKind.FlatToLifeSteal => $"−{v}, " + string.Format(T("S.Armor.AttackerPenaltySteal"), v),
+            _ => "",
+        };
+    }
 
     // Famille exclusive d'un sort de pénétration : Glaive était destructrice, sa variante PvP et Daoshen était cruel sont
     // tous des sorts d'OBJET — un seul objet tenu (SkillExclusivity) ; à défaut, les variantes PvE/PvP d'un même sort.
@@ -530,6 +606,9 @@ public class ArmorCalcViewModel : ViewModelBase
             string family = PenFamily(skillId);
             _attackerPenIds.RemoveWhere(id => id != skillId && PenFamily(id) == family);
             _attackerPenIds.Add(skillId);
+            // Un malus de la même famille (Nightmare Weapon contre l'Arme de fractionnement, lot 6b) s'en va aussi.
+            if (_penaltyOn.RemoveWhere(id => PenaltyFamily(id) == family) > 0)
+                foreach (var p in AttackerPenalties) p.Raise();
         }
         else _attackerPenIds.Remove(skillId);
         foreach (var s in AttackerPenSources) s.Raise();
@@ -680,6 +759,7 @@ public class ArmorCalcViewModel : ViewModelBase
         AttackCatalog.SelectedProfessionOption = AttackCatalog.Professions[0];
         ApplyDamageFilter();
         RebuildAttackerPenSources();   // noms des sorts de pénétration de l'attaquant (lot 6)
+        RebuildAttackerPenalties();    // malus de l'attaquant (lot 6b) : noms et valeurs lus dans le catalogue
         // Recalcul complet, pas seulement les attaques : les types des compétences viennent d'arriver, donc
         // les états que les effets cochés (profil déjà chargé) mettent en place.
         Recompute();
@@ -760,6 +840,10 @@ public class ArmorCalcViewModel : ViewModelBase
 
     // ── Total de la table d'attaques (demande Philippe du 10/10/2026) ──
     public bool HasAttackRows => FreeAttacks.Count + ReferenceAttacks.Count > 0;
+
+    /// <summary>La colonne « Type d'attaque libre » (Sort / Projectile) ne s'affiche que s'il y a une attaque libre
+    /// (demande de Philippe du 12/10/2026). Relevée à chaque changement de la liste.</summary>
+    public bool HasFreeAttacks => FreeAttacks.Count > 0;
     public string TotalText60 { get; private set; } = "—";
     public string TotalTextCalc { get; private set; } = "—";
     public string? TotalHealText { get; private set; }
@@ -876,6 +960,7 @@ public class ArmorCalcViewModel : ViewModelBase
 
     public ArmorCalcViewModel()
     {
+        FreeAttacks.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasFreeAttacks));
         EnchantedBox   = new(() => IsEnchanted,        v => IsEnchanted = v,        () => T("S.Armor.EnchantedTip"));
         HexedBox       = new(() => IsHexed,            v => IsHexed = v,            () => T("S.Armor.HexedTip"));
         InStanceBox    = new(() => IsInStance,         v => IsInStance = v,         () => T("S.Armor.InStanceTip"));
@@ -1006,12 +1091,11 @@ public class ArmorCalcViewModel : ViewModelBase
             if (x is not ArmorEffectRowVM a || y is not ArmorEffectRowVM b) return 0;
             int byGroup = a.GroupRank.CompareTo(b.GroupRank);
             if (byGroup != 0) return byGroup;
-            if (a.GroupRank == ArmorEffectRowVM.AlliedGroupRank)
-            {
-                var culture = CultureInfo.GetCultureInfo(AppLanguage.IsFr ? "fr-FR" : "en-US");
-                int byName = string.Compare(SortName(a.Name), SortName(b.Name), culture, CompareOptions.IgnoreCase);
-                if (byName != 0) return byName;
-            }
+            // Ordre alphabétique de la langue affichée dans TOUTES les sections (alliées depuis le lot 1 ; les autres sur
+            // demande de Philippe du 12/10/2026). L'ordre de la table d'origine ne départage que deux noms identiques.
+            var culture = CultureInfo.GetCultureInfo(AppLanguage.IsFr ? "fr-FR" : "en-US");
+            int byName = string.Compare(SortName(a.Name), SortName(b.Name), culture, CompareOptions.IgnoreCase);
+            if (byName != 0) return byName;
             return a.SourceOrder.CompareTo(b.SourceOrder);
         }
 
@@ -1122,6 +1206,7 @@ public class ArmorCalcViewModel : ViewModelBase
         foreach (var a in ReferenceAttacks) a.RaiseLanguageChanged();  // noms des attaques (DisplayName du skill)
         foreach (var f in FreeAttacks) f.RaiseLanguageChanged();       // libellés de la liste des types
         RebuildAttackerPenSources();                          // attaquant (lot 6) : noms, infobulles, ordre alphabétique
+        RebuildAttackerPenalties();                           // malus de l'attaquant (lot 6b), idem
         OnPropertyChanged(nameof(InscriptionChoices));
         OnPropertyChanged(nameof(InscriptionTip));
         EffectsView?.Refresh();                               // re-groupe (Group change de langue)
@@ -1423,6 +1508,10 @@ public class ArmorCalcViewModel : ViewModelBase
         AttackerPenetrationSkillIds = _attackerPenIds.Order().ToList(),
         AttackerSunderingMod = _attackerSunderingMod,
         AttackerHornbow = _attackerHornbow,
+        AttackerPenalties = AttackerPenaltyData.All
+            .Where(d => _penaltyOn.Contains(d.SkillId) || _penaltyRanks.ContainsKey(d.SkillId))
+            .Select(d => new AttackerPenaltyDto { SkillId = d.SkillId, On = _penaltyOn.Contains(d.SkillId), Rank = PenaltyRank(d.SkillId) })
+            .ToList(),
         ReferenceAttacks = ReferenceAttacks
             .Select(a => new ReferenceAttackDto { SkillId = a.Skill.Id, Rank = a.Rank, WeaponType = a.WeaponType }).ToList(),
         FreeAttacks = FreeAttacks
@@ -1511,6 +1600,15 @@ public class ArmorCalcViewModel : ViewModelBase
         _attackerSunderingMod = dto.AttackerSunderingMod;
         _attackerHornbow = dto.AttackerHornbow;
         foreach (var s in AttackerPenSources) s.Raise();
+        // Malus (lot 6b) : un profil ancien n'en a pas → aucun coché, rangs à 12.
+        _penaltyOn.Clear();
+        _penaltyRanks.Clear();
+        foreach (var p in dto.AttackerPenalties.Where(p => AttackerPenaltyData.For(p.SkillId) is not null))
+        {
+            if (p.On) _penaltyOn.Add(p.SkillId);
+            _penaltyRanks[p.SkillId] = Math.Clamp(p.Rank, 0, MaxStrengthRank);
+        }
+        foreach (var p in AttackerPenalties) p.Raise();
         RefreshPerUnitRows();
 
         // Liste vide = profil antérieur au Lot D → on garde les attaques par défaut en place.
@@ -1616,6 +1714,50 @@ public class AttackerPenSourceVM : ViewModelBase
 
     /// <summary>Relit la case (une exclusivité a pu la décocher, un profil la poser).</summary>
     public void Raise() => OnPropertyChanged(nameof(IsChecked));
+}
+
+// Un malus du bloc Attaquant (lot 6b) : case, rang du lanceur (si sa valeur en dépend) et valeur à ce rang. L'état vit dans
+// le ViewModel du calculateur (exclusivités, profil) ; la ligne ne fait que le lire et l'écrire.
+public class AttackerPenaltyVM : ViewModelBase
+{
+    private readonly Func<bool> _get;
+    private readonly Action<bool> _set;
+    private readonly Func<int> _getRank;
+    private readonly Action<int> _setRank;
+    private readonly Func<string> _value;
+
+    public AttackerPenaltyVM(string name, string toolTip, bool hasRank, Func<bool> get, Action<bool> set,
+                             Func<int> getRank, Action<int> setRank, Func<string> value)
+    {
+        Name = name; ToolTip = toolTip; HasRank = hasRank;
+        _get = get; _set = set; _getRank = getRank; _setRank = setRank; _value = value;
+    }
+
+    public string Name { get; }
+    public string ToolTip { get; }
+    public bool HasRank { get; }
+
+    public bool IsChecked
+    {
+        get => _get();
+        set { if (value != _get()) _set(value); }
+    }
+
+    public int Rank
+    {
+        get => _getRank();
+        set { if (value != _getRank()) _setRank(value); }
+    }
+
+    public string ValueText => _value();
+
+    /// <summary>Relit la case, le rang et la valeur (exclusivité, profil, rang changé).</summary>
+    public void Raise()
+    {
+        OnPropertyChanged(nameof(IsChecked));
+        OnPropertyChanged(nameof(Rank));
+        OnPropertyChanged(nameof(ValueText));
+    }
 }
 
 /// <summary>Condition d'activation d'une clause d'armure d'insigne (chantier 14 bis). Les formes à
@@ -2254,7 +2396,7 @@ public class ArmorEffectRowVM : ViewModelBase
         _ => L("Compétences alliées", "Allied skills"),
     };
 
-    /// <summary>Position de la ligne dans sa table d'origine (ordre des groupes autres que les alliées).</summary>
+    /// <summary>Position de la ligne dans sa table d'origine (départage deux noms identiques ; le tri est alphabétique).</summary>
     public int SourceOrder { get; init; }
 
     // Notifié quand la case passe à COCHÉE → le VM décoche les variantes PvE/PvP mutuellement

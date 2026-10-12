@@ -460,17 +460,26 @@ public static class SkillDamage
     /// <param name="cap">Plafond en points (Protective Spirit… — calculateur d'armure, lot 5), posé sur les dégâts
     /// après l'armure et <paramref name="multiplier"/>, puis <paramref name="afterCap"/> (les %) — toujours un seul
     /// arrondi. Par défaut : aucun plafond, calcul identique à l'ancien.</param>
+    /// <param name="subtract">Points retirés juste APRÈS l'armure, plancher 0 (réductions fixes portées par l'attaquant,
+    /// calculateur d'armure, lot 6b), puis <paramref name="afterSubtract"/> (les hausses et les % du défenseur, qui passent
+    /// alors ici au lieu de <paramref name="multiplier"/>). Par défaut : rien, calcul identique à l'ancien.</param>
     public static int DamageAt(int value, int armorLevel, int armorPenetration, int casterLevel = 20,
                                double multiplier = 1.0, int specialArmor = 0,
-                               double cap = double.PositiveInfinity, double afterCap = 1.0)
+                               double cap = double.PositiveInfinity, double afterCap = 1.0,
+                               double subtract = 0, double afterSubtract = 1.0)
     {
         double effectiveAl = armorLevel * (100 - armorPenetration) / 100.0 - specialArmor;
         double raw = value * multiplier * Math.Pow(2, (3 * casterLevel - effectiveAl) / 40.0);
-        return (int)Math.Floor(Capped(raw, cap, afterCap));
+        return (int)Math.Floor(Capped(Subtracted(raw, subtract, afterSubtract), cap, afterCap));
     }
 
     /// <summary>Plafond puis facteur d'après-plafond ; sans plafond ni facteur, la valeur telle quelle (aucune
     /// opération de plus, donc aucun écart d'arrondi avec l'ancien calcul).</summary>
     internal static double Capped(double raw, double cap, double afterCap)
         => double.IsPositiveInfinity(cap) && afterCap == 1.0 ? raw : Math.Min(raw, cap) * afterCap;
+
+    /// <summary>Points retirés après l'armure (plancher 0), puis facteur ; sans rien, la valeur telle quelle (même
+    /// garantie que <see cref="Capped"/>).</summary>
+    internal static double Subtracted(double raw, double subtract, double afterSubtract)
+        => subtract == 0 && afterSubtract == 1.0 ? raw : Math.Max(0, raw - subtract) * afterSubtract;
 }

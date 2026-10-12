@@ -72,6 +72,9 @@ public class ArmorCalcProfile
     public List<int> AttackerPenetrationSkillIds { get; set; } = new();
     public bool AttackerSunderingMod { get; set; }
     public bool AttackerHornbow { get; set; }
+    // Lot 6b — malus portés par l'attaquant (case + rang du lanceur), par skillId (0 = la condition Faiblesse). Absent d'un
+    // profil ancien → aucun coché, rangs à 12.
+    public List<AttackerPenaltyDto> AttackerPenalties { get; set; } = new();
 
     // Lot D — attaques de référence (skillId + rang). Liste VIDE (profil antérieur au Lot D) →
     // la liste par défaut en place est conservée, pas écrasée.
@@ -111,6 +114,14 @@ public class EffectStateDto
 }
 
 // Une attaque de la table de référence (Lot D) : skill du catalogue + rang affiché.
+/// <summary>Un malus du bloc Attaquant (lot 6b) : coché ou non, et le rang de sa case.</summary>
+public class AttackerPenaltyDto
+{
+    public int SkillId { get; set; }
+    public bool On { get; set; }
+    public int Rank { get; set; } = ZCodex.Core.Data.AttackerPenaltyData.DefaultRank;
+}
+
 public class ReferenceAttackDto
 {
     public int SkillId { get; set; }
