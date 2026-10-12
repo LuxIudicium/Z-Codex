@@ -222,7 +222,8 @@ public readonly record struct DamageBoostSource(string Name, DamageBoostKind Kin
 /// <paramref name="ElementalToCold"/> = Hiver est posé : tout paquet ÉLÉMENTAIRE s'affiche en froid. C'est
 /// une simple ÉTIQUETTE — aucun chiffre ne bouge, et surtout ça ne déclenche aucune conjuration (§ 6.1).
 /// <paramref name="StoneStriker"/> = Briseur de pierre est allumé sur ce perso : tout paquet élémentaire ou
-/// physique s'affiche en TERRE, **sorts compris**, et il garde le dernier mot sur Hiver.
+/// physique s'affiche en TERRE, **sorts compris**, et il garde le dernier mot sur Hiver ; le coup d'ARME passe aussi
+/// en terre s'il est de chaos, de ténèbres ou sacré (anomalie wiki, voir <see cref="DamageBoostData.DisplayedType"/>).
 /// <paramref name="ArmorReduction"/> = armure que la CIBLE perd contre cette attaque, APRÈS la pénétration et sans
 /// plancher (Fardeau nébuleux, lot 7b-2) : elle touche toute la table, paquets d'effets compris. 0 = aucune.
 /// </summary>
@@ -1074,12 +1075,10 @@ public static class DamageBoostData
 
         foreach (var k in state.LitConverters ?? [])
             // ⚠ Briseur de pierre est ÉCARTÉ d'ici : il a sa propre étape tout à la fin de la chaîne
-            // (<see cref="ConversionState.StoneStriker"/>), et elle est plus étroite — elle épargne ce
-            // qui n'est ni élémentaire ni physique. Le laisser passer AUSSI par cette boucle générique,
-            // qui écrase tout sans condition, lui faisait détruire un type INTRINSÈQUE sacré : les trois
-            // compétences de 1483 / 3263 / 3425 redevenaient terre, alors que le commentaire de son étape
-            // promet l'inverse. Il est le SEUL des 15 convertisseurs de la table à être dans ce cas
-            // (vérifié : aucun autre n'a d'étape dédiée) — trouvé au harnais du lot 6d-1.
+            // (<see cref="ConversionState.StoneStriker"/>), qui lui garde le dernier mot et ne force en terre
+            // que les types qu'il convertit vraiment (voir cette étape). Il est le SEUL des 15 convertisseurs de
+            // la table à être dans ce cas (vérifié : aucun autre n'a d'étape dédiée) — trouvé au harnais du
+            // lot 6d-1.
             if (k.SkillId != ConditionDurationData.StoneStrikerSkillId
                 && inScope(k.Weapon))
                 element = k.Element;
@@ -1092,11 +1091,17 @@ public static class DamageBoostData
         if (element is null && state.Conflagration && inScope(ConditionWeaponScope.Bow))
             element = "fire";
 
-        // ⚠ Briseur de pierre a le dernier mot, MAIS seulement sur ce qui est élémentaire ou physique
-        // (son texte : « elemental or physical damage »). Un Coup de bannissement est SACRÉ : il reste
-        // sacré. Conséquence voulue et conforme au wiki : sous Briseur de pierre les conjurations ne
-        // s'appliquent plus (aucune n'est de terre) et l'Aura de poussière d'ébène, si, s'applique.
-        if (state.StoneStriker && (element is null || IsElemental(element) || IsPhysicalType(element))
+        // ⚠ Briseur de pierre a le dernier mot. Son texte dit « elemental or physical damage », MAIS l'ANOMALIE
+        // de la page wiki *Stone_Striker* dit qu'il convertit AUSSI le chaos, les ténèbres et le sacré — relue à
+        // la demande de Philippe le 12/10/2026, qui la tient pour vraie : une faux « Sufferer » (ténèbres), un
+        // Coup de bannissement, une Frappe du jugement ou une attaque sous Clairvoyance du juge passent en
+        // TERRE. Ceci remplace la règle du 16/09/2026 (« le sacré reste sacré »). Cette chaîne ne voit que des
+        // ATTAQUES ; la seule exception que le wiki constate — le sacré des SORTS sortants n'est pas converti
+        // (Intensity) — est donc ailleurs (DisplayedType). L'ombre n'est jamais convertie. Conséquence conforme
+        // au wiki : sous Briseur de pierre les conjurations ne s'appliquent plus (aucune n'est de terre) et
+        // l'Aura de poussière d'ébène, si, s'applique.
+        if (state.StoneStriker
+            && (element is null || IsElemental(element) || IsPhysicalType(element) || IsStoneStrikerAnomalyType(element))
             && inScope(ConditionWeaponScope.Physical))
             element = "earth";
 
@@ -1119,18 +1124,32 @@ public static class DamageBoostData
     /// ⚠ **Briseur de pierre FORCE la terre et garde le dernier mot** (règle de Philippe du 16/09/2026,
     /// confirmée par la note de la page wiki *Stone_Striker* : « this skill does not convert damage but
     /// instead forces the damage type of all dealt damage to be earth damage ») : Hiver ne repasse pas
-    /// derrière. Mais il ne touche que **l'élémentaire et le physique**, exactement comme son texte le
-    /// dit — un paquet SACRÉ (Coup de bannissement, Clairvoyance du juge) n'est ni l'un ni l'autre et
-    /// reste sacré. ⚠ Et il vaut pour **TOUS les dégâts que le perso inflige, sorts compris**, pas
-    /// seulement ses attaques.
+    /// derrière. ⚠ Et il vaut pour **TOUS les dégâts que le perso inflige, sorts compris**, pas
+    /// seulement ses attaques : l'élémentaire et le physique passent toujours en terre.
+    ///
+    /// ⚠ **Anomalie de la page wiki *Stone_Striker*** (relue le 12/10/2026 à la demande de Philippe, qui la
+    /// tient pour vraie) : il convertit AUSSI le chaos, les ténèbres et le sacré. Le wiki constate une
+    /// exception — « Outgoing Holy spell damage is not converted » — et n'a vu l'anomalie que sur les dégâts
+    /// reçus et sur ceux des baguettes. D'où <paramref name="attack"/> : vrai pour le coup d'ARME d'une attaque
+    /// (mêlée, tir, baguette — faux « Sufferer », Coup de bannissement, Clairvoyance du juge), qui passe en terre ;
+    /// faux pour un paquet de sort ou de description, dont le chaos, les ténèbres et le sacré restent tels quels
+    /// (le sacré, c'est l'exception du wiki ; le chaos et les ténèbres de sort, non vérifiés, suivent le sacré).
+    /// L'ombre n'est jamais convertie.
     ///
     /// Hiver, lui, ne convertit que l'élémentaire : le physique n'est jamais touché.
     /// </summary>
-    public static string? DisplayedType(string? type, bool elementalToCold, bool stoneStriker = false)
+    public static string? DisplayedType(string? type, bool elementalToCold, bool stoneStriker = false,
+                                        bool attack = false)
     {
-        if (stoneStriker && (IsElemental(type) || IsPhysicalType(type))) return "earth";
+        if (stoneStriker && (IsElemental(type) || IsPhysicalType(type) || (attack && IsStoneStrikerAnomalyType(type))))
+            return "earth";
         return elementalToCold && IsElemental(type) ? "cold" : type;
     }
+
+    /// <summary>Types que Briseur de pierre force AUSSI en terre, au-delà de l'élémentaire et du physique de son
+    /// texte : le chaos, les ténèbres et le sacré (anomalie de la page wiki *Stone_Striker*, voir
+    /// <see cref="DisplayedType"/>). Pas l'ombre.</summary>
+    public static bool IsStoneStrikerAnomalyType(string? type) => type is "chaos" or "dark" or "holy";
 
     /// <summary>
     /// Type de dégâts que le DÉFENSEUR REÇOIT (calculateur d'armure, chantier « réductions », lot 4), à partir du
@@ -1138,10 +1157,9 @@ public static class DamageBoostData
     /// Briseur de pierre du défenseur, qui garde le dernier mot.
     ///
     /// ⚠ Ce n'est PAS <see cref="DisplayedType"/> : porté par celui qui REÇOIT, Briseur de pierre convertit AUSSI les
-    /// ténèbres, le chaos et le sacré (anomalie de la page wiki *Stone_Striker*, confirmée par Philippe le 11/10/2026 :
-    /// « le wiki a raison »). Côté INFLIGÉ (infobulle, Spike), la règle du 16/09 reste : élémentaire et physique
-    /// seulement — le wiki dit d'ailleurs que le sacré de sort sortant n'est pas converti. L'ombre et les dégâts sans
-    /// type ne sont jamais convertis.
+    /// ténèbres, le chaos et le sacré, sorts compris (anomalie de la page wiki *Stone_Striker*, confirmée par Philippe
+    /// le 11/10/2026 : « le wiki a raison ») ; côté INFLIGÉ, l'anomalie ne vaut que pour les attaques (voir
+    /// <see cref="DisplayedType"/>). L'ombre et les dégâts sans type ne sont jamais convertis.
     ///
     /// Grand brasier passe ici et non par <see cref="EffectiveElement"/> : il ne regarde que le type, donc une faux
     /// « Sufferer » (ténèbres) reste ténèbres.
@@ -1149,7 +1167,7 @@ public static class DamageBoostData
     public static string? ReceivedType(string? type, bool greaterConflagration, bool winter, bool stoneStriker)
     {
         if (greaterConflagration && IsPhysicalType(type)) type = "fire";
-        if (stoneStriker && (IsElemental(type) || IsPhysicalType(type) || type is "dark" or "chaos" or "holy"))
+        if (stoneStriker && (IsElemental(type) || IsPhysicalType(type) || IsStoneStrikerAnomalyType(type)))
             return "earth";
         return DisplayedType(type, winter);
     }

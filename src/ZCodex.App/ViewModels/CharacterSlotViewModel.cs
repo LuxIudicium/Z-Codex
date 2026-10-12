@@ -1793,7 +1793,7 @@ public partial class CharacterSlotViewModel : ViewModelBase
             return new DamageTypeNote(petShown!, Pet: true, Natural: pet is null && !WinterLit);
         }
         if (!WeaponStrike.IsWeaponAttack(target)) return null;
-        string? shown = DamageBoostData.DisplayedType(element, WinterLit, StoneStrikerLit);
+        string? shown = DamageBoostData.DisplayedType(element, WinterLit, StoneStrikerLit, attack: true);
         return shown is not null && shown != DamageBoostData.IntrinsicType(target)
             ? new DamageTypeNote(shown, Pet: false, Natural: false)
             : null;
@@ -1858,7 +1858,9 @@ public partial class CharacterSlotViewModel : ViewModelBase
 
         string? declared = string.IsNullOrEmpty(picked) ? native : picked;
         string? effective = DamageBoostData.EffectiveElement(state, target, ActiveWeaponKind()) ?? declared;
-        string? received = DamageBoostData.DisplayedType(effective, WinterLit, StoneStrikerLit);
+        // attack : le coup d'arme passe en terre même s'il est de chaos, de ténèbres ou sacré (anomalie wiki de Briseur
+        // de pierre, voir DisplayedType) — y compris une arme de lanceur, hors du périmètre de la chaîne.
+        string? received = DamageBoostData.DisplayedType(effective, WinterLit, StoneStrikerLit, attack: true);
         // ⚠ Le type INTRINSÈQUE ne compte pas comme une conversion — même règle que la phrase de type de
         // l'infobulle : un Javelot d'éclair est de la foudre par nature, annoncer « type converti » dessus
         // sans qu'aucun effet ne soit allumé serait un mensonge. Sous Hiver, en revanche, il l'est.
@@ -1888,7 +1890,8 @@ public partial class CharacterSlotViewModel : ViewModelBase
         if (judgesInsight) state = state with { JudgesInsight = true };
         string? effective = DamageBoostData.PlainAttackElement(
             state, kind, ElementalModOnNormalAttack(kind)) ?? native;
-        string? received = DamageBoostData.DisplayedType(effective, WinterLit, StoneStrikerLit);
+        // Un coup de baguette de chaos, de ténèbres ou sacré passe en terre sous Briseur de pierre (anomalie wiki).
+        string? received = DamageBoostData.DisplayedType(effective, WinterLit, StoneStrikerLit, attack: true);
         return new SpikeDamageType(received, received != native);
     }
 
