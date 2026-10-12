@@ -14,6 +14,31 @@ public partial class ArmorCalcView : UserControl
 
     private ArmorCalcViewModel? Vm => DataContext as ArmorCalcViewModel;
 
+    // ── Tailles réglées aux splitters, persistées (demande de Philippe du 12/10/2026) ──
+    // Relues à chaque ouverture de l'onglet ; enregistrées à la fin de chaque glissement. Les lignes reviennent en
+    // parts relatives (étoiles) : la disposition garde ses proportions si la fenêtre change de taille.
+    private const double MinLeftWidth = 200, MaxLeftWidth = 1200;
+
+    private void View_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (Vm?.SavedLayout is not { } l) return;
+        if (l.LeftWidth > 0) LeftColumn.Width = new GridLength(Math.Clamp(l.LeftWidth, MinLeftWidth, MaxLeftWidth));
+        if (l.TopHeight > 0 && l.AttacksHeight > 0)
+        {
+            TopRow.Height = new GridLength(l.TopHeight, GridUnitType.Star);
+            AttacksRow.Height = new GridLength(l.AttacksHeight, GridUnitType.Star);
+        }
+        if (l.CatalogHeight > 0 && l.TableHeight > 0)
+        {
+            CatalogRow.Height = new GridLength(l.CatalogHeight, GridUnitType.Star);
+            TableRow.Height = new GridLength(l.TableHeight, GridUnitType.Star);
+        }
+    }
+
+    private void Splitter_DragCompleted(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e)
+        => Vm?.SaveLayout(new(LeftColumn.ActualWidth, TopRow.ActualHeight, AttacksRow.ActualHeight,
+                              CatalogRow.ActualHeight, TableRow.ActualHeight));
+
     // Attaque à ajouter : la sélection du catalogue, sinon le texte saisi (nom exact, ou résultat
     // unique du filtre) — le bouton marche même sans avoir cliqué dans la liste.
     private Core.Models.Skill? ResolveAttackToAdd()

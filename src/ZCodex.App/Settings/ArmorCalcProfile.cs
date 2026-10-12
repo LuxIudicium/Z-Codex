@@ -61,6 +61,18 @@ public class ArmorCalcProfile
     // d'un profil ancien → 480, le défaut choisi par Philippe (Q15).
     public int MaxHealth { get; set; } = ZCodex.Core.Data.DamageMitigation.DefaultMaxHealth;
 
+    // Chantier « réductions de dégâts », lot 6 — l'attaquant, commun à toutes les attaques de compétences. Absent d'un
+    // profil ancien → case décochée, niveau 20, rien de spécial : le calcul d'avant. Sorts de pénétration par skillId.
+    public bool AttackerEnabled { get; set; }
+    // « Appliquer à l'attaque libre » (12/10/2026) : absent → décochée, l'attaque libre ne reçoit rien de l'attaquant.
+    public bool AttackerOnFreeAttacks { get; set; }
+    public int AttackerLevel { get; set; } = ZCodex.Core.Data.Attacker.DefaultLevel;
+    public int AttackerStrength { get; set; }
+    public int AttackerInscription { get; set; }
+    public List<int> AttackerPenetrationSkillIds { get; set; } = new();
+    public bool AttackerSunderingMod { get; set; }
+    public bool AttackerHornbow { get; set; }
+
     // Lot D — attaques de référence (skillId + rang). Liste VIDE (profil antérieur au Lot D) →
     // la liste par défaut en place est conservée, pas écrasée.
     public List<ReferenceAttackDto> ReferenceAttacks { get; set; } = new();

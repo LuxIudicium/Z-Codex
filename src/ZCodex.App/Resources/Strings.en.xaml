@@ -688,6 +688,27 @@
     <sys:String x:Key="S.Armor.ColAtAL60">@ AL 60</sys:String>
     <sys:String x:Key="S.Armor.ColAtALBuild">@ build AL</sys:String>
     <sys:String x:Key="S.Armor.AttackerAttrRankTip">Attacker's attribute rank (0–21)</sys:String>
+    <sys:String x:Key="S.Armor.ArmorPenetrationTip" xml:space="preserve">Penetration applied to the grid and to every attack, free attacks included.&#10;It counts as base penetration: only the highest applies (this one, the skill's or the attacker's); bonuses are added on top.</sys:String>
+    <sys:String x:Key="S.Armor.Attacker">Modify Attacker</sys:String>
+    <sys:String x:Key="S.Armor.AttackerTip" xml:space="preserve">Checked: the attacker's settings show up and apply to every skill attack, in both columns (@AL 60 and build); for free attacks, see "Apply to Free Attack".&#10;Unchecked: a level 20 attacker with nothing special.</sys:String>
+    <sys:String x:Key="S.Armor.AttackerOnFree">Apply to Free Attack</sys:String>
+    <sys:String x:Key="S.Armor.AttackerOnFreeTip" xml:space="preserve">Free attacks follow the attacker too: its level (3 × level, like a spell);&#10;and unless it is a spell: the inscription on the whole hit, Strength, Sundering Weapon, the Sundering mod (not with an elemental type), the hornbow if "Projectile" is checked.&#10;Destructive Was Glaive and Cruel Was Daoshen (Ritualist skills) never apply.</sys:String>
+    <sys:String x:Key="S.Armor.AttackerLevel">Level</sys:String>
+    <sys:String x:Key="S.Armor.AttackerLevelTip" xml:space="preserve">Attacker's level (1–33).&#10;Spells: strike at 3 × level. Weapons: rank threshold (level + 4) / 2, i.e. 12 at level 20.</sys:String>
+    <sys:String x:Key="S.Armor.AttackerStrength">Strength</sys:String>
+    <sys:String x:Key="S.Armor.AttackerStrengthTip">Attacker's Strength rank (0–21): +1% base armor penetration per rank, weapon attacks only</sys:String>
+    <sys:String x:Key="S.Armor.AttackerInscription">Inscription</sys:String>
+    <sys:String x:Key="S.Armor.AttackerInscriptionTip" xml:space="preserve">Weapon damage inscription (one per weapon); it only increases the weapon hit, not the skill's "+X" nor a spell. Conditions assumed met.&#10;+15%: {0}&#10;+20%: {1}</sys:String>
+    <sys:String x:Key="S.Armor.AttackerNone">none</sys:String>
+    <sys:String x:Key="S.Armor.AttackerPenetration">Penetration:</sys:String>
+    <sys:String x:Key="S.Armor.AttackerSunderingMod">Sundering mod (triggered)</sys:String>
+    <sys:String x:Key="S.Armor.AttackerSunderingModTip">Bonus penetration +{0}%, stacking — weapon attacks; not on a spellcasting weapon, nor on a row set to an elemental type (the elemental mod takes its place)</sys:String>
+    <sys:String x:Key="S.Armor.AttackerHornbow">hornbow</sys:String>
+    <sys:String x:Key="S.Armor.AttackerHornbowTip">Bonus penetration +{0}%, stacking — bow attacks</sys:String>
+    <sys:String x:Key="S.Armor.AttackerPenBase">Base penetration {0}% (only the highest counts)</sys:String>
+    <sys:String x:Key="S.Armor.AttackerPenBonus">Bonus penetration +{0}%, stacking</sys:String>
+    <sys:String x:Key="S.Armor.AttackerScopeRitualist">Ritualist skills</sys:String>
+    <sys:String x:Key="S.Armor.AttackerScopeAttacks">weapon attacks</sys:String>
     <sys:String x:Key="S.Armor.AddFreeAttack">+ Free attack</sys:String>
     <sys:String x:Key="S.Armor.AddFreeAttackTip">Adds a hit with no skill behind it: N damage of one type, set on the row</sys:String>
     <sys:String x:Key="S.Armor.FreeAttack">Free attack</sys:String>

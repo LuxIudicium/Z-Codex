@@ -132,6 +132,15 @@ public class AppSettings
     // Profils nommés du calculateur d'armure (chantier 14, onglet Extras → Calculateur d'armure).
     public List<ArmorCalcProfile> ArmorProfiles { get; set; } = new();
 
+    // Onglet Armure : tailles réglées aux trois splitters (demande de Philippe du 12/10/2026). 0 = disposition par défaut.
+    // Colonne gauche en pixels ; les deux paires de lignes = hauteurs en pixels au moment du réglage, rejouées en parts
+    // relatives (étoiles) : la disposition garde ses proportions si la fenêtre change de taille.
+    public double ArmorLeftWidth { get; set; }
+    public double ArmorTopHeight { get; set; }
+    public double ArmorAttacksHeight { get; set; }
+    public double ArmorCatalogHeight { get; set; }
+    public double ArmorTableHeight { get; set; }
+
     // Date (UTC) de la dernière interrogation des Releases GitHub. Une vérification par jour
     // suffit largement — Z-Codex ne sort pas trois versions dans la même journée, et c'est le
     // démarrage de l'application qu'on ne veut pas ralentir. Aide ▸ Rechercher les mises à jour

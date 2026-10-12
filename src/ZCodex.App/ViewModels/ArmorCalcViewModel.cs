@@ -438,6 +438,139 @@ public class ArmorCalcViewModel : ViewModelBase
         set { if (SetField(ref _armorPenetrationPercent, Math.Clamp(value, 0, 100))) Recompute(); }
     }
 
+    // ── Attaquant (chantier « réductions », lot 6) : un seul pour toutes les lignes de COMPÉTENCES, des deux côtés ;
+    // les attaques libres n'en reçoivent rien (consigne de Philippe, 12/10/2026). Case décochée = niveau 20 sans rien
+    // de spécial, le calcul d'avant ; les réglages restent saisis, grisés, et reviennent à la case cochée. ──
+    public const int MaxStrengthRank = 21;
+
+    private bool _attackerEnabled;
+    public bool AttackerEnabled
+    {
+        get => _attackerEnabled;
+        set { if (SetField(ref _attackerEnabled, value)) RefreshAttacks(); }
+    }
+
+    private int _attackerLevel = Attacker.DefaultLevel;
+    public int AttackerLevel
+    {
+        get => _attackerLevel;
+        set { if (SetField(ref _attackerLevel, Math.Clamp(value, Attacker.MinLevel, Attacker.MaxLevel))) RefreshAttacks(); }
+    }
+
+    // « Appliquer à l'attaque libre » (demande de Philippe du 12/10/2026) : décochée par défaut, l'attaque libre ne reçoit
+    // rien de l'attaquant (sa valeur dit déjà ce que fait le coup à AL 60).
+    private bool _attackerOnFreeAttacks;
+    public bool AttackerOnFreeAttacks
+    {
+        get => _attackerOnFreeAttacks;
+        set { if (SetField(ref _attackerOnFreeAttacks, value)) RefreshAttacks(); }
+    }
+
+    private int _attackerStrength;
+    public int AttackerStrength
+    {
+        get => _attackerStrength;
+        set { if (SetField(ref _attackerStrength, Math.Clamp(value, 0, MaxStrengthRank))) RefreshAttacks(); }
+    }
+
+    /// <summary>Un choix de la liste « Inscription » : 0, 15 ou 20 %.</summary>
+    public sealed record InscriptionChoice(int Percent, string Label);
+
+    // Liste NEUVE à chaque lecture (patron FreeAttackVM.ColumnChoices) : au changement de langue, « aucune » / « none »
+    // est relu ; la sélection se retrouve par la valeur (SelectedValuePath = Percent).
+    public IReadOnlyList<InscriptionChoice> InscriptionChoices =>
+        [.. Attacker.InscriptionChoices.Select(p => new InscriptionChoice(p, p == 0 ? T("S.Armor.AttackerNone") : $"+{p} %"))];
+
+    private int _attackerInscription;
+    public int AttackerInscription
+    {
+        get => _attackerInscription;
+        set
+        {
+            if (!Attacker.InscriptionChoices.Contains(value)) return;   // null de la ComboBox pendant un changement de liste
+            if (SetField(ref _attackerInscription, value)) RefreshAttacks();
+        }
+    }
+
+    /// <summary>Les inscriptions derrière chaque valeur, noms du catalogue des mods (FR en français).</summary>
+    public string InscriptionTip
+    {
+        get
+        {
+            string Names(IEnumerable<int> ids) => string.Join(", ", ids.Select(id =>
+                GwEquipmentModsFr.DisplayName(id, GwEquipmentData.Modifiers.GetValueOrDefault(id, id.ToString()))));
+            return string.Format(T("S.Armor.AttackerInscriptionTip"), Names(Attacker.Inscriptions15), Names(Attacker.Inscriptions20));
+        }
+    }
+
+    // Sources de pénétration cochées : sorts (ids de Attacker.PenetrationSkills) et deux mods d'arme. Source de vérité
+    // = ces champs ; les lignes de la liste les lisent et les écrivent (elles se rebâtissent au changement de langue).
+    private readonly HashSet<int> _attackerPenIds = new();
+    private bool _attackerSunderingMod, _attackerHornbow;
+    public ObservableCollection<AttackerPenSourceVM> AttackerPenSources { get; } = new();
+
+    private Attacker CurrentAttacker() => !_attackerEnabled
+        ? Attacker.Default
+        : new Attacker(_attackerLevel, _attackerStrength, _attackerInscription, _attackerPenIds.ToList(),
+                       _attackerSunderingMod, _attackerHornbow);
+
+    // Famille exclusive d'un sort de pénétration : Glaive était destructrice, sa variante PvP et Daoshen était cruel sont
+    // tous des sorts d'OBJET — un seul objet tenu (SkillExclusivity) ; à défaut, les variantes PvE/PvP d'un même sort.
+    private string PenFamily(int skillId)
+    {
+        string? family = _catalogById.GetValueOrDefault(skillId) is { } s ? SkillExclusivity.FamilyOf(s.SkillType) : null;
+        int baseId = DamageBoostData.DescriptorsFor(skillId).Select(d => d.ToggleId).FirstOrDefault(skillId);
+        return family ?? $"id:{baseId}";
+    }
+
+    private void SetAttackerPenSkill(int skillId, bool on)
+    {
+        if (on)
+        {
+            string family = PenFamily(skillId);
+            _attackerPenIds.RemoveWhere(id => id != skillId && PenFamily(id) == family);
+            _attackerPenIds.Add(skillId);
+        }
+        else _attackerPenIds.Remove(skillId);
+        foreach (var s in AttackerPenSources) s.Raise();
+        RefreshAttacks();
+    }
+
+    // Lignes de la liste : les sorts dans l'ordre alphabétique de la langue affichée, puis les deux mods d'arme.
+    private void RebuildAttackerPenSources()
+    {
+        AttackerPenSources.Clear();
+        var culture = CultureInfo.GetCultureInfo(AppLanguage.IsFr ? "fr-FR" : "en-US");
+        foreach (var skill in Attacker.PenetrationSkills
+                     .Select(id => _catalogById.GetValueOrDefault(id)).OfType<Skill>()
+                     .OrderBy(s => s.DisplayName, StringComparer.Create(culture, ignoreCase: true)))
+        {
+            int id = skill.Id;
+            AttackerPenSources.Add(new AttackerPenSourceVM(
+                () => skill.DisplayName, () => PenSourceTip(id),
+                () => _attackerPenIds.Contains(id), v => SetAttackerPenSkill(id, v)));
+        }
+        AttackerPenSources.Add(new AttackerPenSourceVM(
+            () => T("S.Armor.AttackerSunderingMod"),
+            () => string.Format(T("S.Armor.AttackerSunderingModTip"), SpikeWeaponMods.SunderingBonusPen),
+            () => _attackerSunderingMod, v => { _attackerSunderingMod = v; RefreshAttacks(); }));
+        AttackerPenSources.Add(new AttackerPenSourceVM(
+            () => T("S.Armor.AttackerHornbow"),
+            () => string.Format(T("S.Armor.AttackerHornbowTip"), SpikeWeaponMods.HornbowBonusPen),
+            () => _attackerHornbow, v => { _attackerHornbow = v; RefreshAttacks(); }));
+    }
+
+    // « Pénétration de base 20 % — compétences de Ritualiste » : lu dans le descripteur, rien de recopié.
+    private static string PenSourceTip(int skillId)
+    {
+        var d = DamageBoostData.DescriptorsFor(skillId)
+                               .FirstOrDefault(x => x.Kind is DamageBoostKind.BasePenetration or DamageBoostKind.BonusPenetration);
+        if (d is null) return "";
+        string kind = T(d.Kind == DamageBoostKind.BasePenetration ? "S.Armor.AttackerPenBase" : "S.Armor.AttackerPenBonus");
+        string scope = T(d.Scope == DamageBoostScope.RitualistSkills ? "S.Armor.AttackerScopeRitualist" : "S.Armor.AttackerScopeAttacks");
+        return string.Format(kind, d.Fixed) + " — " + scope;
+    }
+
     // ── Zone 3 : résultats + détail ───────────────────────────────────────────────────────────
     public ObservableCollection<ResultRowVM> ResultRows { get; } = new();
 
@@ -546,6 +679,7 @@ public class ArmorCalcViewModel : ViewModelBase
         // Défaut : toutes professions (le filtre pertinent ici est « dégâts », pas la profession).
         AttackCatalog.SelectedProfessionOption = AttackCatalog.Professions[0];
         ApplyDamageFilter();
+        RebuildAttackerPenSources();   // noms des sorts de pénétration de l'attaquant (lot 6)
         // Recalcul complet, pas seulement les attaques : les types des compétences viennent d'arriver, donc
         // les états que les effets cochés (profil déjà chargé) mettent en place.
         Recompute();
@@ -568,16 +702,19 @@ public class ArmorCalcViewModel : ViewModelBase
     /// <see cref="ReferenceAttack.ColumnKey"/>). <paramref name="vsProjectile"/> : AL recalculée en
     /// incluant les sources Scope.Projectile (« Shields Up! ») — utilisée pour les attaques de
     /// référence à projectile, jamais pour la grille.</summary>
-    private int AlAt(int loc, string columnKey, bool vsProjectile = false)
+    private ReferenceAttack.BuildArmor ArmorAt(int loc, string columnKey, bool vsProjectile = false)
     {
-        if (loc < 0) return 60;
+        if (loc < 0) return ReferenceAttack.BuildArmor.Plain(60);
         int c = 0;
         for (int i = 0; i < Columns.Count; i++) if (Columns[i].Key == columnKey) { c = i; break; }
-        if (vsProjectile)
-            return ArmorCalculator.Compute(Assemble(loc, Columns[c], includeProjectile: true),
-                                           ArmorPenetrationPercent).Effective;
         // ResultRows : Espérance à l'index 0, la localisation loc est à l'index loc+1.
-        return ResultRows.Count > loc + 1 ? ResultRows[loc + 1].Cells[c].EffectiveAl : 60;
+        var res = vsProjectile
+            ? ArmorCalculator.Compute(Assemble(loc, Columns[c], includeProjectile: true), ArmorPenetrationPercent)
+            : ResultRows.Count > loc + 1 ? ResultRows[loc + 1].Cells[c].Result : null;
+        // Lot 6 (Q25) : la ligne reçoit aussi l'AL d'avant pénétration et l'armure « Special », pour appliquer SA
+        // pénétration dans l'ordre du wiki quand elle n'est pas celle du champ de la grille.
+        return res is null ? ReferenceAttack.BuildArmor.Plain(60)
+                           : new(res.BeforePenetration, res.Effective - res.AfterPenetration, res.Effective);
     }
 
     // Une source « projectiles » est-elle active (effet coché ou contribution manuelle) ? Sinon,
@@ -594,13 +731,16 @@ public class ArmorCalcViewModel : ViewModelBase
         int holy = HolyVulnTotal;
         bool projSources = HasProjectileSources;
         var mitigation = CurrentMitigation();
+        var attacker = CurrentAttacker();
+        Attacker? freeAttacker = _attackerEnabled && _attackerOnFreeAttacks ? attacker : null;
+        int gridPen = ArmorPenetrationPercent;
         foreach (var a in ReferenceAttacks)
         {
             bool proj = projSources && ReferenceAttack.IsProjectile(a.Skill);
             string? extra = proj ? T("S.ArmorVM.ProjectilesIncluded") : null;
             ReferenceAttack.Result At(int l) =>
-                ReferenceAttack.Compute(a.Skill, a.Rank, k => AlAt(l, k, proj), FlatPhysicalAt(l), holy, mitigation,
-                                        a.WeaponType);
+                ReferenceAttack.Compute(a.Skill, a.Rank, k => ArmorAt(l, k, proj), FlatPhysicalAt(l), holy, mitigation,
+                                        a.WeaponType, attacker, gridPen);
             // Ligne Espérance : pondération sur les 5 localisations.
             a.Apply(loc >= 0 ? At(loc) : ExpectedOver(At), extra);
             RefreshAttackConditions(a);
@@ -610,8 +750,8 @@ public class ArmorCalcViewModel : ViewModelBase
             bool proj = projSources && f.IsProjectile;
             string? extra = proj ? T("S.ArmorVM.ProjectilesIncluded") : null;
             ReferenceAttack.Result At(int l) =>
-                ReferenceAttack.ComputeFree(f.Value, f.TypeKey, f.IsSpell, k => AlAt(l, k, proj), FlatPhysicalAt(l), mitigation,
-                                            holy);
+                ReferenceAttack.ComputeFree(f.Value, f.TypeKey, f.IsSpell, k => ArmorAt(l, k, proj), FlatPhysicalAt(l), mitigation,
+                                            holy, gridPen, freeAttacker, f.IsProjectile);
             f.Apply(loc >= 0 ? At(loc) : ExpectedOver(At), extra);
         }
         RefreshTotal();
@@ -767,6 +907,26 @@ public class ArmorCalcViewModel : ViewModelBase
     {
         _settings = settings;
         RefreshProfileNames();
+    }
+
+    /// <summary>Tailles des zones réglées aux splitters (12/10/2026) : colonne gauche (px), puis les deux paires de
+    /// lignes (haut / attaques, catalogue / tableau) en hauteurs relatives. 0 = disposition par défaut.</summary>
+    public sealed record SplitterLayout(double LeftWidth, double TopHeight, double AttacksHeight,
+                                        double CatalogHeight, double TableHeight);
+
+    public SplitterLayout? SavedLayout => _settings is null ? null
+        : new(_settings.ArmorLeftWidth, _settings.ArmorTopHeight, _settings.ArmorAttacksHeight,
+              _settings.ArmorCatalogHeight, _settings.ArmorTableHeight);
+
+    public void SaveLayout(SplitterLayout layout)
+    {
+        if (_settings is null) return;
+        _settings.ArmorLeftWidth = layout.LeftWidth;
+        _settings.ArmorTopHeight = layout.TopHeight;
+        _settings.ArmorAttacksHeight = layout.AttacksHeight;
+        _settings.ArmorCatalogHeight = layout.CatalogHeight;
+        _settings.ArmorTableHeight = layout.TableHeight;
+        _settings.Save();
     }
 
     // ── Construction des sous-VM ──────────────────────────────────────────────────────────────
@@ -961,6 +1121,9 @@ public class ArmorCalcViewModel : ViewModelBase
         foreach (var e in Effects) e.RaiseLanguageChanged();  // libellés d'effets calculés
         foreach (var a in ReferenceAttacks) a.RaiseLanguageChanged();  // noms des attaques (DisplayName du skill)
         foreach (var f in FreeAttacks) f.RaiseLanguageChanged();       // libellés de la liste des types
+        RebuildAttackerPenSources();                          // attaquant (lot 6) : noms, infobulles, ordre alphabétique
+        OnPropertyChanged(nameof(InscriptionChoices));
+        OnPropertyChanged(nameof(InscriptionTip));
         EffectsView?.Refresh();                               // re-groupe (Group change de langue)
         OnPropertyChanged(nameof(ColumnList));                // en-têtes de colonnes (DamageColumn.Label)
         OnPropertyChanged(nameof(InherentDescription));
@@ -1252,6 +1415,14 @@ public class ArmorCalcViewModel : ViewModelBase
         SignetCount = SignetCount,
         IllusionSkillCount = IllusionSkillCount,
         MaxHealth = MaxHealth,
+        AttackerEnabled = AttackerEnabled,
+        AttackerOnFreeAttacks = AttackerOnFreeAttacks,
+        AttackerLevel = AttackerLevel,
+        AttackerStrength = AttackerStrength,
+        AttackerInscription = AttackerInscription,
+        AttackerPenetrationSkillIds = _attackerPenIds.Order().ToList(),
+        AttackerSunderingMod = _attackerSunderingMod,
+        AttackerHornbow = _attackerHornbow,
         ReferenceAttacks = ReferenceAttacks
             .Select(a => new ReferenceAttackDto { SkillId = a.Skill.Id, Rank = a.Rank, WeaponType = a.WeaponType }).ToList(),
         FreeAttacks = FreeAttacks
@@ -1327,6 +1498,19 @@ public class ArmorCalcViewModel : ViewModelBase
         _signetCount = Math.Clamp(dto.SignetCount, 0, 8); OnPropertyChanged(nameof(SignetCount));
         _illusionSkillCount = Math.Clamp(dto.IllusionSkillCount, 0, 8); OnPropertyChanged(nameof(IllusionSkillCount));
         _maxHealth = Math.Clamp(dto.MaxHealth, 1, MaxHealthLimit); OnPropertyChanged(nameof(MaxHealth));
+        // Attaquant (lot 6) : un profil ancien n'en a pas → case décochée, niveau 20, le calcul d'avant.
+        _attackerEnabled = dto.AttackerEnabled; OnPropertyChanged(nameof(AttackerEnabled));
+        _attackerOnFreeAttacks = dto.AttackerOnFreeAttacks; OnPropertyChanged(nameof(AttackerOnFreeAttacks));
+        _attackerLevel = Math.Clamp(dto.AttackerLevel, Attacker.MinLevel, Attacker.MaxLevel); OnPropertyChanged(nameof(AttackerLevel));
+        _attackerStrength = Math.Clamp(dto.AttackerStrength, 0, MaxStrengthRank); OnPropertyChanged(nameof(AttackerStrength));
+        _attackerInscription = Attacker.InscriptionChoices.Contains(dto.AttackerInscription) ? dto.AttackerInscription : 0;
+        OnPropertyChanged(nameof(AttackerInscription));
+        _attackerPenIds.Clear();
+        foreach (int id in dto.AttackerPenetrationSkillIds.Where(Attacker.PenetrationSkills.Contains))
+            _attackerPenIds.Add(id);
+        _attackerSunderingMod = dto.AttackerSunderingMod;
+        _attackerHornbow = dto.AttackerHornbow;
+        foreach (var s in AttackerPenSources) s.Raise();
         RefreshPerUnitRows();
 
         // Liste vide = profil antérieur au Lot D → on garde les attaques par défaut en place.
@@ -1408,6 +1592,30 @@ public class StateBoxVM : ViewModelBase
         _impliedBy = impliedBy;
         OnPropertyChanged(string.Empty);
     }
+}
+
+// Une source de pénétration du bloc Attaquant (lot 6) : un sort, ou un mod d'arme. L'état vit dans le ViewModel du
+// calculateur (exclusivités, profil) ; la ligne ne fait que le lire et l'écrire.
+public class AttackerPenSourceVM : ViewModelBase
+{
+    private readonly Func<string> _name, _tip;
+    private readonly Func<bool> _get;
+    private readonly Action<bool> _set;
+
+    public AttackerPenSourceVM(Func<string> name, Func<string> tip, Func<bool> get, Action<bool> set)
+    { _name = name; _tip = tip; _get = get; _set = set; }
+
+    public string Name => _name();
+    public string ToolTip => _tip();
+
+    public bool IsChecked
+    {
+        get => _get();
+        set { if (value != _get()) _set(value); }
+    }
+
+    /// <summary>Relit la case (une exclusivité a pu la décocher, un profil la poser).</summary>
+    public void Raise() => OnPropertyChanged(nameof(IsChecked));
 }
 
 /// <summary>Condition d'activation d'une clause d'armure d'insigne (chantier 14 bis). Les formes à

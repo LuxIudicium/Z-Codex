@@ -5,7 +5,8 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:ctrl="clr-namespace:ZCodex.App.Controls"
              mc:Ignorable="d"
-             Background="{DynamicResource PanelBackgroundBrush}">
+             Background="{DynamicResource PanelBackgroundBrush}"
+             Loaded="View_Loaded">
     <UserControl.Resources>
         <!-- Tooltip PARESSEUX du catalogue d'attaques : DataContext = le Skill. Contexte catalogue
              (pas de FooterOverride) → l'infobulle montre la plage « 0…12…15 ». Bâti au 1er survol. -->
@@ -50,7 +51,7 @@
 
         <Grid>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="420"/>   <!-- zones 1 + 2 -->
+                <ColumnDefinition x:Name="LeftColumn" Width="420"/>   <!-- zones 1 + 2 ; largeur persistée (splitter) -->
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>      <!-- zone 3 -->
             </Grid.ColumnDefinitions>
@@ -355,9 +356,11 @@
                             <ColumnDefinition Width="56"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="{DynamicResource S.Armor.ArmorPenetration}" VerticalAlignment="Center" FontSize="12" Margin="0,0,8,0"/>
+                        <TextBlock Text="{DynamicResource S.Armor.ArmorPenetration}" VerticalAlignment="Center" FontSize="12" Margin="0,0,8,0"
+                                   ToolTip="{DynamicResource S.Armor.ArmorPenetrationTip}"/>
                         <TextBox Grid.Column="1" FontSize="12" VerticalContentAlignment="Center"
-                                 Text="{Binding ArmorPenetrationPercent, UpdateSourceTrigger=PropertyChanged}"/>
+                                 Text="{Binding ArmorPenetrationPercent, UpdateSourceTrigger=PropertyChanged}"
+                                 ToolTip="{DynamicResource S.Armor.ArmorPenetrationTip}"/>
                     </Grid>
 
                     <ItemsControl ItemsSource="{Binding EffectsView}">
@@ -404,7 +407,8 @@
             </ScrollViewer>
 
             <GridSplitter Grid.Column="1" Width="4" HorizontalAlignment="Center"
-                          VerticalAlignment="Stretch" Background="{DynamicResource BorderLightBrush}"/>
+                          VerticalAlignment="Stretch" Background="{DynamicResource BorderLightBrush}"
+                          DragCompleted="Splitter_DragCompleted"/>
 
             <!-- ══════════ Colonne droite : zone 3 (résultats + détail) + zone 4 (attaques) ══════════
                  Grid en lignes redimensionnables (17/07) : ligne 1 = grille + détail CÔTE À CÔTE ;
@@ -415,9 +419,9 @@
             <Grid Grid.Column="2" Margin="8">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>                 <!-- titre -->
-                    <RowDefinition Height="2*" MinHeight="110"/>   <!-- grille + détail (redimensionnable) -->
+                    <RowDefinition x:Name="TopRow" Height="2*" MinHeight="110"/>   <!-- grille + détail (redimensionnable) -->
                     <RowDefinition Height="Auto"/>                 <!-- splitter horizontal -->
-                    <RowDefinition Height="3*" MinHeight="170"/>   <!-- attaques de référence (remplit) -->
+                    <RowDefinition x:Name="AttacksRow" Height="3*" MinHeight="170"/>   <!-- attaques de référence (remplit) -->
                     <RowDefinition Height="Auto"/>                 <!-- récap durées -->
                 </Grid.RowDefinitions>
 
@@ -544,7 +548,8 @@
                 <!-- Splitter horizontal : redimensionne le haut (grille + détail) vs les attaques -->
                 <GridSplitter Grid.Row="2" Height="6" HorizontalAlignment="Stretch" VerticalAlignment="Center"
                               ResizeDirection="Rows" ResizeBehavior="PreviousAndNext"
-                              Background="{DynamicResource BorderLightBrush}" Margin="0,4"/>
+                              Background="{DynamicResource BorderLightBrush}" Margin="0,4"
+                              DragCompleted="Splitter_DragCompleted"/>
 
                 <!-- Ligne 3 (remplit) — ZONE 4 : attaques de référence (dégâts subis @AL 60 vs @AL build).
                      Plus d'expander/contexte/légende (demande Philippe) → toute la place au catalogue. -->
@@ -556,9 +561,9 @@
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>          <!-- filtres catalogue -->
                                 <RowDefinition Height="Auto"/>          <!-- recherche + Ajouter -->
-                                <RowDefinition Height="2*" MinHeight="80"/>   <!-- liste du catalogue -->
+                                <RowDefinition x:Name="CatalogRow" Height="2*" MinHeight="80"/>   <!-- liste du catalogue -->
                                 <RowDefinition Height="Auto"/>          <!-- splitter interne -->
-                                <RowDefinition Height="1*" MinHeight="60"/>   <!-- en-tête + tableau attaques -->
+                                <RowDefinition x:Name="TableRow" Height="1*" MinHeight="60"/>   <!-- en-tête + tableau attaques -->
                             </Grid.RowDefinitions>
 
                             <!-- Catalogue STANDARD (demande Philippe 17/07) : mêmes filtres que le
@@ -677,9 +682,68 @@
                                  Auto intercalée faisait pousser les attaques dans le mauvais sens). -->
                             <GridSplitter Grid.Row="3" Height="6" HorizontalAlignment="Stretch" VerticalAlignment="Center"
                                           ResizeDirection="Rows" ResizeBehavior="PreviousAndNext"
-                                          Background="{DynamicResource BorderLightBrush}" Margin="0,2"/>
+                                          Background="{DynamicResource BorderLightBrush}" Margin="0,2"
+                                          DragCompleted="Splitter_DragCompleted"/>
 
                             <DockPanel Grid.Row="4">
+                                <!-- Attaquant (chantier « réductions », lot 6) : un seul pour toutes les lignes de
+                                     compétences, des deux côtés ; l'attaque libre seulement si « Appliquer à l'attaque
+                                     libre » est cochée. Case décochée = niveau 20 sans rien de spécial, et les réglages
+                                     disparaissent (demande de Philippe du 12/10/2026) ; leurs valeurs sont gardées. -->
+                                <StackPanel DockPanel.Dock="Top" Margin="0,0,0,4">
+                                    <WrapPanel>
+                                        <CheckBox Content="{DynamicResource S.Armor.Attacker}" FontSize="11" FontWeight="SemiBold"
+                                                  VerticalAlignment="Center" Margin="0,1,12,1"
+                                                  IsChecked="{Binding AttackerEnabled}"
+                                                  ToolTip="{DynamicResource S.Armor.AttackerTip}"/>
+                                        <StackPanel Orientation="Horizontal"
+                                                    Visibility="{Binding AttackerEnabled, Converter={StaticResource BoolToVisibilityConverter}}">
+                                            <TextBlock Text="{DynamicResource S.Armor.AttackerLevel}" FontSize="11"
+                                                       VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                            <TextBox Width="32" Height="20" FontSize="11" VerticalContentAlignment="Center" Margin="0,1,12,1"
+                                                     Text="{Binding AttackerLevel, UpdateSourceTrigger=PropertyChanged}"
+                                                     ToolTip="{DynamicResource S.Armor.AttackerLevelTip}"/>
+                                            <TextBlock Text="{DynamicResource S.Armor.AttackerStrength}" FontSize="11"
+                                                       VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                            <TextBox Width="32" Height="20" FontSize="11" VerticalContentAlignment="Center" Margin="0,1,12,1"
+                                                     Text="{Binding AttackerStrength, UpdateSourceTrigger=PropertyChanged}"
+                                                     ToolTip="{DynamicResource S.Armor.AttackerStrengthTip}"/>
+                                            <TextBlock Text="{DynamicResource S.Armor.AttackerInscription}" FontSize="11"
+                                                       VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                            <ComboBox Width="72" FontSize="11" VerticalContentAlignment="Center" Margin="0,1,0,1"
+                                                      ItemsSource="{Binding InscriptionChoices}"
+                                                      SelectedValuePath="Percent"
+                                                      SelectedValue="{Binding AttackerInscription}"
+                                                      ToolTip="{Binding InscriptionTip}">
+                                                <ComboBox.ItemTemplate>
+                                                    <DataTemplate><TextBlock Text="{Binding Label}"/></DataTemplate>
+                                                </ComboBox.ItemTemplate>
+                                            </ComboBox>
+                                            <CheckBox Content="{DynamicResource S.Armor.AttackerOnFree}" FontSize="11"
+                                                      VerticalAlignment="Center" Margin="12,1,0,1"
+                                                      IsChecked="{Binding AttackerOnFreeAttacks}"
+                                                      ToolTip="{DynamicResource S.Armor.AttackerOnFreeTip}"/>
+                                        </StackPanel>
+                                    </WrapPanel>
+                                    <DockPanel Margin="0,1,0,0"
+                                               Visibility="{Binding AttackerEnabled, Converter={StaticResource BoolToVisibilityConverter}}">
+                                        <TextBlock DockPanel.Dock="Left" Text="{DynamicResource S.Armor.AttackerPenetration}" FontSize="11"
+                                                   VerticalAlignment="Top" Margin="0,2,6,0"/>
+                                        <ItemsControl ItemsSource="{Binding AttackerPenSources}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <CheckBox Content="{Binding Name}" IsChecked="{Binding IsChecked}"
+                                                              ToolTip="{Binding ToolTip}" FontSize="11"
+                                                              VerticalAlignment="Center" Margin="0,1,12,1"/>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </DockPanel>
+                                </StackPanel>
+
                                 <!-- En-tête (fixe en haut) -->
                                 <Grid DockPanel.Dock="Top" Margin="0,0,0,2">
                                     <Grid.ColumnDefinitions>

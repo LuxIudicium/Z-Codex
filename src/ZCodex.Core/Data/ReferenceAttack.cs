@@ -29,6 +29,28 @@ public static class ReferenceAttack
         public int DeltaPercent => Hi60 <= 0 ? 0 : (int)Math.Round((HiCalc - Hi60) * 100.0 / Hi60);
     }
 
+    /// <summary>
+    /// Armure du build pour une colonne, telle que la grille la calcule (calculateur d'armure, lot 6) :
+    /// <paramref name="BeforePenetration"/> = fin de l'étape 2 ; <paramref name="Special"/> = armure « Special » SIGNÉE
+    /// (étape 4, après la pénétration) ; <paramref name="Effective"/> = l'AL affichée par la grille, pénétration du champ
+    /// « Pénétration % » comprise (arrondie, étape 3).
+    /// </summary>
+    public readonly record struct BuildArmor(int BeforePenetration, int Special, int Effective)
+    {
+        /// <summary>Une armure sans pénétration ni « Special » (AL 60 de référence, harnais).</summary>
+        public static BuildArmor Plain(int al) => new(al, 0, al);
+    }
+
+    /// <summary>
+    /// Ce qu'un paquet côté build passe à <c>DamageAt</c> : AL, pénétration, armure retirée après la pénétration.
+    /// Q25 (Philippe, 12/10/2026) : le champ « Pénétration % » de la grille compte comme une pénétration de BASE — la
+    /// plus forte gagne, les bonus s'ajoutent — au lieu de s'empiler sous celle de la ligne. Quand la seule pénétration
+    /// en jeu est celle du champ, le paquet frappe l'AL de la grille telle qu'elle est affichée ; sinon l'AL d'avant
+    /// pénétration, la pénétration de la ligne, puis l'armure « Special », dans l'ordre du wiki (*Armor_calculation*).
+    /// </summary>
+    private static (int Al, int Pen, int SpecialArmor) BuildSide(BuildArmor armor, int rowPen, int gridPen)
+        => rowPen == gridPen ? (armor.Effective, 0, 0) : (armor.BeforePenetration, rowPen, -armor.Special);
+
     /// <summary>Types de dégâts armor-respecting → clé de colonne du calculateur. Génériques
     /// « physical »/« chaos » repliés sur une colonne représentative (rare). Sacré/ombre/sans
     /// type n'arrivent pas ici (classés armor-ignoring par <see cref="SkillDamage"/>).</summary>
@@ -99,7 +121,7 @@ public static class ReferenceAttack
 
     /// <summary>
     /// Calcule les dégâts subis d'une attaque à une localisation.
-    /// <paramref name="alForType"/> : AL du build pour une clé de colonne (voir <see cref="ColumnKey"/>)
+    /// <paramref name="armorFor"/> : armure du build pour une clé de colonne (voir <see cref="ColumnKey"/>)
     /// à la localisation choisie. <paramref name="flatPhysical"/> : réduction plate (points) à
     /// retrancher aux dégâts PHYSIQUES armor-respecting du build (Absorption + Knight's + inscriptions
     /// actives + Luck en espérance, déjà agrégée, ≥ 0), plancher 0 ; jamais appliquée à AL 60 ni
@@ -111,19 +133,30 @@ public static class ReferenceAttack
     /// type, la réduction physique de l'équipement et la vulnérabilité sacrée.
     /// <paramref name="weaponType"/> : type choisi sur la ligne pour le coup d'arme (mod élémentaire ou skin, lot 4) ;
     /// null ou vide = type natif de l'arme.
+    /// <paramref name="attacker"/> : l'attaquant (lot 6), des deux côtés ; null = niveau 20 sans rien de spécial.
+    /// <paramref name="gridPenetration"/> : le champ « Pénétration % » de la grille, côté build seulement (Q25).
     /// </summary>
-    public static Result Compute(Skill skill, int rank, Func<string, int> alForType, int flatPhysical,
+    public static Result Compute(Skill skill, int rank, Func<string, BuildArmor> armorFor, int flatPhysical,
                                  int holyIncrease = 0, DamageMitigation.Context? mitigation = null,
-                                 string? weaponType = null)
+                                 string? weaponType = null, Attacker? attacker = null, int gridPenetration = 0)
     {
         string resolved = Resolve(skill, rank);
         var analysis = SkillDamage.Analyze(resolved, skill.Name);
-        int pen = analysis.ArmorPenetration;
+        attacker ??= Attacker.Default;
+        int level = attacker.Level;
+        var weapon = WeaponStrike.For(skill);
 
-        // Conversions de type (lot 4). La Clairvoyance du juge ajoute +20 % de pénétration BONUS aux attaques, des deux
-        // côtés (c'est une propriété de l'attaque, comme sa pénétration propre) ; son sacré passe par le type reçu.
+        // Pénétration de la ligne : la plus forte des BASES (celle de la compétence, celles de l'attaquant), puis les
+        // BONUS par-dessus. Conversions de type (lot 4) : la Clairvoyance du juge ajoute +20 % de pénétration BONUS aux
+        // attaques, des deux côtés (c'est une propriété de l'attaque, comme sa pénétration propre) ; son sacré passe par
+        // le type reçu. Côté build, le champ de la grille entre dans les bases (Q25).
         var conv = DamageMitigation.ConversionsOf(mitigation);
-        pen += DamageMitigation.JudgesBonusPen(conv, WeaponStrike.IsWeaponAttack(skill));
+        var (attackerBase, attackerBonus) = attacker.PenetrationFor(skill, weapon, weaponType);
+        int basePen = Math.Max(analysis.ArmorPenetration, attackerBase);
+        int bonusPen = DamageMitigation.JudgesBonusPen(conv, WeaponStrike.IsWeaponAttack(skill)) + attackerBonus;
+        int pen = basePen + bonusPen;
+        int penBuild = Math.Max(basePen, gridPenetration) + bonusPen;
+        (int Al, int Pen, int SpecialArmor) Build(string type) => BuildSide(armorFor(ColumnKey(type)), penBuild, gridPenetration);
         var convertedTo = new List<string>();   // types reçus après une conversion, pour la note
         string? Received(string? type)
         {
@@ -180,7 +213,6 @@ public static class ReferenceAttack
         var respecting = damage.Where(r => !r.IgnoresArmor && !r.IsThreshold).ToList();
         var ignoring   = damage.Where(r => r.IgnoresArmor && !r.IsThreshold).ToList();
 
-        var weapon = WeaponStrike.For(skill);
         var mods = WeaponStrike.ModsFor(skill.Name, resolved);
         int bonus = ignoring.FirstOrDefault(r => r.IsBonus)?.Value ?? 0;
         bool weaponTable = weapon is not null && !mods.NoWeaponDamage;
@@ -199,20 +231,27 @@ public static class ReferenceAttack
             var hit = DamageMitigation.WeaponHitType(conv, skill, weapon, weaponType);
             string type = hit.Received;
             if (hit.Converted && !convertedTo.Contains(type)) convertedTo.Add(type);
-            int alCalc = alForType(ColumnKey(type));
+            var (alCalc, penCalc, spCalc) = Build(type);
             // Un coup d'arme n'est jamais un sort, même porté par une attaque élémentaire ; c'est toujours une attaque.
             int flats = FlatFor(type, spell: false, attack: true);
             // Bonus « +X » (ignore l'armure, aucun %) et vulnérabilité sacrée : des points AJOUTÉS au paquet. Ils ne
             // reçoivent pas les %, mais la réduction fixe porte sur le TOUT (arme + bonus), plancher 0 à la fin — réponse
             // de Philippe du 10/10/2026 —, et le plafond aussi (lot 5).
             int extra = bonus + HolyOn(type);
-            int AtMin(double m, double c, double a) => WeaponStrike.DamageAt(weapon.Min, rank, alCalc, pen, m, cap: c, afterCap: a);
-            int AtMax(double m, double c, double a) => WeaponStrike.DamageAt(weapon.Max, rank, alCalc, pen, m, cap: c, afterCap: a);
+            // L'inscription de l'attaquant (lot 6) grossit la valeur de base de l'ARME, avant l'armure, comme le malus
+            // « 25% less damage » de la compétence ; le « +X » n'en profite pas (wiki *Inscription*, note 2).
+            double weaponMult = mods.Multiplier * attacker.WeaponMultiplier;
+            if (attacker.InscriptionPercent > 0) notes.Add(L($"inscription +{attacker.InscriptionPercent} %",
+                                                             $"inscription +{attacker.InscriptionPercent}%"));
+            int AtMin(double m, double c, double a)
+                => WeaponStrike.DamageAt(weapon.Min, rank, alCalc, penCalc, m, level, spCalc, cap: c, afterCap: a);
+            int AtMax(double m, double c, double a)
+                => WeaponStrike.DamageAt(weapon.Max, rank, alCalc, penCalc, m, level, spCalc, cap: c, afterCap: a);
             // Critique côté build (lot 3) : ordinaire (max ×√2), sans surplus (Balanced Stance : max de l'arme), ou
             // plus de critique du tout (Stoneflesh Aura, Stone Sheath). Le côté @AL 60 reste la référence nue.
             Func<double, double, double, int> atCrit = critRule == DamageMitigation.CritRule.NoExtra
                 ? AtMax
-                : (m, c, a) => WeaponStrike.CriticalAt(weapon, rank, alCalc, pen, m, cap: c, afterCap: a);
+                : (m, c, a) => WeaponStrike.CriticalAt(weapon, rank, alCalc, penCalc, m, level, spCalc, cap: c, afterCap: a);
 
             int lo60w, hi60w;
             DamageMitigation.Outcome loC, hiC;
@@ -220,20 +259,20 @@ public static class ReferenceAttack
             {
                 // Critique forcé (Keen Chop) : la valeur subie EST le critique — comme la tooltip
                 // (ligne critique seule) et le Spike (min = max = CriticalAt). Immunisé : un coup ordinaire.
-                lo60w = hi60w = WeaponStrike.CriticalAt(weapon, rank, 60, pen, mods.Multiplier);
+                lo60w = hi60w = WeaponStrike.CriticalAt(weapon, rank, 60, pen, weaponMult, level);
                 if (critRule == DamageMitigation.CritRule.Immune)
                 {
-                    loC = Hit(AtMin, mods.Multiplier, type, false, true, extra, flats);
-                    hiC = Hit(AtMax, mods.Multiplier, type, false, true, extra, flats);
+                    loC = Hit(AtMin, weaponMult, type, false, true, extra, flats);
+                    hiC = Hit(AtMax, weaponMult, type, false, true, extra, flats);
                 }
-                else loC = hiC = Hit(atCrit, mods.Multiplier, type, false, true, extra, flats);
+                else loC = hiC = Hit(atCrit, weaponMult, type, false, true, extra, flats);
             }
             else
             {
-                lo60w = WeaponStrike.DamageAt(weapon.Min, rank, 60, pen, mods.Multiplier);
-                hi60w = WeaponStrike.DamageAt(weapon.Max, rank, 60, pen, mods.Multiplier);
-                loC = Hit(AtMin, mods.Multiplier, type, false, true, extra, flats);
-                hiC = Hit(AtMax, mods.Multiplier, type, false, true, extra, flats);
+                lo60w = WeaponStrike.DamageAt(weapon.Min, rank, 60, pen, weaponMult, level);
+                hi60w = WeaponStrike.DamageAt(weapon.Max, rank, 60, pen, weaponMult, level);
+                loC = Hit(AtMin, weaponMult, type, false, true, extra, flats);
+                hiC = Hit(AtMax, weaponMult, type, false, true, extra, flats);
             }
 
             lo60 += lo60w + bonus; hi60 += hi60w + bonus;
@@ -252,7 +291,7 @@ public static class ReferenceAttack
             else if (critRule == DamageMitigation.CritRule.Immune)
                 notes.Add(L("immunisé aux critiques", "immune to critical hits"));
             else
-                notes.Add($"{L("critique", "critical")} {Hit(atCrit, mods.Multiplier, type, false, true, extra, flats, record: false).Taken}"
+                notes.Add($"{L("critique", "critical")} {Hit(atCrit, weaponMult, type, false, true, extra, flats, record: false).Taken}"
                           + (critRule == DamageMitigation.CritRule.NoExtra ? L(" (sans surplus)", " (no extra damage)") : ""));
         }
 
@@ -260,10 +299,11 @@ public static class ReferenceAttack
         foreach (var r in respecting.Where(r => !r.Conditional && !r.IsThreshold))
         {
             string type = Received(r.DamageType ?? "physical")!;
-            int alCalc = alForType(ColumnKey(type));
+            var (alCalc, penCalc, spCalc) = Build(type);
 
-            int d60 = SkillDamage.DamageAt(r.Value, 60, pen);
-            var dC = Hit((m, c, a) => SkillDamage.DamageAt(r.Value, alCalc, pen, multiplier: m, cap: c, afterCap: a),
+            int d60 = SkillDamage.DamageAt(r.Value, 60, pen, level);
+            var dC = Hit((m, c, a) => SkillDamage.DamageAt(r.Value, alCalc, penCalc, level, multiplier: m, specialArmor: spCalc,
+                                                           cap: c, afterCap: a),
                          1.0, type, isSpell, isAttack, HolyOn(type), FlatFor(type, isSpell, isAttack));
 
             lo60 += d60; hi60 += d60; loCalc += dC.Taken; hiCalc += dC.Taken; healLo += dC.Heal; healHi += dC.Heal;
@@ -295,9 +335,10 @@ public static class ReferenceAttack
                 // Seuil armor-respecting (Doom : foudre/rituel en recharge) : le plafond porte sur
                 // les dégâts LISTÉS, l'armure/pénétration s'appliquent au total (comme le Spike).
                 string type = Received(r.DamageType ?? "physical")!;
-                int alCalc = alForType(ColumnKey(type));
-                int d60 = SkillDamage.DamageAt(cap, 60, pen);
-                var dC = Hit((m, c, a) => SkillDamage.DamageAt(cap, alCalc, pen, multiplier: m, cap: c, afterCap: a),
+                var (alCalc, penCalc, spCalc) = Build(type);
+                int d60 = SkillDamage.DamageAt(cap, 60, pen, level);
+                var dC = Hit((m, c, a) => SkillDamage.DamageAt(cap, alCalc, penCalc, level, multiplier: m, specialArmor: spCalc,
+                                                               cap: c, afterCap: a),
                              1.0, type, isSpell, isAttack, HolyOn(type), FlatFor(type, isSpell, isAttack));
                 lo60 += d60; hi60 += d60; loCalc += dC.Taken; hiCalc += dC.Taken; healLo += dC.Heal; healHi += dC.Heal;
                 if (cap > primaryWeight) { primaryWeight = cap; primaryTypeFr = SkillDamage.DisplayType(type); }
@@ -464,28 +505,43 @@ public static class ReferenceAttack
     /// attaque (Life Bond ne réduit que celles-là). Lot 4 : le type REÇU (Clairvoyance du juge sur une attaque,
     /// conversions de zone et du défenseur) choisit la colonne et les réductions ; <paramref name="holyIncrease"/> =
     /// vulnérabilité sacrée, qui touche une attaque passée en sacré.
+    /// Lot 6 : le champ « Pénétration % » de la grille (<paramref name="gridPenetration"/>) la touche comme pénétration de
+    /// base (Q25). L'attaquant (<paramref name="attacker"/>) ne la touche que si la case « Appliquer à l'attaque libre »
+    /// est cochée (demande de Philippe du 12/10/2026) : null = rien de l'attaquant, le calcul d'avant. Elle suit alors
+    /// son niveau (3 × niveau, sa formule de sort) et, si c'est une attaque, l'inscription sur tout le coup et les
+    /// pénétrations qui visent « les attaques » (<see cref="Attacker.PenetrationForFreeAttack"/>).
     /// </summary>
-    public static Result ComputeFree(int value, string type, bool isSpell, Func<string, int> alForType,
+    public static Result ComputeFree(int value, string type, bool isSpell, Func<string, BuildArmor> armorFor,
                                      int flatPhysical, DamageMitigation.Context? mitigation = null,
-                                     int holyIncrease = 0)
+                                     int holyIncrease = 0, int gridPenetration = 0, Attacker? attacker = null,
+                                     bool projectile = false)
     {
         bool isAttack = !isSpell;
         var conv = DamageMitigation.ConversionsOf(mitigation);
         var hit = DamageMitigation.FreeAttackType(conv, type, isSpell);
         string received = hit.Received;
-        int pen = DamageMitigation.JudgesBonusPen(conv, isAttack);
-        int alCalc = alForType(ColumnKey(received));
+        attacker ??= Attacker.Default;
+        int level = attacker.Level;
+        var (basePen, attackerBonus) = attacker.PenetrationForFreeAttack(isAttack, type, projectile);
+        int bonusPen = DamageMitigation.JudgesBonusPen(conv, isAttack) + attackerBonus;
+        int pen = basePen + bonusPen;
+        int penBuild = Math.Max(basePen, gridPenetration) + bonusPen;
+        int inscription = isAttack ? attacker.InscriptionPercent : 0;
+        double mult = 1 + inscription / 100.0;
+        var (alCalc, penCalc, spCalc) = BuildSide(armorFor(ColumnKey(received)), penBuild, gridPenetration);
         int skillFlat = DamageMitigation.Flat(mitigation, received, isSpell, isAttack);
         int holy = holyIncrease > 0 && received == "holy" ? holyIncrease : 0;
 
         var applied = new AppliedMitigation();
-        int d60 = SkillDamage.DamageAt(value, 60, pen);
-        var dC = Packet(mitigation, applied, (m, c, a) => SkillDamage.DamageAt(value, alCalc, pen, multiplier: m, cap: c, afterCap: a),
-                        1.0, received, isSpell, isAttack, holy, skillFlat + (IsPhysical(received) ? flatPhysical : 0));
+        int d60 = SkillDamage.DamageAt(value, 60, pen, level, mult);
+        var dC = Packet(mitigation, applied, (m, c, a) => SkillDamage.DamageAt(value, alCalc, penCalc, level, multiplier: m,
+                                                                              specialArmor: spCalc, cap: c, afterCap: a),
+                        mult, received, isSpell, isAttack, holy, skillFlat + (IsPhysical(received) ? flatPhysical : 0));
 
         var notes = new List<string>();
         if (isSpell) notes.Add(L("sort", "spell"));
         if (pen > 0) notes.Add(L($"pénétration {pen} %", $"penetration {pen}%"));
+        if (inscription > 0) notes.Add(L($"inscription +{inscription} %", $"inscription +{inscription}%"));
         if (hit.Converted) notes.Add(ReceivedAsNote([received]));
         applied.AddFlat(skillFlat);
         notes.AddRange(applied.Notes());
