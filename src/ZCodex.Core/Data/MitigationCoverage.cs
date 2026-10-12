@@ -6,7 +6,7 @@ namespace ZCodex.Core.Data;
 /// <summary>
 /// VERROUS du chantier « calculateur d'armure : réductions de dégâts » (patron <see cref="SpikeBoostCoverage"/>).
 /// Les harnais de ce projet meurent avec la session : le contrôle d'exhaustivité vit donc ici, dans le code,
-/// et la prochaine passe le retrouve. Les cinq listes <b>doivent rester VIDES</b>.
+/// et la prochaine passe le retrouve. Les six listes <b>doivent rester VIDES</b>.
 /// </summary>
 public static class MitigationCoverage
 {
@@ -40,6 +40,16 @@ public static class MitigationCoverage
         + @"|\bdamage is (?:holy|fire|cold|earth|lightning|dark|chaos) damage\b",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+    // Lot 5 (11/10/2026) : les tournures d'un PLAFOND en % de la vie, d'une conversion en SOIN et d'un soin DÉCLENCHÉ par
+    // un coup reçu, relevées sur toute la base. « (?:(?!\.\s).) » = tout sauf une fin de phrase : les plages « 5...29...35 »
+    // ont des points.
+    private static readonly Regex CapOrHeal = new(
+        @"cannot lose more than \d+%|limited to \d+% of|reduced to \d+% of"
+        + @"|\bconverts?\b(?:(?!\.\s).){0,90}\bto heal"
+        + @"|\b(?:heals?|gains?|steals?)\b(?:(?!\.\s).){0,60}\b(?:whenever|the next time|each time|every time)\b(?:(?!\.\s).){0,40}\btakes? (?:more than \d+ )?damage\b"
+        + @"|\b(?:whenever|the next time|each time|every time)\b(?:(?!\.\s).){0,40}\btakes? (?:more than \d+ )?damage\b(?:(?!\.\s).){0,60}\b(?:heals?|gains? \d|steals? \d)",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
     private const string AttackerConverter =
         "convertit les attaques de l'ATTAQUANT : la liste de type de la ligne d'attaque le couvre (lot 4)";
     private const string AttackerHolyConverter =
@@ -62,12 +72,9 @@ public static class MitigationCoverage
         ["Symbiotic Bond"]        = "redirige vers le perso des dégâts subis par le familier (Q7, écartée le 10/10/2026)",
         ["Divine Intervention"]   = "n'annule qu'un coup FATAL : dépend de la vie restante, hors calculateur",
         ["Judge's Intervention"]  = "n'annule qu'un coup FATAL : dépend de la vie restante, hors calculateur",
-        ["Protective Spirit"]     = "plafond en % de la vie max : lot 5",
-        ["Shadow Form"]           = "plafond et réduction par enchantement d'Assassin : lot 5",
-        ["Mark of Protection"]    = "conversion en soin : lot 5",
-        ["Reversal of Fortune"]   = "conversion en soin : lot 5",
-        ["Life Sheath"]           = "conversion en soin : lot 5",
         ["Dulled Weapon"]         = "malus porté par l'attaquant : reporté (décision de Philippe du 15/09/2026)",
+        // Lot 5 (11/10/2026).
+        ["Shadow Form (PvP)"]     = "sorts qui échouent, attaques qui ratent : de l'esquive, hors calculateur comme le blocage (Q24)",
         // Lot 4 (11/10/2026) — convertisseurs propres à l'attaquant (Stone Striker, lui, est couvert côté défenseur).
         ["Avatar of Grenth"]         = AttackerConverter,
         ["Avatar of Melandru"]       = AttackerConverter,
@@ -133,6 +140,20 @@ public static class MitigationCoverage
         var covered = DamageMitigationData.All.Select(d => d.Name).ToHashSet(StringComparer.Ordinal);
         return [.. catalog
             .Where(s => Conversion.IsMatch(s.Description)
+                        && !covered.Contains(s.Name) && !Excluded.ContainsKey(s.Name))
+            .Select(s => s.Name).Distinct().Order(StringComparer.Ordinal)];
+    }
+
+    /// <summary>
+    /// <b>Verrou 6 — plafond ou soin oublié (lot 5).</b> Les compétences du catalogue dont la description annonce un
+    /// plafond en % de la vie, une conversion des dégâts en soin ou un soin déclenché par un coup reçu, sans descripteur
+    /// ni raison écrite dans <see cref="Excluded"/>. <b>Doit rester VIDE.</b>
+    /// </summary>
+    public static IReadOnlyList<string> UncoveredCapsAndHeals(IEnumerable<Skill> catalog)
+    {
+        var covered = DamageMitigationData.All.Select(d => d.Name).ToHashSet(StringComparer.Ordinal);
+        return [.. catalog
+            .Where(s => CapOrHeal.IsMatch(s.Description)
                         && !covered.Contains(s.Name) && !Excluded.ContainsKey(s.Name))
             .Select(s => s.Name).Distinct().Order(StringComparer.Ordinal)];
     }

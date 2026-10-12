@@ -457,10 +457,20 @@ public static class SkillDamage
     /// <see cref="WeaponStrike.DamageAt"/>.</param>
     /// <param name="specialArmor">Armure RETIRÉE après la pénétration, sans plancher (catégorie « Special »
     /// d'<see cref="ArmorCalculator"/> : Fardeau nébuleux, lot 7b-2). 0 = aucune.</param>
+    /// <param name="cap">Plafond en points (Protective Spirit… — calculateur d'armure, lot 5), posé sur les dégâts
+    /// après l'armure et <paramref name="multiplier"/>, puis <paramref name="afterCap"/> (les %) — toujours un seul
+    /// arrondi. Par défaut : aucun plafond, calcul identique à l'ancien.</param>
     public static int DamageAt(int value, int armorLevel, int armorPenetration, int casterLevel = 20,
-                               double multiplier = 1.0, int specialArmor = 0)
+                               double multiplier = 1.0, int specialArmor = 0,
+                               double cap = double.PositiveInfinity, double afterCap = 1.0)
     {
         double effectiveAl = armorLevel * (100 - armorPenetration) / 100.0 - specialArmor;
-        return (int)Math.Floor(value * multiplier * Math.Pow(2, (3 * casterLevel - effectiveAl) / 40.0));
+        double raw = value * multiplier * Math.Pow(2, (3 * casterLevel - effectiveAl) / 40.0);
+        return (int)Math.Floor(Capped(raw, cap, afterCap));
     }
+
+    /// <summary>Plafond puis facteur d'après-plafond ; sans plafond ni facteur, la valeur telle quelle (aucune
+    /// opération de plus, donc aucun écart d'arrondi avec l'ancien calcul).</summary>
+    internal static double Capped(double raw, double cap, double afterCap)
+        => double.IsPositiveInfinity(cap) && afterCap == 1.0 ? raw : Math.Min(raw, cap) * afterCap;
 }

@@ -297,6 +297,11 @@
                         <TextBlock Grid.Row="2" Grid.Column="0" Text="{DynamicResource S.Armor.IllusionSkills}"/>
                         <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding IllusionSkillCount, UpdateSourceTrigger=PropertyChanged}"
                                  ToolTip="{DynamicResource S.Armor.IllusionSkillsTip}"/>
+                        <!-- Vie max (lot 5 « réductions ») : base des plafonds (Esprit protecteur…). -->
+                        <TextBlock Grid.Row="2" Grid.Column="2" Text="{DynamicResource S.Armor.MaxHealth}"/>
+                        <TextBox Grid.Row="2" Grid.Column="3" HorizontalAlignment="Left"
+                                 Text="{Binding MaxHealth, UpdateSourceTrigger=PropertyChanged}"
+                                 ToolTip="{DynamicResource S.Armor.MaxHealthTip}"/>
                     </Grid>
 
                     <!-- Ajout manuel (cas non couverts par le catalogue : mods inhérents de bouclier…) -->
@@ -751,9 +756,15 @@
 
                                                 <TextBlock Grid.Column="3" Text="{Binding Text60}" FontSize="12"
                                                            VerticalAlignment="Center" HorizontalAlignment="Right"/>
-                                                <TextBlock Grid.Column="4" Text="{Binding TextCalc}" FontSize="12"
-                                                           VerticalAlignment="Center" HorizontalAlignment="Right"
-                                                           FontWeight="SemiBold"/>
+                                                <!-- Dégâts subis, et en dessous le soin qu'on en tire (lot 5 :
+                                                     « 0 (soin 49) ») ; la colonne fait 66 px, d'où deux lignes. -->
+                                                <StackPanel Grid.Column="4" VerticalAlignment="Center" HorizontalAlignment="Right">
+                                                    <TextBlock Text="{Binding TextCalc}" FontSize="12" HorizontalAlignment="Right"
+                                                               FontWeight="SemiBold"/>
+                                                    <TextBlock Text="{Binding HealText}" FontSize="10" HorizontalAlignment="Right"
+                                                               Foreground="{DynamicResource SkillVariableBrush}"
+                                                               Visibility="{Binding HealText, Converter={StaticResource NullToVis}}"/>
+                                                </StackPanel>
                                                 <TextBlock Grid.Column="5" Text="{Binding DeltaText}" FontSize="11"
                                                            VerticalAlignment="Center" HorizontalAlignment="Right">
                                                     <TextBlock.Style>
@@ -852,9 +863,15 @@
                                                          ToolTip="{DynamicResource S.Armor.AttackerAttrRankTip}"/>
                                                 <TextBlock Grid.Column="3" Text="{Binding Text60}" FontSize="12"
                                                            VerticalAlignment="Center" HorizontalAlignment="Right"/>
-                                                <TextBlock Grid.Column="4" Text="{Binding TextCalc}" FontSize="12"
-                                                           VerticalAlignment="Center" HorizontalAlignment="Right"
-                                                           FontWeight="SemiBold"/>
+                                                <!-- Dégâts subis, et en dessous le soin qu'on en tire (lot 5 :
+                                                     « 0 (soin 49) ») ; la colonne fait 66 px, d'où deux lignes. -->
+                                                <StackPanel Grid.Column="4" VerticalAlignment="Center" HorizontalAlignment="Right">
+                                                    <TextBlock Text="{Binding TextCalc}" FontSize="12" HorizontalAlignment="Right"
+                                                               FontWeight="SemiBold"/>
+                                                    <TextBlock Text="{Binding HealText}" FontSize="10" HorizontalAlignment="Right"
+                                                               Foreground="{DynamicResource SkillVariableBrush}"
+                                                               Visibility="{Binding HealText, Converter={StaticResource NullToVis}}"/>
+                                                </StackPanel>
                                                 <TextBlock Grid.Column="5" Text="{Binding DeltaText}" FontSize="11"
                                                            VerticalAlignment="Center" HorizontalAlignment="Right">
                                                     <TextBlock.Style>
@@ -896,9 +913,13 @@
                                                    ToolTip="{DynamicResource S.Armor.TotalTip}"/>
                                         <TextBlock Grid.Column="3" Text="{Binding TotalText60}" FontSize="12"
                                                    VerticalAlignment="Center" HorizontalAlignment="Right"/>
-                                        <TextBlock Grid.Column="4" Text="{Binding TotalTextCalc}" FontSize="12"
-                                                   VerticalAlignment="Center" HorizontalAlignment="Right"
-                                                   FontWeight="SemiBold"/>
+                                        <StackPanel Grid.Column="4" VerticalAlignment="Center" HorizontalAlignment="Right">
+                                            <TextBlock Text="{Binding TotalTextCalc}" FontSize="12" HorizontalAlignment="Right"
+                                                       FontWeight="SemiBold"/>
+                                            <TextBlock Text="{Binding TotalHealText}" FontSize="10" HorizontalAlignment="Right"
+                                                       Foreground="{DynamicResource SkillVariableBrush}"
+                                                       Visibility="{Binding TotalHealText, Converter={StaticResource NullToVis}}"/>
+                                        </StackPanel>
                                         <TextBlock Grid.Column="5" Text="{Binding TotalDeltaText}" FontSize="11"
                                                    VerticalAlignment="Center" HorizontalAlignment="Right">
                                             <TextBlock.Style>

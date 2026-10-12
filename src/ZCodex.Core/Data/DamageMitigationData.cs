@@ -13,6 +13,8 @@ public enum MitigationScope
     Spells,
     /// <summary>Les dégâts d'ATTAQUE seulement (Life Bond : « the damage target ally takes from attacks »).</summary>
     Attacks,
+    /// <summary>Les attaques ET les sorts (Protective Bond : « from a single attack or spell ») : pas un sceau, un cri…</summary>
+    AttacksOrSpells,
 }
 
 /// <summary>Ce que vaut une ligne de réduction (lot 3 : au-delà des pourcentages du lot 1).</summary>
@@ -30,6 +32,15 @@ public enum MitigationKind
     CritNoExtra,
     /// <summary>Change le type de dégâts REÇU (lot 4) : <see cref="DamageMitigationDescriptor.Conversion"/> dit lequel.</summary>
     Conversion,
+    /// <summary>Plafond (lot 5) : un paquet ne retire pas plus de N % de la vie max (N = <see cref="DamageMitigationDescriptor.Fixed"/>).
+    /// AVANT les % (expérience P2 de Philippe, 11/10/2026), après les hausses.</summary>
+    Cap,
+    /// <summary>Conversion en soin (lot 5) : jusqu'à N points du paquet deviennent un soin ; au-delà, on encaisse le
+    /// surplus (Mark of Protection, Reversal of Fortune, Life Sheath). Après les réductions fixes.</summary>
+    HealConversion,
+    /// <summary>Soin déclenché par le coup (lot 5, Q22) : +N de vie par paquet reçu, sans toucher aux dégâts — seulement
+    /// si le coup dépasse <see cref="DamageMitigationDescriptor.Above"/> avant plafond et réductions (Spirit Bond).</summary>
+    HealOnHit,
 }
 
 /// <summary>Les conversions de type du lot 4. La règle de chacune vit dans <see cref="DamageBoostData"/> (chaîne du
@@ -59,12 +70,18 @@ public enum MitigationRankBox
     HitNumber,
     /// <summary>Rang de Force du défenseur : valeur = <see cref="DamageMitigationDescriptor.Fixed"/> × rang, plafonnée.</summary>
     Strength,
+    /// <summary>Nombre d'enchantements d'Assassin sur le défenseur, la compétence comprise (Shadow Form, lot 5) :
+    /// valeur = <see cref="DamageMitigationDescriptor.Fixed"/> × nombre, 1 au moins.</summary>
+    AssassinEnchantments,
+    /// <summary>Rang de Faveur divine du LANCEUR (Seed of Life, lot 5) : valeur = <see cref="DamageMitigationDescriptor.Fixed"/>
+    /// × rang ; le rang de titre de la compétence ne change que la durée.</summary>
+    DivineFavor,
 }
 
 /// <summary>
 /// Une réduction de dégâts REÇUS, appliquée APRÈS l'armure (chantier « calculateur d'armure : réductions de
 /// dégâts », plan <c>docs/armor_calc_mitigation_plan.md</c>). Lot 1 = les pourcentages ; lot 3 = réductions fixes,
-/// dégâts augmentés, critiques, redirection ; lot 4 = conversions de type.
+/// dégâts augmentés, critiques, redirection ; lot 4 = conversions de type ; lot 5 = plafonds et soins.
 ///
 /// La valeur n'est jamais recopiée : <paramref name="Index"/> = colonne de progression SONDÉE dans la base
 /// (lue au rang, donc une variante PvP ou une mise à jour du catalogue sont justes d'office) ;
@@ -76,12 +93,17 @@ public enum MitigationRankBox
 /// <paramref name="AlsoLifeSteal"/> = la réduction touche aussi le vol de vie (Q14 fermée le 10/10/2026 : Shielding
 /// Hands et Union seulement, comme le disent leurs textes).
 /// <paramref name="Conversion"/> = la conversion de type d'une ligne <see cref="MitigationKind.Conversion"/> (lot 4).
+/// <paramref name="Above"/> = seuil d'un soin déclenché par le coup (lot 5) : il ne joue que si le paquet, avant
+/// plafond et réductions, dépasse ce nombre (Spirit Bond : 50). 0 = tout paquet.
+/// Lot 5 : pour une conversion en soin, <paramref name="AlsoLifeSteal"/> = elle convertit aussi le vol de vie
+/// (Reversal of Fortune, Life Sheath) ; pour un soin déclenché, il se déclenche aussi sur un vol de vie (Weapon of Remedy).
 /// </summary>
 public sealed record DamageMitigationDescriptor(
     int SkillId, string Name, MitigationScope Scope, string? DamageType = null,
     int Index = -1, int Fixed = 0, string? ConditionFr = null, string? ConditionEn = null,
     MitigationKind Kind = MitigationKind.Percent, MitigationRankBox RankBox = MitigationRankBox.Attribute,
-    int Offset = 0, int Cap = 0, bool AlsoLifeSteal = false, TypeConversion Conversion = TypeConversion.None)
+    int Offset = 0, int Cap = 0, bool AlsoLifeSteal = false, TypeConversion Conversion = TypeConversion.None,
+    int Above = 0)
 {
     /// <summary>Ligne de critique : elle n'a pas de valeur.</summary>
     public bool IsCritical => Kind is MitigationKind.CritImmune or MitigationKind.CritNoExtra;
@@ -225,18 +247,94 @@ public static class DamageMitigationData
         new(267, "Judge's Insight", MitigationScope.All, Kind: MitigationKind.Conversion,
             Conversion: TypeConversion.JudgesInsight,
             ConditionFr: "lancée sur l'attaquant : ses attaques, +20 % de pénétration", ConditionEn: "cast on the attacker: their attacks, +20% armor penetration"),
+
+        // ── Lot 5 — plafonds : un paquet ne retire pas plus de N % de la vie max (saisie, défaut 480). Ordre de Philippe
+        // (P2 et Q21, 11/10/2026) : après l'armure et les hausses, AVANT les % et les fixes. Le plus bas l'emporte.
+        // Textes relus le 11/10/2026 ; la valeur est le % écrit en dur, le rang ne change que la durée.
+        // « Incoming damage is reduced to 10% of target ally's maximum Health ».
+        new(245, "Protective Spirit", MitigationScope.All, Fixed: 10, Kind: MitigationKind.Cap),
+        // « cannot lose more than 10% maximum Health from a single attack » — anomalie wiki : sorts et sceaux aussi.
+        new(982, "Shelter", MitigationScope.All, Fixed: 10, Kind: MitigationKind.Cap,
+            ConditionFr: "à portée de l'esprit", ConditionEn: "within the spirit's range"),
+        new(3016, "Shelter (PvP)", MitigationScope.All, Fixed: 10, Kind: MitigationKind.Cap,
+            ConditionFr: "à portée de l'esprit", ConditionEn: "within the spirit's range"),
+        // « cannot lose more than 5% max Health from a single attack or spell » — l'énergie du lanceur est ignorée.
+        new(263, "Protective Bond", MitigationScope.AttacksOrSpells, Fixed: 5, Kind: MitigationKind.Cap,
+            ConditionFr: "énergie du lanceur ignorée", ConditionEn: "caster's Energy loss ignored"),
+        // « You cannot lose more than 20% of your max Health from a single hit » (sort d'objet : ses cendres en main).
+        new(812, "Defiant Was Xinrae", MitigationScope.All, Fixed: 20, Kind: MitigationKind.Cap),
+        // « The next time target ally takes damage from a foe, that damage is limited to 5% of target ally's max Health and
+        // that ally steals 20...68...80 Health from that foe » — plafond + soin du vol, colonne 0.
+        new(1750, "Xinrae's Weapon", MitigationScope.All, Fixed: 5, Kind: MitigationKind.Cap,
+            ConditionFr: "prochain coup seulement ; + vol de vie (soin)", ConditionEn: "next hit only; + life steal (heal)"),
+        new(1750, "Xinrae's Weapon", MitigationScope.All, Index: 0, Kind: MitigationKind.HealOnHit),
+
+        // ── Lot 5 — conversions en soin : jusqu'à la valeur, le paquet devient un soin ; au-delà on encaisse le surplus
+        // (wiki *Damage_reduction* : « heals the target for health equal to the amount which damage is reduced by »).
+        // Après les réductions fixes. Affichage « 0 (soin X) » (Q9, Philippe, 11/10/2026).
+        // « Converts incoming damage to healing (maximum 6...49...60) » — colonne 0, chaque paquet.
+        new(269, "Mark of Protection", MitigationScope.All, Index: 0, Kind: MitigationKind.HealConversion,
+            ConditionFr: "les dégâts deviennent un soin, jusqu'à la valeur", ConditionEn: "damage becomes healing, up to the value"),
+        // « Converts the next incoming damage or life steal (maximum 15...67...80) to healing » — colonne 0.
+        new(307, "Reversal of Fortune", MitigationScope.All, Index: 0, Kind: MitigationKind.HealConversion, AlsoLifeSteal: true,
+            ConditionFr: "prochain coup seulement ; vol de vie compris", ConditionEn: "next hit only; life steal included"),
+        // « Converts the next incoming damage or life steal (maximum 20...84...100) to healing » — colonne 1 (0 = conditions).
+        new(1123, "Life Sheath", MitigationScope.All, Index: 1, Kind: MitigationKind.HealConversion, AlsoLifeSteal: true,
+            ConditionFr: "prochain coup seulement ; vol de vie compris", ConditionEn: "next hit only; life steal included"),
+
+        // ── Lot 5 — soins DÉCLENCHÉS par un coup (Q22 : toute la famille, 11/10/2026) : les dégâts ne bougent pas, le soin
+        // s'affiche à côté. Toutes en colonne 0 sauf Supportive Spirit (0 = durée).
+        // « Heals for 30...78...90 whenever target ally takes more than 50 damage » : sur le coup AVANT Protective Spirit
+        // et les autres réductions (P2 de Philippe ; wiki : « even if it is reduced to 50 or below by other means »).
+        new(1114, "Spirit Bond", MitigationScope.All, Index: 0, Kind: MitigationKind.HealOnHit, Above: 50,
+            ConditionFr: "si le coup dépasse 50, avant plafond et réductions", ConditionEn: "if the hit exceeds 50, before caps and reductions"),
+        new(2892, "Spirit Bond (PvP)", MitigationScope.All, Index: 0, Kind: MitigationKind.HealOnHit, Above: 50,
+            ConditionFr: "si le coup dépasse 50, avant plafond et réductions", ConditionEn: "if the hit exceeds 50, before caps and reductions"),
+        // « Heals for 5...29...35 whenever target takes damage ».
+        new(285, "Healing Hands", MitigationScope.All, Index: 0, Kind: MitigationKind.HealOnHit),
+        // « Target and adjacent allies gain 3...25...30 Health whenever this ally takes damage. Cannot self-target. »
+        new(274, "Healing Seed", MitigationScope.All, Index: 0, Kind: MitigationKind.HealOnHit,
+            ConditionFr: "lancée par un allié (pas sur soi)", ConditionEn: "cast by an ally (cannot self-target)"),
+        // « Party members in earshot gain 15...63...75 Health the next time they take damage ».
+        new(1564, "Ballad of Restoration", MitigationScope.All, Index: 0, Kind: MitigationKind.HealOnHit,
+            ConditionFr: "prochain coup seulement", ConditionEn: "next hit only"),
+        new(2877, "Ballad of Restoration (PvP)", MitigationScope.All, Index: 0, Kind: MitigationKind.HealOnHit,
+            ConditionFr: "prochain coup seulement", ConditionEn: "next hit only"),
+        // « Heals for 5...41...50 whenever target ally takes damage while knocked-down » — colonne 1.
+        new(1391, "Supportive Spirit", MitigationScope.All, Index: 1, Kind: MitigationKind.HealOnHit,
+            ConditionFr: "à terre seulement", ConditionEn: "while knocked down"),
+        // « The next time target ally takes damage or life steal from a foe, this ally steals 20...68...80 Health ».
+        new(1752, "Weapon of Remedy", MitigationScope.All, Index: 0, Kind: MitigationKind.HealOnHit, AlsoLifeSteal: true,
+            ConditionFr: "prochain coup seulement ; vol de vie compris", ConditionEn: "next hit only; life steal included"),
+        // « Heals party members for 2 for each rank in Divine Favor whenever target takes damage. Cannot self target. »
+        // (PvE, titre Sunspear) — trouvée par le verrou 6 le 11/10/2026. Le perso protégé est du groupe, donc soigné ; la
+        // case porte le rang de Faveur divine du lanceur.
+        new(2105, "Seed of Life", MitigationScope.All, Fixed: 2, Kind: MitigationKind.HealOnHit,
+            RankBox: MitigationRankBox.DivineFavor,
+            ConditionFr: "lancée par un allié (pas sur soi) ; case = sa Faveur divine",
+            ConditionEn: "cast by an ally (cannot self-target); box = their Divine Favor"),
+
+        // ── Lot 5 — Shadow Form (Q24, 11/10/2026) : ce n'est PAS un plafond du défenseur (son « cannot deal more than »
+        // limite les dégâts qu'il INFLIGE). « Gain 5 damage reduction for each Assassin enchantment on you » : fixe,
+        // case = nombre d'enchantements d'Assassin, elle comprise. La variante PvP (esquive) est écartée.
+        new(826, "Shadow Form", MitigationScope.All, Fixed: 5, Kind: MitigationKind.Flat,
+            RankBox: MitigationRankBox.AssassinEnchantments,
+            ConditionFr: "case = enchantements d'Assassin (−5 chacun, elle comprise)",
+            ConditionEn: "box = Assassin enchantments (−5 each, itself included)"),
     ];
 
-    /// <summary>Valeur de la ligne (positive : % pour une réduction ou une hausse, points pour une réduction fixe) au
-    /// rang donné — <paramref name="rank"/> est la case de la ligne, donc le n° du coup ou la Force selon
-    /// <see cref="DamageMitigationDescriptor.RankBox"/>. 0 = rien à appliquer : ligne de critique, progression
-    /// absente, ou compétence introuvable dans le catalogue.</summary>
+    /// <summary>Valeur de la ligne (positive : % pour une réduction, une hausse ou un plafond, points pour une réduction
+    /// fixe ou un soin) au rang donné — <paramref name="rank"/> est la case de la ligne, donc le n° du coup, la Force ou
+    /// le nombre d'enchantements selon <see cref="DamageMitigationDescriptor.RankBox"/>. 0 = rien à appliquer : ligne
+    /// de critique, progression absente, ou compétence introuvable dans le catalogue.</summary>
     public static int ValueOf(DamageMitigationDescriptor descriptor, Skill? source, int rank)
     {
         if (descriptor.HasNoValue) return 0;
         int value;
-        if (descriptor.RankBox == MitigationRankBox.HitNumber) value = descriptor.Fixed * Math.Max(1, rank);
-        else if (descriptor.RankBox == MitigationRankBox.Strength) value = descriptor.Fixed * Math.Max(0, rank);
+        if (descriptor.RankBox is MitigationRankBox.HitNumber or MitigationRankBox.AssassinEnchantments)
+            value = descriptor.Fixed * Math.Max(1, rank);
+        else if (descriptor.RankBox is MitigationRankBox.Strength or MitigationRankBox.DivineFavor)
+            value = descriptor.Fixed * Math.Max(0, rank);
         else if (descriptor.Fixed > 0) value = descriptor.Fixed;
         else if (descriptor.Index < 0 || source?.Progression is not { } prog || descriptor.Index >= prog.Length) return 0;
         else value = (SkillProgression.IntAt(prog[descriptor.Index], rank) ?? 0) + descriptor.Offset;

@@ -22,6 +22,9 @@ namespace ZCodex.Core.Data;
 /// <item><b>Réduction fixe = sur le paquet ENTIER</b> (Philippe, 10/10/2026 : « tu calcules tous les dégâts et à la
 /// fin, tu retires ce que Stoneflesh atténue » ; épée 22 + bonus 13 = 35, Stoneflesh −25 → 10) : arme ET « +X »,
 /// plancher 0 à la fin.</item>
+/// <item><b>Lot 5, ordre complet — tranché par Philippe</b> (expérience P2 et Q21, 11/10/2026) : armure → hausses
+/// (Frenzy…) → seuil de Spirit Bond → plafond (Protective Spirit…) → % → fixes → conversions en soin → soins déclenchés.
+/// La liste compétence par compétence du wiki *Order_of_damage_modifiers* (qui se dit fautive) a été écartée.</item>
 /// </list>
 /// Le « +X » d'une attaque d'arme, compté sans armure depuis le chantier 10, ne reçoit AUCUN pourcentage
 /// (confirmé par Philippe le 10/10/2026) — mais il reçoit les réductions fixes, puisqu'il est dans le paquet.
@@ -44,8 +47,11 @@ public static class DamageMitigation
     /// (le type propre d'une compétence — Lightning Javelin, Judgment Strike — n'en est pas une).</summary>
     public readonly record struct HitType(string Received, bool Converted);
 
-    /// <summary>Les réductions qui agissent sur le défenseur.</summary>
-    public sealed record Context(IReadOnlyList<Active> Reductions)
+    /// <summary>Vie max du défenseur par défaut (Q15, Philippe, 11/10/2026 : saisie à la main, 480 par défaut).</summary>
+    public const int DefaultMaxHealth = 480;
+
+    /// <summary>Les réductions qui agissent sur le défenseur, et sa vie max (base des plafonds du lot 5).</summary>
+    public sealed record Context(IReadOnlyList<Active> Reductions, int MaxHealth = DefaultMaxHealth)
     {
         public static readonly Context None = new([]);
     }
@@ -69,6 +75,7 @@ public static class DamageMitigation
             MitigationScope.DamageType => damageType is not null && damageType == descriptor.DamageType,
             MitigationScope.Spells     => isSpell,
             MitigationScope.Attacks    => isAttack,
+            MitigationScope.AttacksOrSpells => isSpell || isAttack,
             _ => false,
         };
 
@@ -85,6 +92,77 @@ public static class DamageMitigation
         }
         return factor;
     }
+
+    /// <summary>Facteur des seules HAUSSES (Frenzy…) : elles passent AVANT le plafond (lot 5), sinon elles le
+    /// perceraient — c'est aussi l'ordre du wiki *Order_of_damage_modifiers*.</summary>
+    public static double IncreaseFactor(Context? context, string? damageType, bool isSpell, bool isAttack = false)
+        => KindFactor(context, MitigationKind.Increase, damageType, isSpell, isAttack);
+
+    /// <summary>Facteur des seules RÉDUCTIONS en %, appliqué APRÈS le plafond (expérience P2 de Philippe).</summary>
+    public static double PercentFactor(Context? context, string? damageType, bool isSpell, bool isAttack = false)
+        => KindFactor(context, MitigationKind.Percent, damageType, isSpell, isAttack);
+
+    private static double KindFactor(Context? context, MitigationKind kind, string? damageType, bool isSpell, bool isAttack)
+    {
+        double factor = 1.0;
+        foreach (var a in context?.Reductions ?? [])
+        {
+            if (a.Descriptor is not { } d || d.Kind != kind || a.Value <= 0 || !Applies(d, damageType, isSpell, isAttack)) continue;
+            factor *= kind == MitigationKind.Percent ? 1 - Math.Min(a.Value, 100) / 100.0 : 1 + a.Value / 100.0;
+        }
+        return factor;
+    }
+
+    /// <summary>
+    /// Plafond d'un paquet, en points (lot 5) : vie max × le plus petit % des plafonds qui le touchent ; null = aucun.
+    /// Il porte sur le paquet ENTIER — arme, « +X », vulnérabilité sacrée — et aussi, au contraire des % et des fixes,
+    /// sur les paquets qui ignorent l'armure (Q23, Philippe, 11/10/2026). Jamais sur un vol de vie (ce ne sont pas des
+    /// dégâts).
+    /// </summary>
+    public static double? Cap(Context? context, string? damageType, bool isSpell, bool isAttack = false)
+    {
+        var percents = (context?.Reductions ?? [])
+            .Where(a => a.Descriptor is { Kind: MitigationKind.Cap } d && a.Value > 0 && Applies(d, damageType, isSpell, isAttack))
+            .Select(a => a.Value).ToList();
+        return percents.Count == 0 ? null : (context?.MaxHealth ?? DefaultMaxHealth) * percents.Min() / 100.0;
+    }
+
+    /// <summary>Un paquet après tout le pipeline : ce que le défenseur perd, et le soin qu'il en tire (lot 5).</summary>
+    public readonly record struct Outcome(int Taken, int Heal);
+
+    /// <summary>
+    /// Dernière étape d'un paquet (lot 5, Q22 / Q23) : les conversions en soin, puis les soins déclenchés par le coup.
+    /// <paramref name="taken"/> = le paquet après plafond, % et fixes (déjà arrondi) ; <paramref name="before"/> = le même
+    /// paquet AVANT plafond et réductions (après l'armure et les hausses) : c'est lui que lit le seuil de Spirit Bond
+    /// (« Spirit Bond passe toujours avant Esprit prot », Philippe, 11/10/2026). <paramref name="lifeSteal"/> = le paquet
+    /// est un vol de vie : seules les lignes qui le citent jouent.
+    /// Chaque conversion convertit jusqu'à sa valeur ce qui reste du paquet : au total, min(paquet, somme des valeurs),
+    /// quel que soit leur ordre.
+    /// </summary>
+    public static Outcome Heal(Context? context, int taken, int before, bool lifeSteal = false)
+    {
+        int heal = 0;
+        foreach (var a in context?.Reductions ?? [])
+        {
+            if (a.Descriptor is not { Kind: MitigationKind.HealConversion } d || a.Value <= 0) continue;
+            if (lifeSteal && !d.AlsoLifeSteal) continue;
+            int converted = Math.Min(taken, a.Value);
+            taken -= converted;
+            heal += converted;
+        }
+        foreach (var a in context?.Reductions ?? [])
+        {
+            if (a.Descriptor is not { Kind: MitigationKind.HealOnHit } d || a.Value <= 0) continue;
+            if (lifeSteal && !d.AlsoLifeSteal) continue;
+            if (before > d.Above) heal += a.Value;
+        }
+        return new(taken, heal);
+    }
+
+    /// <summary>Une ligne cochée agit-elle à l'étape des soins ?</summary>
+    public static bool HasHeals(Context? context) =>
+        (context?.Reductions ?? []).Any(a => a.Descriptor is { Kind: MitigationKind.HealConversion or MitigationKind.HealOnHit }
+                                             && a.Value > 0);
 
     /// <summary>Points à retirer d'un paquet qui respecte l'armure, après les % : somme des réductions fixes qui le
     /// touchent (retirer l'une après l'autre avec plancher 0 ou la somme d'un coup revient au même).</summary>

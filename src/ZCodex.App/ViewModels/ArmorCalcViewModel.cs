@@ -223,6 +223,16 @@ public class ArmorCalcViewModel : ViewModelBase
         set { if (SetField(ref _illusionSkillCount, Math.Clamp(value, 0, 8))) { RefreshPerUnitRows(); Recompute(); } }
     }
 
+    // Vie max du défenseur (chantier « réductions », lot 5 — Q15 : saisie à la main, 480 par défaut) : base des plafonds
+    // (Protective Spirit 10 %…). Elle ne touche que la table d'attaques.
+    public const int MaxHealthLimit = 9999;
+    private int _maxHealth = DamageMitigation.DefaultMaxHealth;
+    public int MaxHealth
+    {
+        get => _maxHealth;
+        set { if (SetField(ref _maxHealth, Math.Clamp(value, 1, MaxHealthLimit))) RefreshAttacks(); }
+    }
+
     // ── États effectifs (chantier « réductions », lot 2) : la case OU un effet coché qui implique l'état
     // (CharacterStateLinks). Décision Q4 de Philippe (10/10/2026) : la case se coche visiblement, grisée,
     // avec « activé par … » en infobulle. Les booléens ci-dessus restent la saisie de l'utilisateur (profil).
@@ -612,6 +622,7 @@ public class ArmorCalcViewModel : ViewModelBase
     public bool HasAttackRows => FreeAttacks.Count + ReferenceAttacks.Count > 0;
     public string TotalText60 { get; private set; } = "—";
     public string TotalTextCalc { get; private set; } = "—";
+    public string? TotalHealText { get; private set; }
     public string TotalDeltaText { get; private set; } = "";
     public bool TotalIsMitigated { get; private set; }
 
@@ -626,11 +637,13 @@ public class ArmorCalcViewModel : ViewModelBase
         int delta = hi60 <= 0 ? 0 : (int)Math.Round((hiCalc - hi60) * 100.0 / hi60);
         TotalText60 = results.Count == 0 ? "—" : AttackRowVM.Fmt(lo60, hi60);
         TotalTextCalc = results.Count == 0 ? "—" : AttackRowVM.Fmt(loCalc, hiCalc);
+        TotalHealText = AttackRowVM.HealFmt(results.Sum(r => r.HealLo), results.Sum(r => r.HealHi));
         TotalDeltaText = results.Count == 0 ? "" : delta == 0 ? "0 %" : $"{(delta > 0 ? "+" : "")}{delta} %";
         TotalIsMitigated = delta < 0;
         OnPropertyChanged(nameof(HasAttackRows));
         OnPropertyChanged(nameof(TotalText60));
         OnPropertyChanged(nameof(TotalTextCalc));
+        OnPropertyChanged(nameof(TotalHealText));
         OnPropertyChanged(nameof(TotalDeltaText));
         OnPropertyChanged(nameof(TotalIsMitigated));
     }
@@ -642,7 +655,7 @@ public class ArmorCalcViewModel : ViewModelBase
         var active = Effects.Where(r => r.IsChecked)
                             .SelectMany(r => r.ResolvedMitigations())
                             .Where(a => a.IsEffective).ToList();
-        return active.Count == 0 ? DamageMitigation.Context.None : new DamageMitigation.Context(active);
+        return active.Count == 0 ? DamageMitigation.Context.None : new DamageMitigation.Context(active, MaxHealth);
     }
 
     // ── Attaques libres (chantier « réductions », lot 1) : un coup de N dégâts d'un type, sans compétence ──
@@ -685,13 +698,14 @@ public class ArmorCalcViewModel : ViewModelBase
     // <paramref name="computeAt"/> = le calcul de la ligne pour une localisation (compétence ou attaque libre).
     private static ReferenceAttack.Result ExpectedOver(Func<int, ReferenceAttack.Result> computeAt)
     {
-        double lo = 0, hi = 0;
+        double lo = 0, hi = 0, healLo = 0, healHi = 0;
         ReferenceAttack.Result? representative = null;
         for (int loc = 0; loc < 5; loc++)
         {
             double p = ArmorCalculator.HitProbability((ArmorCalculator.HitLocation)loc);
             var r = computeAt(loc);
             lo += p * r.LoCalc; hi += p * r.HiCalc;
+            healLo += p * r.HealLo; healHi += p * r.HealHi;   // soin (lot 5), pondéré comme les dégâts
             // Champs non chiffrés (type, notes dont le critique) : pris sur le TORSE, la
             // localisation la plus probable (3/8) — les dégâts @AL 60 sont eux indépendants du lieu.
             if (loc == 1) representative = r;
@@ -700,6 +714,8 @@ public class ArmorCalcViewModel : ViewModelBase
         {
             LoCalc = (int)Math.Round(lo, MidpointRounding.AwayFromZero),
             HiCalc = (int)Math.Round(hi, MidpointRounding.AwayFromZero),
+            HealLo = (int)Math.Round(healLo, MidpointRounding.AwayFromZero),
+            HealHi = (int)Math.Round(healHi, MidpointRounding.AwayFromZero),
         };
     }
 
@@ -1235,6 +1251,7 @@ public class ArmorCalcViewModel : ViewModelBase
         SpiritCount = SpiritCount,
         SignetCount = SignetCount,
         IllusionSkillCount = IllusionSkillCount,
+        MaxHealth = MaxHealth,
         ReferenceAttacks = ReferenceAttacks
             .Select(a => new ReferenceAttackDto { SkillId = a.Skill.Id, Rank = a.Rank, WeaponType = a.WeaponType }).ToList(),
         FreeAttacks = FreeAttacks
@@ -1309,6 +1326,7 @@ public class ArmorCalcViewModel : ViewModelBase
         _spiritCount = Math.Clamp(dto.SpiritCount, 0, 30); OnPropertyChanged(nameof(SpiritCount));
         _signetCount = Math.Clamp(dto.SignetCount, 0, 8); OnPropertyChanged(nameof(SignetCount));
         _illusionSkillCount = Math.Clamp(dto.IllusionSkillCount, 0, 8); OnPropertyChanged(nameof(IllusionSkillCount));
+        _maxHealth = Math.Clamp(dto.MaxHealth, 1, MaxHealthLimit); OnPropertyChanged(nameof(MaxHealth));
         RefreshPerUnitRows();
 
         // Liste vide = profil antérieur au Lot D → on garde les attaques par défaut en place.
@@ -1923,18 +1941,22 @@ public class ArmorEffectRowVM : ViewModelBase
                         || mitigations.Any(m => m.ReadsProgression && m.Index >= 0)
                         || _rankBox != MitigationRankBox.Attribute;
         UsesUnitCount = skillId is 33 or 18 or 3179;   // IW / Mantra of Signets (+ PvP)
-        // Shield of Absorption : la case est le n° du coup reçu, qui commence à 1 (lot 3).
-        if (_rankBox == MitigationRankBox.HitNumber) _rank = 1;
+        // Shield of Absorption : la case est le n° du coup reçu, qui commence à 1 (lot 3) ; Shadow Form : le nombre
+        // d'enchantements d'Assassin, elle comprise (lot 5).
+        if (_rankBox is MitigationRankBox.HitNumber or MitigationRankBox.AssassinEnchantments) _rank = 1;
     }
 
-    // Ce que porte la case du rang (lot 3) : rang d'attribut, n° du coup reçu ou rang de Force.
+    // Ce que porte la case du rang (lots 3 et 5) : rang d'attribut, n° du coup reçu, rang de Force ou nombre
+    // d'enchantements d'Assassin.
     private readonly MitigationRankBox _rankBox;
 
     /// <summary>Infobulle de la case du rang, selon ce qu'elle porte.</summary>
     public string RankTip => LanguageManager.T(_rankBox switch
     {
-        MitigationRankBox.HitNumber => "S.Armor.HitNumberTip",
-        MitigationRankBox.Strength  => "S.Armor.DefenderStrengthTip",
+        MitigationRankBox.HitNumber            => "S.Armor.HitNumberTip",
+        MitigationRankBox.Strength             => "S.Armor.DefenderStrengthTip",
+        MitigationRankBox.AssassinEnchantments => "S.Armor.AssassinEnchantTip",
+        MitigationRankBox.DivineFavor          => "S.Armor.CasterDivineFavorTip",
         _ => "S.Armor.CasterAttrRankTip",
     });
 
@@ -1982,6 +2004,7 @@ public class ArmorEffectRowVM : ViewModelBase
         MitigationScope.DamageType => $" (vs {SkillDamage.DisplayType(d.DamageType)})",
         MitigationScope.Spells     => L(" (sorts)", " (spells)"),
         MitigationScope.Attacks    => L(" (attaques)", " (attacks)"),
+        MitigationScope.AttacksOrSpells => L(" (attaques et sorts)", " (attacks and spells)"),
         _ => "",
     };
 
@@ -2085,12 +2108,15 @@ public class ArmorEffectRowVM : ViewModelBase
 
     // Valeur affichée : simple (« +40 », « −45 % », « −25 ») pour une clause, composite (« +40 élém / −14 phys »)
     // pour les skills fusionnés. Une ligne de critique n'a pas de valeur : sa condition le dit.
+    // Lot 5 : plafond « ≤ 10 % » (de la vie max), soin « soin 49 ». Le vol de vie d'Arme de Xinrae ne s'affiche pas à
+    // côté de son plafond (la colonne fait 48 px) : sa condition le dit, et la table d'attaques montre le soin.
     public string ResolvedValueText
     {
         get
         {
             var parts = new List<string>();
             if (Clauses.Count > 0) parts.Add(ArmorValueText());
+            bool hasCap = Mitigations.Any(m => m.Kind == MitigationKind.Cap);
             foreach (var a in ResolvedMitigations())   // la portée est dans le Label
                 switch (a.Descriptor.Kind)
                 {
@@ -2099,6 +2125,11 @@ public class ArmorEffectRowVM : ViewModelBase
                     case MitigationKind.Flat:     parts.Add($"−{a.Value}"); break;
                     case MitigationKind.Conversion:
                         parts.Add("→ " + SkillDamage.DisplayType(ConvertedTo(a.Descriptor.Conversion))); break;
+                    case MitigationKind.Cap:      parts.Add(L($"≤ {a.Value} %", $"≤ {a.Value}%")); break;
+                    case MitigationKind.HealConversion:
+                        parts.Add(L($"soin {a.Value}", $"heal {a.Value}")); break;
+                    case MitigationKind.HealOnHit when !hasCap:
+                        parts.Add(L($"soin {a.Value}", $"heal {a.Value}")); break;
                 }
             return string.Join(" / ", parts);
         }
@@ -2211,6 +2242,7 @@ public abstract class AttackRowVM : ViewModelBase
         _extraNote = extraNote;
         OnPropertyChanged(nameof(Text60));
         OnPropertyChanged(nameof(TextCalc));
+        OnPropertyChanged(nameof(HealText));
         OnPropertyChanged(nameof(DeltaText));
         OnPropertyChanged(nameof(TypeText));
         OnPropertyChanged(nameof(Notes));
@@ -2224,6 +2256,13 @@ public abstract class AttackRowVM : ViewModelBase
 
     public string Text60   => _result is null ? "—" : Fmt(_result.Lo60, _result.Hi60);
     public string TextCalc => _result is null ? "—" : Fmt(_result.LoCalc, _result.HiCalc);
+
+    /// <summary>Soin tiré de l'attaque (lot 5), sous les dégâts : « (soin 49) » — Q9, Philippe : « 0 (soin X) ». Null
+    /// sans soin : la ligne se replie (NullToVis), la table garde sa hauteur.</summary>
+    public string? HealText => _result is null ? null : HealFmt(_result.HealLo, _result.HealHi);
+
+    internal static string? HealFmt(int lo, int hi) =>
+        hi <= 0 ? null : AppLanguage.IsFr ? $"(soin {Fmt(lo, hi)})" : $"(heal {Fmt(lo, hi)})";
 
     public string TypeText => _result?.IgnoresArmor == true
         ? (AppLanguage.IsFr ? "ignore l'armure" : "ignores armor")

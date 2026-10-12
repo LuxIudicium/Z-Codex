@@ -57,6 +57,9 @@ public class ArmorCalcProfile
     public int SpiritCount { get; set; }
     public int SignetCount { get; set; } = 1;
     public int IllusionSkillCount { get; set; } = 5;
+    // Chantier « réductions de dégâts », lot 5 — vie max du défenseur, base des plafonds (Protective Spirit…). Absent
+    // d'un profil ancien → 480, le défaut choisi par Philippe (Q15).
+    public int MaxHealth { get; set; } = ZCodex.Core.Data.DamageMitigation.DefaultMaxHealth;
 
     // Lot D — attaques de référence (skillId + rang). Liste VIDE (profil antérieur au Lot D) →
     // la liste par défaut en place est conservée, pas écrasée.

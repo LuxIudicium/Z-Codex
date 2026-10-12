@@ -17,10 +17,12 @@ public static class ReferenceAttack
     /// @AL 60 sont la référence catalogue SANS réduction plate ; @AL du build INCLUENT la
     /// réduction plate (Absorption/Knight's/…). Une attaque entièrement armor-ignoring
     /// (<see cref="IgnoresArmor"/>) affiche des valeurs égales des deux côtés.</summary>
+    /// <para><see cref="HealLo"/> / <see cref="HealHi"/> = soin que le défenseur tire de l'attaque côté build (conversions
+    /// en soin, soins déclenchés par un coup — calculateur d'armure, lot 5), à côté des dégâts : « 0 (soin 49) ».</para>
     public sealed record Result(
         bool IgnoresArmor, bool IsRange,
         int Lo60, int Hi60, int LoCalc, int HiCalc,
-        int Penetration, string? PrimaryTypeFr, string Notes)
+        int Penetration, string? PrimaryTypeFr, string Notes, int HealLo = 0, int HealHi = 0)
     {
         /// <summary>Réduction relative des dégâts au build vs AL 60 (borne haute), en % (négatif =
         /// dégâts réduits). 0 si la référence est nulle.</summary>
@@ -145,12 +147,11 @@ public static class ReferenceAttack
         bool isSpell = DamageMitigation.IsSpell(skill);
         bool isAttack = DamageMitigation.IsAttack(skill);
         var applied = new AppliedMitigation();
-        double Mitigate(string? type, bool spell, bool attack)
-        {
-            double f = DamageMitigation.Factor(mitigation, type, spell, attack);
-            applied.AddFactor(f);
-            return f;
-        }
+        int healLo = 0, healHi = 0;
+        // Un paquet qui respecte l'armure, tout le pipeline (lot 5) — voir Packet.
+        DamageMitigation.Outcome Hit(Func<double, double, double, int> at, double baseMult, string type, bool spell,
+                                     bool attack, int extra, int flats, bool record = true)
+            => Packet(mitigation, applied, at, baseMult, type, spell, attack, extra, flats, record);
         // Points retirés d'un paquet : réductions fixes des compétences + équipement (physique seulement).
         int FlatFor(string type, bool spell, bool attack)
         {
@@ -200,17 +201,21 @@ public static class ReferenceAttack
             if (hit.Converted && !convertedTo.Contains(type)) convertedTo.Add(type);
             int alCalc = alForType(ColumnKey(type));
             // Un coup d'arme n'est jamais un sort, même porté par une attaque élémentaire ; c'est toujours une attaque.
-            double multCalc = mods.Multiplier * Mitigate(type, spell: false, attack: true);
-            // La vulnérabilité sacrée est un ajout de points : elle va avec les réductions fixes (plancher 0 à la fin).
-            int flat = FlatFor(type, spell: false, attack: true) - HolyOn(type);
-
+            int flats = FlatFor(type, spell: false, attack: true);
+            // Bonus « +X » (ignore l'armure, aucun %) et vulnérabilité sacrée : des points AJOUTÉS au paquet. Ils ne
+            // reçoivent pas les %, mais la réduction fixe porte sur le TOUT (arme + bonus), plancher 0 à la fin — réponse
+            // de Philippe du 10/10/2026 —, et le plafond aussi (lot 5).
+            int extra = bonus + HolyOn(type);
+            int AtMin(double m, double c, double a) => WeaponStrike.DamageAt(weapon.Min, rank, alCalc, pen, m, cap: c, afterCap: a);
+            int AtMax(double m, double c, double a) => WeaponStrike.DamageAt(weapon.Max, rank, alCalc, pen, m, cap: c, afterCap: a);
             // Critique côté build (lot 3) : ordinaire (max ×√2), sans surplus (Balanced Stance : max de l'arme), ou
             // plus de critique du tout (Stoneflesh Aura, Stone Sheath). Le côté @AL 60 reste la référence nue.
-            int CritCalc() => critRule == DamageMitigation.CritRule.NoExtra
-                ? WeaponStrike.DamageAt(weapon.Max, rank, alCalc, pen, multCalc)
-                : WeaponStrike.CriticalAt(weapon, rank, alCalc, pen, multCalc);
+            Func<double, double, double, int> atCrit = critRule == DamageMitigation.CritRule.NoExtra
+                ? AtMax
+                : (m, c, a) => WeaponStrike.CriticalAt(weapon, rank, alCalc, pen, m, cap: c, afterCap: a);
 
-            int lo60w, hi60w, loCw, hiCw;
+            int lo60w, hi60w;
+            DamageMitigation.Outcome loC, hiC;
             if (mods.AlwaysCritical)
             {
                 // Critique forcé (Keen Chop) : la valeur subie EST le critique — comme la tooltip
@@ -218,23 +223,22 @@ public static class ReferenceAttack
                 lo60w = hi60w = WeaponStrike.CriticalAt(weapon, rank, 60, pen, mods.Multiplier);
                 if (critRule == DamageMitigation.CritRule.Immune)
                 {
-                    loCw = WeaponStrike.DamageAt(weapon.Min, rank, alCalc, pen, multCalc);
-                    hiCw = WeaponStrike.DamageAt(weapon.Max, rank, alCalc, pen, multCalc);
+                    loC = Hit(AtMin, mods.Multiplier, type, false, true, extra, flats);
+                    hiC = Hit(AtMax, mods.Multiplier, type, false, true, extra, flats);
                 }
-                else loCw = hiCw = CritCalc();
+                else loC = hiC = Hit(atCrit, mods.Multiplier, type, false, true, extra, flats);
             }
             else
             {
                 lo60w = WeaponStrike.DamageAt(weapon.Min, rank, 60, pen, mods.Multiplier);
                 hi60w = WeaponStrike.DamageAt(weapon.Max, rank, 60, pen, mods.Multiplier);
-                loCw  = WeaponStrike.DamageAt(weapon.Min, rank, alCalc, pen, multCalc);
-                hiCw  = WeaponStrike.DamageAt(weapon.Max, rank, alCalc, pen, multCalc);
+                loC = Hit(AtMin, mods.Multiplier, type, false, true, extra, flats);
+                hiC = Hit(AtMax, mods.Multiplier, type, false, true, extra, flats);
             }
 
-            // Bonus « +X » (ignore l'armure, aucun %) : il est dans le paquet, donc la réduction fixe porte sur le
-            // TOUT (arme + bonus), plancher 0 à la fin — réponse de Philippe du 10/10/2026.
             lo60 += lo60w + bonus; hi60 += hi60w + bonus;
-            loCalc += Math.Max(0, loCw + bonus - flat); hiCalc += Math.Max(0, hiCw + bonus - flat);
+            loCalc += loC.Taken; hiCalc += hiC.Taken;
+            healLo += loC.Heal; healHi += hiC.Heal;
 
             primaryTypeFr = SkillDamage.DisplayType(type); primaryWeight = weapon.Max;
 
@@ -248,7 +252,7 @@ public static class ReferenceAttack
             else if (critRule == DamageMitigation.CritRule.Immune)
                 notes.Add(L("immunisé aux critiques", "immune to critical hits"));
             else
-                notes.Add($"{L("critique", "critical")} {Math.Max(0, CritCalc() + bonus - flat)}"
+                notes.Add($"{L("critique", "critical")} {Hit(atCrit, mods.Multiplier, type, false, true, extra, flats, record: false).Taken}"
                           + (critRule == DamageMitigation.CritRule.NoExtra ? L(" (sans surplus)", " (no extra damage)") : ""));
         }
 
@@ -259,21 +263,27 @@ public static class ReferenceAttack
             int alCalc = alForType(ColumnKey(type));
 
             int d60 = SkillDamage.DamageAt(r.Value, 60, pen);
-            int dC  = SkillDamage.DamageAt(r.Value, alCalc, pen, multiplier: Mitigate(type, isSpell, isAttack));
-            dC = Math.Max(0, dC - FlatFor(type, isSpell, isAttack) + HolyOn(type));
+            var dC = Hit((m, c, a) => SkillDamage.DamageAt(r.Value, alCalc, pen, multiplier: m, cap: c, afterCap: a),
+                         1.0, type, isSpell, isAttack, HolyOn(type), FlatFor(type, isSpell, isAttack));
 
-            lo60 += d60; hi60 += d60; loCalc += dC; hiCalc += dC;
+            lo60 += d60; hi60 += d60; loCalc += dC.Taken; hiCalc += dC.Taken; healLo += dC.Heal; healHi += dC.Heal;
             if (r.Value > primaryWeight) { primaryWeight = r.Value; primaryTypeFr = SkillDamage.DisplayType(type); }
         }
 
         // ── Paquets armor-ignoring (sacré/ombre/sans type ; bonus déjà retiré pour les armes) ──
         // Vulnérabilité sacrée (Tormentor's) : +N sur les paquets SACRÉS, côté build seulement. Sous le Briseur de pierre
         // du défenseur, un sacré reçu devient terre (lot 4) : il ignore toujours l'armure, mais n'est plus sacré.
-        foreach (var r in ignoring.Where(r => !r.Conditional && !r.IsThreshold))
+        // Ni % ni fixes (décision 6.2), mais le plafond et les soins, oui (Q23, lot 5).
+        bool ignoringChanged = false;
+        void Ignoring(int value, string? receivedType)
         {
-            int holy = HolyOn(Received(r.DamageType));
-            lo60 += r.Value; hi60 += r.Value; loCalc += r.Value + holy; hiCalc += r.Value + holy;
+            int full = value + HolyOn(receivedType);
+            var o = Unarmored(mitigation, applied, full, receivedType, isSpell, isAttack);
+            if (o.Taken != full) ignoringChanged = true;
+            lo60 += value; hi60 += value; loCalc += o.Taken; hiCalc += o.Taken; healLo += o.Heal; healHi += o.Heal;
         }
+        foreach (var r in ignoring.Where(r => !r.Conditional && !r.IsThreshold))
+            Ignoring(r.Value, Received(r.DamageType));
 
         // ── Paquets à seuil : plafond compté (max annoncé, ou unité × 8 sans plafond annoncé) ──
         foreach (var r in thresholds)
@@ -287,16 +297,12 @@ public static class ReferenceAttack
                 string type = Received(r.DamageType ?? "physical")!;
                 int alCalc = alForType(ColumnKey(type));
                 int d60 = SkillDamage.DamageAt(cap, 60, pen);
-                int dC  = SkillDamage.DamageAt(cap, alCalc, pen, multiplier: Mitigate(type, isSpell, isAttack));
-                dC = Math.Max(0, dC - FlatFor(type, isSpell, isAttack) + HolyOn(type));
-                lo60 += d60; hi60 += d60; loCalc += dC; hiCalc += dC;
+                var dC = Hit((m, c, a) => SkillDamage.DamageAt(cap, alCalc, pen, multiplier: m, cap: c, afterCap: a),
+                             1.0, type, isSpell, isAttack, HolyOn(type), FlatFor(type, isSpell, isAttack));
+                lo60 += d60; hi60 += d60; loCalc += dC.Taken; hiCalc += dC.Taken; healLo += dC.Heal; healHi += dC.Heal;
                 if (cap > primaryWeight) { primaryWeight = cap; primaryTypeFr = SkillDamage.DisplayType(type); }
             }
-            else
-            {
-                int holy = HolyOn(Received(r.DamageType));
-                lo60 += cap; hi60 += cap; loCalc += cap + holy; hiCalc += cap + holy;
-            }
+            else Ignoring(cap, Received(r.DamageType));
             notes.Add(L($"seuil {(r.IsBonus ? "+" : "")}{r.Value}/unité — plafond {cap} compté",
                         $"threshold {(r.IsBonus ? "+" : "")}{r.Value}/unit — cap {cap} counted"));
         }
@@ -307,14 +313,22 @@ public static class ReferenceAttack
         bool stealReduced = false;
         foreach (var r in steals)
         {
-            int taken = r.Value;
+            int taken = r.Value, heal = 0;
             if (r.Kind == SkillDamage.RowKind.LifeSteal && stealFlat > 0)
             {
                 taken = Math.Max(0, r.Value - stealFlat);
                 applied.AddFlat(stealFlat);
                 stealReduced = true;
             }
-            lo60 += r.Value; hi60 += r.Value; loCalc += taken; hiCalc += taken;
+            // Lot 5 : Reversal of Fortune et Life Sheath convertissent aussi le vol de vie, Weapon of Remedy se déclenche
+            // dessus ; jamais de plafond (ce ne sont pas des dégâts). La perte de vie sèche n'est touchée par rien.
+            if (r.Kind == SkillDamage.RowKind.LifeSteal)
+            {
+                var o = DamageMitigation.Heal(mitigation, taken, taken, lifeSteal: true);
+                if (o.Taken != taken) stealReduced = true;
+                (taken, heal) = (o.Taken, o.Heal);
+            }
+            lo60 += r.Value; hi60 += r.Value; loCalc += taken; hiCalc += taken; healLo += heal; healHi += heal;
             notes.Add($"{(r.Kind == SkillDamage.RowKind.LifeSteal ? L("vol de vie", "life steal") : L("perte de vie", "Health loss"))} {r.Value}");
         }
         if (holyAffected) notes.Add(L($"vulnérabilité sacrée +{holyIncrease}", $"holy vulnerability +{holyIncrease}"));
@@ -332,18 +346,68 @@ public static class ReferenceAttack
 
         // La vulnérabilité sacrée différencie les deux côtés → l'attaque n'est plus « égale des
         // deux côtés » et le Δ doit s'afficher.
-        // Idem pour un vol de vie réduit (Shielding Hands, Union).
+        // Idem pour un vol de vie réduit (Shielding Hands, Union) et, au lot 5, pour un paquet plafonné ou converti en soin.
+        // Un soin seul ne change pas les dégâts : il s'affiche à côté.
         bool ignoresAll = !weaponTable && !freeWeapon && respecting.Count == 0
                           && thresholds.All(r => r.IgnoresArmor)
                           && ignoring.Count + thresholds.Count + steals.Count > 0
-                          && !holyAffected && !stealReduced;
+                          && !holyAffected && !stealReduced && !ignoringChanged;
         bool isRange = weaponTable && !mods.AlwaysCritical && hi60 != lo60;
         if (convertedTo.Count > 0) notes.Insert(0, ReceivedAsNote(convertedTo));
         if (pen > 0) notes.Insert(0, L($"pénétration {pen} %", $"penetration {pen}%"));
         notes.AddRange(applied.Notes());
 
         return new Result(ignoresAll, isRange, lo60, hi60, loCalc, hiCalc, pen, primaryTypeFr,
-                          string.Join(" · ", notes));
+                          string.Join(" · ", notes), healLo, healHi);
+    }
+
+    /// <summary>
+    /// Un paquet qui respecte l'armure, côté build, dans l'ordre tranché par Philippe (P1, P2, Q21) : armure → hausses →
+    /// plafond → % → fixes → soins, un seul arrondi sur la part soumise à l'armure. <paramref name="at"/> = le DamageAt
+    /// de ce paquet (multiplicateur, plafond, facteur d'après-plafond) : la formule n'est jamais recopiée ici.
+    /// <paramref name="extra"/> = points AJOUTÉS au paquet sans passer par l'armure ni les % (« +X » d'une attaque d'arme,
+    /// vulnérabilité sacrée) ; ils comptent dans le plafond (paquet entier : la part d'arme est plafonnée à
+    /// plafond − extra), dans les fixes et dans les soins. <paramref name="flats"/> = réductions fixes (compétences et
+    /// équipement). Sans plafond, le calcul est exactement celui des lots 1 à 4.
+    /// </summary>
+    private static DamageMitigation.Outcome Packet(DamageMitigation.Context? mitigation, AppliedMitigation applied,
+        Func<double, double, double, int> at, double baseMult, string type, bool spell, bool attack, int extra, int flats,
+        bool record = true)
+    {
+        const double None = double.PositiveInfinity;
+        double factor = DamageMitigation.Factor(mitigation, type, spell, attack);
+        if (record) applied.AddFactor(factor);
+        double? cap = DamageMitigation.Cap(mitigation, type, spell, attack);
+        bool heals = DamageMitigation.HasHeals(mitigation);
+        // Le paquet après l'armure et les hausses, AVANT plafond et réductions : seuil de Spirit Bond, et test du plafond.
+        int before = cap is null && !heals ? 0
+            : at(baseMult * DamageMitigation.IncreaseFactor(mitigation, type, spell, attack), None, 1.0) + extra;
+
+        int taken;
+        if (cap is not { } c) taken = Math.Max(0, at(baseMult * factor, None, 1.0) + extra - flats);
+        else
+        {
+            double weaponCap = Math.Max(0, c - extra);
+            int part = at(baseMult * DamageMitigation.IncreaseFactor(mitigation, type, spell, attack), weaponCap,
+                          DamageMitigation.PercentFactor(mitigation, type, spell, attack));
+            taken = Math.Max(0, part + (int)Math.Floor(Math.Min(extra, c)) - flats);
+            if (record && before > c) applied.AddCap(c);
+        }
+        return heals ? DamageMitigation.Heal(mitigation, taken, before) : new(taken, 0);
+    }
+
+    /// <summary>Un paquet qui IGNORE l'armure (sacré, ombre, sans type) : ni % ni fixes (décision 6.2), mais le plafond
+    /// et les soins (Q23, Philippe, 11/10/2026). <paramref name="value"/> = le paquet, vulnérabilité sacrée comprise.</summary>
+    private static DamageMitigation.Outcome Unarmored(DamageMitigation.Context? mitigation, AppliedMitigation applied,
+        int value, string? type, bool spell, bool attack)
+    {
+        int taken = value;
+        if (DamageMitigation.Cap(mitigation, type, spell, attack) is { } c && value > c)
+        {
+            taken = (int)Math.Floor(c);
+            applied.AddCap(c);
+        }
+        return DamageMitigation.HasHeals(mitigation) ? DamageMitigation.Heal(mitigation, taken, value) : new(taken, 0);
     }
 
     /// <summary>Note « reçu en terre » d'une ligne dont une conversion a changé le type (lot 4).</summary>
@@ -354,11 +418,14 @@ public static class ReferenceAttack
     }
 
     /// <summary>Ce que les réductions de dégâts reçus ont effectivement changé sur une ligne, pour la note :
-    /// « réduction −45 % », « augmentation +75 % », « réduction fixe −25 ».</summary>
+    /// « plafond 48 », « réduction −45 % », « augmentation +75 % », « réduction fixe −25 ».</summary>
     private sealed class AppliedMitigation
     {
         private readonly SortedSet<int> _percents = [];   // signé : négatif = réduction, positif = hausse
         private readonly SortedSet<int> _flats = [];
+        private readonly SortedSet<int> _caps = [];       // plafonds qui ont mordu (points)
+
+        public void AddCap(double cap) => _caps.Add((int)Math.Floor(cap));
 
         public void AddFactor(double factor)
         {
@@ -374,6 +441,8 @@ public static class ReferenceAttack
         {
             var down = _percents.Where(p => p < 0).ToList();
             var up = _percents.Where(p => p > 0).ToList();
+            if (_caps.Count > 0)
+                yield return L($"plafond {string.Join(" / ", _caps)}", $"cap {string.Join(" / ", _caps)}");
             if (down.Count > 0)
                 yield return L($"réduction {string.Join(" / ", down.Select(p => $"−{-p} %"))}",
                                $"reduction {string.Join(" / ", down.Select(p => $"−{-p}%"))}");
@@ -406,24 +475,22 @@ public static class ReferenceAttack
         string received = hit.Received;
         int pen = DamageMitigation.JudgesBonusPen(conv, isAttack);
         int alCalc = alForType(ColumnKey(received));
-        double factor = DamageMitigation.Factor(mitigation, received, isSpell, isAttack);
         int skillFlat = DamageMitigation.Flat(mitigation, received, isSpell, isAttack);
         int holy = holyIncrease > 0 && received == "holy" ? holyIncrease : 0;
 
+        var applied = new AppliedMitigation();
         int d60 = SkillDamage.DamageAt(value, 60, pen);
-        int dC  = SkillDamage.DamageAt(value, alCalc, pen, multiplier: factor);
-        dC = Math.Max(0, dC - skillFlat - (IsPhysical(received) ? flatPhysical : 0) + holy);
+        var dC = Packet(mitigation, applied, (m, c, a) => SkillDamage.DamageAt(value, alCalc, pen, multiplier: m, cap: c, afterCap: a),
+                        1.0, received, isSpell, isAttack, holy, skillFlat + (IsPhysical(received) ? flatPhysical : 0));
 
         var notes = new List<string>();
         if (isSpell) notes.Add(L("sort", "spell"));
         if (pen > 0) notes.Add(L($"pénétration {pen} %", $"penetration {pen}%"));
         if (hit.Converted) notes.Add(ReceivedAsNote([received]));
-        var applied = new AppliedMitigation();
-        applied.AddFactor(factor);
         applied.AddFlat(skillFlat);
         notes.AddRange(applied.Notes());
         if (holy > 0) notes.Add(L($"vulnérabilité sacrée +{holy}", $"holy vulnerability +{holy}"));
-        return new Result(false, false, d60, d60, dC, dC, pen, SkillDamage.DisplayType(received),
-                          string.Join(" · ", notes));
+        return new Result(false, false, d60, d60, dC.Taken, dC.Taken, pen, SkillDamage.DisplayType(received),
+                          string.Join(" · ", notes), dC.Heal, dC.Heal);
     }
 }

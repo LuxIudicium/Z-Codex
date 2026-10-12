@@ -662,6 +662,8 @@
     <sys:String x:Key="S.Armor.SignetsTip">Artificer's and Mantra of Signets: +3 per equipped signet</sys:String>
     <sys:String x:Key="S.Armor.IllusionSkills">Illusion skills</sys:String>
     <sys:String x:Key="S.Armor.IllusionSkillsTip">Illusionary Weaponry: +5 per equipped Illusion skill (IW included)</sys:String>
+    <sys:String x:Key="S.Armor.MaxHealth">Max Health</sys:String>
+    <sys:String x:Key="S.Armor.MaxHealthTip">Character's max Health (1–9999): base of the caps — Protective Spirit and Shelter 10%, Protective Bond 5%…</sys:String>
     <sys:String x:Key="S.Armor.ManualAdd">Manual add</sys:String>
     <sys:String x:Key="S.Armor.AddManualContrib">+ Add a manual contribution</sys:String>
     <sys:String x:Key="S.Armor.ImportEquipCodeTip">Paste an equipment code (P code)</sys:String>
@@ -669,6 +671,8 @@
     <sys:String x:Key="S.Armor.ArmorPenetration">Armor penetration %</sys:String>
     <sys:String x:Key="S.Armor.CasterAttrRankTip">Caster's attribute rank (0–21)</sys:String>
     <sys:String x:Key="S.Armor.HitNumberTip">Number of the hit taken under the shield (1–21): −5 per hit, 0-damage hits count</sys:String>
+    <sys:String x:Key="S.Armor.AssassinEnchantTip">Number of Assassin enchantments on the character, Shadow Form included (1–21): −5 each</sys:String>
+    <sys:String x:Key="S.Armor.CasterDivineFavorTip">Caster's Divine Favor rank (0–21): 2 Health per rank</sys:String>
     <sys:String x:Key="S.Armor.DefenderStrengthTip">Defender's Strength rank (0–21): −2 per rank, 15 at most</sys:String>
     <sys:String x:Key="S.Armor.NeutralizedBy">no longer counts: cancelled by {0}</sys:String>
     <sys:String x:Key="S.Armor.EffectiveALTitle">Effective AL per piece and damage type</sys:String>
