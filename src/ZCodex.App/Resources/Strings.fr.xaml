@@ -45,7 +45,10 @@
     <sys:String x:Key="S.Menu.IconSmall">Petite</sys:String>
     <sys:String x:Key="S.Menu.ViewDarkTheme">Thème sombre</sys:String>
     <sys:String x:Key="S.Menu.Language">Langue</sys:String>
-    <sys:String x:Key="S.Menu.ViewScreenshot">Prendre un screenshot...</sys:String>
+    <sys:String x:Key="S.Menu.ViewScreenshotCopy">Prendre un screenshot</sys:String>
+    <sys:String x:Key="S.Menu.ViewScreenshot">Enregistrer un screenshot...</sys:String>
+    <sys:String x:Key="S.Toast.ScreenshotCopied">✔ Screenshot copié dans le presse-papiers</sys:String>
+    <sys:String x:Key="S.Toast.ClipboardFailed">✖ Presse-papiers indisponible</sys:String>
     <sys:String x:Key="S.Menu.Selection">Sélection</sys:String>
     <sys:String x:Key="S.Menu.SelOpenBuild">Ouvrir le build sélectionné</sys:String>
     <sys:String x:Key="S.Menu.SelRituals">Effets d'équipe</sys:String>

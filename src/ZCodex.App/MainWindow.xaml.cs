@@ -27,6 +27,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 
 namespace ZCodex.App;
@@ -2275,18 +2276,41 @@ public partial class MainWindow : Window
         _settings.Save();
     }
 
+    // Image de la grille du team build actif ; null hors team build ou s'il n'y a rien à rendre.
+    private RenderTargetBitmap? CaptureTeamGrid()
+    {
+        if (_vm.ActiveTeamBuild == null) return null;
+        var bg = Application.Current.TryFindResource("ContentBackgroundBrush") as Brush ?? Brushes.White;
+        return VisualCapture.Render(CharacterGrid, bg);
+    }
+
+    // Affichage ▸ Prendre un screenshot : la même image, copiée dans le presse-papiers, avec une notification.
+    private void CopyScreenshot_Click(object sender, RoutedEventArgs e)
+    {
+        if (CaptureTeamGrid() is not { } bmp) return;
+        ShowToast(T(SafeClipboard.SetImage(bmp) ? "S.Toast.ScreenshotCopied" : "S.Toast.ClipboardFailed"));
+    }
+
+    // Notification passagère en bas de la fenêtre : apparaît, reste ~2 s, s'efface. Un nouvel appel repart de zéro.
+    private void ShowToast(string text)
+    {
+        ToastText.Text = text;
+        var fade = new DoubleAnimationUsingKeyFrames();
+        fade.KeyFrames.Add(new LinearDoubleKeyFrame(1, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(150))));
+        fade.KeyFrames.Add(new LinearDoubleKeyFrame(1, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(2000))));
+        fade.KeyFrames.Add(new LinearDoubleKeyFrame(0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(2400))));
+        ToastBorder.BeginAnimation(OpacityProperty, fade);
+    }
+
     private void Screenshot_Click(object sender, RoutedEventArgs e)
     {
-        if (_vm.ActiveTeamBuild == null) return;
-
-        var bg = Application.Current.TryFindResource("ContentBackgroundBrush") as Brush ?? Brushes.White;
-        if (VisualCapture.Render(CharacterGrid, bg) is not { } bmp) return;
+        if (_vm.ActiveTeamBuild is not { } team || CaptureTeamGrid() is not { } bmp) return;
 
         var dlg = new SaveFileDialog
         {
             Filter   = T("S.Filter.Png"),
             Title    = T("S.Dlg.SaveScreenshot"),
-            FileName = _vm.ActiveTeamBuild.Name + ".png",
+            FileName = team.Name + ".png",
         };
         if (dlg.ShowDialog() != true) return;
 

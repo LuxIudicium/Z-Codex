@@ -1313,6 +1313,7 @@
                               IsCheckable="True" Click="LangEn_Click"/>
                 </MenuItem>
                 <Separator/>
+                <MenuItem Header="{DynamicResource S.Menu.ViewScreenshotCopy}" Click="CopyScreenshot_Click"/>
                 <MenuItem x:Name="ScreenshotMenuItem" Header="{DynamicResource S.Menu.ViewScreenshot}"
                           Click="Screenshot_Click"/>
             </MenuItem>
@@ -3675,6 +3676,15 @@
                 </ListView>
             </Grid>
         </Grid>  <!-- /build editor Grid -->
+
+        <!-- Notification passagère (« screenshot copié ») : par-dessus tout le contenu, en bas au centre, transparente
+             à la souris. Invisible au repos (opacité 0) ; ShowToast la fait apparaître puis s'effacer. -->
+        <Border x:Name="ToastBorder" Opacity="0" IsHitTestVisible="False" Panel.ZIndex="100"
+                HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,24" Padding="14,8"
+                CornerRadius="6" BorderThickness="1"
+                Background="{DynamicResource TooltipBackgroundBrush}" BorderBrush="{DynamicResource TooltipBorderBrush}">
+            <TextBlock x:Name="ToastText" FontSize="13" Foreground="{DynamicResource TextPrimaryBrush}"/>
+        </Border>
     </Grid>  <!-- /outer content wrapper -->
     </DockPanel>
 </Window>

@@ -42,7 +42,10 @@
     <sys:String x:Key="S.Menu.IconSmall">Small</sys:String>
     <sys:String x:Key="S.Menu.ViewDarkTheme">Dark theme</sys:String>
     <sys:String x:Key="S.Menu.Language">Language</sys:String>
-    <sys:String x:Key="S.Menu.ViewScreenshot">Take a screenshot...</sys:String>
+    <sys:String x:Key="S.Menu.ViewScreenshotCopy">Take a screenshot</sys:String>
+    <sys:String x:Key="S.Menu.ViewScreenshot">Save screenshot...</sys:String>
+    <sys:String x:Key="S.Toast.ScreenshotCopied">✔ Screenshot copied to clipboard</sys:String>
+    <sys:String x:Key="S.Toast.ClipboardFailed">✖ Clipboard unavailable</sys:String>
     <sys:String x:Key="S.Menu.Selection">Selection</sys:String>
     <sys:String x:Key="S.Menu.SelOpenBuild">Open selected build</sys:String>
     <sys:String x:Key="S.Menu.SelRituals">Team effects</sys:String>
