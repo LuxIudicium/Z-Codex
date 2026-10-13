@@ -33,8 +33,8 @@ public static class HelpContent
 {
     // Version du CONTENU de l'aide (indépendante de la version applicative de l'À propos) :
     // à incrémenter et redater à chaque mise à jour.
-    public const string VersionFr = "Aide v38 — 13/10/2026";
-    public const string VersionEn = "Help v38 — 2026-10-13";
+    public const string VersionFr = "Aide v39 — 13/10/2026";
+    public const string VersionEn = "Help v39 — 2026-10-13";
 
     public static string Version => AppLanguage.IsFr ? VersionFr : VersionEn;
 
@@ -623,8 +623,8 @@ public static class HelpContent
               "Compétences alliées (par ordre alphabétique), malus subis, consommables et effets, modificateurs de dégâts reçus : cochez ce qui s'applique. Une seule pose de combat, transformation, sort d'altération d'arme ou sort d'altération d'objet à la fois : en cocher un décoche l'autre.",
               "Allied skills (in alphabetical order), incoming penalties, consumables and effects, damage taken modifiers: tick whatever applies. Only one stance, form, weapon spell or item spell at a time: ticking one unticks the other."),
             R("Modificateurs de dégâts reçus", "Damage taken modifiers",
-              "S'appliquent après l'armure, dans cet ordre : les pourcentages (réductions et hausses, qui se multiplient entre eux), puis les réductions fixes, retirées du coup entier sans descendre sous 0. Rien ne touche les dégâts qui ignorent l'armure ; le bonus « +X » d'une attaque ne reçoit que les réductions fixes, et le vol de vie seulement celles qui le citent. Quand la case d'une ligne n'est pas un rang, son infobulle dit ce qu'elle compte (n° du coup reçu, rang de Force).",
-              "Applied after armor, in this order: percentages (reductions and increases, which multiply together), then flat reductions, taken off the whole hit without going below 0. Nothing touches armor-ignoring damage; an attack's “+X” bonus only gets flat reductions, and life stealing only those that name it. When a row's box is not a rank, its tooltip says what it counts (hit number, Strength rank)."),
+              "Ce qui change les dégâts reçus en plus de l'armure : réductions, hausses, plafonds, soins. Cochez ce qui s'applique : le calculateur se charge de l'ordre et des exceptions, et les attaques de référence montrent ce qui a joué. Quand la case d'une ligne n'est pas un rang, son infobulle dit ce qu'elle compte.",
+              "What changes the damage taken on top of armor: reductions, increases, caps, heals. Tick whatever applies: the calculator handles the order and the exceptions, and the reference attacks show what came into play. When a row's box is not a rank, its tooltip says what it counts."),
             R("Immunité aux critiques", "Critical hit immunity",
               "Une ligne cochée qui annule les critiques neutralise « Coup critique » : la case reste cochée, mais la ligne dit pourquoi elle ne compte plus. La note « critique » des attaques suit : plus de critique du tout, ou un critique ramené au coup maximal de l'arme.",
               "A ticked row that cancels critical hits neutralizes “Critical hit”: the box stays ticked, but the row says why it no longer counts. The attacks' “critical” note follows: no critical at all, or a critical brought down to the weapon's maximum hit."),
