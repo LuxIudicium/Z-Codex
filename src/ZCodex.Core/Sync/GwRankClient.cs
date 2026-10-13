@@ -280,7 +280,7 @@ public sealed class GwRankClient : IDisposable
     {
         if (!HasToken) return GwRankResult<GwRankSummary>.Fail(GwRankStatus.NoToken);
         if (build.Id == Guid.Empty)
-            return GwRankResult<GwRankSummary>.Fail(GwRankStatus.Rejected, "identifiant de build vide");
+            return GwRankResult<GwRankSummary>.Fail(GwRankStatus.Rejected, L("identifiant de build vide", "empty build ID"));
 
         // Le serveur veut l'uuid canonique en minuscules ; "D" produit exactement ça.
         var id = build.Id.ToString("D");
@@ -356,13 +356,12 @@ public sealed class GwRankClient : IDisposable
                 var room = JsonSerializer.Deserialize<ZCodex.Core.Collab.GwRankRoom>(text, Json);
                 return room is { Code.Length: > 0, WebsocketUrl.Length: > 0 }
                     ? new(GwRankStatus.Ok, room, false, null)
-                    : new(GwRankStatus.ServerError, null, false, "réponse incomplète");
+                    : new(GwRankStatus.ServerError, null, false, L("réponse incomplète", "incomplete response"));
             }
             catch (JsonException ex)
             {
                 Debug.WriteLine($"[GwRank] création de salon, réponse illisible : {ex.Message}");
-                return new(GwRankStatus.ServerError, null, false,
-                           "réponse inattendue du serveur (page d'erreur ou portail de connexion ?)");
+                return new(GwRankStatus.ServerError, null, false, UnexpectedResponse);
             }
         }
 
@@ -392,7 +391,7 @@ public sealed class GwRankClient : IDisposable
         {
             var value = JsonSerializer.Deserialize<T>(raw.Value ?? "", Json);
             return value is null
-                ? GwRankResult<T>.Fail(GwRankStatus.ServerError, "réponse vide")
+                ? GwRankResult<T>.Fail(GwRankStatus.ServerError, L("réponse vide", "empty response"))
                 : GwRankResult<T>.Ok(value);
         }
         catch (JsonException ex)
@@ -401,10 +400,16 @@ public sealed class GwRankClient : IDisposable
             // connexion. Le détail du parseur (« '<' is an invalid start of a value ») n'apprend
             // rien à un utilisateur : il part au journal, pas à l'écran.
             Debug.WriteLine($"[GwRank] réponse illisible sur {url} : {ex.Message}");
-            return GwRankResult<T>.Fail(GwRankStatus.ServerError,
-                "réponse inattendue du serveur (page d'erreur ou portail de connexion ?)");
+            return GwRankResult<T>.Fail(GwRankStatus.ServerError, UnexpectedResponse);
         }
     }
+
+    // Les messages d'échec s'affichent tels quels dans les boîtes d'erreur (S.GwRank.FailedOther, S.Collab.ErrOther) :
+    // ils suivent donc la langue de l'interface.
+    private static string L(string fr, string en) => AppLanguage.IsFr ? fr : en;
+
+    private static string UnexpectedResponse => L("réponse inattendue du serveur (page d'erreur ou portail de connexion ?)",
+                                                  "unexpected server response (error page or login portal?)");
 
     /// <summary>
     /// Attentes entre deux tentatives. Deux essais de rattrapage, courts : un redémarrage de

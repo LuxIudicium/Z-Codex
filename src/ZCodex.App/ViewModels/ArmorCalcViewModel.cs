@@ -2195,7 +2195,7 @@ public class DurationSummaryVM
     public string ConditionFr { get; init; } = "";
     public int TotalPercent { get; init; }
     public string SourcesText { get; init; } = "";
-    public string HeaderText => $"{ConditionFr} : −{TotalPercent}%";
+    public string HeaderText => AppLanguage.IsFr ? $"{ConditionFr} : −{TotalPercent} %" : $"{ConditionFr}: −{TotalPercent}%";
 }
 
 /// <summary>Une pilule de condition infligée par une attaque de référence (image Philippe : puce
@@ -2233,8 +2233,9 @@ public class ConditionPillVM
     public string BaseText => IsReduced ? $"({BaseSeconds})" : "";
 
     public string ToolTipText => !HasDuration ? ConditionFr
-        : IsReduced ? $"{ConditionFr} : {EffectiveSeconds} s (base {BaseSeconds} s, −{ReductionPercent} %)"
-        :             $"{ConditionFr} : {EffectiveSeconds} s";
+        : AppLanguage.IsFr
+            ? $"{ConditionFr} : {EffectiveSeconds} s" + (IsReduced ? $" (base {BaseSeconds} s, −{ReductionPercent} %)" : "")
+            : $"{ConditionFr}: {EffectiveSeconds} s" + (IsReduced ? $" (base {BaseSeconds} s, −{ReductionPercent}%)" : "");
 
     public ImageSource? Icon
     {

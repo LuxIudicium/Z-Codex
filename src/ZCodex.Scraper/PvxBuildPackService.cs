@@ -52,6 +52,10 @@ public static class PvxBuildPackService
 
     private static string UrlOf(PvxPack pack) => pack == PvxPack.Pve ? PveUrl : PvpUrl;
 
+    // Les erreurs s'affichent telles quelles dans la fenêtre d'import : elles suivent la langue de l'interface.
+    private static string L(string fr, string en) => AppLanguage.IsFr ? fr : en;
+    private static string Error(string subject, string message) => L($"{subject} : {message}", $"{subject}: {message}");
+
     /// <summary>Dossier créé par l'archive : c'est aussi ce que l'utilisateur aura à supprimer.</summary>
     public static string FolderNameOf(PvxPack pack) =>
         pack == PvxPack.Pve ? "PvE Build Packs" : "PvP Build Packs";
@@ -80,7 +84,7 @@ public static class PvxBuildPackService
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                report.Errors.Add($"{FolderNameOf(pack)} : {ex.Message}");
+                report.Errors.Add(Error(FolderNameOf(pack), ex.Message));
                 continue;
             }
 
@@ -89,7 +93,8 @@ public static class PvxBuildPackService
             // lien est mort.
             if (bytes.Length < 4 || bytes[0] != 'P' || bytes[1] != 'K')
             {
-                report.Errors.Add($"{FolderNameOf(pack)} : réponse inattendue (lien expiré ?)");
+                report.Errors.Add(Error(FolderNameOf(pack),
+                                        L("réponse inattendue (lien expiré ?)", "unexpected response (expired link?)")));
                 continue;
             }
 
@@ -99,7 +104,7 @@ public static class PvxBuildPackService
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                report.Errors.Add($"{FolderNameOf(pack)} : {ex.Message}");
+                report.Errors.Add(Error(FolderNameOf(pack), ex.Message));
                 continue;
             }
 
@@ -137,7 +142,8 @@ public static class PvxBuildPackService
             // pas SOUS la racine, quelle que soit la confiance qu'on accorde à la source.
             if (!target.StartsWith(root, StringComparison.OrdinalIgnoreCase))
             {
-                report.Errors.Add($"entrée ignorée (chemin hors du dossier) : {entry.FullName}");
+                report.Errors.Add(Error(L("entrée ignorée (chemin hors du dossier)", "entry skipped (path outside the folder)"),
+                                        entry.FullName));
                 continue;
             }
 
@@ -188,12 +194,12 @@ public static class PvxBuildPackService
                 }
                 catch (Exception ex)
                 {
-                    report.Errors.Add($"{Path.GetFileName(folder)} : {ex.Message}");
+                    report.Errors.Add(Error(Path.GetFileName(folder), ex.Message));
                 }
             }
             else
             {
-                report.Errors.Add($"{Path.GetFileName(folder)} : barre illisible");
+                report.Errors.Add(Error(Path.GetFileName(folder), L("barre illisible", "unreadable bar")));
             }
 
             if (++done % 10 == 0 || done == teamFolders.Count)
