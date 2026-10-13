@@ -155,6 +155,12 @@ public class ArmorCalcViewModel : ViewModelBase
     private bool _shieldIsStrength;
     public bool ShieldIsStrength { get => _shieldIsStrength; set { if (SetField(ref _shieldIsStrength, value)) Recompute(); } }
 
+    // Chantier « réductions », lot 7 (Q33 de Philippe, 12/10/2026) : bouclier OU focus ancien (Prophecies / Factions). Ses mods
+    // sont des inhérents : l'inscription d'armure équivalente choisie dans la liste des mods compte alors en Bonus (règle des
+    // 25), et non en base comme une vraie inscription (wiki *Inherent_modifier*, *Inscription*). Indépendante du bouclier.
+    private bool _offhandOldSchool;
+    public bool OffhandOldSchool { get => _offhandOldSchool; set { if (SetField(ref _offhandOldSchool, value)) Recompute(); } }
+
     // Mods d'équipement RÉELS (runes, mods d'armes, inscriptions) sélectionnables + ajoutés.
     public IReadOnlyList<EquipmentModOption> AvailableMods { get; } = BuildAvailableMods();
     public ObservableCollection<EquipmentModOption> AddedMods { get; } = new();
@@ -1174,9 +1180,17 @@ public class ArmorCalcViewModel : ViewModelBase
         }
 
         // Mods d'équipement réels ajoutés (of Defense, inscriptions « Armor +N vs X »…).
+        // Main secondaire ancienne (lot 7) : son inscription d'armure est un inhérent → Bonus.
         foreach (var mod in AddedMods)
             if (mod.HasArmor && ScopeApplies(mod.ArmorScope, col, includeProjectile))
-                list.Add(new(GwEquipmentModsFr.DisplayName(mod.ModId, mod.Name), mod.ArmorCategory, mod.ArmorValue));
+            {
+                var name = GwEquipmentModsFr.DisplayName(mod.ModId, mod.Name);
+                if (OffhandOldSchool && mod.IsOffhandArmorInscription)
+                    list.Add(new($"{name} — {L("inhérent (main secondaire)", "inherent (off-hand)")}",
+                                 ArmorCalculator.Category.Bonus, mod.ArmorValue));
+                else
+                    list.Add(new(name, mod.ArmorCategory, mod.ArmorValue));
+            }
 
         // Ajouts manuels (cas non couverts par le catalogue).
         foreach (var cu in Customs)
@@ -1473,6 +1487,7 @@ public class ArmorCalcViewModel : ViewModelBase
         ShieldBaseArmor = ShieldBaseArmor,
         ShieldRequirementMet = ShieldRequirementMet,
         ShieldIsStrength = ShieldIsStrength,
+        OffhandOldSchool = OffhandOldSchool,
         AddedModIds = AddedMods.Select(m => m.ModId).ToList(),
         Customs = Customs.Select(c => new CustomContribDto
         {
@@ -1538,6 +1553,7 @@ public class ArmorCalcViewModel : ViewModelBase
         _shieldBaseArmor = dto.ShieldBaseArmor; OnPropertyChanged(nameof(ShieldBaseArmor));
         _shieldRequirementMet = dto.ShieldRequirementMet; OnPropertyChanged(nameof(ShieldRequirementMet));
         _shieldIsStrength = dto.ShieldIsStrength; OnPropertyChanged(nameof(ShieldIsStrength));
+        _offhandOldSchool = dto.OffhandOldSchool; OnPropertyChanged(nameof(OffhandOldSchool));
 
         AddedMods.Clear();
         foreach (var id in dto.AddedModIds)
@@ -1997,6 +2013,11 @@ public class EquipmentModOption
     public ArmorCalculator.Category ArmorCategory { get; }
     public string? ArmorCondition { get; }
     public IReadOnlyList<DurationReduction> Durations { get; }
+
+    // « To the Pain! » est la seule inscription d'ARME qui porte de l'armure (wiki *Inscription*, « Weapon inscriptions ») ;
+    // toutes les autres inscriptions d'armure vont sur un bouclier ou un focus (lot 7 : inhérents d'une main secondaire ancienne).
+    private const int ToThePainModId = 289;
+    public bool IsOffhandArmorInscription => Kind == EquipModKind.Inscription && HasArmor && ModId != ToThePainModId;
 
     // Réduction PLATE de dégâts physiques (Lot D) : Absorption (Non-stacking), inscriptions
     // conditionnelles (Enchanté/Maudit/Posture) et « Luck of the Draw » (probabiliste).

@@ -19,6 +19,9 @@ public class ArmorCalcProfile
     public int ShieldBaseArmor { get; set; } = 16;
     public bool ShieldRequirementMet { get; set; } = true;
     public bool ShieldIsStrength { get; set; }
+    // Chantier « réductions de dégâts », lot 7 — main secondaire ancienne : ses inscriptions d'armure comptent en Bonus.
+    // Absent d'un profil ancien → false, le calcul d'avant.
+    public bool OffhandOldSchool { get; set; }
 
     // Mods d'équipement réels ajoutés (runes, mods d'armes, inscriptions), par modId.
     public List<int> AddedModIds { get; set; } = new();

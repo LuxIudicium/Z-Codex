@@ -33,8 +33,8 @@ public static class HelpContent
 {
     // Version du CONTENU de l'aide (indépendante de la version applicative de l'À propos) :
     // à incrémenter et redater à chaque mise à jour.
-    public const string VersionFr = "Aide v37 — 11/10/2026";
-    public const string VersionEn = "Help v37 — 2026-10-11";
+    public const string VersionFr = "Aide v38 — 13/10/2026";
+    public const string VersionEn = "Help v38 — 2026-10-13";
 
     public static string Version => AppLanguage.IsFr ? VersionFr : VersionEn;
 
@@ -610,6 +610,9 @@ public static class HelpContent
             R("Mods d'équipement", "Equipment mods",
               "Runes, mods d'armes et inscriptions, avec les limites réalistes du jeu : 5 runes, 1 inscription et 1 mod d'arme par main, le bouclier occupant la main secondaire.",
               "Runes, weapon mods and inscriptions, with the game's realistic limits: 5 runes, 1 inscription and 1 weapon mod per hand, the shield taking the off hand."),
+            R("Main secondaire ancienne (mods inhérents)", "Old-school off-hand (inherent mods)",
+              "Pour un bouclier ou un focus de Prophecies / Factions, dont les mods sont intégrés (inhérents) au lieu d'être des inscriptions. Ajoutez l'inscription équivalente dans « Mods d'équipement » (« La feuille portée par le vent » pour un +10 contre le froid) et cochez la case : son armure compte alors en armure bonus, plafonnée à +25 avec les autres bonus, au lieu de l'armure de base. Le résultat ne change que si un autre bonus d'armure est actif : avec Protection contre les éléments (+24), ce +10 donne +25 au lieu de +34. Réductions de dégâts et durées d'altération : inchangées.",
+              "For a Prophecies / Factions shield or focus, whose mods are built in (inherent) instead of being inscriptions. Add the matching inscription under “Equipment mods” (“Leaf on the Wind” for +10 vs. cold) and tick the box: its armor then counts as bonus armor, capped at +25 together with other bonuses, instead of base armor. The result only changes when other bonus armor is active: with Ward Against Elements (+24), this +10 gives +25 instead of +34. Damage reductions and condition durations: unchanged."),
             R("Coller un code d'équipement (P)", "Paste an equipment code (P)",
               "Remplit les insignes et le bouclier depuis un code existant.",
               "Fills insignia and shield from an existing code."),

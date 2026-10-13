@@ -133,6 +133,13 @@
                                   VerticalAlignment="Center" FontSize="12"
                                   ToolTip="{DynamicResource S.Armor.ShieldStrengthTip}"/>
                     </WrapPanel>
+                    <!-- Lot 7 : bouclier OU focus ancien, d'où une case visible sans bouclier. -->
+                    <CheckBox Content="{DynamicResource S.Armor.OffhandOldSchool}" IsChecked="{Binding OffhandOldSchool}"
+                              FontSize="12" Margin="0,4,0,0" HorizontalAlignment="Left">
+                        <CheckBox.ToolTip>
+                            <TextBlock Text="{DynamicResource S.Armor.OffhandOldSchoolTip}" TextWrapping="Wrap" MaxWidth="460"/>
+                        </CheckBox.ToolTip>
+                    </CheckBox>
 
                     <!-- Mods d'équipement réels (runes, mods d'armes, inscriptions) -->
                     <!-- Infobulle : les limites, puis ce qui est supposé rempli (même texte que sur les
