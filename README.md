@@ -19,16 +19,22 @@ Auteur : **P. Vincent**.
 **Composition d'équipe**
 - 8 personnages × 8 compétences, professions primaire et secondaire, attributs
 - Variantes de build organisées en arborescence, reliées entre elles par des cadenas
-- Catalogue de compétences filtrable par profession, caractéristique, type et
-  mécanique de jeu (enchantements, adrénaline, épuisement, résurrection, armure…),
-  recherche, infobulles détaillées
+- Catalogue de compétences filtrable par profession, caractéristique, statut élite,
+  type et mécanique de jeu (enchantements, adrénaline, épuisement, résurrection,
+  armure…), recherche, infobulles détaillées
+- Infobulles qui suivent les effets actifs de l'équipe : coût d'énergie, recharge,
+  durées, altérations, dégâts selon l'armure et taux de critique changent dès qu'une
+  compétence ou un effet d'équipe est allumé
 
 **Simulation**
-- **Spike** — calcul des dégâts d'une salve : ordre de cast, vol de vie, Deep Wound,
-  coups critiques, buffs d'arme, effets de Grenth, dégâts conditionnels et à seuil
+- **Spike** — calcul des dégâts d'une salve : ordre de cast, attaques normales, vol de
+  vie, Deep Wound, coups critiques, buffs d'arme, effets d'équipe, effets de Grenth,
+  dégâts conditionnels et à seuil
 - **Dégâts selon l'armure** — AL 60/80/100/120 et niveaux personnalisés, armure
   ignorée, pénétration, dégâts d'arme des attaques
-- **Calculateur d'armure** — insignes, runes, résistances, effets temporaires
+- **Calculateur d'armure** — insignes, runes, résistances, effets temporaires, et les
+  dégâts réellement reçus : réductions, plafonds et soins, conversions de type,
+  l'attaquant et ses malus
 - **Énergie** — Expertise, Rituels de la Nature (Quickening Zephyr, Ether Well…),
   boosts d'attribut (Aura of the Lich, Master of Magic…)
 - **Altérations** — bandeau des 10 conditions, durées effectives et réduites
@@ -40,6 +46,9 @@ Auteur : **P. Vincent**.
   depuis la barre d'outils, classez-les par tags, partagez-les avec tous les joueurs
   et parcourez la bibliothèque depuis l'application. Toute une bibliothèque part en
   une passe, et rien de déjà en ligne n'est écrasé sans vous demander d'abord
+- **Session partagée** — modifiez un teambuild en direct avec jusqu'à sept autres
+  joueurs, chacun dans son Z-Codex, via les salons GWRank ; seul l'hôte a besoin
+  d'une clé GWRank
 - **GvG Report** — transformez un rapport de match de [gvg.report](https://gvg.report)
   en deux teambuilds, un par guilde
 - **Builds de la communauté** — récupération des *build packs* de PvXwiki depuis le menu
@@ -50,7 +59,8 @@ Auteur : **P. Vincent**.
 - Interface **française et anglaise**, permutable à chaud (drapeaux en haut à droite)
 - Thème clair et sombre
 - Trois tailles d'icônes
-- Capture d'écran d'un build ou d'une équipe, prête à coller
+- Capture d'écran d'un build ou d'une équipe, copiée dans le presse-papiers ou
+  enregistrée en image
 - Annuler / rétablir
 - Navigateur de fichiers avec aperçu sans ouvrir le build
 

@@ -33,8 +33,8 @@ public static class HelpContent
 {
     // Version du CONTENU de l'aide (indépendante de la version applicative de l'À propos) :
     // à incrémenter et redater à chaque mise à jour.
-    public const string VersionFr = "Aide v40 — 13/10/2026";
-    public const string VersionEn = "Help v40 — 2026-10-13";
+    public const string VersionFr = "Aide v41 — 13/10/2026";
+    public const string VersionEn = "Help v41 — 2026-10-13";
 
     public static string Version => AppLanguage.IsFr ? VersionFr : VersionEn;
 
@@ -154,6 +154,9 @@ public static class HelpContent
             R("Affichage" + M + "Langue" + M + "Français / English", "View" + M + "Language" + M + "Français / English",
               "Change la langue de l'interface ET du catalogue (noms et descriptions de compétences), immédiatement, sans redémarrer.",
               "Changes the language of the interface AND of the catalog (skill names and descriptions), immediately, without restarting."),
+            R("Affichage" + M + "Prendre un screenshot", "View" + M + "Take a screenshot",
+              "Copie une image de la grille du team build actif dans le presse-papiers, prête à coller ; une notification le confirme en bas de la fenêtre.",
+              "Copies an image of the active team build grid to the clipboard, ready to paste; a notification at the bottom of the window confirms it."),
             R("Affichage" + M + "Enregistrer un screenshot…", "View" + M + "Save screenshot…",
               "Exporte une image (.png) de la grille du team build actif.",
               "Exports an image (.png) of the active team build grid.")),

@@ -19,16 +19,22 @@ Author: **P. Vincent**.
 **Party building**
 - 8 characters × 8 skills, primary and secondary professions, attributes
 - Build variants organised as a tree, tied together by locks
-- Skill catalogue filterable by profession, attribute, skill type and game
-  mechanic (enchantments, adrenaline, exhaustion, resurrection, armor…), search,
+- Skill catalogue filterable by profession, attribute, elite status, skill type and
+  game mechanic (enchantments, adrenaline, exhaustion, resurrection, armor…), search,
   detailed tooltips
+- Tooltips that follow the party's active effects: energy cost, recharge, durations,
+  conditions, damage per armor level and critical chance change as soon as a skill
+  or a team effect is lit
 
 **Simulation**
-- **Spike** — damage of a coordinated burst: cast order, life stealing, Deep Wound,
-  critical hits, weapon buffs, Grenth effects, conditional and threshold damage
+- **Spike** — damage of a coordinated burst: cast order, normal attacks, life
+  stealing, Deep Wound, critical hits, weapon buffs, team effects, Grenth effects,
+  conditional and threshold damage
 - **Damage vs. armor** — AL 60/80/100/120 and custom levels, armor-ignoring damage,
   penetration, weapon damage of attack skills
-- **Armor calculator** — insignias, runes, resistances, temporary effects
+- **Armor calculator** — insignias, runes, resistances, temporary effects, and the
+  damage actually taken: reductions, caps and heals, type conversions, the attacker
+  and their penalties
 - **Energy** — Expertise, Nature Rituals (Quickening Zephyr, Ether Well…),
   attribute boosts (Aura of the Lich, Master of Magic…)
 - **Conditions** — band of the 10 conditions, effective and reduced durations
@@ -40,6 +46,8 @@ Author: **P. Vincent**.
   from the toolbar, file them under tags, share them with every player, and browse
   the library from inside the application. A whole library goes up in one pass, and
   nothing already on the server is overwritten without asking you first
+- **Shared session** — edit a team build live with up to seven other players, each
+  in their own Z-Codex, through GWRank rooms; only the host needs a GWRank key
 - **GvG Report** — turn a match report from [gvg.report](https://gvg.report) into
   two team builds, one per guild
 - **Community builds** — fetch the PvXwiki build packs from the Extras menu: ~1,460
@@ -50,7 +58,7 @@ Author: **P. Vincent**.
 - **French and English** interface, switchable on the fly (flags at the top right)
 - Light and dark themes
 - Three icon sizes
-- Screenshot of a build or a party, ready to paste
+- Screenshot of a build or a party, straight to the clipboard or saved as an image
 - Undo / redo
 - File browser with preview, without opening the build
 
