@@ -31,9 +31,12 @@ public sealed record SpikeTarget(int BaseArmor, int Level, int MaxHealth,
             "lightning" => BonusElemental + BonusLightning,
             _ => 0,
         };
-        // Plancher qui n'AUGMENTE jamais : AL 75 → 60, AL 90 → 70, AL 58 → 58 (inchangée).
-        return crackedArmor ? Math.Max(Math.Min(al, 60), al - 20) : al;
+        return crackedArmor ? WithCrackedArmor(al) : al;
     }
+
+    /// <summary>AL sous armure brisée : −20, plancher 60 qui n'AUGMENTE jamais — AL 75 → 60, AL 90 → 70,
+    /// AL 58 → 58 (inchangée). Partagée avec l'infobulle (<see cref="DamageBoosts.TargetArmor"/>).</summary>
+    public static int WithCrackedArmor(int al) => Math.Max(Math.Min(al, 60), al - 20);
 
     /// <summary>Dégâts effectifs de la Deep Wound sur un spike, tronqués.</summary>
     public int DeepWoundDamage => (int)Math.Min(0.2 * MaxHealth, 100.0);

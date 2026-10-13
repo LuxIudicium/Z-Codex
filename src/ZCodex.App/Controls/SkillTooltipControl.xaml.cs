@@ -1213,6 +1213,18 @@ public partial class SkillTooltipControl : UserControl
         // chantier 10, reconfirmée par Philippe le 27/09/2026) : il est déjà écrit dans sa description.
         // Fardeau nébuleux (lot 7b-2) : sans cette ligne, toute la table baisse sans rien qui dise pourquoi. Les colonnes
         // gardent l'armure NOMINALE de la cible ; la baisse tombe après la pénétration, sans le plancher de 60.
+        // Arme de fractionnement reçue (wiki : « Cracked Armor applies before the attack hits ») : même raison d'être que
+        // la ligne du Fardeau nébuleux juste en dessous — sans elle, les colonnes au-dessus de 60 baissent sans explication.
+        if (boosts.CrackedArmor)
+        {
+            var cracked = MakeMarkup(
+                L($"Arme de fractionnement : armure brisée posée avant le coup, armure de la cible {SkillProgression.MarkEffect}−20{SkillProgression.MarkEffect} (minimum 60, avant pénétration)",
+                  $"Sundering Weapon: Cracked Armor lands before the hit, target armor {SkillProgression.MarkEffect}−20{SkillProgression.MarkEffect} (minimum 60, before penetration)"),
+                11, "TextSecondaryBrush");
+            cracked.TextWrapping = TextWrapping.Wrap;
+            DamagePanel.Children.Add(cracked);
+        }
+
         if (boosts.ArmorReduction > 0)
             DamagePanel.Children.Add(MakeMarkup(
                 L($"Fardeau nébuleux : armure de la cible {SkillProgression.MarkEffect}−{boosts.ArmorReduction}{SkillProgression.MarkEffect} (après pénétration, même sous 60)",
@@ -1320,15 +1332,19 @@ public partial class SkillTooltipControl : UserControl
             bool scaled = boosts.HasMultiplier || boosts.HasWeaponMultiplier || boosts.ArmorReduction > 0;
             for (int c = 0; c < columns.Count; c++)
             {
+                // Armure brisée de l'Arme de fractionnement : AL réduite AVANT la pénétration. Une colonne déjà à 60
+                // ou moins ne bouge pas, donc elle ne passe pas en violet.
+                int al = boosts.TargetArmor(columns[c].Al);
+                bool cellScaled = scaled || al != columns[c].Al;
                 if (!mods.AlwaysCritical)
                 {
-                    int min = Boost(WeaponStrike.DamageAt(weapon.Min, masteryRank, columns[c].Al, penetration, mult, level, boosts.ArmorReduction) + scaledBonus, fluxDamagePercent);
-                    int max = Boost(WeaponStrike.DamageAt(weapon.Max, masteryRank, columns[c].Al, penetration, mult, level, boosts.ArmorReduction) + scaledBonus, fluxDamagePercent);
-                    AddCell(grid, 1, c + 1, Marked($"{min}–{max}", scaled), "TextPrimaryBrush", markup: scaled);
+                    int min = Boost(WeaponStrike.DamageAt(weapon.Min, masteryRank, al, penetration, mult, level, boosts.ArmorReduction) + scaledBonus, fluxDamagePercent);
+                    int max = Boost(WeaponStrike.DamageAt(weapon.Max, masteryRank, al, penetration, mult, level, boosts.ArmorReduction) + scaledBonus, fluxDamagePercent);
+                    AddCell(grid, 1, c + 1, Marked($"{min}–{max}", cellScaled), "TextPrimaryBrush", markup: cellScaled);
                 }
                 AddCell(grid, critRow, c + 1,
-                    Marked(Boost(WeaponStrike.CriticalAt(weapon, masteryRank, columns[c].Al, penetration, mult, level, boosts.ArmorReduction) + scaledBonus, fluxDamagePercent).ToString(), scaled),
-                    "TextPrimaryBrush", markup: scaled);
+                    Marked(Boost(WeaponStrike.CriticalAt(weapon, masteryRank, al, penetration, mult, level, boosts.ArmorReduction) + scaledBonus, fluxDamagePercent).ToString(), cellScaled),
+                    "TextPrimaryBrush", markup: cellScaled);
             }
         }
 
@@ -1337,10 +1353,14 @@ public partial class SkillTooltipControl : UserControl
             AddCell(grid, weaponRows + r + 1, 0, RowLabel(rows[r], boosts.ElementalToCold, boosts.StoneStriker), "TextSecondaryBrush");
             bool rowScaled = boosts.HasMultiplier || boosts.ArmorReduction > 0;
             for (int c = 0; c < columns.Count; c++)
+            {
+                int al = boosts.TargetArmor(columns[c].Al);
+                bool cellScaled = rowScaled || al != columns[c].Al;
                 AddCell(grid, weaponRows + r + 1, c + 1,
-                        Marked(Boost(SkillDamage.DamageAt(rows[r].Value, columns[c].Al, penetration, level, boosts.Multiplier, boosts.ArmorReduction), fluxDamagePercent).ToString(),
-                               rowScaled),
-                        "TextPrimaryBrush", markup: rowScaled);
+                        Marked(Boost(SkillDamage.DamageAt(rows[r].Value, al, penetration, level, boosts.Multiplier, boosts.ArmorReduction), fluxDamagePercent).ToString(),
+                               cellScaled),
+                        "TextPrimaryBrush", markup: cellScaled);
+            }
         }
 
         if (boostRows > 0)
@@ -1353,7 +1373,7 @@ public partial class SkillTooltipControl : UserControl
                 // tourment retire 10…50, l'Aura de Grenth 5…25 au lot 6c-3), et le signe était écrit en dur —
                 // la ligne affichait « +-50 ». Bug jamais vu parce que le seul malus du 6b était un effet REÇU,
                 // qui demande un coéquipier ; l'Aura de Grenth, elle, s'allume d'un clic sur sa propre carte.
-                int total = Boost(boosts.TotalAt(columns[c].Al, penetration, level), fluxDamagePercent);
+                int total = Boost(boosts.TotalAt(boosts.TargetArmor(columns[c].Al), penetration, level), fluxDamagePercent);
                 AddCell(grid, row, c + 1,
                         $"{SkillProgression.MarkEffect}{(total >= 0 ? "+" : "−")}{Math.Abs(total)}{SkillProgression.MarkEffect}",
                         "TextPrimaryBrush", markup: true);

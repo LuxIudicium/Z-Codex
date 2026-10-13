@@ -1187,10 +1187,7 @@ public partial class CharacterSlotViewModel : ViewModelBase
                 && !(d.RequiresPhysical && AttackConverted(target, equipped)))
                 (added ??= []).AddRange(ConditionInfliction.For(sk, AttributeLevel(d.ScalingAttribute) ?? 0));
 
-        if (IsAttributeBoostActive(ConditionDurationData.SunderingWeaponSkillId)
-            && SunderingWeapon is { Skill: { } sw } received
-            && ConditionDurationData.BySkillId(sw.Id) is { } wd
-            && ConditionDurationData.AddsTo(wd, sw, target, equipped))
+        if (SunderingWeaponCracks(target, equipped) && SunderingWeapon is { Skill: { } sw } received)
             (added ??= []).AddRange(ConditionInfliction.For(sw, received.Rank));
 
         int all = FindEquippedSkill(ConditionDurationData.ArcherSignetSkillId) is not null
@@ -1200,6 +1197,15 @@ public partial class CharacterSlotViewModel : ViewModelBase
 
         return new ConditionDurations(added, all, ConditionDurationData.ModConditionsOf(ActiveWeaponSetModIds()));
     }
+
+    /// <summary>L'Arme de fractionnement reçue pose-t-elle son armure brisée sur <paramref name="target"/> ? UN seul
+    /// test pour les deux usages : la ligne « Durée d'armure brisée effective » et l'armure −20 de la table de dégâts
+    /// (<see cref="DamageBoostsFor"/>) — l'infobulle ne peut pas annoncer l'une sans appliquer l'autre.</summary>
+    private bool SunderingWeaponCracks(Skill target, WeaponKind equipped) =>
+        IsAttributeBoostActive(ConditionDurationData.SunderingWeaponSkillId)
+        && SunderingWeapon is { Skill: { } sw }
+        && ConditionDurationData.BySkillId(sw.Id) is { } wd
+        && ConditionDurationData.AddsTo(wd, sw, target, equipped);
 
     // ── Assommement (chantier infobulle, lot 4c) ──────────────────────────────
 
@@ -1283,7 +1289,12 @@ public partial class CharacterSlotViewModel : ViewModelBase
     /// n'entrent PAS ici : ils passent par <see cref="TextDamageBonusFor"/>.</summary>
     public DamageBoosts DamageBoostsFor(Skill target)
     {
-        var boosts = BoostsFor(target, ActiveWeaponKind(), spikeOnly: false, includeSkill: null);
+        var equipped = ActiveWeaponKind();
+        var boosts = BoostsFor(target, equipped, spikeOnly: false, includeSkill: null);
+        // Arme de fractionnement reçue : l'armure brisée tombe AVANT le coup (wiki/Sundering_Weapon), donc l'attaque
+        // frappe elle-même l'armure réduite. Infobulle seulement : la fenêtre Spike et l'onglet Armure laissent
+        // l'armure brisée à la case de la cible (décision Philippe, cf. SpikeWeaponBuffs).
+        if (SunderingWeaponCracks(target, equipped)) boosts = boosts with { CrackedArmor = true };
         // Fardeau nébuleux (lot 7b-2) : l'armure que la cible perd contre les attaques de CE perso. La fenêtre Spike
         // la lit à part (lot 7c), ligne par ligne, par ShadowyBurdenArmorFor — pas par SpikeDamageBoostsFor, dont les
         // appels « un effet à la fois » la recompteraient.

@@ -226,6 +226,9 @@ public readonly record struct DamageBoostSource(string Name, DamageBoostKind Kin
 /// en terre s'il est de chaos, de ténèbres ou sacré (anomalie wiki, voir <see cref="DamageBoostData.DisplayedType"/>).
 /// <paramref name="ArmorReduction"/> = armure que la CIBLE perd contre cette attaque, APRÈS la pénétration et sans
 /// plancher (Fardeau nébuleux, lot 7b-2) : elle touche toute la table, paquets d'effets compris. 0 = aucune.
+/// <paramref name="CrackedArmor"/> = l'attaque pose l'armure brisée AVANT de toucher (Arme de fractionnement reçue —
+/// wiki/Sundering_Weapon : « Cracked Armor applies before the attack hits »), donc elle frappe elle-même une armure à
+/// −20 (minimum 60), AVANT la pénétration : voir <see cref="TargetArmor"/>.
 /// </summary>
 public readonly record struct DamageBoosts(
     IReadOnlyList<DamageBoostPacket>? Packets = null,
@@ -240,7 +243,8 @@ public readonly record struct DamageBoosts(
     int LifeSteal = 0,
     double WeaponMultiplierOffset = 0,
     IReadOnlyList<DamageBoostSource>? Sources = null,
-    int ArmorReduction = 0)
+    int ArmorReduction = 0,
+    bool CrackedArmor = false)
 {
     /// <summary>
     /// Multiplicateur de dégâts reçu (Vengeance ×1,25, Affinité vitale ×0,70).
@@ -267,7 +271,13 @@ public readonly record struct DamageBoosts(
     public bool Any => Packets is { Count: > 0 } || CriticalPercent > 0
                        || BasePenetration > 0 || BonusPenetration > 0 || HasMultiplier
                        || Suppressed is { Count: > 0 } || TypeNote is not null || LifeSteal > 0
-                       || HasWeaponMultiplier || ArmorReduction > 0;
+                       || HasWeaponMultiplier || ArmorReduction > 0 || CrackedArmor;
+
+    /// <summary>Armure de la cible contre cette attaque : l'AL nominale de la colonne, moins l'armure brisée que
+    /// l'attaque pose avant de toucher (<see cref="CrackedArmor"/>). La pénétration et le Fardeau nébuleux viennent
+    /// APRÈS, dans la formule de dégâts.</summary>
+    public int TargetArmor(int armorLevel) =>
+        CrackedArmor ? SpikeTarget.WithCrackedArmor(armorLevel) : armorLevel;
 
     /// <summary>Un multiplicateur de dégâts est-il en jeu ? Comparaison par écart, pas par égalité de
     /// doubles.</summary>
