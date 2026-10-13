@@ -252,6 +252,17 @@ public static class WeaponStrike
         return new AttackMods(mult, alwaysCrit, noDamage);
     }
 
+    // « If target foe has a condition, this attack deals +X damage and is a critical hit » (Malicious Strike, la seule
+    // au catalogue le 13/10/2026). Lu dans le texte, comme « always a critical hit » juste au-dessus.
+    private static readonly Regex CriticalIfConditionRegex = new(
+        @"\bif\s+target\s+foe\s+has\s+a\s+condition\b[^.]*\bcritical\s+hit\b",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    /// <summary>L'attaque devient-elle un coup critique dès que la cible a une condition ? Sous un effet qui pose sa
+    /// condition AVANT le coup, elle est alors toujours critique (cf. <see cref="DamageBoosts.ConditionBeforeHit"/>).</summary>
+    public static bool CriticalIfTargetHasCondition(string resolvedDescription) =>
+        CriticalIfConditionRegex.IsMatch(resolvedDescription);
+
     // Strike level ×5 : +5 par rang jusqu'au seuil (niveau+4)/2 (12 à niveau 20), +2 par rang
     // au-delà. Seuil fractionnaire aux niveaux impairs : extension continue de la formule wiki.
     private static double StrikeLevel5(int rank, int level)

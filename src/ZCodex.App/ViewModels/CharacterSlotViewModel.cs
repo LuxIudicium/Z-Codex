@@ -1181,14 +1181,8 @@ public partial class CharacterSlotViewModel : ViewModelBase
         var equipped = ActiveWeaponKind();
 
         List<ConditionInfliction.Inflicted>? added = null;
-        foreach (var slot in SkillSlots)
-            if (slot.Skill is { } sk && ConditionDurationData.BySkillId(sk.Id) is { Received: false } d
-                && IsAttributeBoostActive(d.ToggleId) && ConditionDurationData.AddsTo(d, sk, target, equipped)
-                && !(d.RequiresPhysical && AttackConverted(target, equipped)))
-                (added ??= []).AddRange(ConditionInfliction.For(sk, AttributeLevel(d.ScalingAttribute) ?? 0));
-
-        if (SunderingWeaponCracks(target, equipped) && SunderingWeapon is { Skill: { } sw } received)
-            (added ??= []).AddRange(ConditionInfliction.For(sw, received.Rank));
+        foreach (var (source, rank) in ConditionAddersReaching(target, equipped))
+            (added ??= []).AddRange(ConditionInfliction.For(source, rank));
 
         int all = FindEquippedSkill(ConditionDurationData.ArcherSignetSkillId) is not null
                   && IsAttributeBoostActive(ConditionDurationData.ArcherSignetSkillId)
@@ -1196,6 +1190,22 @@ public partial class CharacterSlotViewModel : ViewModelBase
             ? ConditionDurationData.ArcherSignetPercent : 0;
 
         return new ConditionDurations(added, all, ConditionDurationData.ModConditionsOf(ActiveWeaponSetModIds()));
+    }
+
+    /// <summary>Les effets ALLUMÉS qui ajoutent leur condition aux coups de <paramref name="target"/>, avec le rang qui
+    /// résout leur durée : ceux de sa propre barre (Apply Poison, Sharpen Daggers…) et l'Arme de fractionnement reçue
+    /// (rang de son lanceur). UNE liste pour deux usages : les lignes « Durée de X effective » et le critique garanti de
+    /// Malicious Strike (<see cref="DamageBoostsFor"/>).</summary>
+    private IEnumerable<(Skill Source, int Rank)> ConditionAddersReaching(Skill target, WeaponKind equipped)
+    {
+        foreach (var slot in SkillSlots)
+            if (slot.Skill is { } sk && ConditionDurationData.BySkillId(sk.Id) is { Received: false } d
+                && IsAttributeBoostActive(d.ToggleId) && ConditionDurationData.AddsTo(d, sk, target, equipped)
+                && !(d.RequiresPhysical && AttackConverted(target, equipped)))
+                yield return (sk, AttributeLevel(d.ScalingAttribute) ?? 0);
+
+        if (SunderingWeaponCracks(target, equipped) && SunderingWeapon is { Skill: { } sw } received)
+            yield return (sw, received.Rank);
     }
 
     /// <summary>L'Arme de fractionnement reçue pose-t-elle son armure brisée sur <paramref name="target"/> ? UN seul
@@ -1295,6 +1305,11 @@ public partial class CharacterSlotViewModel : ViewModelBase
         // frappe elle-même l'armure réduite. Infobulle seulement : la fenêtre Spike et l'onglet Armure laissent
         // l'armure brisée à la case de la cible (décision Philippe, cf. SpikeWeaponBuffs).
         if (SunderingWeaponCracks(target, equipped)) boosts = boosts with { CrackedArmor = true };
+        // Les mêmes ajouteurs posent leur condition AVANT le coup (wiki : Malicious Strike, Grenth's Grasp, Sundering
+        // Weapon) : la cible en a donc une quand l'attaque touche — Malicious Strike devient toujours critique.
+        var conditionSources = ConditionAddersReaching(target, equipped)
+            .Select(a => ZCodex.Core.Search.SkillVariants.BaseName(a.Source.DisplayName)).Distinct().ToList();
+        if (conditionSources.Count > 0) boosts = boosts with { ConditionBeforeHit = conditionSources };
         // Fardeau nébuleux (lot 7b-2) : l'armure que la cible perd contre les attaques de CE perso. La fenêtre Spike
         // la lit à part (lot 7c), ligne par ligne, par ShadowyBurdenArmorFor — pas par SpikeDamageBoostsFor, dont les
         // appels « un effet à la fois » la recompteraient.

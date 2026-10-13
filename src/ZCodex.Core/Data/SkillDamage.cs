@@ -197,6 +197,12 @@ public static class SkillDamage
         "Ear Bite", // « piercing damage » mais armor-ignoring
     };
 
+    // L'inverse : dégâts SANS type qui respectent pourtant l'armure (anomalie relevée par le wiki de la compétence).
+    private static readonly HashSet<string> RespectingExceptions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Low Blow", // wiki/Low_Blow : « Although no damage type is specified […], the damage does not ignore armor »
+    };
+
     /// <summary>Analyse une description résolue. Aucun dégât calculable → Rows vide.
     /// <paramref name="includeMoreDamage"/> (mode spike) ajoute les paquets « X more damage » /
     /// « increases … by +X » que la tooltip ignore.</summary>
@@ -229,7 +235,13 @@ public static class SkillDamage
             bool areProjectiles = ticks <= 1 && projectiles > 1;
             if (areProjectiles) ticks = projectiles;
             var (isThreshold, maxDamage, clause) = ThresholdAt(thresholdSegments, m.Index);
-            rows.Add(new Row(value, type, isBonus, IgnoresArmor(type, isBonus, skillName),
+            // Un « +X [type] damage » qui SUIT un paquet de base de la même description n'est pas un bonus
+            // d'attaque : c'est un paquet de plus du sort (Shockwave « 51 earth… +51 earth », Mind Shock « +42
+            // lightning » si plus d'énergie), qui subit l'armure comme les autres (décision Philippe du 13/10/2026).
+            // Le bonus d'attaque, lui, ouvre toujours la description (« Deals +X damage ») et les effets posés sur
+            // les attaques (Conjure Flame, Kindle Arrows) n'ont pas de paquet de base avant leur « + ».
+            bool extraPacket = isBonus && rows.Exists(r => r is { Kind: RowKind.Damage, IsBonus: false });
+            rows.Add(new Row(value, type, isBonus, IgnoresArmor(type, isBonus && !extraPacket, skillName),
                              RowKind.Damage, ticks, cum, areProjectiles,
                              IsThreshold: isThreshold, MaxDamage: maxDamage, ThresholdClause: clause,
                              Index: m.Index));
@@ -442,7 +454,7 @@ public static class SkillDamage
     {
         if (IgnoringExceptions.Contains(skillName)) return true;
         if (isBonus) return true;               // bonus d'attaque « +X damage »
-        if (type is null) return true;          // dégâts sans type
+        if (type is null) return !RespectingExceptions.Contains(skillName);   // dégâts sans type
         return type is "holy" or "shadow";      // sacré et ombre (mais pas ténèbres/dark)
     }
 

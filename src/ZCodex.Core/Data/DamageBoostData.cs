@@ -229,6 +229,10 @@ public readonly record struct DamageBoostSource(string Name, DamageBoostKind Kin
 /// <paramref name="CrackedArmor"/> = l'attaque pose l'armure brisée AVANT de toucher (Arme de fractionnement reçue —
 /// wiki/Sundering_Weapon : « Cracked Armor applies before the attack hits »), donc elle frappe elle-même une armure à
 /// −20 (minimum 60), AVANT la pénétration : voir <see cref="TargetArmor"/>.
+/// <paramref name="ConditionBeforeHit"/> = noms des effets allumés qui posent une condition sur la cible de cette attaque
+/// AVANT qu'elle touche (Apply Poison, Sharpen Daggers, Grenth's Grasp, Arme de fractionnement — le wiki le dit pour les
+/// quatre). Ne sert qu'à Malicious Strike, alors toujours critique (<see cref="WeaponStrike.CriticalIfTargetHasCondition"/>) :
+/// les ajouteurs à l'arc, dont le wiki ne dit rien, ne peuvent pas atteindre cette attaque de mêlée.
 /// </summary>
 public readonly record struct DamageBoosts(
     IReadOnlyList<DamageBoostPacket>? Packets = null,
@@ -244,7 +248,8 @@ public readonly record struct DamageBoosts(
     double WeaponMultiplierOffset = 0,
     IReadOnlyList<DamageBoostSource>? Sources = null,
     int ArmorReduction = 0,
-    bool CrackedArmor = false)
+    bool CrackedArmor = false,
+    IReadOnlyList<string>? ConditionBeforeHit = null)
 {
     /// <summary>
     /// Multiplicateur de dégâts reçu (Vengeance ×1,25, Affinité vitale ×0,70).

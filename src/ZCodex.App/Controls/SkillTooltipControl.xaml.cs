@@ -1142,6 +1142,15 @@ public partial class SkillTooltipControl : UserControl
         // Un effet actif suffit à ouvrir la section : sur une attaque sans aucun paquet soumis à
         // l'armure, la ligne « bonus d'effets » est parfois la seule chose à montrer.
         var boosts = DamageBoosts;
+        // Armure brisée que la compétence pose ELLE-MÊME avant ses dégâts (Lightning Surge, Shockwave, Low Blow) : lue
+        // sur la compétence et non sur la carte, pour que son infobulle soit la même partout (build, Spike, Armure).
+        var ownCracked = CrackedArmorBeforeDamage.For(skill);
+        if (ownCracked is not null) boosts = boosts with { CrackedArmor = true };
+        // Malicious Strike sous un effet qui pose sa condition AVANT le coup : toujours critique, donc ligne critique seule
+        // (patron Keen Chop, décision Philippe du 13/10/2026).
+        bool critFromCondition = !mods.AlwaysCritical && boosts.ConditionBeforeHit is { Count: > 0 }
+                                 && WeaponStrike.CriticalIfTargetHasCondition(resolved);
+        if (critFromCondition) mods = mods with { AlwaysCritical = true };
         if (!weaponTable && respecting.Count == 0 && ignoring.Count == 0 && !boosts.Any) return;
 
         // Pénétration naturelle (rang de Force, non null seulement pour une attaque d'arme) :
@@ -1215,14 +1224,29 @@ public partial class SkillTooltipControl : UserControl
         // gardent l'armure NOMINALE de la cible ; la baisse tombe après la pénétration, sans le plancher de 60.
         // Arme de fractionnement reçue (wiki : « Cracked Armor applies before the attack hits ») : même raison d'être que
         // la ligne du Fardeau nébuleux juste en dessous — sans elle, les colonnes au-dessus de 60 baissent sans explication.
+        // L'armure brisée propre à la compétence a sa propre phrase, qui dit QUELS dégâts elle précède (ennemis proches de
+        // Shockwave, cible au sol de Low Blow). Les deux origines ne se croisent jamais : l'Arme de fractionnement ne vise
+        // que des attaques d'arme, et aucune des trois compétences n'en est une.
         if (boosts.CrackedArmor)
         {
-            var cracked = MakeMarkup(
-                L($"Arme de fractionnement : armure brisée posée avant le coup, armure de la cible {SkillProgression.MarkEffect}−20{SkillProgression.MarkEffect} (minimum 60, avant pénétration)",
-                  $"Sundering Weapon: Cracked Armor lands before the hit, target armor {SkillProgression.MarkEffect}−20{SkillProgression.MarkEffect} (minimum 60, before penetration)"),
+            var cracked = MakeMarkup(ownCracked is not null
+                ? $"{skill.DisplayName}{L(" : ", ": ")}{ownCracked.Note}"
+                : L($"Arme de fractionnement : armure brisée posée avant le coup, armure de la cible {SkillProgression.MarkEffect}−20{SkillProgression.MarkEffect} (minimum 60, avant pénétration)",
+                    $"Sundering Weapon: Cracked Armor lands before the hit, target armor {SkillProgression.MarkEffect}−20{SkillProgression.MarkEffect} (minimum 60, before penetration)"),
                 11, "TextSecondaryBrush");
             cracked.TextWrapping = TextWrapping.Wrap;
             DamagePanel.Children.Add(cracked);
+        }
+
+        if (critFromCondition)
+        {
+            var crit = MakeMarkup(
+                $"{string.Join(", ", boosts.ConditionBeforeHit!)}{L(" : ", ": ")}"
+                + L($"condition posée avant le coup, attaque {SkillProgression.MarkEffect}toujours critique{SkillProgression.MarkEffect}",
+                    $"condition lands before the hit, {SkillProgression.MarkEffect}always a critical hit{SkillProgression.MarkEffect}"),
+                11, "TextSecondaryBrush");
+            crit.TextWrapping = TextWrapping.Wrap;
+            DamagePanel.Children.Add(crit);
         }
 
         if (boosts.ArmorReduction > 0)
