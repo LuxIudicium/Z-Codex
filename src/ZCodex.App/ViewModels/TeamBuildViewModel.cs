@@ -498,10 +498,7 @@ public partial class TeamBuildViewModel : ViewModelBase, IRenamableTab
 
     // Supprime un nœud ; s'il a des variantes, sa 1ʳᵉ variante est promue à sa place,
     // les autres deviennent enfants de la promue (après les enfants existants de celle-ci).
-    // TODO(variants): le nœud supprimé reste membre de ses cadenas (Locks) : son id part dans le fichier
-    // (VariantLock.MemberIds) alors qu'il n'est plus dans l'arbre, et Ctrl+Z le fait disparaître (restauration
-    // par id). Le retirer des cadenas ici — à trancher avec Philippe : un cadenas réduit à un membre (il en
-    // faut 2 pour en créer un), et la variante promue hérite-t-elle de la place du supprimé dans le cadenas ?
+    // Le nœud supprimé quitte ses cadenas (cf. fin de méthode).
     public void DeleteRow(CharacterSlotViewModel node)
     {
         var container = node.Parent is { } p ? p.Variants : Characters;
@@ -524,8 +521,22 @@ public partial class TeamBuildViewModel : ViewModelBase, IRenamableTab
             }
             container[idx] = promoted;   // remplace au même index (Parent recâblé par RefreshTree)
         }
+        // Resté membre, le supprimé partait dans le fichier (VariantLock.MemberIds) sans perso derrière, et
+        // Ctrl+Z le faisait disparaître. Décision Philippe (14/10/2026) : un cadenas réduit à UN membre est
+        // gardé, et la variante promue n'hérite d'aucune place — elle garde les siennes. Un cadenas VIDÉ
+        // disparaît : le chargement les écarte déjà (PopulateViewModel), le garder rendrait Ctrl+Z inexact.
+        foreach (var lk in Locks.ToList())
+        {
+            if (!lk.Members.Remove(node) || lk.Members.Count > 0) continue;
+            Locks.Remove(lk);
+            if (_activeLockFilter == lk) ActiveLockFilter = null;
+            // Supprimé pendant qu'on modifiait CE cadenas (le menu reste ouvert en mode sélection) : la
+            // validation en crée un neuf avec les lignes cochées, au lieu de remplir un cadenas disparu.
+            if (_editingLock == lk) { _editingLock = null; OnPropertyChanged(nameof(LockSelectionPrompt)); }
+        }
+        OnPropertyChanged(nameof(HasLocks));
         MarkDirty();
-        RefreshTree();
+        RefreshTree();   // RebuildLockCells : les barres de cadenas suivent
     }
 
     public void MoveVariantUp(CharacterSlotViewModel node)
