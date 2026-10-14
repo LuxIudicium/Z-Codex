@@ -33,8 +33,8 @@ public static class HelpContent
 {
     // Version du CONTENU de l'aide (indépendante de la version applicative de l'À propos) :
     // à incrémenter et redater à chaque mise à jour.
-    public const string VersionFr = "Aide v42 — 14/10/2026";
-    public const string VersionEn = "Help v42 — 2026-10-14";
+    public const string VersionFr = "Aide v43 — 14/10/2026";
+    public const string VersionEn = "Help v43 — 2026-10-14";
 
     public static string Version => AppLanguage.IsFr ? VersionFr : VersionEn;
 
@@ -208,8 +208,8 @@ public static class HelpContent
               "Rejoint une session avec le code reçu de son hôte ; le teambuild s'ouvre dans un nouvel onglet. Aucun compte GWRank n'est nécessaire.",
               "Joins a session with the code received from its host; the teambuild opens in a new tab. No GWRank account is needed."),
             R("Extras" + M + "Quitter la session partagée", "Extras" + M + "Leave the shared session",
-              "Quitte la session en cours ; l'onglet reste ouvert. Elle continue pour les autres, même si vous en êtes l'hôte.",
-              "Leaves the current session; the tab stays open. It carries on for the others, even if you are its host."),
+              "Quitte la session en cours ; l'onglet reste ouvert. Les autres continuent sans vous — sauf si vous en êtes l'hôte : elle se ferme alors pour tout le monde 5 minutes plus tard.",
+              "Leaves the current session; the tab stays open. The others carry on without you — unless you are its host: it then closes for everyone 5 minutes later."),
             R("Extras" + M + "Réglages GWRank…", "Extras" + M + "GWRank settings…",
               "Clé d'API GWRank, serveur, et visibilité des envois (privés par défaut). La clé se crée sur votre page de profil GWRank ; « Tester la connexion » la vérifie sans rien envoyer. Elle est enregistrée en clair dans vos réglages locaux — avec une copie de secours dans le même dossier — et reste révocable depuis GWRank. Elle n'est à saisir QU'UNE FOIS : une fois enregistrée, Z-Codex ne la redemande plus, même si une ancienne version de l'application, ouverte en parallèle, vient effacer les réglages qu'elle ne connaît pas. Fermer cette fenêtre sans avoir cliqué sur « Enregistrer » perdrait une clé fraîchement collée : Z-Codex vous prévient alors et propose de l'enregistrer.",
               "GWRank API key, server, and visibility of uploads (private by default). The key is created on your GWRank profile page; “Test connection” checks it without sending anything. It is stored in plain text in your local settings — with a backup copy in the same folder — and can be revoked from GWRank at any time. You only ever enter it ONCE: after it is saved, Z-Codex never asks again, even if an older version of the application, running alongside, wipes the settings it does not know about. Closing this window without clicking “Save” would throw away a freshly pasted key: Z-Codex warns you and offers to save it."),
@@ -479,14 +479,30 @@ public static class HelpContent
 
         // ═══════════════ SESSION PARTAGÉE ═══════════════
         S("Session partagée (co-édition en direct)", "Shared session (live co-editing)",
-          "Plusieurs joueurs travaillent sur le même teambuild en même temps, chacun sur son propre Z-Codex : les modifications des uns arrivent chez les autres en une seconde environ. Seul celui qui ouvre la session a besoin d'un compte GWRank.",
-          "Several players work on the same teambuild at the same time, each on their own Z-Codex: one player's changes reach the others in about a second. Only the player who opens the session needs a GWRank account.",
-            R("Ouvrir une session", "Open a session",
-              "Extras ▸ Partager ce teambuild en direct… : Z-Codex crée la session sur GWRank et donne un code court (du type KURZ-7T4), déjà copié dans le presse-papier, à transmettre aux autres. Votre onglet et son fichier restent les vôtres : vous enregistrez quand vous le décidez.",
-              "Extras ▸ Share this teambuild live…: Z-Codex creates the session on GWRank and gives a short code (like KURZ-7T4), already copied to the clipboard, to pass on to the others. Your tab and its file stay yours: you save whenever you choose."),
-            R("Rejoindre une session", "Join a session",
-              "Extras ▸ Rejoindre une session partagée… : saisissez le code et votre pseudo. Le teambuild s'ouvre dans un NOUVEL onglet, relié à aucun de vos fichiers — la session ne peut rien écraser dans votre bibliothèque. « Enregistrer » en fait une copie à vous.",
-              "Extras ▸ Join a shared session…: enter the code and your nickname. The teambuild opens in a NEW tab, tied to none of your files — the session cannot overwrite anything in your library. “Save” makes a copy of your own."),
+          "Plusieurs joueurs travaillent sur le même teambuild en même temps, chacun sur son propre Z-Codex : les modifications des uns arrivent chez les autres en une seconde environ. Seul celui qui ouvre la session (l'hôte) a besoin d'une clé d'API GWRank ; les autres n'ont besoin que du code qu'il leur transmet.",
+          "Several players work on the same teambuild at the same time, each on their own Z-Codex: one player's changes reach the others in about a second. Only the player who opens the session (the host) needs a GWRank API key; the others only need the code the host sends them.",
+            R("Ouvrir une session (l'hôte)", "Open a session (the host)",
+              "1. Ouvrez le teambuild à partager.\n" +
+              "2. Extras ▸ Partager ce teambuild en direct…\n" +
+              "3. La première fois seulement, Z-Codex demande votre clé d'API GWRank : créez-la sur votre page de profil gwrank.com, collez-la, puis « Enregistrer » (voir « Réglages GWRank »).\n" +
+              "4. Choisissez un pseudo, puis « Créer la session ».\n" +
+              "5. Un code court (du type KURZ-7T4) s'affiche, déjà copié dans le presse-papier : envoyez-le aux autres joueurs, puis « Commencer ».\n" +
+              "Votre onglet et son fichier restent les vôtres : vous enregistrez quand vous le décidez.",
+              "1. Open the teambuild to share.\n" +
+              "2. Extras ▸ Share this teambuild live…\n" +
+              "3. The first time only, Z-Codex asks for your GWRank API key: create it on your gwrank.com profile page, paste it, then click “Save” (see “GWRank settings”).\n" +
+              "4. Pick a nickname, then click “Create session”.\n" +
+              "5. A short code (like KURZ-7T4) appears, already copied to the clipboard: send it to the other players, then click “Start”.\n" +
+              "Your tab and its file stay yours: you save whenever you choose."),
+            R("Rejoindre une session (les autres joueurs)", "Join a session (the other players)",
+              "Aucun compte GWRank n'est nécessaire.\n" +
+              "1. Extras ▸ Rejoindre une session partagée…\n" +
+              "2. Saisissez votre pseudo et le code reçu de l'hôte, puis « Rejoindre ».\n" +
+              "3. Le teambuild s'ouvre dans un NOUVEL onglet, relié à aucun de vos fichiers — la session ne peut rien écraser dans votre bibliothèque. Enregistrez-le si vous voulez en garder une copie.",
+              "No GWRank account needed.\n" +
+              "1. Extras ▸ Join a shared session…\n" +
+              "2. Enter your nickname and the code received from the host, then click “Join”.\n" +
+              "3. The teambuild opens in a NEW tab, tied to none of your files — the session cannot overwrite anything in your library. Save it if you want to keep a copy."),
             R("Bandeau de session", "Session bar",
               "Au-dessus des personnages : le code, l'état de la connexion, les participants (chacun avec sa couleur) et les derniers événements. « Copier le code » et « Quitter » y sont toujours à portée.",
               "Above the characters: the code, the connection status, the participants (each with their colour) and the latest events. “Copy code” and “Leave” are always at hand there."),
