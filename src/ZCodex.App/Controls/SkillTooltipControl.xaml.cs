@@ -1195,7 +1195,8 @@ public partial class SkillTooltipControl : UserControl
         {
             var damageGrid = BuildDamageGrid(respecting, penetration,
                 weaponTable ? weapon : null, WeaponMasteryRank ?? 0, bonus, mods, level, targetLevel,
-                CriticalStrikesRank ?? 0, fluxDmg, boosts, labelExtraPackets: ownCracked is null);
+                CriticalStrikesRank ?? 0, fluxDmg, boosts, labelExtraPackets: ownCracked is null,
+                zones: ownCracked?.Zones, crackedFromZone: ownCracked?.CrackedFromZone ?? 0);
             // Au-delà de ~7 colonnes d'AL la table déborde du MaxWidth de 380 et WPF rogne les
             // colonnes de droite : on élargit la racine à la largeur mesurée de la table.
             damageGrid.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
@@ -1313,7 +1314,7 @@ public partial class SkillTooltipControl : UserControl
     private static Grid BuildDamageGrid(List<SkillDamage.Row> rows, int penetration,
         WeaponStrike.Weapon? weapon, int masteryRank, int bonus, WeaponStrike.AttackMods mods,
         int level, int targetLevel, int criticalStrikesRank, int fluxDamagePercent, DamageBoosts boosts,
-        bool labelExtraPackets = true)
+        bool labelExtraPackets = true, string[]? zones = null, int crackedFromZone = 0)
     {
         var columns = ArmorDamageDisplay.Columns();
         int weaponRows = weapon is null ? 0 : mods.AlwaysCritical ? 1 : 2;
@@ -1374,23 +1375,29 @@ public partial class SkillTooltipControl : UserControl
             }
         }
 
+        // Table cumulée par zone (Shockwave, décision Philippe du 14/10/2026) : une ligne par palier de distance, qui somme
+        // les paquets reçus à ce palier — chacun calculé et arrondi à part, ce sont des paquets indépendants. L'armure
+        // brisée touche TOUS les paquets des paliers qui la reçoivent (elle tombe avant tout dégât), aucun des autres.
+        // Repli sur une ligne par paquet si la description ne compte plus autant de paquets que de paliers.
+        bool byZone = zones is { } zs && zs.Length == rows.Count;
         for (int r = 0; r < rows.Count; r++)
         {
             // Paquet de plus d'un sort (« + » ou « more » qui suit le paquet de base, soumis à l'armure) : libellé générique
             // « + conditionnel », décision Philippe du 13/10/2026 — sinon la ligne se confond avec celle du paquet de base.
-            // Sauf quand la compétence a sa propre phrase par cas (Shockwave : distance), qui le dit déjà.
             bool extraPacket = labelExtraPackets && rows[r].IsBonus;
             AddCell(grid, weaponRows + r + 1, 0,
-                    extraPacket ? L("+ conditionnel", "+ conditional") : RowLabel(rows[r], boosts.ElementalToCold, boosts.StoneStriker),
+                    byZone ? zones![r]
+                    : extraPacket ? L("+ conditionnel", "+ conditional") : RowLabel(rows[r], boosts.ElementalToCold, boosts.StoneStriker),
                     "TextSecondaryBrush");
             bool rowScaled = boosts.HasMultiplier || boosts.ArmorReduction > 0;
             for (int c = 0; c < columns.Count; c++)
             {
-                int al = boosts.TargetArmor(columns[c].Al);
+                int al = !byZone || r >= crackedFromZone ? boosts.TargetArmor(columns[c].Al) : columns[c].Al;
                 bool cellScaled = rowScaled || al != columns[c].Al;
-                AddCell(grid, weaponRows + r + 1, c + 1,
-                        Marked(Boost(SkillDamage.DamageAt(rows[r].Value, al, penetration, level, boosts.Multiplier, boosts.ArmorReduction), fluxDamagePercent).ToString(),
-                               cellScaled),
+                int value = 0;
+                for (int p = byZone ? 0 : r; p <= r; p++)
+                    value += Boost(SkillDamage.DamageAt(rows[p].Value, al, penetration, level, boosts.Multiplier, boosts.ArmorReduction), fluxDamagePercent);
+                AddCell(grid, weaponRows + r + 1, c + 1, Marked(value.ToString(), cellScaled),
                         "TextPrimaryBrush", markup: cellScaled);
             }
         }

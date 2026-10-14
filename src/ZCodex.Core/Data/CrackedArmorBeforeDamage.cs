@@ -13,9 +13,15 @@ namespace ZCodex.Core.Data;
 /// </summary>
 public static class CrackedArmorBeforeDamage
 {
-    public sealed record Entry(string NoteFr, string NoteEn)
+    /// <param name="ZonesFr">Table CUMULÉE par zone (Shockwave) : une ligne par palier de distance, chacune somme les paquets
+    /// que reçoit un ennemi de ce palier (le 1er paquet seul, puis 1+2, puis 1+2+3). Null = une ligne par paquet.</param>
+    /// <param name="CrackedFromZone">Premier palier qui reçoit l'armure brisée : TOUS ses paquets sont alors à −20 (elle
+    /// tombe avant tout dégât) ; les paliers d'avant restent sans.</param>
+    public sealed record Entry(string NoteFr, string NoteEn,
+                               string[]? ZonesFr = null, string[]? ZonesEn = null, int CrackedFromZone = 0)
     {
         public string Note => AppLanguage.IsFr ? NoteFr : NoteEn;
+        public string[]? Zones => AppLanguage.IsFr ? ZonesFr : ZonesEn;
     }
 
     // −20 en violet, comme la ligne de l'Arme de fractionnement.
@@ -27,13 +33,13 @@ public static class CrackedArmorBeforeDamage
         ["Lightning Surge"] = new(
             $"armure brisée posée avant les dégâts : armure de la cible {E}−20{E} (minimum 60, avant pénétration)",
             $"Cracked Armor lands before the damage: target armor {E}−20{E} (minimum 60, before penetration)"),
-        // wiki/Shockwave : « Cracked Armor is applied before any damage. » — mais seuls les ennemis PROCHES la reçoivent.
-        // Table calculée pour une cible au contact (les 3 paquets), décision Philippe du 13/10/2026.
+        // wiki/Shockwave : « Cracked Armor is applied before any damage. » — seuls les ennemis PROCHES (et adjacents) la
+        // reçoivent. Table cumulée par zone (décision Philippe du 14/10/2026) : zone = 1er paquet sans armure brisée ;
+        // proche = paquets 1+2, adjacent = 1+2+3, TOUS à −20 puisqu'elle tombe avant tout dégât.
         ["Shockwave"] = new(
-            $"armure brisée posée avant tout dégât sur les ennemis proches : armure {E}−20{E} (minimum 60). "
-            + "Ennemis seulement dans la zone : 1er paquet sans armure brisée",
-            $"Cracked Armor lands before any damage on nearby foes: armor {E}−20{E} (minimum 60). "
-            + "Foes only in the area: first packet without Cracked Armor"),
+            $"les ennemis proches et adjacents reçoivent l'armure brisée avant tout dégât : armure {E}−20{E} (minimum 60)",
+            $"nearby and adjacent foes get Cracked Armor before any damage: armor {E}−20{E} (minimum 60)",
+            ZonesFr: ["zone", "proche", "adjacent"], ZonesEn: ["area", "nearby", "adjacent"], CrackedFromZone: 1),
         // wiki/Low_Blow : « The Cracked Armor condition is applied before any damage from this skill » — si la cible est
         // au sol. Table calculée cible au sol (les 2 paquets), décision Philippe du 13/10/2026.
         ["Low Blow"] = new(
