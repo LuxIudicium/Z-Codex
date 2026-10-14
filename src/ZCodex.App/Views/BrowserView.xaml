@@ -182,7 +182,8 @@
                       x:Name="FileList"
                       ItemsSource="{Binding Files}"
                       SelectedItem="{Binding SelectedFile}"
-                      MouseDoubleClick="FileList_MouseDoubleClick"
+                      SelectionChanged="FileList_SelectionChanged"
+                      PreviewMouseDoubleClick="FileList_PreviewMouseDoubleClick"
                       KeyDown="FileList_KeyDown"
                       BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="0"
                       ScrollViewer.HorizontalScrollBarVisibility="Auto">

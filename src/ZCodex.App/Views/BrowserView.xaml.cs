@@ -38,8 +38,27 @@ public partial class BrowserView : UserControl
             Vm.SelectedFolder = folder;
     }
 
-    private void FileList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
-        => Vm?.OpenSelected();
+    // La sélection fait apparaître l'aperçu, qui prend sa hauteur à la liste : celle-ci défile pour garder
+    // la ligne cliquée visible, et les lignes glissent sous la souris pendant que le bouton est encore
+    // enfoncé. Or une liste qui tient la souris sélectionne toute ligne qui arrive sous le curseur bouton
+    // enfoncé (« glisser pour sélectionner », ListBox.NotifyListItemMouseDragged) : cliquer une ligne du
+    // bas sélectionnait la SUIVANTE (signalé le 14/10/2026). Liste à sélection unique : rien à perdre à
+    // lâcher la souris dès que la ligne est choisie.
+    private void FileList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (FileList.IsMouseCaptured) FileList.ReleaseMouseCapture();
+    }
+
+    // Même glissement entre les deux clics d'un double-clic : le second tombe sur une autre ligne. Le
+    // double-clic est donc traité AVANT que ce second clic ne sélectionne quoi que ce soit, sur la ligne
+    // choisie au premier. Seulement sur une ligne : un double-clic sur un en-tête n'ouvre rien.
+    private void FileList_PreviewMouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (ItemsControl.ContainerFromElement(FileList, e.OriginalSource as DependencyObject) is not ListViewItem)
+            return;
+        e.Handled = true;
+        Vm?.OpenSelected();
+    }
 
     private void FileList_KeyDown(object sender, KeyEventArgs e)
     {
