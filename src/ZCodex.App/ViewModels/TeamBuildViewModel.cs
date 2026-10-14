@@ -854,7 +854,11 @@ public partial class TeamBuildViewModel : ViewModelBase, IRenamableTab
     /// </summary>
     public void NotifyContextChanged() => Mutated?.Invoke();
 
-    public void MarkClean() => IsDirty = false;
+    public void MarkClean()
+    {
+        IsDirty = false;
+        Undo?.MarkSaved();   // l'historique sait désormais quel état correspond au fichier
+    }
 
     // Undo/redo par snapshot : levé à CHAQUE vraie mutation (mêmes filtres que le dirty flag),
     // y compris quand le build est déjà dirty. Consommé par UndoManager.

@@ -1898,10 +1898,17 @@ public partial class MainWindow : Window
                 RestoreTeamBuild(tb, model);
                 // APRÈS la reconstruction : les persos recréés partent sans bonus.
                 tb.ApplyBonusSnapshot(snapshot[..nl]);
+                // Revenu exactement au contenu du fichier : plus rien à enregistrer (la restauration, elle,
+                // marque toujours le build modifié).
+                if (tb.Undo?.IsAtSavedState == true) tb.MarkClean();
                 // La restauration suspend le tracking (pas de Mutated) → recalcul explicite
                 // de la ligne de conditions du teambuild.
                 _vm.RefreshTeamConditionBand();
-            });
+            },
+            // Ce qui va dans le fichier : tout l'instantané sauf sa 1re ligne (les bonus).
+            persisted: snapshot => snapshot[(snapshot.IndexOf('\n') + 1)..],
+            // Un onglet ouvert « modifié » (import converti…) n'a pas d'état enregistré à retrouver.
+            startsSaved: !tb.IsDirty);
         tb.Mutated += tb.Undo.OnMutated;
     }
 

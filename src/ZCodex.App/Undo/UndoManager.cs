@@ -21,14 +21,34 @@ public sealed class UndoManager : IDisposable
     private bool _burst;      // une rafale de mutations attend son commit
     private bool _restoring;  // ignore les Mutated ré-entrants pendant une restauration
 
-    public UndoManager(Func<string> capture, Action<string> restore)
+    // Partie ENREGISTRÉE d'un instantané (ce qui va dans le fichier : pas les points bonus, par exemple).
+    private readonly Func<string, string> _persisted;
+    // Partie enregistrée de l'état tel qu'il est sur disque ; null = inconnu (ouvert déjà modifié).
+    private string? _saved;
+
+    public UndoManager(Func<string> capture, Action<string> restore,
+                       Func<string, string>? persisted = null, bool startsSaved = false)
     {
         _capture = capture;
         _restore = restore;
+        _persisted = persisted ?? (s => s);
         _baseline = capture();
+        if (startsSaved) _saved = _persisted(_baseline);
         _timer = new DispatcherTimer { Interval = CoalesceDelay };
         _timer.Tick += (_, _) => CommitPending();
     }
+
+    // L'état courant vient d'être enregistré : c'est lui que Ctrl+Z / Ctrl+Y devront retrouver pour que le
+    // build redevienne « non modifié ».
+    public void MarkSaved()
+    {
+        CommitPending();
+        _saved = _persisted(_baseline);
+    }
+
+    // Vrai quand l'état courant (hors rafale en cours) est exactement celui du fichier. Sans cela, revenir au
+    // départ à coups de Ctrl+Z laissait l'étoile « modifié » et la demande d'enregistrement à la fermeture.
+    public bool IsAtSavedState => _saved is not null && !_burst && _persisted(_baseline) == _saved;
 
     public bool CanUndo => _undo.Count > 0 || _burst;
     public bool CanRedo => _redo.Count > 0;
