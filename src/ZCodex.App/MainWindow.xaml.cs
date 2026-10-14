@@ -1875,14 +1875,19 @@ public partial class MainWindow : Window
     {
         if (tb.Undo != null) return;
         tb.Undo = new UndoManager(
+            // Instantané = bonus de l'arbre (1re ligne, jamais de saut de ligne dedans) + build sérialisé : les
+            // points bonus ne sont pas dans le fichier, mais Ctrl+Z doit les rendre aussi.
             capture: () =>
             {
                 var model = ViewModelToModel(tb);
                 model.UpdatedAt = default;   // hors snapshot : deux états identiques doivent se comparer égaux
-                return TeamBuildSerializer.Serialize(model);
+                return tb.BonusSnapshot() + "\n" + TeamBuildSerializer.Serialize(model);
             },
-            restore: json =>
+            restore: snapshot =>
             {
+                int nl = snapshot.IndexOf('\n');
+                if (nl < 0) return;
+                var json = snapshot[(nl + 1)..];
                 var skillsById = _vm.SkillPanel.AllSkills.ToDictionary(s => s.Id, s => s);
                 var model = TeamBuildSerializer.Deserialize(json, skillsById);
                 if (model == null)
@@ -1891,6 +1896,8 @@ public partial class MainWindow : Window
                     return;
                 }
                 RestoreTeamBuild(tb, model);
+                // APRÈS la reconstruction : les persos recréés partent sans bonus.
+                tb.ApplyBonusSnapshot(snapshot[..nl]);
                 // La restauration suspend le tracking (pas de Mutated) → recalcul explicite
                 // de la ligne de conditions du teambuild.
                 _vm.RefreshTeamConditionBand();
@@ -1907,15 +1914,21 @@ public partial class MainWindow : Window
             foreach (BuildEditorViewModel b in e.OldItems) { b.Undo?.Dispose(); b.Undo = null; }
     }
 
-    // Snapshot = ContentSignature (périmètre exact du .txt). Attaché depuis MainWindow, seul
+    // Snapshot = bonus du perso (1re ligne) + ContentSignature (périmètre exact du .txt) : les points
+    // bonus ne sont pas dans le .txt, mais Ctrl+Z doit les rendre aussi. Attaché depuis MainWindow, seul
     // détenteur du catalogue de skills nécessaire pour retrouver une compétence par son id.
     private void AttachUndo(BuildEditorViewModel tab)
     {
         if (tab.Undo != null) return;
         tab.Undo = new UndoManager(
-            capture: () => tab.ContentSignature,
-            restore: snapshot => tab.RestoreContent(
-                snapshot, _vm.SkillPanel.AllSkills.ToDictionary(s => s.Id, s => s)));
+            capture: () => tab.Character.BonusSnapshot() + "\n" + tab.ContentSignature,
+            restore: snapshot =>
+            {
+                int nl = snapshot.IndexOf('\n');
+                if (nl < 0) return;
+                tab.RestoreContent(snapshot[(nl + 1)..], _vm.SkillPanel.AllSkills.ToDictionary(s => s.Id, s => s));
+                tab.Character.ApplyBonusSnapshot(snapshot[..nl]);
+            });
         tab.Mutated += tab.Undo.OnMutated;
     }
 

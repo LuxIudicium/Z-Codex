@@ -408,43 +408,34 @@ public class SkillSlotViewModel : ViewModelBase
         Owner is { } o && _skill is { } s && PetData.RequiresPet(s) && !o.HasPet
             ? ZCodex.App.LanguageManager.T("S.Tooltip.NoPet") : null;
 
+    // Ce que relit l'infobulle quand le perso pousse une mise à jour live (RaiseTooltipChanged). Pur
+    // AFFICHAGE : le teambuild ignore ces noms dans son suivi des modifications (OnChildChanged). Un cran
+    // de molette les re-notifie sur chaque case du perso, et les compter comme des éditions relançait
+    // les recalculs d'équipe des centaines de fois par cran (mesuré le 13/10/2026 : 120 à 420 ms par
+    // cran, contre 0,1 ms sans eux). Une propriété ajoutée à cette liste sort donc d'office du suivi ;
+    // une vraie édition de la case passe toujours par Skill.
+    private static readonly string[] TooltipPropertyNames =
+    [
+        nameof(MissingPetText), nameof(Footer), nameof(Description), nameof(DisplayDescription),
+        nameof(AttributeRank), nameof(SubstitutedAttribute), nameof(WeaponMasteryRank), nameof(StrengthRank),
+        nameof(CriticalStrikesRank), nameof(ExpertiseRank), nameof(SpawningPowerRank),
+        nameof(FluxEnergyPercent), nameof(FluxDamagePercent), nameof(FluxCastPercent),
+        nameof(NatureRituals), nameof(RoaringWindsBonus), nameof(EnergizingChorusReduction), nameof(TeamSpeed),
+        nameof(NaturesRenewalCastPct), nameof(EnchantEnchantingPct), nameof(EnchantExtenderPct),
+        nameof(EnchantTranquilityPct), nameof(DurationBoostPct), nameof(DurationBoostAlly),
+        nameof(ConditionDurations), nameof(Knockdown), nameof(DamageBoosts), nameof(AdrenalineGainPerHit),
+        nameof(AdrenalineSlowed), nameof(AdrenalineFromTeam), nameof(EnergyReduction), nameof(SkillSpeed),
+        nameof(FastCastingRank), nameof(AdrenalineStrikesGiven),
+    ];
+
+    private static readonly HashSet<string> TooltipPropertySet = new(TooltipPropertyNames, StringComparer.Ordinal);
+
+    public static bool IsTooltipProperty(string? name) => name is not null && TooltipPropertySet.Contains(name);
+
     // Permet au perso de pousser une mise à jour live de l'infobulle (footer + description).
     public void RaiseTooltipChanged()
     {
-        OnPropertyChanged(nameof(MissingPetText));
-        OnPropertyChanged(nameof(Footer));
-        OnPropertyChanged(nameof(Description));
-        OnPropertyChanged(nameof(DisplayDescription));
-        OnPropertyChanged(nameof(AttributeRank));
-        OnPropertyChanged(nameof(SubstitutedAttribute));
-        OnPropertyChanged(nameof(WeaponMasteryRank));
-        OnPropertyChanged(nameof(StrengthRank));
-        OnPropertyChanged(nameof(CriticalStrikesRank));
-        OnPropertyChanged(nameof(ExpertiseRank));
-        OnPropertyChanged(nameof(SpawningPowerRank));
-        OnPropertyChanged(nameof(FluxEnergyPercent));
-        OnPropertyChanged(nameof(FluxDamagePercent));
-        OnPropertyChanged(nameof(FluxCastPercent));
-        OnPropertyChanged(nameof(NatureRituals));
-        OnPropertyChanged(nameof(RoaringWindsBonus));
-        OnPropertyChanged(nameof(EnergizingChorusReduction));
-        OnPropertyChanged(nameof(TeamSpeed));
-        OnPropertyChanged(nameof(NaturesRenewalCastPct));
-        OnPropertyChanged(nameof(EnchantEnchantingPct));
-        OnPropertyChanged(nameof(EnchantExtenderPct));
-        OnPropertyChanged(nameof(EnchantTranquilityPct));
-        OnPropertyChanged(nameof(DurationBoostPct));
-        OnPropertyChanged(nameof(DurationBoostAlly));
-        OnPropertyChanged(nameof(ConditionDurations));
-        OnPropertyChanged(nameof(Knockdown));
-        OnPropertyChanged(nameof(DamageBoosts));
-        OnPropertyChanged(nameof(AdrenalineGainPerHit));
-        OnPropertyChanged(nameof(AdrenalineSlowed));
-        OnPropertyChanged(nameof(AdrenalineFromTeam));
-        OnPropertyChanged(nameof(EnergyReduction));
-        OnPropertyChanged(nameof(SkillSpeed));
-        OnPropertyChanged(nameof(FastCastingRank));
-        OnPropertyChanged(nameof(AdrenalineStrikesGiven));
+        foreach (var name in TooltipPropertyNames) OnPropertyChanged(name);
     }
 
     private bool _hasViolation;

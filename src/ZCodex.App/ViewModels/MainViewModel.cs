@@ -198,6 +198,8 @@ public class MainViewModel : ViewModelBase
                 ApplyPvpAttributeRule();
                 RefreshNatureRitualVariants();
                 PushGameModeToBuildCatalogs();
+                // EN DERNIER : la fenêtre Spike et le Refrain héroïque recalculent sur l'état final.
+                foreach (var tb in OpenTeamBuilds) tb.NotifyContextChanged();
             }
         };
         ApplyPvpAttributeRule();
@@ -338,7 +340,13 @@ public class MainViewModel : ViewModelBase
     // MainWindow.SwitchLanguage.
     public void RefreshLanguage()
     {
-        foreach (var c in AllCharacters()) c.RefreshLanguage();
+        // Une bascule de langue n'édite aucun build : sans RunWithoutTracking, chaque teambuild ouvert
+        // passait « modifié » (constaté le 13/10/2026) et demandait à être enregistré à la fermeture.
+        // Mêmes persos qu'AllCharacters, teambuilds d'abord.
+        foreach (var tb in OpenTeamBuilds)
+            tb.RunWithoutTracking(() => { foreach (var c in tb.EnumerateTree()) c.RefreshLanguage(); });
+        foreach (var b in OpenBuilds) b.Character.RefreshLanguage();
+        SearchBuilder.QueryCharacter.RefreshLanguage();
         foreach (var tb in OpenTeamBuilds) tb.FluxIndicator.RaiseLanguageChanged();
         foreach (var b in OpenBuilds) b.FluxIndicator.RaiseLanguageChanged();
 

@@ -2592,6 +2592,28 @@ public partial class CharacterSlotViewModel : ViewModelBase
     public string AttributeOverlay       => OverlayFor(marked: false);
     public string AttributeOverlayMarkup => OverlayFor(marked: true);
 
+    // Points bonus (rune, coiffe, consommable) pour l'historique d'annulation SEULEMENT : ils ne vont dans aucun
+    // fichier, mais Ctrl+Z doit les rendre comme le reste — sans eux, une molette qui déborde au-delà de 12 ne
+    // s'annulait pas du tout (demande de Philippe du 14/10/2026). Format « idAttribut=bonus,… », vide sans bonus.
+    public string BonusSnapshot() =>
+        string.Join(",", PrimaryAttributeRows.Concat(SecondaryAttributeRows)
+            .Where(r => r.BonusPoints > 0)
+            .Select(r => $"{r.AttributeId}={r.BonusPoints}"));
+
+    // Repose les bonus d'un instantané ; une ligne absente de l'instantané revient à 0.
+    public void ApplyBonusSnapshot(string snapshot)
+    {
+        var wanted = new Dictionary<int, int>();
+        foreach (var entry in snapshot.Split(',', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var kv = entry.Split('=');
+            if (kv.Length == 2 && int.TryParse(kv[0], out int id) && int.TryParse(kv[1], out int bonus))
+                wanted[id] = bonus;
+        }
+        foreach (var r in PrimaryAttributeRows.Concat(SecondaryAttributeRows))
+            r.BonusPoints = wanted.TryGetValue(r.AttributeId, out int b) ? b : 0;
+    }
+
     // Notifie l'affichage des attributs (résumé Spike + overlay teambuild brut & marqué).
     private void RaiseAttributeDisplayChanged()
     {

@@ -102,17 +102,25 @@ public partial class TeamBuildViewModel : ViewModelBase, IRenamableTab
 
     private void CheckHeroicSignature()
     {
-        var (skill, bonus) = HeroicRefrain;
-        string sig = $"{skill?.Id}|{bonus}|{WeaponOfFury?.Id}|{WeaponOfQuickening?.Id}|{SunderingWeapon}"
-                   + $"|{JudgesInsight?.Id}|{string.Join(";", TeamAdrenaline.Effects)}"
-                   + $"|{EnergizingChorusReduction}|{TeamSpeed}"
-                   + $"|{CharacterSlotViewModel.GreatDwarfWeaponFor(EnumerateTree())?.Id}"
-                   + $"|{ReceivedDamageBoostsSignature}|{BandDamageRanksSignature}|{TargetedAllyEffectsSignature}"
-                   + $"|{TargetedFoeEffectsSignature}";
+        string sig = HeroicSignature;
         if (sig == _heroicRefrainSig) return;
         _heroicRefrainSig = sig;
         _heroicRefrainTimer.Stop();
         _heroicRefrainTimer.Start();
+    }
+
+    private string HeroicSignature
+    {
+        get
+        {
+            var (skill, bonus) = HeroicRefrain;
+            return $"{skill?.Id}|{bonus}|{WeaponOfFury?.Id}|{WeaponOfQuickening?.Id}|{SunderingWeapon}"
+                 + $"|{JudgesInsight?.Id}|{string.Join(";", TeamAdrenaline.Effects)}"
+                 + $"|{EnergizingChorusReduction}|{TeamSpeed}"
+                 + $"|{CharacterSlotViewModel.GreatDwarfWeaponFor(EnumerateTree())?.Id}"
+                 + $"|{ReceivedDamageBoostsSignature}|{BandDamageRanksSignature}|{TargetedAllyEffectsSignature}"
+                 + $"|{TargetedFoeEffectsSignature}";
+        }
     }
 
     // ⚠ Les 9 effets du lot 6b passent TOUS par cette seule chaîne : c'est ce qui rend le piège du lot 4c
@@ -371,6 +379,19 @@ public partial class TeamBuildViewModel : ViewModelBase, IRenamableTab
                 foreach (var d in Walk(c)) yield return d;
         }
         return Characters.SelectMany(Walk);
+    }
+
+    // Bonus de tout l'arbre pour l'historique d'annulation (cf. CharacterSlotViewModel.BonusSnapshot), un perso
+    // par segment dans l'ordre d'EnumerateTree : un instantané est toujours reposé sur l'arbre qu'il a lui-même
+    // reconstruit, donc les positions correspondent.
+    public string BonusSnapshot() => string.Join(";", EnumerateTree().Select(c => c.BonusSnapshot()));
+
+    public void ApplyBonusSnapshot(string snapshot)
+    {
+        var parts = snapshot.Split(';');
+        int i = 0;
+        foreach (var c in EnumerateTree().ToList())
+            c.ApplyBonusSnapshot(i < parts.Length ? parts[i++] : string.Empty);
     }
 
     // (Re)câble abonnements + Parent/Depth/OwnerBuild de tout l'arbre, puis reconstruit VisibleRows.
@@ -819,7 +840,19 @@ public partial class TeamBuildViewModel : ViewModelBase, IRenamableTab
 
         Characters.CollectionChanged += OnCharactersChanged;
         RefreshTree();   // abonne tous les nœuds initiaux + peuple VisibleRows
+        // Les infobulles liront l'état tel qu'il est maintenant : partir d'une signature vide faisait du
+        // PREMIER cran de molette après l'ouverture un rafraîchissement de tout l'arbre (~3 s mesurées
+        // sur un teambuild de 28 persos), pour un changement que personne n'avait encore vu.
+        _heroicRefrainSig = HeroicSignature;
     }
+
+    /// <summary>
+    /// Le contexte de calcul a changé SANS que le build soit édité (bascule PvE/PvP : variantes des
+    /// compétences équipées, rituels PvP) : prévient les abonnés de <see cref="Mutated"/> — fenêtre Spike,
+    /// Refrain héroïque, bandeaux — sans salir le build. Ce signal arrivait jusqu'ici par accident, via la
+    /// rafale des infobulles que le suivi des modifications ignore désormais.
+    /// </summary>
+    public void NotifyContextChanged() => Mutated?.Invoke();
 
     public void MarkClean() => IsDirty = false;
 
@@ -980,6 +1013,9 @@ public partial class TeamBuildViewModel : ViewModelBase, IRenamableTab
         // Session partagée : la prise d'un personnage (CollabClaim, CollabOwner…) n'est pas une
         // édition du build — cf. CharacterSlotViewModel.Collab.cs, d'où le préfixe commun.
         if (e.PropertyName?.StartsWith("Collab", StringComparison.Ordinal) == true) return;
+        // Infobulle d'une case : affichage pur, re-notifié sur chaque case à chaque cran de molette
+        // (cf. SkillSlotViewModel.TooltipPropertyNames). Une vraie édition de la case passe par Skill.
+        if (sender is SkillSlotViewModel && SkillSlotViewModel.IsTooltipProperty(e.PropertyName)) return;
         if (e.PropertyName is nameof(CharacterSlotViewModel.ShowAttributeEditor)
                            // Dérivé du nom et de la place dans l'arbre (placeholder « Build Name 2.1 »),
                            // renotifié par RefreshTree : le compter salissait l'onglet DÈS SON OUVERTURE

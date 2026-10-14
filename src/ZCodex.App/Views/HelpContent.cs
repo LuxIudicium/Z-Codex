@@ -33,8 +33,8 @@ public static class HelpContent
 {
     // Version du CONTENU de l'aide (indépendante de la version applicative de l'À propos) :
     // à incrémenter et redater à chaque mise à jour.
-    public const string VersionFr = "Aide v41 — 13/10/2026";
-    public const string VersionEn = "Help v41 — 2026-10-13";
+    public const string VersionFr = "Aide v42 — 14/10/2026";
+    public const string VersionEn = "Help v42 — 2026-10-14";
 
     public static string Version => AppLanguage.IsFr ? VersionFr : VersionEn;
 
@@ -88,8 +88,8 @@ public static class HelpContent
               "Quitte l'application. Propose d'enregistrer les builds modifiés non sauvegardés.",
               "Quits the application. Offers to save any modified, unsaved builds."),
             R("Édition" + M + "Annuler — Ctrl+Z", "Edit" + M + "Undo — Ctrl+Z",
-              "Annule la dernière modification de l'onglet actif, team build ou Build. Une rafale rapide (≤ 0,5 s) compte pour un seul pas. Dans un onglet Build, l'historique couvre exactement ce qu'un .txt enregistre : professions, compétences, points d'attribut (pas le flux, les rituels ni les rangs de titre, volatils).",
-              "Undoes the last change to the active tab, team build or Build. A quick burst (≤ 0.5 s) counts as a single step. In a Build tab the history covers exactly what a .txt stores: professions, skills, attribute points (not flux, rituals or title ranks, which are volatile)."),
+              "Annule la dernière modification de l'onglet actif, team build ou Build. Une rafale rapide (≤ 0,5 s) compte pour un seul pas. Les points bonus (rune, coiffe, consommable) s'annulent aussi, bien qu'ils ne soient enregistrés nulle part. Dans un onglet Build, l'historique couvre exactement ce qu'un .txt enregistre : professions, compétences, points d'attribut (pas le flux, les rituels ni les rangs de titre, volatils).",
+              "Undoes the last change to the active tab, team build or Build. A quick burst (≤ 0.5 s) counts as a single step. Bonus points (rune, headgear, consumable) are undone too, even though they are saved nowhere. In a Build tab the history covers exactly what a .txt stores: professions, skills, attribute points (not flux, rituals or title ranks, which are volatile)."),
             R("Édition" + M + "Rétablir — Ctrl+Y", "Edit" + M + "Redo — Ctrl+Y",
               "Rétablit l'action précédemment annulée. La pile d'annulation est propre à chaque onglet.",
               "Redoes the previously undone action. The undo stack belongs to each tab."),
@@ -402,8 +402,8 @@ public static class HelpContent
               "Menu complet : ajouter un personnage, propriétés, équipement, importer/copier les templates (O : compétences, P : équipement), assigner un joueur, échanger / déplacer / copier vers un autre personnage, créer une variante, verrouiller des variantes, vider le build, supprimer.",
               "Full menu: add character, properties, equipment, import/copy templates (O: skills, P: equipment), assign a player, swap / move / copy to another character, create a variant, lock variants, clear the build, remove."),
             R("Supprimer les compétences / les points / le build", "Clear skills / points / build",
-              "Vident le contenu du build SANS toucher au personnage : le nom, les professions, les notes, l'équipement et le joueur assigné restent. « Supprimer le build » fait les deux à la fois. Les points bonus posés à la main (rune, coiffe, consommable) partent avec les points de base ; les rangs de titre restent. Ctrl+Z rend les compétences et les points de base en un seul pas — mais pas les points bonus, qui n'entrent dans aucun historique. Aussi au clic droit dans la page d'un onglet Build.",
-              "Empty the build's contents WITHOUT touching the character: name, professions, notes, equipment and assigned player stay. “Clear build” does both at once. Hand-set bonus points (rune, headgear, consumable) go along with the base points; title ranks stay. Ctrl+Z brings back the skills and base points in one step — but not the bonus points, which are part of no history. Also on right-click in the page of a Build tab.")),
+              "Vident le contenu du build SANS toucher au personnage : le nom, les professions, les notes, l'équipement et le joueur assigné restent. « Supprimer le build » fait les deux à la fois. Les points bonus posés à la main (rune, coiffe, consommable) partent avec les points de base ; les rangs de titre restent. Ctrl+Z rend les compétences et les points, bonus compris, en un seul pas. Aussi au clic droit dans la page d'un onglet Build.",
+              "Empty the build's contents WITHOUT touching the character: name, professions, notes, equipment and assigned player stay. “Clear build” does both at once. Hand-set bonus points (rune, headgear, consumable) go along with the base points; title ranks stay. Ctrl+Z brings back the skills and points, bonus included, in one step. Also on right-click in the page of a Build tab.")),
 
         // ═══════════════ FLUX, RITUELS, BOOSTS ═══════════════
         S("Flux, rituels et bonus temporaires", "Flux, rituals and temporary bonuses",
