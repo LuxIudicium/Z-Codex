@@ -1116,7 +1116,8 @@ public partial class SkillTooltipControl : UserControl
         if (!ArmorDamageDisplay.Enabled || Skill is not { } skill || DescriptionOverride is not { } resolved)
             return;
 
-        var analysis = SkillDamage.Analyze(resolved, skill.Name);
+        // Avec les paquets de plus des sorts (« X more damage » qui suit le paquet de base), qui subissent l'armure.
+        var analysis = SkillDamage.Analyze(resolved, skill.Name, includeExtraPackets: true);
         // Kind == Damage seulement : vol/perte de vie (utilitaire Spike) restent hors tooltip
         // (décision chantier 10 : ni vol de vie ni perte de vie affichés ici).
         var damage = analysis.Rows.Where(r => r.Kind == SkillDamage.RowKind.Damage).ToList();
@@ -1194,7 +1195,7 @@ public partial class SkillTooltipControl : UserControl
         {
             var damageGrid = BuildDamageGrid(respecting, penetration,
                 weaponTable ? weapon : null, WeaponMasteryRank ?? 0, bonus, mods, level, targetLevel,
-                CriticalStrikesRank ?? 0, fluxDmg, boosts);
+                CriticalStrikesRank ?? 0, fluxDmg, boosts, labelExtraPackets: ownCracked is null);
             // Au-delà de ~7 colonnes d'AL la table déborde du MaxWidth de 380 et WPF rogne les
             // colonnes de droite : on élargit la racine à la largeur mesurée de la table.
             damageGrid.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
@@ -1311,7 +1312,8 @@ public partial class SkillTooltipControl : UserControl
 
     private static Grid BuildDamageGrid(List<SkillDamage.Row> rows, int penetration,
         WeaponStrike.Weapon? weapon, int masteryRank, int bonus, WeaponStrike.AttackMods mods,
-        int level, int targetLevel, int criticalStrikesRank, int fluxDamagePercent, DamageBoosts boosts)
+        int level, int targetLevel, int criticalStrikesRank, int fluxDamagePercent, DamageBoosts boosts,
+        bool labelExtraPackets = true)
     {
         var columns = ArmorDamageDisplay.Columns();
         int weaponRows = weapon is null ? 0 : mods.AlwaysCritical ? 1 : 2;
@@ -1374,7 +1376,13 @@ public partial class SkillTooltipControl : UserControl
 
         for (int r = 0; r < rows.Count; r++)
         {
-            AddCell(grid, weaponRows + r + 1, 0, RowLabel(rows[r], boosts.ElementalToCold, boosts.StoneStriker), "TextSecondaryBrush");
+            // Paquet de plus d'un sort (« + » ou « more » qui suit le paquet de base, soumis à l'armure) : libellé générique
+            // « + conditionnel », décision Philippe du 13/10/2026 — sinon la ligne se confond avec celle du paquet de base.
+            // Sauf quand la compétence a sa propre phrase par cas (Shockwave : distance), qui le dit déjà.
+            bool extraPacket = labelExtraPackets && rows[r].IsBonus;
+            AddCell(grid, weaponRows + r + 1, 0,
+                    extraPacket ? L("+ conditionnel", "+ conditional") : RowLabel(rows[r], boosts.ElementalToCold, boosts.StoneStriker),
+                    "TextSecondaryBrush");
             bool rowScaled = boosts.HasMultiplier || boosts.ArmorReduction > 0;
             for (int c = 0; c < columns.Count; c++)
             {

@@ -88,7 +88,9 @@ public static class SkillDamage
     // Pain « 16 more damage », Strength of Honor « 25 more damage in melee ») et « increases
     // [physical] damage by +X » (Winnowing « +4 »). « X additional damage » (Visions of Regret
     // « 41 additional damage if not under… ») est un synonyme de « more ». Comptés comme bonus →
-    // ignorent l'armure. Le groupe optionnel « cond » capture la clause conditionnelle qui suit le
+    // ignorent l'armure, SAUF le paquet typé d'un sort qui suit son paquet de base (Lightning Bolt « 41 more
+    // lightning damage », Mind Burn) : même règle que les « + » (décision Philippe du 13/10/2026).
+    // Le groupe optionnel « cond » capture la clause conditionnelle qui suit le
     // paquet (« if … » ou « to <état> foes ») : sa présence marque la part conditionnelle (checkbox).
     private static readonly Regex MoreDamageRegex = new(
         $@"{Value}\s+(?:more|additional)\s+(?:(?<type>{Types})\s+)?damage\b" +
@@ -205,9 +207,13 @@ public static class SkillDamage
 
     /// <summary>Analyse une description résolue. Aucun dégât calculable → Rows vide.
     /// <paramref name="includeMoreDamage"/> (mode spike) ajoute les paquets « X more damage » /
-    /// « increases … by +X » que la tooltip ignore.</summary>
+    /// « increases … by +X » que la tooltip ignore.
+    /// <paramref name="includeExtraPackets"/> (infobulle) n'en ajoute que les PAQUETS DE PLUS d'un sort, ceux qui
+    /// suivent son paquet de base et subissent l'armure (Lightning Bolt « 41 more lightning damage » si la cible bouge,
+    /// Mind Burn…) — demande de Philippe du 13/10/2026 : sans eux, l'infobulle cachait une partie des dégâts. Les
+    /// bonus qui ignorent l'armure (Order of Pain, Strength of Honor…) restent hors infobulle.</summary>
     public static Analysis Analyze(string resolvedDescription, string skillName,
-                                   bool includeMoreDamage = false)
+                                   bool includeMoreDamage = false, bool includeExtraPackets = false)
     {
         if (string.IsNullOrEmpty(resolvedDescription))
             return new Analysis([], 0);
@@ -247,7 +253,7 @@ public static class SkillDamage
                              Index: m.Index));
         }
 
-        if (includeMoreDamage)
+        if (includeMoreDamage || includeExtraPackets)
             foreach (var re in new[] { MoreDamageRegex, IncreasesDamageRegex })
                 foreach (Match m in re.Matches(resolvedDescription))
                 {
@@ -260,8 +266,12 @@ public static class SkillDamage
                     bool conditional = m.Groups["cond"].Success;
                     // Part à seuil (« +9 more holy damage for each adrenaline skill » de Signet of Rage).
                     var (isThreshold, maxDamage, clause) = ThresholdAt(thresholdSegments, m.Index);
-                    // Bonus additionnel par coup/déclenchement → ignore l'armure (comme « +X damage »).
-                    rows.Add(new Row(value, type, true, true, RowKind.Damage,
+                    // Bonus additionnel par coup/déclenchement → ignore l'armure (comme « +X damage ») ; mais un paquet
+                    // de plus qui suit le paquet de base d'un sort la subit (même test que la boucle DamageRegex).
+                    bool extraPacket = rows.Exists(r => r is { Kind: RowKind.Damage, IsBonus: false });
+                    bool ignores = IgnoresArmor(type, !extraPacket, skillName);
+                    if (!includeMoreDamage && ignores) continue;   // infobulle : les paquets de plus d'un sort seulement
+                    rows.Add(new Row(value, type, true, ignores, RowKind.Damage,
                                      TicksAt(tickSegments, m.Index).Ticks,
                                      Conditional: conditional,
                                      Condition: conditional ? m.Groups["cond"].Value.Trim() : null,
