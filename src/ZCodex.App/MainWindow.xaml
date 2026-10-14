@@ -62,6 +62,37 @@
             <ctrl:SkillTooltipControl Skill="{Binding}"/>
         </DataTemplate>
 
+        <!-- Infobulles PARESSEUSES des deux bandeaux d'icônes ci-dessous (rituels de l'équipe, effets propres
+             au perso) : bâties au 1er survol. Posées en dur, R-Spike Variants en construisait ~135 à chaque
+             ouverture, changement d'onglet ou Ctrl+Z (~7 ms chacune), survolées ou non.
+             DataContext = l'icône (NatureRitualIndicatorViewModel / AttributeBoostIndicatorViewModel). -->
+        <DataTemplate x:Key="NatureRitualTooltipTemplate">
+            <!-- Le VRAI tooltip de la compétence + note band-only (effet ennemi / rang / clic). -->
+            <StackPanel>
+                <ctrl:SkillTooltipControl Skill="{Binding Skill}"
+                                          DescriptionOverride="{Binding DescriptionOverride}"
+                                          DisplayDescriptionOverride="{Binding DisplayDescriptionOverride}"
+                                          AttributeRank="{Binding AttributeRank}"/>
+                <TextBlock Text="{Binding ClickNote}" FontSize="10" FontStyle="Italic"
+                           Foreground="{DynamicResource TextSecondaryBrush}"
+                           TextWrapping="Wrap" Margin="6,2,6,4"/>
+            </StackPanel>
+        </DataTemplate>
+
+        <DataTemplate x:Key="AttributeBoostTooltipTemplate">
+            <!-- Le VRAI tooltip de la compétence (ou, pour un mod d'arme, son texte) + note band-only (clic). -->
+            <StackPanel>
+                <ctrl:SkillTooltipControl Skill="{Binding Skill}"
+                                          Visibility="{Binding HasSkill, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                <TextBlock Text="{Binding ModText}" FontSize="12" TextWrapping="Wrap"
+                           Foreground="{DynamicResource TextPrimaryBrush}" Margin="6,4,6,0"
+                           Visibility="{Binding HasSkill, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Invert}"/>
+                <TextBlock Text="{Binding ClickNote}" FontSize="10" FontStyle="Italic"
+                           Foreground="{DynamicResource TextSecondaryBrush}"
+                           TextWrapping="Wrap" Margin="6,2,6,4"/>
+            </StackPanel>
+        </DataTemplate>
+
         <!-- Bandeau des 10 conditions infligeables (DataContext = ConditionBandViewModel) :
              couleur = infligée par une skill équipée (tooltip : par lesquelles), grisée =
              accessible au combo PR/SEC, quasi-éteinte = inaccessible (tooltip : description).
@@ -122,19 +153,9 @@
                                         Width="26" Height="26" Margin="0,0,4,4" CornerRadius="2"
                                         BorderThickness="2" Background="Transparent"
                                         ToolTipService.ShowDuration="30000">
-                                    <!-- Tooltip = le VRAI tooltip de la compétence + note band-only (effet ennemi / rang / clic). -->
                                     <Border.ToolTip>
-                                        <ToolTip MaxWidth="420" Padding="0">
-                                            <StackPanel>
-                                                <ctrl:SkillTooltipControl Skill="{Binding Skill}"
-                                                                          DescriptionOverride="{Binding DescriptionOverride}"
-                                                                          DisplayDescriptionOverride="{Binding DisplayDescriptionOverride}"
-                                                                          AttributeRank="{Binding AttributeRank}"/>
-                                                <TextBlock Text="{Binding ClickNote}" FontSize="10" FontStyle="Italic"
-                                                           Foreground="{DynamicResource TextSecondaryBrush}"
-                                                           TextWrapping="Wrap" Margin="6,2,6,4"/>
-                                            </StackPanel>
-                                        </ToolTip>
+                                        <ToolTip MaxWidth="420" Padding="0" Content="{Binding}"
+                                                 ContentTemplate="{StaticResource NatureRitualTooltipTemplate}"/>
                                     </Border.ToolTip>
                                     <Border.Style>
                                         <Style TargetType="Border">
@@ -204,21 +225,9 @@
                                 Width="18" Height="18" Margin="0,0,3,0" CornerRadius="2"
                                 BorderThickness="2" Background="Transparent"
                                 ToolTipService.ShowDuration="30000">
-                            <!-- Tooltip = le VRAI tooltip de la compétence (ou, pour le mod « Furious »,
-                                 son texte) + note band-only (clic). -->
                             <Border.ToolTip>
-                                <ToolTip MaxWidth="420" Padding="0">
-                                    <StackPanel>
-                                        <ctrl:SkillTooltipControl Skill="{Binding Skill}"
-                                                                  Visibility="{Binding HasSkill, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                                        <TextBlock Text="{Binding ModText}" FontSize="12" TextWrapping="Wrap"
-                                                   Foreground="{DynamicResource TextPrimaryBrush}" Margin="6,4,6,0"
-                                                   Visibility="{Binding HasSkill, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Invert}"/>
-                                        <TextBlock Text="{Binding ClickNote}" FontSize="10" FontStyle="Italic"
-                                                   Foreground="{DynamicResource TextSecondaryBrush}"
-                                                   TextWrapping="Wrap" Margin="6,2,6,4"/>
-                                    </StackPanel>
-                                </ToolTip>
+                                <ToolTip MaxWidth="420" Padding="0" Content="{Binding}"
+                                         ContentTemplate="{StaticResource AttributeBoostTooltipTemplate}"/>
                             </Border.ToolTip>
                             <Border.Style>
                                 <Style TargetType="Border">
@@ -957,45 +966,12 @@
                                         <!-- Placement=Bottom ancre le HAUT de l'infobulle sur le BAS du slot : elle
                                              descend sous la rangée, donc sous l'overlay d'attributs (bas-droite du
                                              slot). La bande d'attributs qu'on ajuste à la molette reste visible
-                                             AU-DESSUS d'elle. Cf. suppression pendant la molette. -->
-                                        <ToolTip Placement="Bottom">
-                                            <ctrl:SkillTooltipControl Skill="{Binding Skill}"
-                                                                      FooterOverride="{Binding Footer}"
-                                                                      DescriptionOverride="{Binding Description}"
-                                                                      DisplayDescriptionOverride="{Binding DisplayDescription}"
-                                                                      AttributeRank="{Binding AttributeRank}"
-                                                                      SubstitutedAttribute="{Binding SubstitutedAttribute}"
-                                                                      WeaponMastery="{Binding WeaponMastery}"
-                                                                      WeaponMasteryRank="{Binding WeaponMasteryRank}"
-                                                                      StrengthRank="{Binding StrengthRank}"
-                                                                      CriticalStrikesRank="{Binding CriticalStrikesRank}"
-                                                                      ExpertiseRank="{Binding ExpertiseRank}"
-                                                                      SpawningPowerRank="{Binding SpawningPowerRank}"
-                                                                      FluxEnergyPercent="{Binding FluxEnergyPercent}"
-                                                                      FluxDamagePercent="{Binding FluxDamagePercent}"
-                                                                      FluxCastPercent="{Binding FluxCastPercent}"
-                                                                      NatureRituals="{Binding NatureRituals}"
-                                                                      RoaringWindsBonus="{Binding RoaringWindsBonus}"
-                                                                      EnergizingChorusReduction="{Binding EnergizingChorusReduction}"
-                                                                      TeamSpeed="{Binding TeamSpeed}"
-                                                                      NaturesRenewalCastPct="{Binding NaturesRenewalCastPct}"
-                                                                      EnchantEnchantingPct="{Binding EnchantEnchantingPct}"
-                                                                      EnchantExtenderPct="{Binding EnchantExtenderPct}"
-                                                                      EnchantTranquilityPct="{Binding EnchantTranquilityPct}"
-                                                                      AdrenalineGainPerHit="{Binding AdrenalineGainPerHit}"
-                                                                      AdrenalineSlowed="{Binding AdrenalineSlowed}"
-                                                                      AdrenalineFromTeam="{Binding AdrenalineFromTeam}"
-                                                                      EnergyReduction="{Binding EnergyReduction}"
-                                                                      SkillSpeed="{Binding SkillSpeed}"
-                                                                      FastCastingRank="{Binding FastCastingRank}"
-                                                                      AdrenalineStrikesGiven="{Binding AdrenalineStrikesGiven}"
-                                                                      DurationBoostPct="{Binding DurationBoostPct}"
-                                                                      DurationBoostAlly="{Binding DurationBoostAlly}"
-                                                                      ConditionDurations="{Binding ConditionDurations}"
-                                                                      Knockdown="{Binding Knockdown}"
-                                                                      DamageBoosts="{Binding DamageBoosts}"
-                                                                      MissingPetText="{Binding MissingPetText}"/>
-                                        </ToolTip>
+                                             AU-DESSUS d'elle. Cf. suppression pendant la molette.
+                                             Contenu PARESSEUX (même modèle que l'onglet Build) : posée en dur, l'infobulle
+                                             coûtait ~7 ms par case à CHAQUE construction de la grille (ouverture, changement
+                                             d'onglet, Ctrl+Z), survolée ou non. -->
+                                        <ToolTip Placement="Bottom" Content="{Binding}"
+                                                 ContentTemplate="{StaticResource SkillSlotTooltipTemplate}"/>
                                     </Border.ToolTip>
                                     <Border.ContextMenu>
                                         <!-- Mêmes entrées que le menu du catalogue (agissent sur la compétence du slot

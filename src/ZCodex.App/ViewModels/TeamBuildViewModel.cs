@@ -437,21 +437,28 @@ public partial class TeamBuildViewModel : ViewModelBase, IRenamableTab
 
     private void RebuildVisibleRows()
     {
-        VisibleRows.Clear();
+        // Pendant une restauration (Ctrl+Z, session partagée), l'arbre passe par des états intermédiaires :
+        // un seul alignement, à la fin (EndRestore), évite d'y retirer puis remettre des cartes intactes.
+        if (_restoring) return;
+        var rows = new List<CharacterSlotViewModel>();
         // Vue filtrée par cadenas : seules les lignes membres du cadenas actif, en ordre d'arbre.
         if (_activeLockFilter is { } f)
         {
             foreach (var n in EnumerateTree())
-                if (f.Members.Contains(n)) VisibleRows.Add(n);
-            return;
+                if (f.Members.Contains(n)) rows.Add(n);
         }
-        void Walk(CharacterSlotViewModel n)
+        else
         {
-            VisibleRows.Add(n);
-            if (!n.IsExpanded) return;
-            foreach (var c in n.Variants) Walk(c);
+            void Walk(CharacterSlotViewModel n)
+            {
+                rows.Add(n);
+                if (!n.IsExpanded) return;
+                foreach (var c in n.Variants) Walk(c);
+            }
+            foreach (var root in Characters) Walk(root);
         }
-        foreach (var root in Characters) Walk(root);
+        // Aligné, pas vidé : une ligne déjà affichée garde sa carte (cf. CollectionSync.SyncTo).
+        VisibleRows.SyncTo(rows);
     }
 
     // ── Filtre d'affichage par cadenas ────────────────────────────────────────
@@ -491,6 +498,10 @@ public partial class TeamBuildViewModel : ViewModelBase, IRenamableTab
 
     // Supprime un nœud ; s'il a des variantes, sa 1ʳᵉ variante est promue à sa place,
     // les autres deviennent enfants de la promue (après les enfants existants de celle-ci).
+    // TODO(variants): le nœud supprimé reste membre de ses cadenas (Locks) : son id part dans le fichier
+    // (VariantLock.MemberIds) alors qu'il n'est plus dans l'arbre, et Ctrl+Z le fait disparaître (restauration
+    // par id). Le retirer des cadenas ici — à trancher avec Philippe : un cadenas réduit à un membre (il en
+    // faut 2 pour en créer un), et la variante promue hérite-t-elle de la place du supprimé dans le cadenas ?
     public void DeleteRow(CharacterSlotViewModel node)
     {
         var container = node.Parent is { } p ? p.Variants : Characters;
@@ -896,9 +907,15 @@ public partial class TeamBuildViewModel : ViewModelBase, IRenamableTab
     // L'appelant (MainWindow) repeuple Name/Tags/Characters/Locks entre les deux appels ;
     // l'instance du VM (et donc l'onglet, FilePath, IsActive) survit à la restauration.
 
+    private bool _restoring;
+    // Nœuds présents AVANT la restauration : ceux qui y survivent ont été repris tels quels.
+    private HashSet<CharacterSlotViewModel>? _nodesBeforeRestore;
+
     public void BeginRestore()
     {
         _suppressTracking = true;
+        _restoring = true;
+        _nodesBeforeRestore = EnumerateTree().ToHashSet();
         // Les cadenas vont être reconstruits : purge des états qui référencent les instances mortes.
         if (IsLockSelectionMode) CancelLockSelection();
         ClearLockFilter();
@@ -906,11 +923,24 @@ public partial class TeamBuildViewModel : ViewModelBase, IRenamableTab
 
     public void EndRestore()
     {
+        _restoring = false;
         RefreshTree();
         OnPropertyChanged(nameof(HasLocks));
         // Le setter de ShowAttributes ne propage que sur changement : les nœuds recréés
         // (défaut false) doivent être réalignés explicitement.
         foreach (var c in EnumerateTree()) c.ShowAttributeEditor = ShowAttributes;
+        // Nœuds REPRIS (contenu identique, cf. MainWindow.PopulateViewModel) : leur carte est restée à
+        // l'écran, mais ce qu'elle montre des AUTRES persos (Heroic Refrain, effets reçus, rituels…) a pu
+        // changer avec eux. Même rafraîchissement que la diffusion inter-perso (_heroicRefrainTimer) ; les
+        // nœuds recréés, eux, n'ont pas encore de carte — elle sera construite à jour.
+        foreach (var n in EnumerateTree())
+            if (_nodesBeforeRestore?.Contains(n) == true)
+            {
+                n.RefreshAttributeBoostBand();
+                n.RefreshTooltips();
+            }
+        _nodesBeforeRestore = null;
+        _heroicRefrainSig = HeroicSignature;   // tout vient d'être rafraîchi sur l'état restauré
         RefreshViolationsForAll();
         _suppressTracking = false;
         IsDirty = true;

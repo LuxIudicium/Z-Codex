@@ -357,6 +357,12 @@ public partial class MainWindow : Window
     // Compétences du fichier absentes du catalogue courant : leur slot est vide et une
     // sauvegarde les effacerait définitivement. L'utilisateur doit le savoir AVANT d'enregistrer
     // (fichier reçu d'un autre joueur, catalogue local plus ancien que le fichier…).
+    // TODO(skills): 30 des 273 templates de Philippe la déclenchent (14/10/2026). 2091, 2093, 2094, 2096–2100 =
+    // moitiés Kurzick des compétences d'allégeance (cf. WikiSkillScraper.ScrapeSkillIdListAsync) : le catalogue
+    // range les 20 compétences d'allégeance sous des clés maison 900000–900020, donc leur id de jeu ne se résout
+    // jamais — case vidée, effacée au prochain enregistrement. Résoudre l'id de jeu vers la clé maison (par nom,
+    // comme ArmorEffectsData.CatalogSkill) plutôt que renuméroter (clés citées en dur, cf. AttributeBoostData).
+    // 5001 (Zealot, Arka, The Path To Good…) : ni id de jeu ni clé maison connue, origine à identifier.
     private void WarnUnresolvedSkills(List<int> unresolvedIds)
     {
         if (unresolvedIds.Count == 0) return;
@@ -1895,9 +1901,7 @@ public partial class MainWindow : Window
                     Debug.WriteLine($"[Undo] Snapshot illisible pour '{tb.Name}' — restauration annulée");
                     return;
                 }
-                RestoreTeamBuild(tb, model);
-                // APRÈS la reconstruction : les persos recréés partent sans bonus.
-                tb.ApplyBonusSnapshot(snapshot[..nl]);
+                RestoreTeamBuild(tb, model, snapshot[..nl]);
                 // Revenu exactement au contenu du fichier : plus rien à enregistrer (la restauration, elle,
                 // marque toujours le build modifié).
                 if (tb.Undo?.IsAtSavedState == true) tb.MarkClean();
@@ -3871,12 +3875,6 @@ public partial class MainWindow : Window
     {
         vm.Name = model.Name;
         vm.ActiveFlux = model.ActiveFlux;
-        vm.NatureRituals.LoadFromSkillIds(model.ActiveNatureRituals);
-        vm.NatureRituals.LoadRoaringWindsRank(model.RoaringWindsRitualRank);
-        vm.NatureRituals.LoadTranquilityRank(model.TranquilityRitualRank);
-        vm.NatureRituals.LoadNaturesRenewalRank(model.NaturesRenewalRitualRank);
-        vm.NatureRituals.LoadInfuriatingHeatRank(model.InfuriatingHeatRitualRank);
-        vm.NatureRituals.LoadBramblesRank(model.BramblesRitualRank);
         vm.VampiricHits3 = Math.Clamp(model.VampiricHits3, 0, 25);
         vm.VampiricHits5 = Math.Clamp(model.VampiricHits5, 0, 25);
         vm.ShowNormalAttacks = model.ShowNormalAttacks;   // v23 — lignes d'attaque normale du spike
@@ -3884,9 +3882,31 @@ public partial class MainWindow : Window
         vm.Tags.Clear();
         foreach (var tag in model.Tags) vm.Tags.Add(tag);
 
-        vm.Characters.Clear();
-        foreach (var c in model.Characters)
-            vm.Characters.Add(CharToVm(c));
+        // Personnages. Un nœud de l'arbre actuel dont le contenu enregistré est IDENTIQUE à celui du modèle
+        // est repris tel quel au lieu d'être recréé : sa carte reste à l'écran. Ctrl+Z après un cran de
+        // molette ne reconstruisait pas une carte mais toutes (R-Spike Variants : 28, ~1,3 s), et la session
+        // partagée de même à chaque modification reçue. Identique = même clé (NodeKey), donc reprendre l'un
+        // pour l'autre ne change rien à ce qui serait enregistré ; les variantes sont alignées une à une.
+        var spikeById = model.Spike.GroupBy(s => s.CharacterId).ToDictionary(g => g.Key, g => g.First());
+        var reusable = ReusableNodes(vm);
+        CharacterSlotViewModel Take(CharacterBuild c)
+        {
+            var node = reusable.TryGetValue(NodeKey(c, spikeById.GetValueOrDefault(c.Id)), out var same) && same.Count > 0
+                ? same.Dequeue()
+                : CharNodeToVm(c);
+            node.Variants.SyncTo(c.Variants.Select(Take).ToList());
+            return node;
+        }
+        vm.Characters.SyncTo(model.Characters.Select(Take).ToList());
+
+        // Rituels APRÈS l'arbre : un vrai changement d'environnement rafraîchit les persos, autant que ce
+        // soient ceux qui restent. Rangs d'abord : ils ne notifient rien, l'ensemble actif si (s'il change).
+        vm.NatureRituals.LoadRoaringWindsRank(model.RoaringWindsRitualRank);
+        vm.NatureRituals.LoadTranquilityRank(model.TranquilityRitualRank);
+        vm.NatureRituals.LoadNaturesRenewalRank(model.NaturesRenewalRitualRank);
+        vm.NatureRituals.LoadInfuriatingHeatRank(model.InfuriatingHeatRitualRank);
+        vm.NatureRituals.LoadBramblesRank(model.BramblesRitualRank);
+        vm.NatureRituals.LoadFromSkillIds(model.ActiveNatureRituals);
 
         // Cadenas : résolus une fois l'arbre construit (MemberIds → lignes par Id).
         vm.Locks.Clear();
@@ -3943,15 +3963,69 @@ public partial class MainWindow : Window
 
     // Repeuple un TeamBuildViewModel existant depuis un snapshot d'undo SANS changer d'instance :
     // l'onglet, son activation et FilePath/SourcePath survivent à la restauration.
-    private static void RestoreTeamBuild(TeamBuildViewModel tb, TeamBuild model)
+    private static void RestoreTeamBuild(TeamBuildViewModel tb, TeamBuild model, string bonusSnapshot)
     {
         tb.BeginRestore();
-        try { PopulateViewModel(tb, model); }
+        try
+        {
+            PopulateViewModel(tb, model);
+            // APRÈS l'arbre (les persos recréés partent sans bonus) mais AVANT EndRestore : son rafraîchissement
+            // des persos repris doit voir les bonus — le Commandement d'un lanceur de Refrain héroïque change
+            // le bonus affiché chez les autres.
+            tb.ApplyBonusSnapshot(bonusSnapshot);
+        }
         finally { tb.EndRestore(); }
+    }
+
+    // Nœuds de l'arbre actuel rangés par clé de réemploi (NodeKey), en ordre d'arbre : deux nœuds de même
+    // contenu sont repris dans l'ordre où ils apparaissaient.
+    private static Dictionary<string, Queue<CharacterSlotViewModel>> ReusableNodes(TeamBuildViewModel vm)
+    {
+        var current = ViewModelToModel(vm);
+        var spikeById = current.Spike.GroupBy(s => s.CharacterId).ToDictionary(g => g.Key, g => g.First());
+        static IEnumerable<CharacterBuild> Walk(CharacterBuild c) => c.Variants.SelectMany(Walk).Prepend(c);
+        var pool = new Dictionary<string, Queue<CharacterSlotViewModel>>();
+        // CharToModel recopie l'arbre nœud pour nœud : les deux parcours en pré-ordre se correspondent.
+        foreach (var (node, c) in vm.EnumerateTree().Zip(current.Characters.SelectMany(Walk)))
+        {
+            var key = NodeKey(c, spikeById.GetValueOrDefault(c.Id));
+            if (!pool.TryGetValue(key, out var same)) pool[key] = same = new();
+            same.Enqueue(node);
+        }
+        return pool;
+    }
+
+    // Clé de réemploi d'un nœud : ce qu'il écrit dans le fichier SANS ses variantes (alignées à part), plus
+    // sa ligne du roster spike (cases cochées, mods, buffs : portées par ses slots). Sérialisée par le même
+    // code que le fichier, donc deux clés égales = deux nœuds indiscernables à l'enregistrement. Le modèle
+    // est jetable (instantané désérialisé ou ViewModelToModel) : ses variantes lui sont rendues aussitôt.
+    private static string NodeKey(CharacterBuild c, SpikeMember? spike)
+    {
+        var variants = c.Variants;
+        c.Variants = new();
+        try
+        {
+            return TeamBuildSerializer.Serialize(new TeamBuild
+            {
+                Id = Guid.Empty, CreatedAt = default, UpdatedAt = default,   // sinon nouveaux à chaque appel
+                Characters = { c },
+                Spike = spike is null ? new() : new() { spike },
+            });
+        }
+        finally { c.Variants = variants; }
     }
 
     // Construit récursivement un CharacterSlotViewModel (+ son sous-arbre de variantes) depuis le modèle.
     private static CharacterSlotViewModel CharToVm(CharacterBuild c)
+    {
+        var charVm = CharNodeToVm(c);
+        foreach (var v in c.Variants)
+            charVm.Variants.Add(CharToVm(v));   // Parent/Depth câblés ensuite par RefreshTree
+        return charVm;
+    }
+
+    // Le nœud seul, sans ses variantes.
+    private static CharacterSlotViewModel CharNodeToVm(CharacterBuild c)
     {
         var charVm = new CharacterSlotViewModel
         {
@@ -3976,9 +4050,6 @@ public partial class MainWindow : Window
 
         // Boosts d'attribut actifs (v16) — instances fraîches, pas de purge préalable.
         foreach (var id in c.ActiveAttributeBoosts) charVm.SetAttributeBoost(id, true);
-
-        foreach (var v in c.Variants)
-            charVm.Variants.Add(CharToVm(v));   // Parent/Depth câblés ensuite par RefreshTree
 
         return charVm;
     }

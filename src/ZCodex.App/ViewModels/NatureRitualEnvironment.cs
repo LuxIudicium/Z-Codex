@@ -117,10 +117,13 @@ public class NatureRitualEnvironment
     /// <summary>Recharge l'ensemble depuis des SkillId persistés (ignore les inconnus).</summary>
     public void LoadFromSkillIds(IEnumerable<int> skillIds)
     {
+        var before = new HashSet<R>(_active);
         _active.Clear();
         foreach (var id in skillIds)
             if (NatureRitualData.BySkillId(id) is { } d) _active.Add(d.Ritual);
-        Changed?.Invoke();
+        // Seulement sur un VRAI changement : Ctrl+Z recharge l'ensemble à chaque pas, et la notification
+        // rafraîchissait pour rien le bandeau de chaque perso (~0,2 s par annulation sur R-Spike Variants).
+        if (!before.SetEquals(_active)) Changed?.Invoke();
     }
 
     /// <summary>SkillId des rituels actifs, pour la persistance.</summary>
