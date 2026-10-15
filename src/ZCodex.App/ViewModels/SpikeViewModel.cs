@@ -1586,10 +1586,10 @@ public class SpikeViewModel : ViewModelBase
                                       IReadOnlyDictionary<SpikeBuff, string> Names,
                                       bool SunderingActive, bool SplinterActive, bool FtwActive);
 
-    // Synchronise la rangée d'icônes de chaque carte membre (offre = buffs équipés sur un membre
+    // Synchronise les buffs proposés à chaque carte membre (offre = buffs équipés sur un membre
     // du roster, cadre vert NON requis — le buff se lance AVANT le spike ; DWG proposé à son seul
-    // porteur) et précalcule les effets actifs (proposé ∩ coché). La rangée n'est reconstruite
-    // que si son offre change (instances stables) ; HasSpikeBuffToggles est UI-only, filtré du
+    // porteur) et précalcule les effets actifs (proposé ∩ coché). La liste n'est reconstruite
+    // que si son offre change (instances stables) ; SpikeOnlyBuffToggles est UI-only, filtré du
     // dirty tracking (cf. TeamBuildViewModel.OnChildChanged) — pas de boucle Mutated/recalcul.
     private Dictionary<CharacterSlotViewModel, MemberBuffs> SyncWeaponBuffs()
     {
@@ -1647,10 +1647,13 @@ public class SpikeViewModel : ViewModelBase
                             _ => e.D.DisplayTooltip,
                         },
                     });
-                m.RaiseSpikeBuffTogglesChanged();
             }
             else
                 foreach (var t in m.SpikeBuffToggles) t.RaiseActiveChanged(); // réaligne après undo/chargement
+            // Ceux qui s'affichent dépendent aussi de l'icône de la carte, qui va et vient avec les barres des
+            // AUTRES persos (un coéquipier équipe la Vengeance) : relu à chaque recalcul, pas seulement quand
+            // l'offre change.
+            m.RefreshSpikeOnlyBuffToggles();
 
             // ⚠⚠ LA RÈGLE « OU », étendue aux 7 buffs le 27/09/2026 sur demande de Philippe. Sept des
             // neuf buffs de cette fenêtre sont la MÊME compétence que sur la carte du perso, donc DEUX
@@ -2020,8 +2023,8 @@ public sealed class SpikeBuffToggleViewModel : ViewModelBase
     public bool LitOnCard => Member.IsBoostIconLit(Descriptor.CardToggleId);
 
     /// <summary>L'icône de la carte existe-t-elle pour cet effet ? Si oui, c'est elle qui porte l'état
-    /// (28/09/2026) : la case et l'icône commandent alors UN SEUL interrupteur, et ne peuvent plus
-    /// s'afficher dans deux états différents — elles sont désormais côte à côte dans cette fenêtre.</summary>
+    /// (28/09/2026) : la case et l'icône commandent alors UN SEUL interrupteur. Depuis le 14/10/2026, la
+    /// fenêtre n'affiche plus que l'icône (cf. CharacterSlotViewModel.SpikeOnlyBuffToggles).</summary>
     public bool HasCardIcon => Member.HasBoostIcon(Descriptor.CardToggleId);
 
     public bool IsActive

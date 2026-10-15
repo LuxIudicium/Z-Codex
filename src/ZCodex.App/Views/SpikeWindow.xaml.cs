@@ -37,8 +37,8 @@ public partial class SpikeWindow : Window
             Build.ToggleSpikeSlot(slot);   // (dé)sélection + ordre de cast (indices 1..N)
     }
 
-    // Icône de buff d'arme de la carte membre (chantier 14) : bascule l'état PAR PERSO
-    // (SetSpikeBuff → Mutated → recalcul, persisté .pn3 v11).
+    // Buff d'arme sans icône de carte, en fin de rangée « Effets » (chantier 14, rangée unique depuis le
+    // 14/10/2026) : bascule l'état PAR PERSO (SetSpikeBuff → Mutated → recalcul, persisté .pn3 v11).
     private void BuffToggle_Click(object sender, MouseButtonEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is SpikeBuffToggleViewModel toggle)

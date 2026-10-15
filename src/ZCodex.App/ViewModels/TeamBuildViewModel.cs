@@ -862,6 +862,13 @@ public partial class TeamBuildViewModel : ViewModelBase, IRenamableTab
 
         Characters.CollectionChanged += OnCharactersChanged;
         RefreshTree();   // abonne tous les nœuds initiaux + peuple VisibleRows
+        // Cases de buff d'un fichier ancien → icône de la carte (14/10/2026). Ici et pas au chargement : c'est
+        // RefreshTree qui rattache les persos au build, et les icônes reçues d'un allié (Clairvoyance du juge…)
+        // n'existent pas avant. Une reprise de format, pas une édition : ni « modifié », ni étape d'annulation.
+        RunWithoutTracking(() =>
+        {
+            foreach (var m in SpikeMembers) m.MoveSpikeBuffCasesToCardIcons(SpikeMembers);
+        });
         // Les infobulles liront l'état tel qu'il est maintenant : partir d'une signature vide faisait du
         // PREMIER cran de molette après l'ouverture un rafraîchissement de tout l'arbre (~3 s mesurées
         // sur un teambuild de 28 persos), pour un changement que personne n'avait encore vu.
@@ -1075,9 +1082,10 @@ public partial class TeamBuildViewModel : ViewModelBase, IRenamableTab
                            or nameof(CharacterSlotViewModel.IsExpanded)
                            or nameof(CharacterSlotViewModel.IsSelectedForLock)
                            or nameof(CharacterSlotViewModel.IsWheelSelected)
-                           // UI-only, levé DEPUIS SpikeViewModel.Recalculate (sync de la rangée
-                           // d'icônes buffs) → doit être hors dirty, sinon boucle Mutated/recalcul.
-                           or nameof(CharacterSlotViewModel.HasSpikeBuffToggles)
+                           // UI-only, levés DEPUIS SpikeViewModel.Recalculate (sync des buffs de la
+                           // rangée « Effets ») → doivent être hors dirty, sinon boucle Mutated/recalcul.
+                           or nameof(CharacterSlotViewModel.SpikeOnlyBuffToggles)
+                           or nameof(CharacterSlotViewModel.HasSpikeOnlyBuffToggles)
                            or nameof(SkillSlotViewModel.ShowBarred)
                            or nameof(SkillSlotViewModel.IsSameAsParent)
                            or nameof(SkillSlotViewModel.SpikeOrder))

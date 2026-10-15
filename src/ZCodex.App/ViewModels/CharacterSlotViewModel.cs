@@ -171,13 +171,62 @@ public partial class CharacterSlotViewModel : ViewModelBase
     private bool _spikeNormalCritical;
     public bool SpikeNormalCritical { get => _spikeNormalCritical; set => SetField(ref _spikeNormalCritical, value); }
 
-    // Rangée d'icônes de la carte membre (fenêtre Spike) : buffs PROPOSABLES à ce perso
-    // (= équipés sur un membre du roster ; DWG sur son seul porteur). Resynchronisée par
-    // SpikeViewModel à chaque recalcul — HasSpikeBuffToggles est UI-only, FILTRÉ du dirty
-    // tracking (levé depuis Recalculate, sinon boucle Mutated → recalcul → Mutated).
+    // Buffs d'arme PROPOSABLES à ce perso dans la fenêtre Spike (= équipés sur un membre du roster ;
+    // DWG sur son seul porteur). Resynchronisés par SpikeViewModel à chaque recalcul.
     public ObservableCollection<SpikeBuffToggleViewModel> SpikeBuffToggles { get; } = new();
-    public bool HasSpikeBuffToggles => SpikeBuffToggles.Count > 0;
-    public void RaiseSpikeBuffTogglesChanged() => OnPropertyChanged(nameof(HasSpikeBuffToggles));
+
+    // Ceux qui s'AFFICHENT, en fin de rangée « Effets » de la carte (14/10/2026, demande de Philippe : une
+    // seule rangée, une seule icône par effet — l'ancienne rangée « Buffs » montrait 7 de ces 9 buffs en
+    // double de leur icône de carte). Un buff qui a son icône sur la carte passe par elle ; restent ici ceux
+    // qui n'en ont pas : Hymne d'envie, Arme d'éclats, et Vengeance ou Arme du Grand Nain chez leur propre
+    // porteur. ⚠ Exception voulue : une case restée cochée alors que l'icône existe (un coéquipier vient
+    // d'équiper le même sort) reste visible, sinon l'effet compterait sans que rien à l'écran ne le montre ;
+    // l'éteindre la fait disparaître.
+    // UI-only, levés depuis Recalculate : FILTRÉS du dirty tracking, sinon boucle Mutated → recalcul.
+    private IReadOnlyList<SpikeBuffToggleViewModel> _spikeOnlyBuffToggles = [];
+    public IReadOnlyList<SpikeBuffToggleViewModel> SpikeOnlyBuffToggles => _spikeOnlyBuffToggles;
+    public bool HasSpikeOnlyBuffToggles => _spikeOnlyBuffToggles.Count > 0;
+
+    public void RefreshSpikeOnlyBuffToggles()
+    {
+        var shown = SpikeBuffToggles.Where(t => !t.HasCardIcon || IsSpikeBuffActive(t.Descriptor.Key)).ToList();
+        if (shown.SequenceEqual(_spikeOnlyBuffToggles)) return;
+        _spikeOnlyBuffToggles = shown;
+        OnPropertyChanged(nameof(SpikeOnlyBuffToggles));
+        OnPropertyChanged(nameof(HasSpikeOnlyBuffToggles));
+    }
+
+    /// <summary>
+    /// À l'ouverture d'un fichier (14/10/2026) : la case d'un buff cochée alors que l'icône de la carte existe
+    /// passe sur l'icône. Depuis que la fenêtre Spike n'a plus qu'une rangée, cette case n'a plus d'affichage
+    /// à elle ; un fichier enregistré avant le 28/09/2026 peut pourtant en porter. La règle « OU » de
+    /// SyncWeaponBuffs la comptait déjà : le total ne bouge pas (vérifié le 14/10/2026 sur 7 cas, ancienne
+    /// et nouvelle version côte à côte, chiffres identiques).
+    /// ⚠ Seulement si le buff est PROPOSÉ à ce perso (même offre que SyncWeaponBuffs) : hors offre, la case ne
+    /// comptait pas, alors que l'icône compte toujours — l'allumer ferait monter le total.
+    /// ⚠ Ajout DIRECT, sans l'exclusivité de SetAttributeBoost : allumer l'icône d'un sort d'arme éteindrait un
+    /// autre sort d'arme que le fichier comptait peut-être aussi, et le total bougerait.
+    /// </summary>
+    public void MoveSpikeBuffCasesToCardIcons(IEnumerable<CharacterSlotViewModel> roster)
+    {
+        bool moved = false;
+        foreach (var d in SpikeWeaponBuffs.All)
+        {
+            if (!_spikeActiveBuffs.Contains(d.Key) || !HasBoostIcon(d.CardToggleId)) continue;
+            bool offered = (d.SelfOnly ? [this] : roster).Any(m => m.SkillSlots.Any(s =>
+                s.Skill is { } sk && SpikeWeaponBuffs.FromSkillName(sk.Name)?.Buff == d.Buff));
+            if (!offered) continue;
+            _spikeActiveBuffs.Remove(d.Key);
+            _activeAttributeBoosts.Add(d.CardToggleId);
+            moved = true;
+        }
+        if (!moved) return;
+        OnPropertyChanged(nameof(SpikeActiveBuffs));
+        NotifyTooltipsChanged();
+        OnPropertyChanged(nameof(AttributeBoostToggles));
+        OnPropertyChanged(nameof(SpikeBoostToggles));
+        OnPropertyChanged(nameof(HasSpikeBoostToggles));
+    }
 
     // ── Mod "of the profession" (simulation only, non persisté) ────────────────
     // Force l'attribut PRIMAIRE de la profession choisie à max(investi, 5). Un seul mod
@@ -632,10 +681,15 @@ public partial class CharacterSlotViewModel : ViewModelBase
     ///    elle a donc sa place ici — et surtout, c'était le seul interrupteur qui manquait quand le
     ///    lanceur du buff est hors du roster du spike : sa case, elle, n'est alors pas proposée.
     ///
-    /// Le reste sort tout seul : l'adrénaline, l'énergie, la recharge, les durées et la substitution de
-    /// caractéristique ne déplacent aucun chiffre de spike. ⚠ Et les effets comptés par un compteur
-    /// « Procs » (conjurations, Ordres, Cent lames…) restent dehors exprès : leur icône n'y changerait
-    /// rien, c'est le compteur de la ligne qui les porte.
+    /// S'y ajoutent (14/10/2026, oubli signalé par Philippe) les icônes qui changent le RANG auquel les dégâts
+    /// se résolvent : bonus d'attribut (glyphes, Elemental Attunement, Aura of the Lich…, Heroic Refrain
+    /// reçu) et substitution de caractéristique (Sceau des illusions, Célérité symbolique). La fenêtre résout
+    /// chaque compétence par <see cref="ResolveDescription"/>, qui les lit : allumées dans la vue Build, elles
+    /// bougeaient le total sans qu'aucun interrupteur ne soit là pour les éteindre — le cas du Fardeau.
+    ///
+    /// Le reste sort tout seul : l'adrénaline, l'énergie, la recharge et les durées ne déplacent aucun chiffre
+    /// de spike. ⚠ Et les effets comptés par un compteur « Procs » (conjurations, Ordres, Cent lames…) restent
+    /// dehors exprès : leur icône n'y changerait rien, c'est le compteur de la ligne qui les porte.
     /// </summary>
     /// ⚠ Une icône SANS compétence (le mod « de fractionnement », le mod « Furieux ») n'a aucun
     /// descripteur : elle sort d'elle-même, et c'est juste — la fenêtre a sa case de ligne pour ce mod.
@@ -648,7 +702,10 @@ public partial class CharacterSlotViewModel : ViewModelBase
                 || SpikeWeaponBuffs.FromCardToggleId(t.ToggleId) is not null
                 // Lot 7c : Fardeau nébuleux n'est pas un descripteur de dégâts, mais il change les chiffres du spike
                 // (baisse d'armure) — son icône doit donc être là pour l'éteindre sans repasser par le teambuild.
-                || t.ToggleId == TargetedFoeEffectData.ShadowyBurdenSkillId));
+                || t.ToggleId == TargetedFoeEffectData.ShadowyBurdenSkillId
+                || AttributeBoostData.BySkillId(sk.Id) is not null
+                || t.ToggleId == HeroicRefrainData.SkillId
+                || AttributeSubstitutionData.BySkillId(sk.Id) is not null));
 
     public bool HasSpikeBoostToggles => SpikeBoostToggles.Any();
 

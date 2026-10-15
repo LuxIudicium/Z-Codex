@@ -226,65 +226,29 @@
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
-                                        <!-- Buffs d'arme (chantier 14) : icônes cliquables PAR PERSO
-                                             (grisé = inactif, cadre vert = actif). Proposés si équipés
-                                             sur un membre du roster (DWG : sur son seul porteur) ;
-                                             état persisté (.pn3 v11). -->
-                                        <StackPanel Orientation="Horizontal" Margin="0,5,0,0"
-                                                    Visibility="{Binding HasSpikeBuffToggles, Converter={StaticResource BoolToVisibilityConverter}}">
-                                            <TextBlock Text="{DynamicResource S.Spike.Buffs}" FontSize="10"
-                                                       Foreground="{DynamicResource TextFaintBrush}"
-                                                       VerticalAlignment="Center" Margin="0,0,5,0"/>
-                                            <ItemsControl ItemsSource="{Binding SpikeBuffToggles}">
-                                                <ItemsControl.ItemsPanel>
-                                                    <ItemsPanelTemplate>
-                                                        <StackPanel Orientation="Horizontal"/>
-                                                    </ItemsPanelTemplate>
-                                                </ItemsControl.ItemsPanel>
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate>
-                                                        <Border MouseLeftButtonDown="BuffToggle_Click" Cursor="Hand"
-                                                                Margin="0,0,4,0" CornerRadius="2" BorderThickness="2"
-                                                                ToolTip="{Binding Tooltip}">
-                                                            <Border.Style>
-                                                                <Style TargetType="Border">
-                                                                    <Setter Property="BorderBrush" Value="Transparent"/>
-                                                                    <Style.Triggers>
-                                                                        <DataTrigger Binding="{Binding IsActive}" Value="True">
-                                                                            <Setter Property="BorderBrush" Value="#43A047"/>
-                                                                        </DataTrigger>
-                                                                    </Style.Triggers>
-                                                                </Style>
-                                                            </Border.Style>
-                                                            <Image Width="20" Height="20" Stretch="Uniform"
-                                                                   Source="{Binding IconPath, Converter={StaticResource UrlToImage}, ConverterParameter=64}"
-                                                                   RenderOptions.BitmapScalingMode="HighQuality">
-                                                                <Image.Style>
-                                                                    <Style TargetType="Image">
-                                                                        <Setter Property="Opacity" Value="0.35"/>
-                                                                        <Style.Triggers>
-                                                                            <DataTrigger Binding="{Binding IsActive}" Value="True">
-                                                                                <Setter Property="Opacity" Value="1"/>
-                                                                            </DataTrigger>
-                                                                        </Style.Triggers>
-                                                                    </Style>
-                                                                </Image.Style>
-                                                            </Image>
-                                                        </Border>
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
-                                        </StackPanel>
-                                        <!-- Effets de dégâts de la carte (lot 6e) : les MÊMES icônes que
-                                             la vue Build, filtrées à celles qui changent un chiffre ici
-                                             (SpikeBoostToggles) — les 9 buffs d'arme ont leur rangée
-                                             au-dessus, et l'adrénaline, l'énergie ou les durées n'ont
-                                             rien à faire dans un spike. Cliquables : l'état est le même
-                                             des deux côtés, allumer ici allume partout.
+                                        <!-- Effets de la carte (lot 6e) : les MÊMES icônes que la vue Build,
+                                             filtrées à celles qui changent un chiffre ici (SpikeBoostToggles) —
+                                             cliquables, l'état est le même des deux côtés. Puis, en fin de
+                                             rangée, les buffs d'arme SANS icône de carte (SpikeOnlyBuffToggles :
+                                             Hymne d'envie, Arme d'éclats…). Une seule rangée depuis le 14/10/2026 :
+                                             l'ancienne rangée « Buffs » doublait 7 de ces icônes (demande de
+                                             Philippe). Visible dès que l'une des deux listes a quelque chose.
                                              ⚠ WrapPanel : la rangée peut être longue sur un perso très
                                              équipé, et la carte tient dans une colonne sur deux. -->
-                                        <StackPanel Orientation="Horizontal" Margin="0,5,0,0"
-                                                    Visibility="{Binding HasSpikeBoostToggles, Converter={StaticResource BoolToVisibilityConverter}}">
+                                        <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                                            <StackPanel.Style>
+                                                <Style TargetType="StackPanel">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding HasSpikeBoostToggles}" Value="True">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding HasSpikeOnlyBuffToggles}" Value="True">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </StackPanel.Style>
                                             <TextBlock Text="{DynamicResource S.Spike.Effects}" FontSize="10"
                                                        Foreground="{DynamicResource TextFaintBrush}"
                                                        VerticalAlignment="Center" Margin="0,0,5,0"/>
@@ -321,6 +285,45 @@
                                                             </Border.Style>
                                                             <Image Width="20" Height="20" Stretch="Uniform"
                                                                    Source="{Binding Skill.IconPath, Converter={StaticResource UrlToImage}, ConverterParameter=64}"
+                                                                   RenderOptions.BitmapScalingMode="HighQuality">
+                                                                <Image.Style>
+                                                                    <Style TargetType="Image">
+                                                                        <Setter Property="Opacity" Value="0.35"/>
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                                                <Setter Property="Opacity" Value="1"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Image.Style>
+                                                            </Image>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                            <ItemsControl ItemsSource="{Binding SpikeOnlyBuffToggles}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <StackPanel Orientation="Horizontal"/>
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border MouseLeftButtonDown="BuffToggle_Click" Cursor="Hand"
+                                                                Margin="0,0,4,0" CornerRadius="2" BorderThickness="2"
+                                                                ToolTip="{Binding Tooltip}">
+                                                            <Border.Style>
+                                                                <Style TargetType="Border">
+                                                                    <Setter Property="BorderBrush" Value="Transparent"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                                            <Setter Property="BorderBrush" Value="#43A047"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Border.Style>
+                                                            <Image Width="20" Height="20" Stretch="Uniform"
+                                                                   Source="{Binding IconPath, Converter={StaticResource UrlToImage}, ConverterParameter=64}"
                                                                    RenderOptions.BitmapScalingMode="HighQuality">
                                                                 <Image.Style>
                                                                     <Style TargetType="Image">

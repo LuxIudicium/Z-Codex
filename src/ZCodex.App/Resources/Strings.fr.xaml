@@ -493,7 +493,6 @@
     <sys:String x:Key="S.Spike.Teambuild">Éditer le teambuild et les participants au spike</sys:String>
     <sys:String x:Key="S.Spike.TeambuildTip">Ramène la fenêtre du teambuild au premier plan pour choisir les lignes du roster spike (8 max, racines ou variantes)</sys:String>
     <sys:String x:Key="S.Spike.ClickHint">Cliquez une compétence pour la compter dans le spike (cadre vert) ; recliquez pour la retirer.</sys:String>
-    <sys:String x:Key="S.Spike.Buffs">Buffs :</sys:String>
     <sys:String x:Key="S.Spike.Effects">Effets :</sys:String>
     <sys:String x:Key="S.Spike.Target">Cible</sys:String>
     <sys:String x:Key="S.Spike.DeleteProfileTip">Supprimer le profil sélectionné</sys:String>
