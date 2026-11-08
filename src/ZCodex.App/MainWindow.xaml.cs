@@ -95,7 +95,7 @@ public partial class MainWindow : Window
             _settings.ShowMechanicColumn = _vm.ShowMechanicColumn;
             _settings.Save();
         };
-        _vm.ArmorCalc.LoadSettings(_settings);  // profils du calculateur d'armure (chantier 14)
+        _vm.ArmorCalcSettings = _settings;  // profils du calculateur d'armure (chantier 14), lus à sa création
         ArmorDamageDisplay.Enabled = _settings.ShowArmorDamage;
         // Migration de l'ancien AL custom unique vers la liste (max 8, bornée au chargement :
         // un settings.json édité à la main ne doit pas casser les formules ni la modale).
@@ -873,7 +873,7 @@ public partial class MainWindow : Window
             s.Mechanics = SkillCategoryData.Merge(s.Mechanics, s);
         _vm.SkillPanel.LoadSkills(skills);
         _vm.SearchBuilder.Catalog.LoadSkills(skills);
-        _vm.ArmorCalc.LoadSkills(skills);   // attaques de référence du calculateur d'armure (Lot D)
+        _vm.LoadArmorCalcSkills(skills);   // attaques de référence du calculateur d'armure (Lot D), s'il est créé
         // Les conditions par skill viennent d'être (re)chargées → recalcul de la ligne teambuild.
         _vm.RefreshTeamConditionBand();
         // Catalogue multi-colonnes (vue Liste) : cellule assez large pour le nom le plus long
@@ -905,15 +905,20 @@ public partial class MainWindow : Window
 
     // Largeur d'une cellule du catalogue = icône + le NOM LE PLUS LONG (mesuré) + bloc mécaniques.
     // Mesuré une seule fois au chargement (nom stable) → colonnes uniformes sans ellipsis.
+    // Seuls les noms les plus longs EN CARACTÈRES sont mesurés (démarrage, 15/10/2026) : une mesure coûte
+    // ~0,08 ms, soit ~0,12 s pour tout le catalogue. Le plus large y figure de très loin — relevé sur les
+    // 1 516 noms : rang 2 en FR, 1 en EN, et les 5 plus larges parmi les 7 plus longs.
+    private const int CatalogWidthCandidates = 50;
+
     private static double ComputeCatalogItemWidth(IEnumerable<Skill> skills)
     {
         var typeface = new Typeface("Segoe UI");
         double maxName = 0;
-        foreach (var s in skills)
+        // Nom AFFICHÉ (langue courante) : recalculé au switch via LoadSkillsFromDbAsync.
+        foreach (var name in skills.Select(s => s.DisplayName).Where(n => !string.IsNullOrEmpty(n))
+                                   .OrderByDescending(n => n.Length).Take(CatalogWidthCandidates))
         {
-            // Nom AFFICHÉ (langue courante) : recalculé au switch via LoadSkillsFromDbAsync.
-            if (string.IsNullOrEmpty(s.DisplayName)) continue;
-            var ft = new FormattedText(s.DisplayName, System.Globalization.CultureInfo.CurrentUICulture,
+            var ft = new FormattedText(name, System.Globalization.CultureInfo.CurrentUICulture,
                 FlowDirection.LeftToRight, typeface, 12, Brushes.Black, 1.0);
             if (ft.Width > maxName) maxName = ft.Width;
         }
@@ -2190,14 +2195,14 @@ public partial class MainWindow : Window
         // Filtres des catalogues (Professions/Caractéristiques/PvE) : libellés bakés → rebind FR/EN.
         _vm.SkillPanel.RefreshLanguage();
         _vm.SearchBuilder.Catalog.RefreshLanguage();
-        _vm.ArmorCalc.AttackCatalog.RefreshLanguage();
+        _vm.ArmorCalc?.AttackCatalog.RefreshLanguage();
 
         // Persos de tous les teambuilds/éditeurs : noms, résumés/lignes d'attributs, noms de skills,
         // infobulles de flux (chaînes bakées, non recréées par un switch en place).
         _vm.RefreshLanguage();
 
         // Surfaces à chaînes « bakées » : forcer un refresh dans la nouvelle langue (demande Philippe).
-        _vm.ArmorCalc.RefreshLanguage();
+        _vm.ArmorCalc?.RefreshLanguage();
         // Aide : son contenu résout la langue à la lecture → rebind si la fenêtre est ouverte.
         if (_helpWindow is { IsLoaded: true }) _helpWindow.RefreshLanguage();
         // La fenêtre Spike bake ses libellés au calcul → la rebâtir depuis l'état persisté (.pn3).

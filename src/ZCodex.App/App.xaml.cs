@@ -39,6 +39,14 @@ public partial class App : Application
         try
         {
             MainWindow = new MainWindow();
+            // Les liaisons posées par InitializeComponent ne sont branchées qu'au prochain passage du
+            // moteur de liaison de WPF, qu'il poste lui-même en priorité DataBind pour passer AVANT la
+            // mise en page. Or Show() met la fenêtre en page tout de suite, dans cette même opération :
+            // sans ce passage, chaque vue masquée par une liaison de Visibility (calculateur d'armure,
+            // onglet Recherche, teambuild) est encore « Visible » au premier affichage, construite en
+            // entier, puis masquée. Mesuré le 15/10/2026 : 7 341 éléments construits au lieu de 536, et
+            // ~3 s de démarrage en plus. Ces vues se construisent désormais à leur première ouverture.
+            Dispatcher.Invoke(static () => { }, DispatcherPriority.DataBind);
             MainWindow.Show();
         }
         catch (Exception ex)

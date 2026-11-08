@@ -58,7 +58,33 @@ public class MainViewModel : ViewModelBase
     // Onglet « Search » : constructeur de requête (perso + catalogue).
     public SearchBuilderViewModel SearchBuilder { get; } = new();
     // Onglet « Armure » : calculateur d'armure (chantier 14), vue unique paresseuse comme Search.
-    public ArmorCalcViewModel ArmorCalc { get; } = new();
+    // Le VM n'est créé qu'à la PREMIÈRE ouverture de l'onglet (démarrage, 15/10/2026) : ~0,2 s de
+    // construction et ~0,25 s d'analyse du catalogue que le démarrage payait pour un onglet rarement
+    // ouvert. Jusque-là la vue, masquée, a un DataContext nul ; réglages et catalogue attendent ici.
+    private ArmorCalcViewModel? _armorCalc;
+    public ArmorCalcViewModel? ArmorCalc => _armorCalc;
+    public Settings.AppSettings? ArmorCalcSettings { get; set; }
+    private IReadOnlyList<Skill>? _armorCalcPendingSkills;
+
+    /// <summary>Catalogue (re)chargé : transmis tout de suite au calculateur s'il existe, sinon gardé
+    /// pour sa création.</summary>
+    public void LoadArmorCalcSkills(IReadOnlyList<Skill> skills)
+    {
+        if (_armorCalc is { } calc) calc.LoadSkills(skills);
+        else _armorCalcPendingSkills = skills;
+    }
+
+    // Même ordre qu'au temps de la création au démarrage : réglages (profils), puis catalogue.
+    private void EnsureArmorCalc()
+    {
+        if (_armorCalc is not null) return;
+        var calc = new ArmorCalcViewModel();
+        if (ArmorCalcSettings is { } settings) calc.LoadSettings(settings);
+        if (_armorCalcPendingSkills is { } skills) calc.LoadSkills(skills);
+        _armorCalcPendingSkills = null;
+        _armorCalc = calc;
+        OnPropertyChanged(nameof(ArmorCalc));
+    }
     // Onglets « Build » : éditeur d'un build simple (un seul perso) par build ouvert/créé.
     public ObservableCollection<BuildEditorViewModel> OpenBuilds { get; } = new();
     public ObservableCollection<TeamBuildViewModel> OpenTeamBuilds { get; } = new();
@@ -122,7 +148,7 @@ public class MainViewModel : ViewModelBase
     {
         yield return SkillPanel;
         yield return SearchBuilder.Catalog;
-        yield return ArmorCalc.AttackCatalog;
+        if (_armorCalc is { } calc) yield return calc.AttackCatalog;   // pas encore créé : rien à réinitialiser
         foreach (var b in OpenBuilds) yield return b.Catalog;
     }
 
@@ -560,6 +586,7 @@ public class MainViewModel : ViewModelBase
     // Extras → Calculateur d'armure : ouvre/active l'onglet unique (clone d'ActivateSearchBuilder).
     public void ActivateArmorCalc()
     {
+        EnsureArmorCalc();   // AVANT de rendre la vue visible : elle s'affiche directement avec son VM
         ActiveTeamBuild = null;
         HasArmorCalc = true;
         ActiveView = MainView.ArmorCalc;

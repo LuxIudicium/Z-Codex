@@ -10,6 +10,9 @@ public partial class ArmorCalcView : UserControl
     public ArmorCalcView()
     {
         InitializeComponent();
+        // Le calculateur n'est créé qu'à la 1re ouverture de l'onglet (démarrage, 15/10/2026) : son DataContext
+        // arrive alors bien APRÈS le Loaded de la vue, qui n'avait encore aucune disposition à relire.
+        DataContextChanged += (_, _) => ApplySavedLayout();
     }
 
     private ArmorCalcViewModel? Vm => DataContext as ArmorCalcViewModel;
@@ -19,7 +22,9 @@ public partial class ArmorCalcView : UserControl
     // parts relatives (étoiles) : la disposition garde ses proportions si la fenêtre change de taille.
     private const double MinLeftWidth = 200, MaxLeftWidth = 1200;
 
-    private void View_Loaded(object sender, RoutedEventArgs e)
+    private void View_Loaded(object sender, RoutedEventArgs e) => ApplySavedLayout();
+
+    private void ApplySavedLayout()
     {
         if (Vm?.SavedLayout is not { } l) return;
         if (l.LeftWidth > 0) LeftColumn.Width = new GridLength(Math.Clamp(l.LeftWidth, MinLeftWidth, MaxLeftWidth));
