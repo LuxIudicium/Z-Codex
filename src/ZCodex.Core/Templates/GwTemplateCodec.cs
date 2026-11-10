@@ -1,4 +1,5 @@
 ﻿using ZCodex.Core.Models;
+using ZCodex.Core.Search;
 
 namespace ZCodex.Core.Templates;
 
@@ -143,11 +144,18 @@ public static class GwTemplateCodec
             bits.Write(Math.Clamp(points, 0, 15), 4);
         }
 
+        // Un code de template porte les numéros du JEU : une compétence d'allégeance s'écrit sous le
+        // sien, pas sous sa clé de catalogue (cf. SkillIdAliases.TryGetGameId). Fait ici, et non dans
+        // SkillVariants.TemplateIdsByName, que la session partagée réutilise pour comparer ses
+        // documents : y toucher désaccorderait deux participants de versions différentes.
         var skillIds = new int[8];
         for (int i = 0; i < 8; i++)
         {
             var skill = build.Skills[i];
-            if (skill != null && skillIdsByName.TryGetValue(skill.Name, out int sid))
+            if (skill == null) continue;
+            if (SkillIdAliases.TryGetGameId(skill.Name, out int gameId))
+                skillIds[i] = gameId;
+            else if (skillIdsByName.TryGetValue(skill.Name, out int sid))
                 skillIds[i] = sid;
         }
 

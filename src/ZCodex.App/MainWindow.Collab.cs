@@ -27,7 +27,7 @@ public partial class MainWindow
     {
         Capture = CaptureCollabDoc,
         Apply = ApplyCollabDoc,
-        Skills = () => _vm.SkillPanel.AllSkills.ToDictionary(s => s.Id, s => s),
+        Skills = () => SkillIdAliases.ById(_vm.SkillPanel.AllSkills),
         Canon = CollabCanon,
     };
 
@@ -50,7 +50,7 @@ public partial class MainWindow
     /// </summary>
     private void ApplyCollabDoc(TeamBuildViewModel tb, JsonObject doc)
     {
-        if (!ApplyCollabDocCore(tb, doc, _vm.SkillPanel.AllSkills.ToDictionary(s => s.Id, s => s))) return;
+        if (!ApplyCollabDocCore(tb, doc, SkillIdAliases.ById(_vm.SkillPanel.AllSkills))) return;
         _vm.ApplyGameModeTo(tb);
         _vm.RefreshTeamConditionBand();
     }
@@ -162,7 +162,7 @@ public partial class MainWindow
         RememberNick(win.Nick);
         if (!win.Accepted || win.Session is not { } session || win.FirstState is not { } first) return;
 
-        var skillsById = _vm.SkillPanel.AllSkills.ToDictionary(s => s.Id, s => s);
+        var skillsById = SkillIdAliases.ById(_vm.SkillPanel.AllSkills);
         var normalized = RoomCompat.Normalize(first.Doc, skillsById, out var compat);
         var model = normalized is null ? null : TeamBuildSerializer.Deserialize(normalized.ToJsonString(), skillsById);
         if (normalized is null || model is null)

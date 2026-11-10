@@ -274,7 +274,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var skillsById = _vm.SkillPanel.AllSkills.ToDictionary(s => s.Id, s => s);
+        var skillsById = SkillIdAliases.ById(_vm.SkillPanel.AllSkills);
         var ext = Path.GetExtension(filePath).ToLowerInvariant();
 
         // .txt ne contenant que des codes P → modale d'équipement préremplie (pas un team build).
@@ -357,12 +357,9 @@ public partial class MainWindow : Window
     // Compétences du fichier absentes du catalogue courant : leur slot est vide et une
     // sauvegarde les effacerait définitivement. L'utilisateur doit le savoir AVANT d'enregistrer
     // (fichier reçu d'un autre joueur, catalogue local plus ancien que le fichier…).
-    // TODO(skills): 30 des 273 templates de Philippe la déclenchent (14/10/2026). 2091, 2093, 2094, 2096–2100 =
-    // moitiés Kurzick des compétences d'allégeance (cf. WikiSkillScraper.ScrapeSkillIdListAsync) : le catalogue
-    // range les 20 compétences d'allégeance sous des clés maison 900000–900020, donc leur id de jeu ne se résout
-    // jamais — case vidée, effacée au prochain enregistrement. Résoudre l'id de jeu vers la clé maison (par nom,
-    // comme ArmorEffectsData.CatalogSkill) plutôt que renuméroter (clés citées en dur, cf. AttributeBoostData).
-    // 5001 (Zealot, Arka, The Path To Good…) : ni id de jeu ni clé maison connue, origine à identifier.
+    // Les ids de jeu des compétences d'allégeance et les anciennes clés maison 5000–5002 ne passent
+    // plus par ici : SkillIdAliases les traduit à la lecture (30 des 273 fichiers de Philippe s'y
+    // arrêtaient avant le 10/11/2026).
     private void WarnUnresolvedSkills(List<int> unresolvedIds)
     {
         if (unresolvedIds.Count == 0) return;
@@ -487,7 +484,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var skillsById = _vm.SkillPanel.AllSkills.ToDictionary(s => s.Id, s => s);
+        var skillsById = SkillIdAliases.ById(_vm.SkillPanel.AllSkills);
 
         Mouse.OverrideCursor = Cursors.Wait;
         List<string> matches;
@@ -501,7 +498,7 @@ public partial class MainWindow : Window
         }
 
         var tab = _vm.NewSearchResults();
-        tab.SetSkillsProvider(() => _vm.SkillPanel.AllSkills.ToDictionary(s => s.Id, s => s));
+        tab.SetSkillsProvider(() => SkillIdAliases.ById(_vm.SkillPanel.AllSkills));
         tab.OpenFileRequested += OpenFileFromBrowser;
         tab.LoadResults(matches);
     }
@@ -884,7 +881,7 @@ public partial class MainWindow : Window
         var iconPaths = skills.Select(s => s.IconPath).Where(p => !string.IsNullOrEmpty(p))
                               .Distinct().ToList();
         Converters.UrlToImageConverter.Prewarm(iconPaths, 24);
-        _vm.Browser.SetSkillsProvider(() => _vm.SkillPanel.AllSkills.ToDictionary(s => s.Id, s => s));
+        _vm.Browser.SetSkillsProvider(() => SkillIdAliases.ById(_vm.SkillPanel.AllSkills));
     }
 
     // Variantes « (PvP) » de skills splittées : le wiki FR n'a pas de page dédiée pour beaucoup de
@@ -1368,7 +1365,7 @@ public partial class MainWindow : Window
 
         // Le catalogue doit être COMPLET : un id de compétence qu'il ignore serait réécrit en
         // « emplacement vide » à la sérialisation (cf. GwRankBulkUpload.UnknownSkills).
-        var skillsById = _vm.SkillPanel.AllSkills.ToDictionary(s => s.Id, s => s);
+        var skillsById = SkillIdAliases.ById(_vm.SkillPanel.AllSkills);
         // Le mode de jeu inscrit dans le document est celui que l'interface AFFICHE — même règle
         // que l'envoi à l'unité, sans quoi chaque build ferait la navette entre les deux chemins.
         var gameMode = ToCoreGameMode(_vm.SkillPanel.SelectedGameMode);
@@ -1795,7 +1792,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var skillsById = _vm.SkillPanel.AllSkills.ToDictionary(s => s.Id, s => s);
+        var skillsById = SkillIdAliases.ById(_vm.SkillPanel.AllSkills);
         // Défaut : la destination du dernier import, sinon la racine du navigateur — c'est-à-dire
         // le dossier Templates du jeu quand il a été détecté, exactement là où ces .txt servent.
         var initial = _settings.PvxDestinationPath ?? _settings.TemplatesRootPath;
@@ -1827,7 +1824,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var skillsById = _vm.SkillPanel.AllSkills.ToDictionary(s => s.Id, s => s);
+        var skillsById = SkillIdAliases.ById(_vm.SkillPanel.AllSkills);
         // Défaut : la destination du dernier import, sinon la racine du navigateur.
         var initial = _settings.GvgReportDestinationPath ?? _settings.TemplatesRootPath;
 
@@ -1899,7 +1896,7 @@ public partial class MainWindow : Window
                 int nl = snapshot.IndexOf('\n');
                 if (nl < 0) return;
                 var json = snapshot[(nl + 1)..];
-                var skillsById = _vm.SkillPanel.AllSkills.ToDictionary(s => s.Id, s => s);
+                var skillsById = SkillIdAliases.ById(_vm.SkillPanel.AllSkills);
                 var model = TeamBuildSerializer.Deserialize(json, skillsById);
                 if (model == null)
                 {
@@ -1942,7 +1939,7 @@ public partial class MainWindow : Window
             {
                 int nl = snapshot.IndexOf('\n');
                 if (nl < 0) return;
-                tab.RestoreContent(snapshot[(nl + 1)..], _vm.SkillPanel.AllSkills.ToDictionary(s => s.Id, s => s));
+                tab.RestoreContent(snapshot[(nl + 1)..], SkillIdAliases.ById(_vm.SkillPanel.AllSkills));
                 tab.Character.ApplyBonusSnapshot(snapshot[..nl]);
             });
         tab.Mutated += tab.Undo.OnMutated;
@@ -3486,7 +3483,7 @@ public partial class MainWindow : Window
     // Retourne false si aucun code n'est reconnu — sans rien modifier.
     private bool TryApplyTemplateCodes(CharacterSlotViewModel charVm, IReadOnlyList<string> codes)
     {
-        var skillsById = _vm.SkillPanel.AllSkills.ToDictionary(s => s.Id, s => s);
+        var skillsById = SkillIdAliases.ById(_vm.SkillPanel.AllSkills);
 
         // 1re passe : décoder (le dernier code skills gagne, les codes P se cumulent en sets).
         CharacterBuild? skillBuild = null;
