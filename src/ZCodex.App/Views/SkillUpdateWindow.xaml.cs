@@ -22,12 +22,34 @@ public partial class SkillUpdateWindow : Window
 
     private async Task RunAsync()
     {
+        string counter = string.Empty;   // « n / total », rétabli quand l'avis de nouvel essai s'efface
         var progress = new Progress<(int done, int total, string current)>(p =>
         {
             ProgressBar.Maximum = p.total;
             ProgressBar.Value = p.done;
             StatusText.Text = string.Format(T("S.Upd.Fetching"), p.current);
-            DetailText.Text = $"{p.done} / {p.total}";
+            DetailText.Text = counter = $"{p.done} / {p.total}";
+        });
+
+        // Page obligatoire en échec : pourquoi, puis le compte à rebours du nouvel essai.
+        var retryNotice = new Progress<WikiRetryNotice?>(n =>
+        {
+            if (n is null) { DetailText.Text = counter; return; }
+            var reason = n.Failure switch
+            {
+                WikiFailure.Timeout     => T("S.Upd.FailTimeout"),
+                WikiFailure.HttpError   => string.Format(T("S.Upd.FailHttp"), n.StatusCode),
+                WikiFailure.NotWikiPage => T("S.Upd.FailNotWiki"),
+                WikiFailure.NoData      => T("S.Upd.FailNoData"),
+                _                       => T("S.Upd.FailUnreachable"),
+            };
+            var next = n.SecondsLeft switch
+            {
+                0 => string.Format(T("S.Upd.RetryNow"), n.Retry, n.Retries),
+                1 => string.Format(T("S.Upd.RetryIn1"), n.Retry, n.Retries),
+                _ => string.Format(T("S.Upd.RetryIn"), n.SecondsLeft, n.Retry, n.Retries),
+            };
+            DetailText.Text = $"{reason}\n{next}";
         });
 
         // L'ouverture de la base est DANS le try : c'est le premier écran d'un poste neuf,
@@ -36,7 +58,7 @@ public partial class SkillUpdateWindow : Window
         try
         {
             db = AppDbContextFactory.Create();
-            var scraper = new WikiSkillScraper(NullLogger<WikiSkillScraper>.Instance);
+            var scraper = new WikiSkillScraper(NullLogger<WikiSkillScraper>.Instance) { RetryNotice = retryNotice };
             var service = new SkillUpdateService(scraper, db, NullLogger<SkillUpdateService>.Instance);
 
             CancelButton.IsEnabled = true;
@@ -48,6 +70,16 @@ public partial class SkillUpdateWindow : Window
         {
             StatusText.Text = T("S.Upd.Cancelled");
             DetailText.Text = T("S.Upd.Retry");
+        }
+        catch (WikiUnavailableException ex)
+        {
+            // Wiki en panne ou pages troubles : rien d'incomplet n'a été écrit. La page en cause
+            // (ou les compétences qui auraient disparu) sert au support quand un joueur signale.
+            var cause = ex.WouldLose.Count > 0
+                ? string.Format(T("S.Upd.WikiDownLoss"), ex.WouldLose.Count, string.Join(", ", ex.WouldLose.Take(3)))
+                : string.Format(T("S.Upd.WikiDownPage"), ex.Page);
+            StatusText.Text = T("S.Upd.WikiDown");
+            DetailText.Text = $"{T("S.Upd.WikiDownDetail")}\n\n{cause}\n\n{T("S.Upd.Retry")}";
         }
         catch (Exception ex)
         {

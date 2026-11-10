@@ -22,11 +22,20 @@ public class WikiSkillScraper(ILogger<WikiSkillScraper> logger)
     // seule ~12 min sur les ~15 min du premier lancement. Volontairement sous les 6 de la
     // phase d'icônes : le wiki est un service communautaire gratuit.
     private const int ProgressionConcurrency = 4;
+    // Pauses avant les nouveaux essais d'une page obligatoire (cf. RequiredAsync). Un wiki qui
+    // hoquette se remet souvent en quelques secondes, une maintenance non : 3 essais en ~20 s, puis arrêt.
+    private static readonly TimeSpan[] RequiredPageRetryDelays = [TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(15)];
     // Détecte une plage de variable "n...n[...n]" dans une description.
     private static readonly Regex VariableRangeRegex = new(@"\d+(?:\.\.\.\d+)+", RegexOptions.Compiled);
 
     // Les messages de progression sont affichés par SkillUpdateWindow → langue courante.
     private static string L(string fr, string en) => AppLanguage.IsFr ? fr : en;
+
+    /// <summary>
+    /// Avis de nouvel essai d'une page obligatoire (cf. RequiredAsync), seconde par seconde. Sans
+    /// lui, la fenêtre restait figée une minute sur une étape et l'on croyait l'application plantée.
+    /// </summary>
+    public IProgress<WikiRetryNotice?>? RetryNotice { get; init; }
 
     // ── Sources skills (stats) ─────────────────────────────────────────────
     private static readonly Dictionary<Profession, string> SkillListPages = new()
@@ -118,18 +127,17 @@ public class WikiSkillScraper(ILogger<WikiSkillScraper> logger)
         var results = new List<SkillEntity>();
 
         // ── 1. Skills par profession (stats) ──────────────────────────────
+        // Pages OBLIGATOIRES (cf. RequiredAsync) : une profession qui manque, c'est un catalogue
+        // sans ses compétences — le 08/11/2026, la page Ritualist ratée avait été avalée en silence.
         foreach (var (profession, path) in SkillListPages)
         {
             ct.ThrowIfCancellationRequested();
             progress?.Report((done++, total, $"{profession} (stats)"));
 
-            try
-            {
-                var skills = await ScrapeStatsPageAsync(context, profession, path, ct);
-                results.AddRange(skills);
-                logger.LogInformation("{Profession}: {Count} skills", profession, skills.Count);
-            }
-            catch (Exception ex) { logger.LogError(ex, "Erreur stats {Profession}", profession); }
+            var skills = await RequiredAsync(BaseUrl + path,
+                () => ScrapeStatsPageAsync(context, profession, path, ct), s => s.Count > 0, ct);
+            results.AddRange(skills);
+            logger.LogInformation("{Profession}: {Count} skills", profession, skills.Count);
 
             await Task.Delay(RequestDelay, ct);
         }
@@ -165,13 +173,13 @@ public class WikiSkillScraper(ILogger<WikiSkillScraper> logger)
 
         // ── 3. Skills PvE cross-profession ────────────────────────────────
         // Cette page est AUSSI la seule source qui dise qui est PvE-only : on retient les noms
-        // qu'elle liste pour en marquer le catalogue plus bas (étape 5 bis). Vide si le scrape
-        // de la page échoue → le marquage ne retire rien, il ne fait qu'ajouter.
+        // qu'elle liste pour en marquer le catalogue plus bas (étape 5 bis). Page obligatoire :
+        // sans elle, toutes les compétences PvE (Ebon Vanguard, cris d'allégeance…) disparaissent.
         var pveOnlyNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         progress?.Report((done++, total, L("Skills PvE (toutes professions)", "PvE skills (all professions)")));
-        try
         {
-            var pveSkills = await ScrapePvEPageAsync(context, ct);
+            var pveSkills = await RequiredAsync(BaseUrl + "/wiki/PvE-only_skill",
+                () => ScrapePvEPageAsync(context, ct), s => s.Count > 0, ct);
             foreach (var s in pveSkills)
                 pveOnlyNames.Add(NormalizeApostrophe(s.Name));
             // Icônes HD en pause (cf. étape 2 commentée) :
@@ -181,14 +189,15 @@ public class WikiSkillScraper(ILogger<WikiSkillScraper> logger)
             results.AddRange(pveSkills);
             logger.LogInformation("PvE cross-profession: {Count} skills", pveSkills.Count);
         }
-        catch (Exception ex) { logger.LogError(ex, "Erreur PvE page"); }
 
         // ── 4. Assignation des vrais IDs GW1 ──────────────────────────────
+        // Page obligatoire : sans elle, aucune compétence n'a son id de jeu (toutes partent en clés
+        // maison 900000+) et plus aucun build enregistré ne se relit.
         progress?.Report((done++, total, L("IDs GW1 (Skill_template_format/Skill_list)…",
                                            "GW1 IDs (Skill_template_format/Skill_list)…")));
-        try
         {
-            var (singles, pairs) = await ScrapeSkillIdListAsync(context, ct);
+            var (singles, pairs) = await RequiredAsync(BaseUrl + "/wiki/Skill_template_format/Skill_list",
+                () => ScrapeSkillIdListAsync(context, ct), r => r.Singles.Count > 0, ct);
             int matched = 0;
             foreach (var skill in results)
             {
@@ -236,12 +245,11 @@ public class WikiSkillScraper(ILogger<WikiSkillScraper> logger)
                 };
                 // Ces orphelins n'ont aucune ligne de List_of_X_skills : leur infobox individuelle
                 // est la seule source de description/stats (sinon l'infobulle est vide, cf. Resurrection
-                // Signet). On lit la page maintenant.
-                try
-                {
-                    var pageDoc = await context.OpenFreshAsync(orphan.WikiUrl, ct);
-                    EnrichFromSkillPage(pageDoc, orphan);
-                }
+                // Signet). On lit la page maintenant. Wiki en panne → arrêt ; page lisible mais
+                // mal formée → orphelin gardé sans description, comme avant.
+                var pageDoc = await RequiredAsync(orphan.WikiUrl,
+                    () => context.OpenFreshAsync(orphan.WikiUrl, ct), _ => true, ct);
+                try { EnrichFromSkillPage(pageDoc, orphan); }
                 catch (Exception ex) { logger.LogWarning(ex, "Enrichissement orphelin échoué {Skill}", name); }
                 await Task.Delay(RequestDelay, ct);
 
@@ -250,7 +258,6 @@ public class WikiSkillScraper(ILogger<WikiSkillScraper> logger)
                 existingIds.Add(id);
             }
         }
-        catch (Exception ex) { logger.LogError(ex, "Erreur liste IDs GW1"); }
 
         // ── 5. Retire les doublons "plain" des skills Kurzick/Luxon ──────────
         // Ces skills apparaissent sur la page de leur profession (ex: "Triple Shot" sur Ranger)
@@ -315,10 +322,13 @@ public class WikiSkillScraper(ILogger<WikiSkillScraper> logger)
         var progressionByUrl = new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         int progDone = 0;
 
-        // Récupère un lot d'URL en parallèle ; renvoie celles qui ont échoué.
-        async Task<List<string>> FetchProgressionsAsync(IReadOnlyList<string> urls, bool countsTowardProgress)
+        // Récupère un lot d'URL en parallèle ; renvoie celles qui ont échoué, et la panne du wiki
+        // s'il y en a eu une parmi ces échecs.
+        async Task<(List<string> Failed, WikiUnavailableException? Outage)> FetchProgressionsAsync(
+            IReadOnlyList<string> urls, bool countsTowardProgress)
         {
             var failed = new ConcurrentBag<string>();
+            var outages = new ConcurrentBag<WikiUnavailableException>();
             using var gate = new SemaphoreSlim(ProgressionConcurrency, ProgressionConcurrency);
             var jobs = urls.Select(async url =>
             {
@@ -332,7 +342,7 @@ public class WikiSkillScraper(ILogger<WikiSkillScraper> logger)
                     // ~1300 pages, et forcer autant de régénérations sur un wiki communautaire
                     // serait hors de proportion. Le retard possible est borné à 5 h, sans commune
                     // mesure avec le délai que met le wiki à être édité après une mise à jour.
-                    var doc = await ctx.OpenAsync(url, ct);
+                    var doc = await ctx.OpenWikiPageAsync(url, ct);
                     var prog = WikiProgressionParser.Parse(doc);
                     progressionByUrl[url] = prog is null ? string.Empty : JsonSerializer.Serialize(prog);
                 }
@@ -340,6 +350,7 @@ public class WikiSkillScraper(ILogger<WikiSkillScraper> logger)
                 catch (Exception ex)
                 {
                     failed.Add(url);
+                    if (ex is WikiUnavailableException outage) outages.Add(outage);
                     logger.LogWarning(ex, "Progression échouée {Url}", url);
                 }
                 finally
@@ -358,10 +369,10 @@ public class WikiSkillScraper(ILogger<WikiSkillScraper> logger)
                 await Task.Delay(ProgressionDelay, ct);
             });
             await Task.WhenAll(jobs);
-            return failed.ToList();
+            return (failed.ToList(), outages.FirstOrDefault());
         }
 
-        var failedUrls = await FetchProgressionsAsync(progressionUrls, countsTowardProgress: true);
+        var (failedUrls, _) = await FetchProgressionsAsync(progressionUrls, countsTowardProgress: true);
 
         // Un seul réessai. Sans lui, un incident passager laisse la compétence avec des plages
         // non résolues dans son infobulle, sans que rien ne le signale à l'utilisateur.
@@ -370,9 +381,13 @@ public class WikiSkillScraper(ILogger<WikiSkillScraper> logger)
             logger.LogInformation("Progression : réessai de {Count} page(s) en échec", failedUrls.Count);
             progress?.Report((done + progDone, progTotal,
                 L($"Progression : réessai ({failedUrls.Count})", $"Progression: retrying ({failedUrls.Count})")));
-            var stillFailed = await FetchProgressionsAsync(failedUrls, countsTowardProgress: false);
+            var (stillFailed, outage) = await FetchProgressionsAsync(failedUrls, countsTowardProgress: false);
             if (stillFailed.Count > 0)
                 logger.LogWarning("Progression : {Count} page(s) toujours en échec après réessai", stillFailed.Count);
+            // Une page mal formée reste tolérée (plages non résolues, comme avant) ; un wiki TOMBÉ en
+            // cours de route, non : on s'arrête avant l'enregistrement final. Le catalogue de base,
+            // déjà écrit, reste marqué incomplet et le démarrage suivant propose de le terminer.
+            if (outage is not null) throw outage;
         }
         done += progressionUrls.Count;
 
@@ -406,6 +421,44 @@ public class WikiSkillScraper(ILogger<WikiSkillScraper> logger)
 
         progress?.Report((progTotal, progTotal, L("Terminé", "Done")));
         return results;
+    }
+
+    // Charge une page dont le catalogue ne peut pas se passer, avec deux nouveaux essais ; si elle
+    // reste illisible (wiki en panne) ou inexploitable (isUsable faux : table vide…), la mise à
+    // jour S'ARRÊTE par une WikiUnavailableException, AVANT tout enregistrement. Garder l'ancien
+    // catalogue vaut toujours mieux qu'en écrire un troué — c'est ce qui était arrivé, en silence.
+    private async Task<T> RequiredAsync<T>(
+        string page, Func<Task<T>> load, Func<T, bool> isUsable, CancellationToken ct)
+    {
+        for (int attempt = 0; ; attempt++)
+        {
+            Exception? failure = null;
+            try
+            {
+                var value = await load();
+                if (isUsable(value))
+                {
+                    if (attempt > 0) RetryNotice?.Report(null);   // passée au nouvel essai : l'avis s'efface
+                    return value;
+                }
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+            catch (Exception ex) { failure = ex; }
+
+            // Pas une panne de chargement (table vide, page mal formée) → « sans les données attendues ».
+            var cause = failure as WikiUnavailableException
+                        ?? new WikiUnavailableException(page, WikiFailure.NoData, inner: failure);
+            if (attempt >= RequiredPageRetryDelays.Length) throw cause;
+
+            logger.LogWarning(failure, "Page {Page} inexploitable, nouvel essai", page);
+            int retry = attempt + 1, retries = RequiredPageRetryDelays.Length;
+            for (int s = (int)RequiredPageRetryDelays[attempt].TotalSeconds; s > 0; s--)
+            {
+                RetryNotice?.Report(new WikiRetryNotice(cause.Failure, cause.StatusCode, s, retry, retries));
+                await Task.Delay(TimeSpan.FromSeconds(1), ct);
+            }
+            RetryNotice?.Report(new WikiRetryNotice(cause.Failure, cause.StatusCode, 0, retry, retries));
+        }
     }
 
     // ══════════════════════════════════════════════════════════════════════
@@ -752,11 +805,14 @@ public class WikiSkillScraper(ILogger<WikiSkillScraper> logger)
             progress?.Report((done++, GwConditionData.All.Count,
                 L($"Conditions : {condition.Name}", $"Conditions: {condition.Name}")));
 
+            // Wiki en panne → arrêt (cf. RequiredAsync) ; page lisible mais sans sa table → on
+            // continue sans cette condition, comme avant : c'est une affaire de mise en page du
+            // wiki, qui ne doit pas bloquer toute mise à jour.
+            var path = "/wiki/" + condition.Name.Replace(' ', '_');
+            var doc = await RequiredAsync(BaseUrl + path,
+                () => context.OpenFreshAsync(BaseUrl + path, ct), _ => true, ct);
             try
             {
-                var path = "/wiki/" + condition.Name.Replace(' ', '_');
-                var doc = await context.OpenFreshAsync(BaseUrl + path, ct);
-
                 var table = FindCauseTable(doc);
                 if (table is null)
                 {

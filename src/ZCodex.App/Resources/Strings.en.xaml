@@ -336,6 +336,18 @@
     <sys:String x:Key="S.Upd.Cancelled">Update cancelled.</sys:String>
     <sys:String x:Key="S.Upd.Error">The update failed.</sys:String>
     <sys:String x:Key="S.Upd.Retry">You can restart the download from the Extras ▸ Update skills (wiki) menu.</sys:String>
+    <sys:String x:Key="S.Upd.WikiDown">Update stopped: the wiki is unavailable.</sys:String>
+    <sys:String x:Key="S.Upd.WikiDownDetail">The Guild Wars wiki is down or returned incomplete pages. Nothing incomplete was saved to your skill catalogue: try again later.</sys:String>
+    <sys:String x:Key="S.Upd.WikiDownPage">Page: {0}</sys:String>
+    <sys:String x:Key="S.Upd.WikiDownLoss">{0} skills of your current catalogue are missing from the wiki (e.g. {1}).</sys:String>
+    <sys:String x:Key="S.Upd.FailTimeout">The page did not respond in time.</sys:String>
+    <sys:String x:Key="S.Upd.FailHttp">The page responded with error {0}.</sys:String>
+    <sys:String x:Key="S.Upd.FailNotWiki">The wiki is showing a maintenance page instead of the requested page.</sys:String>
+    <sys:String x:Key="S.Upd.FailNoData">The page does not contain the expected data.</sys:String>
+    <sys:String x:Key="S.Upd.FailUnreachable">The wiki could not be reached.</sys:String>
+    <sys:String x:Key="S.Upd.RetryIn">Retrying in {0} seconds ({1}/{2})</sys:String>
+    <sys:String x:Key="S.Upd.RetryIn1">Retrying in 1 second ({0}/{1})</sys:String>
+    <sys:String x:Key="S.Upd.RetryNow">Retrying… ({0}/{1})</sys:String>
     <sys:String x:Key="S.Misc.BuildNamePlaceholder">(Build Name)</sys:String>
     <sys:String x:Key="S.Misc.BuildNameNumbered">Build Name {0}</sys:String>
 

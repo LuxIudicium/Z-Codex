@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using ZCodex.Core.Models;
 using ZCodex.Core.Search;
 using ZCodex.Data;
@@ -17,6 +18,12 @@ public class SkillUpdateService(WikiSkillScraper scraper, AppDbContext db, ILogg
     // jeu. Variante « (PvP) » → 1000000 + id de sa base ; orphelines → plage 900000+.
     private const int PvpVariantKeyBase = 1_000_000;
     private const int OrphanKeyBase     =   900_000;
+
+    // Filet de dernier recours (cf. GuardAgainstLossAsync) : au-delà de ce nombre de compétences
+    // connues du catalogue actuel et absentes du nouveau, on n'écrit pas. Une mise à jour du jeu
+    // n'en retire pour ainsi dire jamais (au plus quelques variantes PvP refondues) ; une page de
+    // profession ratée en fait disparaître plus d'une centaine.
+    private const int MaxLostSkills = 20;
 
     // Les messages de progression remontent tels quels dans SkillUpdateWindow : ils sont donc
     // de l'UI, et suivent la langue courante (les logs, eux, restent en français).
@@ -131,6 +138,7 @@ public class SkillUpdateService(WikiSkillScraper scraper, AppDbContext db, ILogg
             // Exclure les skills inutilisables en build (versions missions/PNJ temporaires).
             toSave = toSave.Where(s => !SkillCatalogFilter.IsBuildUnusable(s.Name)).ToList();
             AssignIdentityKeys(toSave);
+            await GuardAgainstLossAsync(toSave);
             await new SkillRepository(db).ReplaceAllAsync(toSave);
             new ScrapeInfo
             {
@@ -139,6 +147,27 @@ public class SkillUpdateService(WikiSkillScraper scraper, AppDbContext db, ILogg
                 Complete = complete,
             }.Save();
             return toSave;
+        }
+
+        // Dernier rempart, indépendant de la façon dont le wiki a pu faillir : une page lisible
+        // mais amputée (table cassée par une édition en cours, réponse tronquée…) échappe aux
+        // contrôles de page. Comparaison par ID DE JEU seulement : les clés maison (900000+,
+        // 1000000+) peuvent se renuméroter d'un téléchargement à l'autre sans rien perdre.
+        async Task GuardAgainstLossAsync(List<SkillEntity> toSave)
+        {
+            var newIds = toSave.Select(s => s.Id).ToHashSet();
+            var lost = (await db.Skills.AsNoTracking()
+                    .Where(s => s.Id < OrphanKeyBase)
+                    .Select(s => new { s.Id, s.Name })
+                    .ToListAsync(ct))
+                .Where(s => !newIds.Contains(s.Id))
+                .Select(s => s.Name)
+                .ToList();
+
+            if (lost.Count > MaxLostSkills)
+                throw new WikiUnavailableException(lost);
+            if (lost.Count > 0)
+                logger.LogInformation("Compétences retirées du catalogue : {Names}", string.Join(", ", lost));
         }
     }
 
