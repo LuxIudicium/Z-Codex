@@ -335,7 +335,7 @@
     <sys:String x:Key="S.Upd.Done">Done — {0} skills updated.</sys:String>
     <sys:String x:Key="S.Upd.Cancelled">Update cancelled.</sys:String>
     <sys:String x:Key="S.Upd.Error">The update failed.</sys:String>
-    <sys:String x:Key="S.Upd.Retry">You can restart the download from the Extras ▸ Update skills (wiki) menu.</sys:String>
+    <sys:String x:Key="S.Upd.Retry">You can restart the download from the Extras ▸ Update skill database (wiki) menu.</sys:String>
     <sys:String x:Key="S.Upd.WikiDown">Update stopped: the wiki is unavailable.</sys:String>
     <sys:String x:Key="S.Upd.WikiDownDetail">The Guild Wars wiki is down or returned incomplete pages. Nothing incomplete was saved to your skill catalogue: try again later.</sys:String>
     <sys:String x:Key="S.Upd.WikiDownPage">Page: {0}</sys:String>
